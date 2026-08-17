@@ -26,9 +26,15 @@ client:
   commit: e8800cffe53d459cde8a07c8e8f1de9d86e79e07
   language: go
   note: >-
-    The EL only. Predeploy bytecode, the derivation pipeline and superchain fork
-    schedules live in ethereum-optimism/optimism, which is NOT cloned here — facts
-    that depend on it are marked out_of_tree.
+    The EL only. Predeploy bytecode and per-chain fork schedules live in separate
+    repos, both now cloned under this row and cited by descendants.
+  companion_repos:
+  - {name: optimism, repo: "https://github.com/ethereum-optimism/optimism",
+     version: op-contracts/v7.0.0, commit: a7c88c8d636ceb9944ea0edaf7d033da258778ab,
+     provides: "predeploy definitions (Predeploys.sol)"}
+  - {name: superchain-registry, repo: "https://github.com/ethereum-optimism/superchain-registry",
+     commit: bb104b09fcd60fc01c8f8daf0f534aee88ff26de,
+     provides: "per-chain fork activation timestamps"}
 
 consensus:
   engine: derived from L1 (single sequencer + fault proofs)
@@ -71,6 +77,13 @@ eips:
       No blob market on L2. Blobs are an L1 DA mechanism for the batcher; there is
       no user-facing BlobTx. The blobGasUsed header field is repurposed (see
       header_fields), which is strictly worse than absence for anyone parsing it.
+  7702:
+    status: inherited
+    note: >-
+      SetCodeTxType 0x04 is present in core/types/transaction.go, and
+      CheckConfigForkOrder enforces PragueTime == IsthmusTime, so Prague's EIPs
+      apply once Isthmus activates.
+    src: core/types/transaction.go:53, params/config.go:1693
   7951:
     status: modified
     note: >-
@@ -173,11 +186,83 @@ system_contracts:
     {name: OperatorFeeVault, status: added, src: "params/protocol_params.go:33"}
   "0x4200000000000000000000000000000000000022":
     {name: CrossL2Inbox, status: added, fork: interop, src: "params/interop.go:5"}
-  out_of_tree: >-
-    The complete 0x42.. predeploy set (WETH9, L2StandardBridge, GasPriceOracle,
-    L2CrossDomainMessenger, ...) is defined in ethereum-optimism/optimism, not in
-    op-geth. Only the six the EL itself references are verified here. Anything more
-    would violate the evidence rule.
+  "0x4200000000000000000000000000000000000000":
+    {name: LegacyMessagePasser, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000001":
+    {name: L1MessageSender, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000002":
+    {name: DeployerWhitelist, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000006":
+    {name: Weth, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000007":
+    {name: L2CrossDomainMessenger, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x420000000000000000000000000000000000000F":
+    {name: GasPriceOracle, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000010":
+    {name: L2StandardBridge, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000011":
+    {name: SequencerFeeWallet, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000012":
+    {name: OptimismMintableErc20Factory, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000013":
+    {name: L1BlockNumber, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000014":
+    {name: L2Erc721Bridge, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000017":
+    {name: OptimismMintableErc721Factory, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000018":
+    {name: ProxyAdmin, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000020":
+    {name: SchemaRegistry, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000021":
+    {name: Eas, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000042":
+    {name: GovernanceToken, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000":
+    {name: LegacyErc20Eth, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000023":
+    {name: L2ToL2CrossDomainMessenger, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000024":
+    {name: SuperchainEthBridge, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000025":
+    {name: EthLiquidity, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x4200000000000000000000000000000000000029":
+    {name: NativeAssetLiquidity, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x420000000000000000000000000000000000002a":
+    {name: LiquidityController, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x420000000000000000000000000000000000002C":
+    {name: ConditionalDeployer, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  "0x420000000000000000000000000000000000002d":
+    {name: L2DevFeatureFlags, status: added,
+     src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
+  note: >-
+    Full set verified from the Optimism monorepo at op-contracts/v7.0.0, now cloned
+    alongside op-geth: THIRTY predeploys. LEGACY_ERC20_ETH sits at
+    0xDeadDeAdd...DeAD0000, outside the 0x42.. range. Previously recorded as
+    out_of_tree; that gap is now closed.
 
 opcodes:
   added: []

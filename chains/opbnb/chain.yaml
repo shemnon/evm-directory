@@ -1,0 +1,104 @@
+schema_version: 2
+
+chain:
+  name: opBNB
+  slug: opbnb
+  chain_id: 204
+  role: fork
+  live: true
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: op-geth
+  second_heritage: bnb
+  note: >-
+    THE DUAL-HERITAGE CASE. lineage.upstream is op-stack by code, but two of its
+    precompiles come from BSC — blsSignatureVerify at 0x66 and
+    cometBFTLightBlockValidate at 0x67, at BSC's addresses, with BSC's fork names
+    (Fermat, Haber). A single-parent `upstream` field cannot express this; the
+    non-standard `second_heritage` key records what the schema otherwise loses.
+  sync_point: >-
+    STALE relative to its upstream. This client is op-geth v0.5.10, whose newest OP
+    branch is IsOptimismFjord; the op-stack row pins v1.101702.2 (Jovian/Karst).
+    opBNB therefore has NONE of OP Stack's Granite, Isthmus or Jovian changes.
+
+client:
+  name: op-geth (BNB Chain fork)
+  repo: https://github.com/bnb-chain/op-geth
+  version: v0.5.10
+  commit: 1b995c366cf7de35d2390c483774c378f59ff143
+  language: go
+
+consensus:
+  engine: OP Stack (sequencer), settles to BNB Smart Chain
+  block_time: 1s
+
+baseline_fork: cancun
+
+forks:
+  src: params/config.go:178-210
+  timeline:
+  - {name: "shanghai + canyon", activation_time: 1718870400, mainnet_equivalent: shanghai}
+  - {name: "cancun + ecotone",  activation_time: 1718871600, mainnet_equivalent: cancun}
+  - {name: haber,   activation_time: 1718872200, mainnet_equivalent: null, note: "BSC fork name on an OP Stack chain"}
+  - {name: fermat,  mainnet_equivalent: null, note: "BSC fork name; introduced the BSC precompiles"}
+  - {name: prague,  activation_time: null, status: pending, note: "PragueTime is nil across every opBNB config"}
+
+eips:
+  7702: {status: removed, note: "SetCodeTxType is absent from core/types/transaction.go entirely"}
+  2537: {status: removed, note: "no Prague — no BLS12-381 at 0x0b-0x11"}
+  4844: {status: removed, note: no L2 blob market}
+  7951: {status: modified, note: "P256VERIFY at 0x0100 via OP Stack Fjord"}
+
+non_eip_specs:
+  - {id: BEP-derived, name: BSC cross-chain precompiles, adoption: adopted, fork: fermat}
+
+tx_types:
+  "0x04": {name: SetCodeTx, status: removed, note: "not defined in this client"}
+  "0x7e": {name: DepositTx, status: added, spec: OP Stack, src: core/types/deposit_tx.go:27}
+  note: "0x00-0x03 plus OP Stack's 0x7e. No 0x04."
+
+precompiles:
+  "0x66":
+    name: blsSignatureVerify
+    status: added
+    src: core/vm/contracts.go
+    note: >-
+      BSC's precompile at BSC's address, on an OP Stack chain. Also collides with
+      Arbitrum's ArbAddressTable at 0x66.
+  "0x67":
+    name: cometBFTLightBlockValidate
+    status: added
+    src: core/vm/contracts.go
+    note: "BSC's precompile; also collides with Arbitrum's ArbBLS at 0x67"
+  "0x0100": {name: P256VERIFY, status: modified, note: "inherited from OP Stack Fjord (RIP-7212 gas)"}
+  note: >-
+    Two added addresses, both borrowed from BSC rather than invented — making 0x66
+    and 0x67 three-way collisions across BSC, opBNB and Arbitrum.
+
+system_contracts:
+  note: inherits the OP Stack 0x42.. predeploy set
+
+opcodes: {added: [], removed: [], modified: []}
+
+fee_model:
+  metering: gas
+  note: OP Stack model; L1 data fee settles to BNB Smart Chain rather than Ethereum
+
+header_fields: {added: [], removed: [], modified: []}
+
+gotchas:
+  - >-
+    opBNB inherits from OP Stack by code but carries BSC precompiles and BSC fork
+    names. Neither parent describes it alone — the clearest demonstration that a
+    single-parent lineage field is insufficient.
+  - >-
+    It is a STALE descendant: pinned op-geth v0.5.10 stops at Fjord, so none of
+    OP Stack's Granite/Isthmus/Jovian precompile changes apply. Two chains sharing
+    an `upstream` can be years apart in behaviour.
+  - >-
+    No EIP-7702 and no BLS12-381 — PragueTime is nil everywhere in this client.
+  - >-
+    0x66 and 0x67 are now three-way collisions: BSC, opBNB and Arbitrum all use them
+    for different things (Arbitrum: ArbAddressTable, ArbBLS).

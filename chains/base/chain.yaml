@@ -1,0 +1,163 @@
+schema_version: 2
+
+chain:
+  name: Base
+  slug: base
+  chain_id: 8453
+  role: fork
+  live: true
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: reth / op-reth
+  note: >-
+    Inherits all OP Stack deltas, then adds substantially more of its own than any
+    other OP-Stack descendant here. NOT a thin row: Base has its own fork line
+    (Azul, Beryl, Cobalt, Zombie), its own precompile framework, native account
+    abstraction, and a DYNAMIC precompile address space.
+  sync_point: OP Stack sequence through Jovian, then Base-specific upgrades
+
+client:
+  name: base (base-reth-node)
+  repo: https://github.com/base/base
+  version: v1.2.0
+  commit: 8e28af24a0d45439f410e67b1b7847d9a7e7177c
+  language: rust
+  built_on: reth / op-reth (revm 40.0.3, reth-revm v2.3.0)
+  note: >-
+    base/node is only a Docker packaging repo pinning this client via versions.env.
+    Reading node alone would have produced a near-empty and badly wrong row.
+
+consensus:
+  engine: OP Stack (sequencer) + fault proofs
+  block_time: 2s
+
+baseline_fork: osaka
+
+forks:
+  src: crates/common/precompiles/src/spec.rs (BaseUpgrade), crates/infra/basectl
+  note: >-
+    Base is ABSENT from the superchain-registry mainnet configs in this snapshot,
+    unlike OP Mainnet and World Chain, so activation timestamps could not be read
+    from there. Fork ORDER is verified from the BaseUpgrade enum; timestamps are
+    runtime configuration.
+  timeline:
+  - {name: "bedrock..jovian", mainnet_equivalent: see_op_stack, status: active}
+  - {name: azul,   mainnet_equivalent: null, note: Base-specific}
+  - {name: beryl,  mainnet_equivalent: null, note: "installs the dynamic B-20 precompile lookup"}
+  - {name: cobalt, mainnet_equivalent: null, note: "gates EIP-8130 account abstraction"}
+  - {name: zombie, mainnet_equivalent: null}
+
+eips:
+  7702: {status: inherited, note: "present as a distinct tx type alongside EIP-8130"}
+  8130:
+    status: added
+    note: >-
+      "Account Abstraction by Account Configuration", implemented NATIVELY — the
+      crate README states "Enshrined, not a precompile". Brings 2D nonces, a
+      sender/payer split, an intrinsic gas schedule (Eip8130GasSchedule), stateful
+      actor authorization, and config-change authorization. Gated behind Cobalt.
+    src: crates/execution/eip8130/README.md, crates/execution/eip8130/src/
+
+non_eip_specs:
+  - {id: B-20, name: native token precompile family, adoption: adopted, fork: beryl}
+  - {id: Flashblocks, name: sub-block preconfirmations, adoption: adopted,
+     src: crates/execution/flashblocks}
+
+tx_types:
+  "0x79":
+    name: Eip8130Tx
+    status: added
+    spec: EIP-8130
+    fork: cobalt
+    src: crates/common/consensus/src/transaction/tx_type.rs:15
+    note: >-
+      Native account-abstraction transaction. Distinct from EIP-7702, which Base
+      also supports.
+  note: >-
+    Inherits 0x00-0x04 and OP Stack's 0x7e deposit, and adds 0x79. Base therefore
+    carries TWO non-mainnet type bytes.
+
+precompiles:
+  "0x8453000000000000000000000000000000000001":
+    name: Activation
+    status: added
+    src: crates/common/precompiles/src/activation/storage.rs:88
+    note: "address prefix is Base's own chain ID (8453) — a placement convention unique in this dataset"
+  "0x8453000000000000000000000000000000000002":
+    name: Policy
+    status: added
+    src: crates/common/precompiles/src/policy/storage.rs:77
+  "0x813000000000000000000000000000000000aa01":
+    name: Nonce
+    status: added
+    src: crates/common/precompiles/src/nonce/storage.rs:51
+    note: "2D nonce support for EIP-8130"
+  "0x813000000000000000000000000000000000aa02":
+    name: TxContext
+    status: added
+    src: crates/common/precompiles/src/tx_context/storage.rs:28
+  "0xB20F000000000000000000000000000000000000":
+    name: B20Factory
+    status: added
+    fork: beryl
+    src: crates/common/precompiles/src/b20_factory/storage.rs:46
+  dynamic_range:
+    name: B-20 token precompiles
+    status: added
+    fork: beryl
+    severity: high
+    pattern: "byte[0] == 0xb2 AND bytes[1..10] == 0 AND byte[10] in {0x00 asset, 0x01 stablecoin}"
+    src: crates/common/precompiles/src/b20_factory/variant.rs:66-80, lookup.rs
+    note: >-
+      NOT ENUMERABLE. Beryl installs a PrecompileLookup (BerylLookup) that resolves
+      precompiles by PREDICATE over the address rather than from a fixed map. Every
+      address matching the pattern is a precompile — roughly 2^72 addresses per
+      variant, with the low 9 bytes carrying token identity. No other chain in this
+      dataset has a precompile address space that cannot be listed.
+  note: >-
+    Also inherits all six of OP Stack's modified precompiles. The Isthmus BLS12-381
+    variants and Granite bn254 pairing cap are reimplemented here in Rust
+    (crates/common/precompiles/src/{bls12_381,bn254_pair}.rs), matching op-geth.
+
+system_contracts:
+  note: inherits the OP Stack 0x42.. predeploy set
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+
+fee_model:
+  metering: gas
+  note: >-
+    OP Stack's three components, plus an EIP-8130 intrinsic gas schedule and fee
+    check with a payer distinct from the sender.
+
+header_fields:
+  added: []
+  removed: []
+  modified: []
+  note: inherits OP Stack's repurposed blobGasUsed
+
+gotchas:
+  - >-
+    BASE PRECOMPILES ARE NOT ENUMERABLE. From Beryl, a lookup predicate makes every
+    0xb2-prefixed address matching the B-20 pattern a precompile. Any tool that
+    builds a fixed precompile address set — decompiler, tracer, static analyser,
+    or this dataset's own PRECOMPILES.md — is structurally unable to represent Base.
+  - >-
+    Base implements native account abstraction (EIP-8130) as an ENSHRINED feature,
+    not a precompile, with its own transaction type 0x79, 2D nonces and a
+    sender/payer split. It supports EIP-7702 as well, so two distinct AA mechanisms
+    coexist.
+  - >-
+    Base uses its own chain ID as a precompile address prefix (0x8453..). Cute, and
+    collision-free by construction, but only if every chain does it.
+  - >-
+    Base is absent from the superchain-registry mainnet configs, so its fork
+    timestamps are not obtainable the way OP Mainnet's and World Chain's are.
+  - >-
+    The obvious repo (base/node) is Docker packaging only. The real client is
+    base/base. Reading the obvious one produces a confidently empty, wrong row.

@@ -1,0 +1,167 @@
+schema_version: 2
+
+chain:
+  name: Polygon PoS
+  slug: polygon
+  chain_id: 137
+  role: fork
+  live: true
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    Full geth fork. Tracks mainnet through PRAGUE (PragueBlock 73440256); no
+    OsakaBlock is set for mainnet, yet the Chicago precompile set pulls in several
+    Osaka-era precompile changes out of band.
+
+client:
+  name: bor
+  repo: https://github.com/0xPolygon/bor
+  version: v2.10.0
+  commit: 82d3b610d48468462a504245b5839de66dc86272
+  language: go
+  note: >-
+    bor is the execution client; heimdall (consensus/checkpointing) is a separate
+    component not cloned here. State-sync origination is a heimdall concern.
+
+consensus:
+  engine: Bor (PoS) + Heimdall checkpointing to Ethereum
+  block_time: ~2s
+
+baseline_fork: prague
+
+forks:
+  src: params/config.go (mainnet block starts at line 409)
+  note: >-
+    A FOURTH mapping mechanism: Polygon gates Ethereum forks on BLOCK NUMBERS
+    (ShanghaiBlock, CancunBlock, PragueBlock), not timestamps. Its own Bor forks are
+    also block-numbered.
+  timeline:
+  - {name: shanghai, activation_time: null, activation_condition: "block 50523000", mainnet_equivalent: shanghai}
+  - {name: cancun,   activation_time: null, activation_condition: "block 54876000", mainnet_equivalent: cancun}
+  - {name: "prague + bhilai", activation_time: null, activation_condition: "block 73440256", mainnet_equivalent: prague}
+  - {name: rio,          activation_time: null, activation_condition: "block 77414656", mainnet_equivalent: null}
+  - {name: madhugiri,    activation_time: null, activation_condition: "block 80084800", mainnet_equivalent: null}
+  - {name: madhugiri_pro,activation_time: null, activation_condition: "block 80084800", mainnet_equivalent: null}
+  - {name: dandeli,      activation_time: null, activation_condition: "block 81424000", mainnet_equivalent: null}
+  - {name: lisovo,       activation_time: null, activation_condition: "block 83756500", mainnet_equivalent: null}
+  - {name: lisovo_pro,   activation_time: null, activation_condition: "block 83756500", mainnet_equivalent: null}
+  - {name: giugliano,    activation_time: null, activation_condition: "block 85268500", mainnet_equivalent: null}
+  - {name: chicago,      activation_time: null, activation_condition: "block 87218600", mainnet_equivalent: null,
+     note: "current precompile set; adds Osaka-era MODEXP and P256VERIFY without an Osaka fork"}
+  - {name: valencia,     activation_time: null, activation_condition: "block 89531000", mainnet_equivalent: null}
+  - {name: austin,       activation_time: null, activation_condition: "block 91949700", mainnet_equivalent: null}
+  - {name: osaka,        activation_time: null, status: pending, note: "no OsakaBlock set for mainnet"}
+
+eips:
+  4844:
+    status: removed
+    note: >-
+      No KZG point evaluation precompile at 0x0a in the Chicago set — the address is
+      simply absent from the map, unlike Avalanche which keeps it and pins blob gas
+      to zero.
+    src: core/vm/contracts.go:PrecompiledContractsChicago
+  7702: {status: inherited, note: "SetCodeTxType 0x04 present"}
+  7823: {status: inherited, note: "bigModExp eip7823 true in Chicago, despite no Osaka fork"}
+  7883: {status: inherited, note: "bigModExp eip7883 true in Chicago"}
+  7951: {status: inherited, note: "p256Verify eip7951 true at 0x0100 in Chicago"}
+  2537: {status: modified, note: "BLS12-381 present at 0x0b-0x11 but REPRICED by PIP-88"}
+
+non_eip_specs:
+  - id: PIP-88
+    name: cryptographic precompile and cold-storage gas repricing
+    adoption: adopted
+    src: params/protocol_params.go:76-204
+    note: >-
+      A systematic gas SURCHARGE applied at identical addresses with identical
+      semantics. Multipliers read from the source comments: BN256 add x3.6, scalar
+      mul x2.1, pairing x1.5, BLS12-381 G1 add x2.8, G1 mul x6.1, G2 add x2.7,
+      G2 mul x6.4, blake2F GFROUND 22 (vs 1), COLD_SLOAD x2.6, COLD_SSTORE x1.4.
+
+tx_types:
+  "0x7f":
+    name: StateSyncTx
+    status: added
+    src: core/types/transaction.go:54
+    note: >-
+      Bridges L1 state into Polygon. 0x7f is the LAST legal EIP-2718 type byte
+      (0x80+ collides with RLP list prefixes), directly adjacent to OP Stack's 0x7e.
+  note: "0x00-0x04 identical to mainnet, plus 0x7f."
+
+precompiles:
+  # verified: core/vm/contracts.go:PrecompiledContractsChicago (live set)
+  "0x06": {name: BN256_ADD, status: modified, note: "PIP-88 gas x3.6 (540 vs 150)"}
+  "0x07": {name: BN256_SCALAR_MUL, status: modified, note: "PIP-88 gas x2.1 (12600 vs 6000)"}
+  "0x08": {name: BN256_PAIRING, status: modified, note: "PIP-88 base x1.5, per-point x1.5"}
+  "0x09": {name: BLAKE2F, status: modified, note: "PIP-88 GFROUND 22 vs 1 — a 22x per-round surcharge"}
+  "0x0a": {name: KZG_POINT_EVALUATION, status: removed, note: "absent from the Chicago map — no EIP-4844"}
+  "0x0b": {name: BLS12_G1ADD, status: modified, note: "PIP-88 gas x2.8"}
+  "0x0c": {name: BLS12_G1MSM, status: modified, note: "PIP-88 gas x6.1 at k=1"}
+  "0x0d": {name: BLS12_G2ADD, status: modified, note: "PIP-88 gas x2.7"}
+  "0x0e": {name: BLS12_G2MSM, status: modified, note: "PIP-88 gas x6.4 at k=1"}
+  "0x0f": {name: BLS12_PAIRING, status: modified, note: "PIP-88 repricing"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: modified, note: "PIP-88 repricing"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: modified, note: "PIP-88 repricing"}
+  note: >-
+    ZERO custom addresses, ELEVEN modified ones. Polygon's divergence is almost
+    entirely gas repricing at mainnet addresses — the same silent class as OP Stack's
+    input caps, but broader, and affecting cost rather than success. Contract calls
+    succeed with identical results and different gas.
+
+system_contracts:
+  "0x0000000000000000000000000000000000001000":
+    name: ValidatorContract
+    status: added
+    severity: high
+    src: params/config.go:429
+    note: >-
+      COLLISION: BSC also uses 0x..1000 for a contract it also calls
+      ValidatorContract. Same address, same name, different chains, different code
+      and ABI — the most confusing possible kind of collision, because the name
+      matches too.
+  "0x0000000000000000000000000000000000001001":
+    name: StateReceiverContract
+    status: added
+    severity: high
+    src: params/config.go:430
+    note: "COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose."
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode additions, but PIP-88 surcharges COLD_SLOAD (x2.6) and COLD_SSTORE
+    (x1.4), so SLOAD/SSTORE cost differently from mainnet. Recorded under fee_model
+    and eips rather than as opcode modifications, since semantics are unchanged.
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 (London at block 23850000), with a configurable burn contract
+  extra_components:
+    - {name: PIP-88 surcharges, note: "cryptographic precompiles and cold storage access"}
+
+header_fields: {added: [], removed: [], modified: []}
+
+gotchas:
+  - >-
+    PIP-88 reprices cryptographic precompiles and cold storage access at mainnet
+    addresses with unchanged semantics. Gas benchmarks, DoS models and proof-cost
+    estimates calibrated on mainnet are wrong here by factors up to 22x (blake2F
+    per round) — and nothing reverts to signal it.
+  - >-
+    Two system contract collisions with BSC at 0x..1000 and 0x..1001. Worse, both
+    chains call 0x..1000 "ValidatorContract" while the code and ABI differ.
+  - >-
+    StateSyncTx claims 0x7f, the LAST legal EIP-2718 type byte, adjacent to OP
+    Stack's 0x7e. The top of the type space is being consumed downward while mainnet
+    grows upward from 0x04.
+  - >-
+    Fork activation is by BLOCK NUMBER, not timestamp — a fourth mechanism across
+    this dataset. Tools reading fork timestamps get nothing.
+  - >-
+    Chicago pulls in Osaka-era precompile behaviour (EIP-7823/7883 MODEXP,
+    EIP-7951 P256VERIFY) without Polygon ever activating Osaka. Same out-of-order
+    adoption as Avalanche's Granite.

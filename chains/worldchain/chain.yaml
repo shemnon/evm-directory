@@ -43,13 +43,23 @@ baseline_fork: osaka
 
 forks:
   src: crates/chainspec/src/hardfork.rs
+  activation_src: "op-stack/repos/superchain-registry/superchain/configs/mainnet/worldchain.toml"
   note: >-
     Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two
     World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec
     (asserted at crates/chainspec/src/spec.rs:578-579) — declared, not scheduled.
   timeline:
-  - {name: "bedrock..karst", mainnet_equivalent: see_op_stack, status: inherited}
-  - {name: jovian, status: active, note: "hardfork.rs #[default] — 'World Chain is already on this hardfork'"}
+  - {name: "canyon/delta/ecotone", activation_time: 0, mainnet_equivalent: "shanghai+cancun",
+     note: "active from genesis (l2_time 1719335639)"}
+  - {name: fjord,    activation_time: 1721826000, mainnet_equivalent: null}
+  - {name: granite,  activation_time: 1727780400, mainnet_equivalent: null}
+  - {name: holocene, activation_time: 1738238400, mainnet_equivalent: null}
+  - {name: isthmus,  activation_time: 1764072000, mainnet_equivalent: prague,
+     note: "2025-11-25 — over six months after mainnet Prague, and after OP Mainnet's Isthmus"}
+  - {name: jovian,   activation_time: 1777593600, status: active,
+     note: "2026-05-01; current fork. hardfork.rs marks Jovian #[default]"}
+  - {name: karst,    activation_time: null, status: pending,
+     note: "no karst_time in the registry, unlike OP Mainnet which activated Karst 2026-07-08"}
   - {name: tropo,  status: pending, activation_time: null, note: "ForkCondition::Never"}
   - {name: strato, status: pending, activation_time: null, note: "ForkCondition::Never"}
 

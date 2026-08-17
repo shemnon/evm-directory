@@ -1,0 +1,77 @@
+schema_version: 2
+
+chain:
+  name: OP Mainnet
+  slug: optimism
+  chain_id: 10
+  role: fork
+  live: true
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  note: >-
+    The canonical OP Stack chain. Its EVM IS the op-stack row; this file exists to
+    record activation timestamps and to demonstrate the inheritance model with a
+    descendant that adds nothing.
+
+client:
+  name: op-geth
+  repo: https://github.com/ethereum-optimism/op-geth
+  version: v1.101702.2
+  commit: e8800cffe53d459cde8a07c8e8f1de9d86e79e07
+  language: go
+  shared_with: op-stack
+  note: >-
+    Same client as the op-stack row; no OP-Mainnet-specific fork. Evidence lives in
+    chains/op-stack/repos, so this row has no clone of its own.
+
+consensus:
+  engine: OP Stack (sequencer) + fault proofs
+  block_time: 2s
+
+baseline_fork: osaka
+
+forks:
+  src: "op-stack/repos/superchain-registry/superchain/configs/mainnet/op.toml"
+  note: >-
+    Read from the superchain registry rather than the client, because OP Stack fork
+    times are per-chain configuration, not client constants.
+  timeline:
+  - {name: canyon,   activation_time: 1704992401, mainnet_equivalent: shanghai}
+  - {name: delta,    activation_time: 1708560000, mainnet_equivalent: null}
+  - {name: ecotone,  activation_time: 1710374401, mainnet_equivalent: cancun}
+  - {name: fjord,    activation_time: 1720627201, mainnet_equivalent: null}
+  - {name: granite,  activation_time: 1726070401, mainnet_equivalent: null}
+  - {name: holocene, activation_time: 1736445601, mainnet_equivalent: null}
+  - {name: isthmus,  activation_time: 1746806401, mainnet_equivalent: prague}
+  - {name: jovian,   activation_time: 1764691201, mainnet_equivalent: null}
+  - {name: karst,    activation_time: 1783526401, mainnet_equivalent: null}
+
+eips:
+  note: no deltas beyond op-stack's
+
+non_eip_specs: []
+tx_types:
+  note: inherits 0x00-0x04 and OP Stack's 0x7e; adds nothing
+precompiles:
+  note: >-
+    Identical to op-stack, including all six modified precompiles. Zero additions.
+    Contrast Base, which shares this upstream and diverges substantially.
+system_contracts:
+  note: the OP Stack 0x42.. predeploy set, unmodified
+opcodes: {added: [], removed: [], modified: []}
+fee_model:
+  metering: gas
+  note: OP Stack's three components
+header_fields: {added: [], removed: [], modified: []}
+
+gotchas:
+  - >-
+    OP Mainnet adds NOTHING to OP Stack. That is the point of recording it: a truly
+    empty delta file, which makes Base's non-empty one meaningful by contrast. Two
+    chains, same upstream, same client version — one inherits cleanly, the other
+    reimplements the EVM in Rust and adds a dynamic precompile space.
+  - >-
+    Isthmus (Prague-equivalent) activated 2025-05-09, two days after mainnet's
+    Prague. Karst activated 2026-07-08.

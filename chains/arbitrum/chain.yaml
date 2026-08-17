@@ -1,0 +1,206 @@
+schema_version: 2
+
+chain:
+  name: Arbitrum One
+  slug: arbitrum
+  chain_id: 42161
+  role: fork
+  live: true
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum (OffchainLabs/go-ethereum, vendored as a submodule)
+  sync_point: >-
+    nitro pins OffchainLabs/go-ethereum as a git submodule; EVM facts come from
+    there, ArbOS facts from nitro itself. The geth fork carries mainnet precompile
+    sets through Osaka, but which set is ACTIVE is gated on ArbOS version, not
+    timestamps — see forks.
+
+client:
+  name: nitro
+  repo: https://github.com/OffchainLabs/nitro
+  version: v3.11.3
+  commit: 4130f4c50d81209ff94aa63b51ed55d3739cdaba
+  language: go + rust
+  submodule:
+    name: go-ethereum
+    repo: https://github.com/OffchainLabs/go-ethereum
+    commit: f3a966e6c328fc4cf1762e38ff5ddd47724f70ba
+
+consensus:
+  engine: centralised sequencer + optimistic fraud proofs (BoLD)
+  finality: inherits L1 after challenge window
+  block_time: ~250ms
+
+baseline_fork: osaka
+
+forks:
+  src: go-ethereum/params/config.go:837-867, go-ethereum/params/config_arbitrum.go
+  note: >-
+    A THIRD mapping mechanism, distinct from every other chain here. Arbitrum does
+    not use fork timestamps at all: IsShanghai/IsCancun/IsPrague/IsOsaka each begin
+    with "if c.IsArbitrum() { return currentArbosVersion >= N }", short-circuiting
+    the timestamp path entirely. ShanghaiTime and friends are ignored on Arbitrum
+    chains. Upgrades happen by ArbOS version bump via on-chain governance, so
+    activation has no fixed timestamp to record.
+  timeline:
+  - {name: "ArbOS 11", mainnet_equivalent: shanghai, enforced: "IsShanghai := arbosVersion >= 11"}
+  - {name: "ArbOS 20 (Atlas)", mainnet_equivalent: cancun, enforced: "IsCancun := arbosVersion >= 20"}
+  - {name: "ArbOS 30 (Stylus)", mainnet_equivalent: null, note: "WASM contract support"}
+  - {name: "ArbOS 31/32", mainnet_equivalent: null, note: "Stylus fixes and charging fixes"}
+  - {name: "ArbOS 40", mainnet_equivalent: prague, enforced: "IsPrague := arbosVersion >= 40"}
+  - {name: "ArbOS 50 (Dia)", mainnet_equivalent: osaka, enforced: "IsOsaka := arbosVersion >= 50",
+     note: "also SingleGasConstraints"}
+  - {name: "ArbOS 60", mainnet_equivalent: null,
+     note: "MultiGasConstraints, StylusContractLimit, TransactionFiltering, StylusActivationGas"}
+  - {name: "ArbOS 61", mainnet_equivalent: null, note: "MaxArbosVersionSupported in this release"}
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      L2 gas pricing is ArbOS's own speed-limit-based mechanism plus a separate L1
+      data-posting charge (arbos/l1pricing, arbos/l2pricing), not mainnet's base-fee
+      update rule.
+  3541:
+    status: modified
+    severity: high
+    note: >-
+      EIP-3541 reserves a leading 0xEF byte for EOF. Arbitrum uses 0xEF 0xF0 as the
+      STYLUS DISCRIMINANT marking WASM contract code in state. The offset from EOF's
+      0xEF00 looks deliberate, so this is a considered claim on reserved space rather
+      than an accident — but it does mean 0xEF-prefixed code already means something
+      on Arbitrum, and it means something else on mainnet.
+    src: go-ethereum/core/state/statedb_arbitrum.go:49-62
+
+  7702:
+    status: inherited
+    note: >-
+      SetCodeTxType 0x04 is defined in the vendored geth fork alongside the seven
+      Arbitrum types, and IsPrague gates on arbosVersion >= 40.
+    src: go-ethereum/core/types/transaction.go:60, go-ethereum/params/config.go:855
+  4844:
+    status: unrecorded
+    note: >-
+      NOT ESTABLISHED. The vendored geth fork carries generic BlobTx plumbing and no
+      Arbitrum-specific rejection was found in a targeted read of txpool validation,
+      but neither acceptance nor rejection on L2 was confirmed. Left unrecorded
+      deliberately: the aggregate tables render this as "?" rather than defaulting
+      to "yes", which would assert something unverified.
+
+non_eip_specs:
+  - {id: ArbOS, name: ArbOS version series, adoption: adopted,
+     note: "governance-upgraded state machine version; gates both Arbitrum features and Ethereum forks"}
+  - {id: Stylus, name: WASM smart contracts, adoption: adopted, fork: "ArbOS 30"}
+  - {id: BoLD, name: bounded liquidity delay dispute protocol, adoption: adopted}
+
+tx_types:
+  # verified: go-ethereum/core/types/transaction.go:48-54
+  "0x64": {name: ArbitrumDepositTx, status: added, note: "L1->L2 deposit"}
+  "0x65": {name: ArbitrumUnsignedTx, status: added, note: "unsigned, L1-originated"}
+  "0x66": {name: ArbitrumContractTx, status: added}
+  "0x68": {name: ArbitrumRetryTx, status: added, note: "retryable ticket redemption"}
+  "0x69": {name: ArbitrumSubmitRetryableTx, status: added}
+  "0x6A": {name: ArbitrumInternalTx, status: added, note: "ArbOS-internal state updates"}
+  "0x78": {name: ArbitrumLegacyTx, status: added, note: "pre-Nitro classic transactions"}
+  note: >-
+    SEVEN custom transaction types — the most of any chain in this dataset, versus
+    OP Stack's one. All sit in the legal 0x00-0x7f envelope range but low in it:
+    0x64 is decimal 100, and mainnet allocates upward from 0x04. 0x67 is skipped.
+    Note that 0x64-0x69 are simultaneously PRECOMPILE ADDRESSES on this chain
+    (different namespace, no actual conflict, but a genuine reading hazard).
+  src: go-ethereum/core/types/transaction.go:48-54
+
+precompiles:
+  # verified: go-ethereum/core/types/arbitrum_signer.go
+  "0x64": {name: ArbSys, status: added, note: "core system precompile: L2->L1 messaging, block numbers"}
+  "0x65": {name: ArbInfo, status: added}
+  "0x66": {name: ArbAddressTable, status: added}
+  "0x67": {name: ArbBLS, status: added}
+  "0x68": {name: ArbFunctionTable, status: added}
+  "0x69": {name: ArbosTest, status: added}
+  "0x6b": {name: ArbOwnerPublic, status: added}
+  "0x6c": {name: ArbGasInfo, status: added}
+  "0x6d": {name: ArbAggregator, status: added}
+  "0x6e": {name: ArbRetryableTx, status: added}
+  "0x6f": {name: ArbStatistics, status: added}
+  "0x70": {name: ArbOwner, status: added, note: "chain-owner-only administrative functions"}
+  "0x71": {name: ArbWasm, status: added, note: "Stylus program activation"}
+  "0x72": {name: ArbWasmCache, status: added}
+  "0x73": {name: ArbNativeTokenManager, status: added}
+  "0x74": {name: ArbFilteredTransactionsManager, status: added, note: "ArbOS 60 transaction filtering"}
+  "0xc8": {name: NodeInterface, status: added, note: "RPC-only virtual contract, not consensus state"}
+  "0xc9": {name: NodeInterfaceDebug, status: added}
+  "0xff": {name: ArbDebug, status: added}
+  note: >-
+    NINETEEN custom precompiles, the most of any chain here. ADDRESS COLLISION: the
+    six at 0x64-0x69 are exactly the six BSC uses for tmHeaderValidate,
+    iavlMerkleProofValidate, blsSignatureVerify, cometBFTLightBlockValidate,
+    verifyDoubleSignEvidence and secp256k1SignatureRecover. Two of the largest EVM
+    chains, no shared code, six identical addresses, entirely unrelated functions.
+  src: go-ethereum/core/types/arbitrum_signer.go
+
+system_contracts:
+  "0x00000000000000000000000000000000000A4B05":
+    {name: ArbOS (ArbosAddress), status: added, note: "ArbOS internal actor address"}
+  "0xA4B05FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF":
+    {name: ArbosState, status: added}
+  "0xA4B0500000000000000000000000000000000001":
+    {name: FilteredTransactionsState, status: added, fork: "ArbOS 60"}
+  "0xA4B00000000000000000000000000000000000f6":
+    {name: L1PricerFundsPool, status: added}
+  src: go-ethereum/core/types/arbitrum_signer.go
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No EVM opcode divergence, but the opcode axis is INCOMPLETE for this chain:
+    Stylus contracts execute WebAssembly, not EVM bytecode, so there is a second
+    execution environment with no jump table to diff. Stylus code is identified in
+    state by an 0xEF 0xF0 prefix and activated through the ArbWasm precompile at
+    0x71. A survey that only diffs jump tables reports "no opcode changes" and
+    misses an entire second VM.
+
+fee_model:
+  metering: gas (plus Stylus "ink" for WASM execution)
+  fee_market: ArbOS speed-limit-based L2 pricing
+  extra_components:
+    - {name: L1 data posting charge, src: arbos/l1pricing/l1pricing.go}
+    - {name: Stylus activation gas, fork: "ArbOS 60"}
+  note: >-
+    Multi-dimensional gas constraints were added in ArbOS 50 (single) and 60 (multi),
+    a metering model with no mainnet analogue.
+
+header_fields:
+  added: []
+  removed: []
+  modified: []
+
+gotchas:
+  - >-
+    SIX-ADDRESS COLLISION WITH BSC at 0x64-0x69. Arbitrum's ArbSys, ArbInfo,
+    ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy exactly the
+    addresses BSC uses for its cross-chain and consensus precompiles. Any tool with
+    a single global precompile map keyed by address is wrong on one of these chains.
+  - >-
+    Seven custom transaction types (0x64-0x66, 0x68-0x6A, 0x78) — the most here.
+    Several are unsigned and protocol-inserted, so sender-recovery assumptions break
+    the same way they do for OP Stack deposits, but across six more type bytes.
+  - >-
+    0x64-0x69 are BOTH precompile addresses AND transaction type bytes on this chain.
+    Separate namespaces, but a real hazard when reading traces or writing decoders.
+  - >-
+    Ethereum forks are gated on ARBOS VERSION, not timestamps. IsCancun returns
+    arbosVersion >= 20 and never consults CancunTime. A tool that reads fork
+    timestamps from chain config gets no useful answer on Arbitrum.
+  - >-
+    Stylus runs WebAssembly alongside the EVM. "No custom opcodes" is true and
+    misleading: there is a second VM, priced in "ink", that the opcode axis cannot
+    describe.
+  - >-
+    Stylus marks WASM code with an 0xEF 0xF0 prefix, inside the EIP-3541 reserved
+    space that mainnet earmarked for EOF (0xEF00). Deliberately offset, but 0xEF
+    already means something different on Arbitrum than it will on mainnet.

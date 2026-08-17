@@ -30,6 +30,10 @@ def load():
     return out
 
 def name(c):   return c["chain"]["name"]
+def documented(c): return c["chain"].get("evidence") == "documented"
+def client(c, field, dflt="—"):
+    """Documented rows carry no client — there is no public one to pin."""
+    return (c.get("client") or {}).get(field, dflt)
 def is_stack(c): return c["chain"].get("role") == "stack"
 
 def order(chains):
@@ -157,7 +161,8 @@ def gen_lineage(chains):
         for s in order({k: chains[k] for k in kids.get(parent, [])}):
             c = chains[s]
             tag = " [stack, not a chain]" if is_stack(c) else ""
-            L.append("  " * depth + f"└── {name(c)} ({c['client']['version']}, "
+            ver = "no public client" if documented(c) else client(c, "version", "?")
+            L.append("  " * depth + f"└── {name(c)} ({ver}, "
                      f"{c.get('baseline_fork', '?')}){tag}")
             walk(s, depth + 1)
     walk("ethereum", 1)
@@ -169,7 +174,10 @@ def gen_lineage(chains):
           "| Chain | Baseline | How the mapping is established |", "|---|---|---|"]
     for s in order(chains):
         c = chains[s]
-        note = " ".join((c["forks"].get("note") or c["lineage"].get("note") or "").split())
+        # a documented row may have no fork timeline: with no client there is no
+        # source schedule to read, only whatever the docs assert
+        note = " ".join(((c.get("forks") or {}).get("note")
+                         or c["lineage"].get("note") or "").split())
         L.append(f"| {name(c)} | `{c.get('baseline_fork','—')}` | {note[:190]} |")
     write("LINEAGE.md", "\n".join(L) + "\n")
 
@@ -185,7 +193,8 @@ def gen_matrix(chains):
     row("Role", lambda c, s: c["chain"]["role"])
     row("Upstream", lambda c, s: c["lineage"].get("upstream") or "—")
     row("Baseline fork", lambda c, s: c.get("baseline_fork", "—"))
-    row("Client", lambda c, s: f"{c['client']['name']} `{c['client']['version']}`")
+    row("Client", lambda c, s: ("*none public*" if documented(c)
+                                else f"{client(c, 'name')} `{client(c, 'version')}`"))
     def count(c, section, pred):
         return sum(1 for k, v in (c.get(section) or {}).items()
                    if str(k).startswith("0x") and pred(v.get("status", "inherited")))

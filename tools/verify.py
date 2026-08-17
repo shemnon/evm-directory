@@ -173,6 +173,63 @@ def provenance(c):
             else: t["none"] += 1
     return t
 
+CITE = re.compile(r"([\w./\-]+\.(?:go|java|rs|proto|sol|md))(?::([\w.\-]+))?")
+LINEREF = re.compile(r"^\d+(?:-\d+)?$")
+
+def roots(slug, chain):
+    """Every clone this row may cite: its own, plus companions. Citations may be
+    written with a repo-name prefix (`optimism/packages/...`) to disambiguate which
+    companion they mean, so each path is tried both as-is and with that prefix
+    stripped against the matching clone."""
+    shared = (chain.get("client") or {}).get("shared_with")
+    out = []
+    for sl in ([shared] if shared else []) + [slug]:
+        d = ROOT / "chains" / sl / "repos"
+        if d.exists(): out += [q for q in sorted(d.iterdir()) if q.is_dir()]
+    return out
+
+def resolve_cite(path, rs):
+    """Path against any clone, honouring the repo-name-prefix convention.
+    (Distinct from resolve() above, which resolves Go address constants.)"""
+    for r in rs:
+        if (r / path).exists(): return r / path
+    head, _, rest = path.partition("/")
+    for r in rs:
+        if r.name == head and rest and (r / rest).exists(): return r / rest
+    return None
+
+def check_citations(raw, rs):
+    """The evidence rule, actually enforced. `src:` must resolve to a real file AND
+    its :suffix must check out — a symbol must appear in that file, a line number
+    must be within it. File-existence alone let three bad citations through: a stale
+    line number, a path relative to the wrong directory, and a sibling that was one
+    directory up. Every path in a comma-separated citation is checked, not just the
+    first, which is how the second of those survived."""
+    bad, nsym, nline = [], 0, 0
+    for m in re.finditer(r"(?<![_\w])src: (.+)", raw):
+        for path, ref in CITE.findall(m.group(1)):
+            f = resolve_cite(path, rs)
+            if f is None:
+                bad.append(f"BAD SRC   {path} does not exist in any pinned clone"); continue
+            if not ref: continue
+            body = f.read_text(errors="replace")
+            if LINEREF.match(ref):
+                n = body.count("\n") + 1
+                if int(ref.split("-")[-1]) > n:
+                    bad.append(f"BAD LINE  {path}:{ref} is past EOF ({n} lines)")
+                else: nline += 1
+            elif re.search(rf"\b{re.escape(ref.split('.')[-1])}\b", body):
+                nsym += 1
+            else:
+                bad.append(f"BAD SYM   '{ref}' does not appear in {path}")
+    return bad, nsym, nline
+
+def check_live(raw):
+    """A live claim without a block height is unreproducible AND unverifiable."""
+    return [f"UNPINNED  src_live has no block height: {m.group(1)[:60]}"
+            for m in re.finditer(r"src_live: [\"']?([^\n\"']+)", raw)
+            if "@" not in m.group(1)]
+
 def declared(c, section):
     return {int(k, 16): v for k, v in (c.get(section) or {}).items()
             if isinstance(k, str) and k.startswith("0x") and isinstance(v, dict)}
@@ -197,6 +254,8 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
+            for b in check_live(f.read_text()):
+                print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
                   + (f"; live probes pinned at block {at}" if at else ""))
@@ -261,21 +320,15 @@ def main():
             if not tmiss and not tunl:
                 print(f"  tx types ok  ({len(tf)} in source)")
 
-        # --- evidence rule: `src:` must point at a real file in the clone.
-        # `src_doc:` and `src_live:` deliberately point OUTSIDE it, so they are
-        # checked for shape instead of for existence on disk. The old pattern
-        # `src(?:_\w+)?:` matched them too and would flag a scheme-less doc path.
+        # --- evidence rule, enforced. `src_doc:`/`src_live:` deliberately point
+        # OUTSIDE the clone, so they are checked for shape, not for existence.
         raw = f.read_text()
-        bad = set()
-        for m in re.finditer(r"(?<![_\w])src: [\"']?([^\s,}:\"']+\.(?:go|java|rs|proto|md))", raw):
-            if r and not (r / m.group(1)).exists(): bad.add(m.group(1))
-        for b in sorted(bad):
-            print(f"  BAD SRC  {b} does not exist in the pinned clone"); problems += 1
-        # a live claim without a block height is unreproducible AND unverifiable
-        for m in re.finditer(r"src_live: [\"']?([^\n\"']+)", raw):
-            if "@" not in m.group(1):
-                print(f"  UNPINNED src_live has no block height: {m.group(1)[:60]}")
-                problems += 1
+        bad, nsym, nline = check_citations(raw, roots(slug, c))
+        bad += check_live(raw)
+        for b in bad:
+            print(f"  {b}"); problems += 1
+        if not bad and (nsym or nline):
+            print(f"  citations ok    {nsym} symbol(s) confirmed, {nline} line ref(s) in range")
         print(f"  evidence  {tally}")
 
     print(f"\n{'=' * 60}")

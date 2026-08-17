@@ -110,6 +110,15 @@ precompiles:
 Both keys may appear on one entry, and should when both exist: the doc states intent,
 the probe states behaviour, and a disagreement between them is itself a finding.
 
+`tools/verify.py` enforces this rather than trusting it. For every `src:` it resolves
+each path — **every path in a comma-separated citation, not just the first** — against
+the row's clone and its companions, then checks the `:suffix`: a symbol must actually
+appear in that file, a line number must fall within it. Citing a real file is not
+enough. Three citations in this repo pointed at real files and still lied: a line
+number that had drifted onto a different constant, a path written relative to the wrong
+directory, and a sibling that was one directory up. A `src_live:` with no `@ <block>`
+is rejected outright.
+
 ### `evidence:` — the row's overall footing
 
 Set on `chain:`. Defaults to `source`.

@@ -1,0 +1,412 @@
+schema_version: 2
+
+chain:
+  name: Linea
+  slug: linea
+  chain_id: 59144
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    `fork` is the closest available role and it overstates the distance. Linea does
+    not fork an Ethereum client at all any more: it runs UPSTREAM Hyperledger Besu,
+    unmodified, at a pinned commit, and layers its divergence in Besu plugins. The
+    old Consensys/linea-besu fork is ARCHIVED (last release 25.3-delivery51, March
+    2025). So the deltas below are configuration-and-plugin diffs against a stock
+    mainnet client, not source diffs — which is why almost none of them live in the
+    EVM.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: hyperledger-besu
+  sync_point: >-
+    Besu @ 6580da84 (gradle/libs.versions.toml `besuCommit`). Upstream Besu ships
+    Linea mainnet as a BUILT-IN network, so the genesis and fork schedule are in the
+    client itself, not in a Linea-owned file.
+  note: >-
+    Governance moved during 2026: Consensys/linea-monorepo is now
+    LFDT-Lineth/lineth-monorepo, an LF Decentralized Trust project (org created
+    2026-04-03), and Java/Kotlin packages were renamed net.consensys.linea -> lineth.
+    Besu itself moved from hyperledger/besu to besu-eth/besu. Any tooling pinned to
+    the old coordinates is pinned to archived repositories.
+
+client:
+  name: lineth-monorepo (Linea Besu package + plugins + tracer)
+  repo: https://github.com/LFDT-Lineth/lineth-monorepo
+  version: releases/linea-besu-package/v2.1.1
+  commit: 0f74f5545f15ffb18d41c2ee62f8714f355b8542
+  language: kotlin/java
+  note: >-
+    The execution client is not in this repo. This repo pins the Besu commit, holds
+    the mainnet node profiles and trace-limit file, and holds every Linea-specific
+    plugin. Besu is cloned alongside as a companion at exactly the pinned commit.
+  companion_repos:
+  - {name: besu, repo: "https://github.com/besu-eth/besu",
+     commit: 6580da84187533a3b0ced343dc516ebe2adba6ec,
+     provides: "the EVM itself, and the built-in linea-mainnet genesis/fork schedule"}
+
+live_probe:
+  endpoint: https://rpc.linea.build
+  chain_id: 59144
+  observed_at_block: 31744343
+
+consensus:
+  engine: QBFT via Maru (single validator 0x9f31730181441beb67b10efaed5773767ea959bc)
+  finality: inherits L1 finality after the zk proof is verified on Ethereum
+  block_time: 1s
+  note: >-
+    Genesis was Clique; the chain passed a terminal total difficulty of 49575263 and
+    is now driven by Maru, Linea's consensus client, over the Engine API. The
+    validator set has exactly one member — the sequencer.
+
+baseline_fork: osaka
+
+forks:
+  src: "config/src/main/java/org/hyperledger/besu/config/NetworkDefinition.java:LINEA_MAINNET"
+  note: >-
+    Fork schedule read from upstream Besu's bundled linea-mainnet.json, cross-checked
+    against Maru's beacon genesis (maru/app/src/main/resources/beacon-genesis-files/
+    linea-mainnet-genesis.json, `elFork` per timestamp). Linea used ONE name per
+    Ethereum fork rather than inventing its own — the only chain in this dataset that
+    does. Cancun and Prague are 600 SECONDS apart: Linea shipped two Ethereum forks in
+    ten minutes, so "Cancun-era Linea" describes a window of ten minutes that no
+    integrator ever saw.
+  timeline:
+  - {name: london,   mainnet_equivalent: london,   note: "genesis; block 0"}
+  - {name: paris,    mainnet_equivalent: paris,    activation_condition: "TTD 49575263"}
+  - {name: shanghai, mainnet_equivalent: shanghai, activation_time: 1761213600}
+  - {name: cancun,   mainnet_equivalent: cancun,   activation_time: 1761645600}
+  - {name: prague,   mainnet_equivalent: prague,   activation_time: 1761646200}
+  - {name: osaka,    mainnet_equivalent: osaka,    activation_time: 1764798551}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    note: >-
+      The 1559 base fee is real but vestigial: observed 7 wei while eth_gasPrice
+      returned 79771129 wei, four orders of magnitude higher. Essentially the entire
+      price is priority fee, and the floor is set by the sequencer's minimum-gas-price
+      and profitability plugins, not by the base-fee market. A fee estimator that
+      models baseFeePerGas + tip from headers produces a number the sequencer will
+      reject as unprofitable, and the transaction is dropped from the pool rather than
+      mined late.
+    src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/sequencer/txpoolvalidation/validators/ProfitabilityValidator.java"
+    src_live: "eth_getBlockByNumber @ 31744343 -> baseFeePerGas 0x7; eth_gasPrice @ 31744343 -> 0x4c335f9"
+  4844:
+    status: removed
+    note: >-
+      Blob transactions are disabled by default (DEFAULT_BLOB_TX_ENABLED = false) and
+      the mainnet profiles do not turn them on. The rule is registered through Besu's
+      TransactionValidatorService, which the plugin's own javadoc says applies "during
+      block import and transaction selection" — so this is a state-transition rule,
+      not only a mempool policy. blobGasUsed and excessBlobGas remain in the header and
+      are pinned to zero.
+    src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/config/LineaTransactionValidatorCliOptions.java:DEFAULT_BLOB_TX_ENABLED"
+    src_live: "eth_getBlockByNumber @ 31744343 -> blobGasUsed 0x0, excessBlobGas 0x0"
+  7702:
+    status: inherited
+    note: >-
+      Explicitly enabled: DEFAULT_DELEGATE_CODE_TX_ENABLED = true, and the trace-limit
+      file carries an RLP_AUTH module (16384 lines) so authorisation lists are proved.
+      The same switch that removes blob transactions could remove these; it is set the
+      other way.
+    src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/config/LineaTransactionValidatorCliOptions.java:DEFAULT_DELEGATE_CODE_TX_ENABLED"
+  4788:
+    status: modified
+    severity: high
+    note: >-
+      The beacon-roots contract is present at mainnet's canonical
+      0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 with the canonical 0x3373... prologue,
+      and parentBeaconBlockRoot in every header is ZERO — Linea has no beacon chain to
+      source it from. Present, callable, and permanently meaningless: a contract that
+      proves anything against a beacon root gets a valid-looking zero.
+    src_live: "eth_getCode @ 31744343 -> 0x3373ffffffffffffff... (196 chars); eth_getBlockByNumber @ 31744343 -> parentBeaconBlockRoot 0x00..00"
+  2935:
+    status: inherited
+    note: "history-storage contract present at the canonical 0x0000F90827F1C53a10cb7A02335B175320002935"
+    src_live: "eth_getCode @ 31744343 -> 0x3373ffffffffffffff... (168 chars)"
+  6110: {status: modified, note: "deposit contract relocated — see system_contracts",
+         src: "config/src/main/java/org/hyperledger/besu/config/NetworkDefinition.java:LINEA_MAINNET"}
+  7002: {status: modified, severity: high,
+         note: "withdrawal-request predeploy relocated off its canonical address — see system_contracts",
+         src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java:hasSystemContractAddresses"}
+  7251: {status: modified, severity: high,
+         note: "consolidation-request predeploy relocated off its canonical address — see system_contracts",
+         src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java:hasSystemContractAddresses"}
+  7685:
+    status: inherited
+    note: "requestsHash present in the header; observed as the empty-requests hash"
+    src_live: "eth_getBlockByNumber @ 31744343 -> requestsHash 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  7823:
+    status: inherited
+    note: >-
+      Worth recording because it USED to be the headline Linea divergence. The prover's
+      MODEXP operand bound is now exactly EIP-7823's: ModexpMetadata.getMaxInputSize()
+      returns EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND (1024 bytes). Linea's historic
+      512-byte modexp cap has been absorbed by an Ethereum consensus rule rather than
+      being carried as a private one. A proving constraint became a mainnet EIP.
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/module/hub/precompiles/ModexpMetadata.java:getMaxInputSize"
+  7883: {status: inherited, note: "stock Besu Osaka gas calculator; no Linea override",
+         src: "evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka"}
+  7951:
+    status: inherited
+    note: >-
+      P256VERIFY at 0x0100 with mainnet Osaka semantics and gas, reached through
+      mainnet's own Osaka fork rather than through RIP-7212 — which is why, unusually
+      for this dataset, the gas at 0x0100 matches mainnet's 6900 exactly. Capped at 256 effective calls per block by the prover
+      (PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS).
+    src: "evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka"
+  7928:
+    status: unrecorded
+    note: >-
+      Not established. Upstream Besu at this commit has BAL plumbing (BalConfiguration
+      threaded through MainnetProtocolSpecs) but whether any Amsterdam field is active
+      for linea-mainnet was not determined from source, and no Amsterdam timestamp is
+      set in the bundled genesis.
+
+# non_eip_specs: deliberately absent. Linea publishes no ACP/BEP/TIP-style numbered
+# spec series; its divergences are prover limits and plugin configuration, versioned
+# as release artefacts rather than as specs.
+
+tx_types:
+  "0x03":
+    name: BlobTx
+    status: removed
+    note: >-
+      Rejected by TransactionTypeValidation with BLOB_TX_NOT_ALLOWED. Registered
+      through Besu's TransactionValidatorService, which the plugin documents as
+      applying at block import as well as pool admission.
+    src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/sequencer/txvalidation/TransactionTypeValidation.java:BLOB_TX_NOT_ALLOWED"
+  note: >-
+    ZERO custom transaction types. Linea did not take a byte from the 0x7f ceiling the
+    way Arbitrum (0x78), Base (0x79), OP Stack (0x7e) and Polygon (0x7f) did. Its
+    envelope is mainnet's MINUS one type, not plus one.
+
+precompiles:
+  # EVM-level set is stock upstream Besu Osaka:
+  # evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka
+  # Divergence is entirely in what the prover will let into a block.
+  "0x03":
+    name: RIPEMD160
+    status: removed
+    severity: high
+    note: >-
+      PRECOMPILE_RIPEMD_BLOCKS = 0 in the mainnet trace-limit file. Any transaction
+      that reaches RIPEMD160 with non-empty input exceeds the module limit on its first
+      block and is returned as TX_MODULE_LINE_COUNT_OVERFLOW, dropped from the pool and
+      cached as permanently invalid. It can never be mined.
+      IT STILL WORKS IN eth_call: probing 0x03 with empty input at block 31744343
+      returned the correct RIPEMD160 of the empty string. So every simulation-based
+      tool — eth_call, eth_estimateGas, Tenderly-style forks, local test suites —
+      reports success for code that cannot be included in a block. This is the schema's
+      hardest case: the precompile is neither `removed` (it executes) nor `modified`
+      (its semantics are exact). `removed` records the fact that matters on-chain.
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/ZkCounter.java:ripemdBlocks, linea-besu/package/linea-besu/config/trace-limits.mainnet.toml"
+    src_live: "eth_call @ 31744343 -> 0x0000000000000000000000009c1185a5c5e9fc54612808977ee8f548b2258d31 (correct RIPEMD160 of empty input)"
+  "0x09":
+    name: BLAKE2F
+    status: removed
+    severity: high
+    note: >-
+      PRECOMPILE_BLAKE_EFFECTIVE_CALLS = 0 and PRECOMPILE_BLAKE_ROUNDS = 0. The tracer
+      source states the consequence outright: blakeRounds is listed among the modules
+      whose line counting is deliberately skipped "because blakeEffectiveCall is counted
+      and already rejects all BLAKE calls". Zero calls, not zero rounds — a single
+      BLAKE2F invocation with any argument is unincludable. Same eth_call/inclusion
+      split as 0x03.
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/ZkCounter.java:uncheckedModules"
+  "0x05":
+    name: MODEXP
+    status: inherited
+    note: >-
+      Semantics and gas are stock Osaka, and the prover's operand bound now coincides
+      with EIP-7823's 1024 bytes. But throughput is capped per block: 64 effective
+      MODEXP calls, of which at most 2 may have any operand wider than 32 bytes
+      (PRECOMPILE_MODEXP_EFFECTIVE_CALLS / PRECOMPILE_LARGE_MODEXP_EFFECTIVE_CALLS,
+      largeModexp() thresholding at MODEXP_LARGE_INPUT_BYTE_WIDTH = 32).
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/module/hub/precompiles/ModexpMetadata.java:largeModexp"
+  "0x08":
+    name: BN256_PAIRING
+    status: inherited
+    note: >-
+      Not capped by input SIZE the way OP Stack caps it, but capped by WORK per block:
+      32 final exponentiations, 128 Miller loops, 128 G2 membership checks. A single
+      pairing check of 4 pairs consumes 4 of the 128 Miller loops; a block cannot carry
+      more than 32 pairing calls no matter how they are split across transactions.
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/ZkCounter.java:ecPairingMillerLoops"
+  "0x0f":
+    name: BLS12_PAIRING
+    status: inherited
+    note: "16 Miller loops and 4 final exponentiations per block (PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS, PRECOMPILE_BLS_FINAL_EXPONENTIATIONS)"
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/ZkCounter.java:blsPairingCheckMillerLoops"
+  note: >-
+    Zero added addresses, zero relocated addresses, zero repriced precompiles. Every
+    precompile behaves EXACTLY as mainnet Osaka does when it runs, because the EVM is
+    stock Besu — grepping the whole Linea tree for PrecompileContractRegistry or
+    PrecompiledContract returns nothing. The divergence is one layer up: a per-block
+    budget, enumerated in linea-besu/package/linea-besu/config/trace-limits.mainnet.toml,
+    that decides which executions can be PROVED and therefore included. Two of those
+    budgets are zero.
+
+system_contracts:
+  "0x94d4a7449B968b839dcbc64A61F195CA300986ae":
+    name: DepositContract (EIP-6110)
+    status: modified
+    note: >-
+      Relocated. Mainnet's is at 0x00000000219ab540356cBB839Cbe05303d7705Fa. Besu reads
+      the address from genesis (depositContractAddress) and wires the Prague request
+      processors to it, so this address is load-bearing at the protocol level.
+    src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/requests/RequestContractAddresses.java:fromGenesis"
+    src_live: "eth_getCode @ 31744343 -> 2227 bytes beginning 0x608060405236610013 (a Solidity proxy, not mainnet's hand-written assembly)"
+  "0x66355689a9f067eeb9dc9d899E4192676988279C":
+    name: WithdrawalRequestPredeploy (EIP-7002)
+    status: modified
+    severity: high
+    note: >-
+      Relocated off the canonical 0x00000961Ef480Eb55e80D19ad83579A64c007002, WHICH IS
+      EMPTY ON LINEA. That is the dangerous half: EIP-7002's contract answers a
+      zero-calldata staticcall with the current request fee, and an EMPTY account answers
+      the same call with success and no data. A withdrawal-request client that hardcodes
+      the canonical address — every one written against mainnet does — reads a fee of
+      zero, succeeds, and submits a request that goes nowhere. No revert, no error. Same
+      failure shape as Hyperliquid's empty 0x0100, arrived at independently.
+    src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/requests/RequestContractAddresses.java:fromGenesis"
+    src_live: "eth_getCode @ 31744343 -> 2227 bytes at 0x66355689..., and 0x00000961Ef480Eb55e80D19ad83579A64c007002 -> 0x (empty)"
+  "0xF0e003F0dE2d583Ae28FA8cBF66aa096CdAce3ff":
+    name: ConsolidationRequestPredeploy (EIP-7251)
+    status: modified
+    severity: high
+    note: >-
+      Relocated off the canonical 0x0000BBdDc7CE488642fb579F8B00f3a590007251, which is
+      also empty on Linea. Identical failure mode to 0x7002 above.
+    src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/requests/RequestContractAddresses.java:fromGenesis"
+    src_live: "eth_getCode @ 31744343 -> 2227 bytes at 0xF0e003F0..., and 0x0000BBdDc7CE488642fb579F8B00f3a590007251 -> 0x (empty)"
+  "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec":
+    name: L2MessageService (canonical L1<->L2 bridge)
+    status: added
+    note: >-
+      Not a predeploy in the OP sense — it is a genesis-allocated account the sequencer
+      is configured to watch, by address AND by log topic
+      e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c, so its events
+      feed the tracer's L2-to-L1 log budget (BLOCK_L2_L1_LOGS = 16 per block).
+    src: "linea-besu/package/linea-besu/profiles/advanced-mainnet.toml"
+  note: >-
+    Linea's Prague system-contract relocation is the sharpest finding here. It is not a
+    naming difference: Besu genuinely runs its EIP-6110/7002/7251 request processors
+    against these addresses, and the canonical mainnet addresses are empty accounts that
+    answer every call with success and no data. Note also that the relocated contracts
+    are Solidity proxies (identical 0x608060405236610013 prologue on all three), not the
+    canonical hand-written request predeploys — whether they implement the same ABI is
+    UNRECORDED. EIP-2935 and EIP-4788, whose addresses Besu does NOT take from genesis,
+    are at their canonical locations.
+
+system_transactions:
+  note: >-
+    EIP-4788 and EIP-2935 system calls run as on mainnet. EIP-6110/7002/7251 request
+    processing runs against the relocated addresses above. No Linea-specific system
+    transaction was found.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  src: "evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka"
+  note: >-
+    No opcode divergence, and unusually this is a strong claim rather than an unchecked
+    default: the EVM is upstream Besu at a pinned commit with no Linea code in it. The
+    per-block trace-line budgets are the real constraint and they are not opcode-shaped
+    — HUB = 2097152 lines, ROM = 16777216, MMIO = 4194304, BLOCK_TRANSACTIONS = 300.
+    A block cannot hold more than 300 transactions regardless of gas.
+
+fee_model:
+  metering: gas
+  fee_market: "EIP-1559, but the base fee is inert"
+  extra_components:
+    - name: profitability floor
+      note: >-
+        Transactions are simulated and rejected from the pool unless
+        (gasPrice * gasLimit) covers fixedCost + variableCost * compressedTxSize times a
+        margin (mainnet: plugin-linea-min-margin 1.0, tx-pool margin 0.8). Rejection is
+        a pool decision, so a technically valid, adequately funded transaction can be
+        silently unminable.
+      src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/sequencer/txpoolvalidation/validators/ProfitabilityValidator.java"
+    - name: L1 gas price injected through the block header
+      note: >-
+        The sequencer publishes the L1 ETH gas price and its cost coefficients inside the
+        32-byte extraData field; every node parses them and updates its own minimum gas
+        price. Observed extraData 0x0100007530000f42400000a3b0... decodes as version 1,
+        fixedGasCost 30000 kWei, variableGasCost 1000000 kWei, ethGasPrice 41904 kWei.
+      src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/extradata/LineaExtraDataHandler.java:Version1Consumer"
+  note: >-
+    Three caps that eth_estimateGas does not express: max 60000 bytes of calldata per
+    transaction, max 109000 bytes per block, max 24000000 gas per transaction — all
+    plugin options in the mainnet profile, none of them visible in the header.
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: extraData
+      severity: high
+      note: >-
+        Repurposed as a consensus-visible pricing channel: a 32-byte struct
+        (version, fixedGasCost, variableGasCost, ethGasPrice) that every node parses and
+        that drives each node's minimum gas price. On mainnet extraData is free-form
+        vanity bytes with no protocol meaning. This is Linea's exact analogue of OP
+        Stack's blobGasUsed repurposing, on a different field — the second independent
+        instance of the pattern in this dataset.
+      src: "linea-besu/plugins/linea-sequencer/sequencer/src/main/java/lineth/extradata/LineaExtraDataHandler.java:Version1Consumer"
+      src_live: "eth_getBlockByNumber @ 31744343 -> extraData 0x0100007530000f42400000a3b00000000000000000000000000000000000000"
+    - name: parentBeaconBlockRoot
+      severity: high
+      note: "present and always zero — see eips.4788"
+      src_live: "eth_getBlockByNumber @ 31744343 -> 0x00..00"
+    - name: blobGasUsed
+      note: "present, pinned to zero; blobSchedule sets target 0 (max 6) for cancun, prague and osaka"
+      src_live: "eth_getBlockByNumber @ 31744343 -> 0x0"
+    - name: gasLimit
+      status: unrecorded
+      note: >-
+        Observed 0x77359400 (2,000,000,000) at block 31744343, while the mainnet node
+        profile sets target-gas-limit 61000000 and plugin-linea-max-block-gas 55000000,
+        and upstream Besu's NetworkDefinition entry for linea-mainnet declares a 60000000
+        target. The header value and the enforced value disagree by ~36x. Which one the
+        production sequencer actually applies is NOT established from this evidence —
+        the profiles in the repo may not be what the sequencer runs.
+      src_live: "eth_getBlockByNumber @ 31744343 -> gasLimit 0x77359400"
+
+gotchas:
+  - >-
+    RIPEMD160 (0x03) and BLAKE2F (0x09) execute correctly in eth_call and CANNOT BE
+    MINED. Their prover budgets are zero, so any transaction reaching them overflows a
+    module limit on its first block, is dropped from the pool and cached as permanently
+    invalid. Simulation, gas estimation and local test suites all report success. This
+    is the worst-shaped divergence on the chain and no status word in the schema
+    describes it.
+  - >-
+    EIP-7002 and EIP-7251 predeploys were moved to Linea-specific addresses, and the
+    canonical mainnet addresses are EMPTY. An empty account answers a fee query with
+    success and no data, which parses as zero. Code that hardcodes the canonical
+    addresses fails silently rather than reverting.
+  - >-
+    extraData is not vanity data. It is a 32-byte pricing struct carrying the L1 gas
+    price into L2, and every node uses it to set its own minimum gas price. Writing
+    arbitrary bytes there is a protocol error (LineaExtraDataException), not a comment.
+  - >-
+    The base fee is ~7 wei and eth_gasPrice is ~80,000,000 wei. Fee logic derived from
+    baseFeePerGas underprices by four orders of magnitude, and the transaction is not
+    mined late — it is rejected from the pool by the profitability validator and never
+    appears anywhere.
+  - >-
+    You cannot send a transaction whose `to` is a precompile address. All of 0x01-0x11
+    plus 0x0100 are rejected at pool admission. On mainnet this is legal and does
+    nothing; on Linea it is an error.
+  - >-
+    A block holds at most 300 transactions and 109000 bytes of calldata, independent of
+    gas. Throughput modelling from gasLimit is wrong by construction.
+  - >-
+    Linea shipped Cancun and Prague 600 seconds apart (1761645600 and 1761646200). Any
+    "which fork was Linea on at time T" lookup has a ten-minute window in which the
+    answer is Cancun and nobody built against it.

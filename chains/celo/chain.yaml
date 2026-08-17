@@ -1,0 +1,486 @@
+schema_version: 2
+
+chain:
+  name: Celo
+  slug: celo
+  chain_id: 42220
+  role: fork
+  live: true
+  chain_id_src: params/celo_config.go:CeloMainnetChainID
+  note: >-
+    An OP Stack chain that is NOT envelope-compatible with OP Stack. Celo was a
+    standalone L1 until the Cel2 transition (2025-03-26, L2 block 31056500) and
+    carried its fee-currency abstraction across the migration. This file states
+    only Celo's own deltas; everything else comes from chains/op-stack/.
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: op-geth
+  second_heritage: null
+  sync_point: >-
+    celo-v2.2.4 is a rebase of op-geth onto go-ethereum v1.16.9
+    (version/version.go: Major 1, Minor 16, Patch 9), against op-stack's pinned
+    op-geth v1.101702.2 (geth v1.17.5). The OP fork ladder in this tree stops at
+    JOVIAN: params/config.go declares JovianTime and IsOptimismJovian and has no
+    Karst field, and the embedded superchain-registry schema (superchain/types.go
+    HardForkConfiguration) likewise has no karst_time. Celo therefore has NONE of
+    OP Stack's post-Jovian changes, and cannot express them without a client
+    upgrade. The registry's mainnet entry sets no osaka_time, so Celo's EVM is at
+    PRAGUE (isthmus_time = 1752073200) while the op-stack row's baseline is Osaka
+    — a descendant inheriting its ancestor's past, exactly as SCHEMA.md warns.
+  note: >-
+    Also a fork of the OP Stack CONTRACTS: celo-org/optimism carries a
+    packages/contracts-bedrock/src/celo/ tree that upstream does not have.
+
+client:
+  name: op-geth (Celo fork)
+  repo: https://github.com/celo-org/op-geth
+  version: celo-v2.2.4
+  commit: aee04e0b41af645723e1debc833469ca2a3ae54a
+  language: go
+  built_on: op-geth / go-ethereum v1.16.9
+  note: >-
+    fork.yaml declares the base as celo-rebase-15-upstream, i.e. this is a
+    maintained rebase of ethereum-optimism/op-geth, not a snapshot.
+  companion_repos:
+  - {name: optimism, repo: "https://github.com/celo-org/optimism",
+     version: celo-v2.2.1, commit: a590fbdcfdf3b7132ef0f974ecc341a963343d07,
+     provides: "Celo predeploy definitions (CeloPredeploys.sol), FeeCurrencyDirectory.sol, AbstractFeeCurrency.sol"}
+
+live_probe:
+  endpoint: https://forno.celo.org
+  chain_id: 42220
+  observed_at_block: 74884096      # 0x479ae00
+
+consensus:
+  engine: OP Stack (single sequencer) with alt-DA
+  finality: inherits L1 finality after challenge window
+  block_time: 1s
+  note: >-
+    data_availability_type = "alt-da" with a GenericCommitment, not L1 blobs, in
+    the registry entry embedded at superchain/superchain-configs.zip
+    (configs/mainnet/celo.toml). Celo is a Superchain member at
+    superchain_level 0 and is not governed by Optimism.
+
+baseline_fork: prague
+baseline_note: >-
+  NOT Osaka. Isthmus (== Prague) is active since 1752073200; Jovian activates
+  1774958788; no osaka_time exists for this chain and the client's superchain
+  loader has no field to read one from. Every op-stack EIP delta recorded at
+  Osaka should be read against this weaker baseline.
+
+forks:
+  src: params/config.go:Cel2Time
+  activation_src: >-
+    superchain/superchain-configs.zip -> configs/mainnet/celo.toml, embedded from
+    superchain-registry commit 979e1c7b28c860ff43a9781d36db00d6afe7ff92
+    (superchain-registry-commit.txt)
+  note: >-
+    Two fork axes. Ethereum/OP forks come from the embedded superchain registry
+    and are subject to op-geth's CheckConfigForkOrder equality rules
+    (params/config.go:1745 enforces PragueTime == IsthmusTime). Celo's own two
+    forks are separate config fields: GingerbreadBlock (a block number, from the
+    L1 era) and Cel2Time (the L1 -> L2 transition).
+  timeline:
+  - {name: gingerbread, activation_block: 21616000, mainnet_equivalent: null,
+     note: "Celo L1 era. Changed the block header layout — see header_fields.",
+     src: "params/superchain.go:CeloMainnetChainID"}
+  - {name: "berlin/london/bedrock", activation_block: 31056500, mainnet_equivalent: "berlin+london",
+     note: "all assigned to the Cel2 transition block by params/superchain.go",
+     src: "params/superchain.go:CeloMainnetChainID"}
+  - name: cel2
+    activation_time: 1742957258
+    mainnet_equivalent: null
+    src: "params/config.go:IsCel2"
+    note: >-
+      2025-03-26. L1 -> L2 migration. Deprecates tx type 0x7c and the 12-field
+      celo-legacy variant of tx type 0x00; enables the 0xfd transfer precompile;
+      redirects the base fee to the FeeHandler instead of OP's BaseFeeVault.
+  - {name: "canyon/delta/ecotone/fjord/granite", activation_time: 0,
+     mainnet_equivalent: "shanghai+cancun",
+     note: "genesis-active at the L2 genesis (l2_time 1742957258)"}
+  - {name: holocene, activation_time: 1752073200, mainnet_equivalent: null}
+  - {name: isthmus, activation_time: 1752073200, mainnet_equivalent: prague,
+     note: "2025-07-09, enforced equal to PragueTime"}
+  - {name: jovian, activation_time: 1774958788, mainnet_equivalent: null,
+     note: "2026-03-31. Warms the from/to addresses in the 0xfd transfer precompile and hands the base-fee floor to OP's minBaseFee."}
+  - {name: karst, status: pending, activation_time: null,
+     note: "NOT EXPRESSIBLE in this client — no Karst field in params/config.go or superchain/types.go"}
+  - {name: osaka, status: pending, activation_time: null,
+     note: "no osaka_time in the registry entry for chain 42220"}
+
+eips:
+  # Deltas ON TOP OF op-stack. Everything op-stack declares still applies,
+  # modulo the Prague-not-Osaka baseline recorded in lineage.sync_point.
+  1559:
+    status: modified
+    note: >-
+      A THIRD modification on top of op-stack's (which is already L2 1559 + L1
+      data fee + operator fee). (a) Pre-Jovian, CalcBaseFee clamps the computed
+      base fee up to CeloConfig.EIP1559BaseFeeFloor (25 gwei on mainnet) via a
+      deferred return-value interception; from Jovian, OP's Holocene minBaseFee
+      takes over. (b) For tx type 0x7b the base fee the transaction is charged is
+      the header base fee CONVERTED into the fee currency at the
+      FeeCurrencyDirectory's exchange rate, so `baseFeePerGas` in the header and
+      the price the sender actually pays are denominated in different assets.
+    src: "consensus/misc/eip1559/eip1559.go:CalcBaseFee, core/celo_state_transition.go:calculateBaseFee"
+  2718:
+    status: modified
+    note: >-
+      Celo adds two type bytes (0x7b live, 0x7c deprecated) beyond OP Stack's
+      0x7e, AND overloads the untyped legacy envelope with a 12-field variant.
+      A 2718 decoder built for OP Stack rejects the majority of Celo traffic.
+    src: "core/types/celo_dynamic_fee_tx_v2.go:CeloDynamicFeeTxV2Type"
+  2028:
+    status: modified
+    note: >-
+      Intrinsic gas is no longer a protocol constant. For a fee-currency
+      transaction, IntrinsicGas adds a per-currency `intrinsicGas` value READ
+      FROM ON-CHAIN STATE (FeeCurrencyDirectory.getCurrencyConfig) to cover the
+      debit call plus up to three credit calls. The same calldata costs different
+      intrinsic gas depending on which ERC-20 pays, and on governance changes to
+      the directory.
+    src: "core/state_transition.go:IntrinsicGas"
+  3529:
+    status: unrecorded
+    note: >-
+      Not established. Refund accounting for fee-currency transactions runs
+      through CreditFees rather than returnGas, and no source read was done on
+      whether the SSTORE refund cap composes with it.
+  7702:
+    status: unrecorded
+    note: >-
+      SetCodeTx 0x04 is in the accept set of the legacy pool
+      (core/txpool/legacypool/legacypool.go:338) so it is carried, but no source
+      read was done on how a 7702 delegation interacts with the fee-currency
+      debit/credit calls made against the sender.
+  4844:
+    status: inherited
+    note: >-
+      Inherits op-stack's removal. Confirmed live: the header carries a non-zero
+      blobGasUsed (0x2154) that is a DA footprint, not blob gas, with
+      excessBlobGas 0.
+    src_live: "eth_getBlockByNumber @ 74884096 -> blobGasUsed 0x2154, excessBlobGas 0x0"
+
+non_eip_specs:
+  - id: CIP-64
+    name: "Celo Denominated Fees (tx type 0x7b)"
+    adoption: adopted
+    fork: cel2
+    src: core/types/celo_dynamic_fee_tx_v2.go:CeloDynamicFeeTxV2Type
+  - id: CIP-66
+    name: "Celo receipt base fee"
+    adoption: adopted
+    severity: high
+    src: "core/types/celo_receipt.go:celoDynamicReceiptRLP, core/types/receipt.go:encodeTyped"
+    src_live: "eth_getTransactionReceipt @ 74884096 -> receipt baseFee 0x2c567f0d0 while header baseFeePerGas is 0x2e90edd000"
+    note: >-
+      The CONSENSUS receipt for a 0x7b transaction has FIVE elements, not four:
+      status, cumulativeGasUsed, bloom, logs, AND baseFee — the base fee
+      expressed in the transaction's fee currency. It is inside receiptsRoot, so
+      this is a state-transition change, not a JSON-RPC nicety. The stored form
+      is disambiguated by prefixing an empty RLP list and detected byte-wise by
+      IsCeloDynamicFeeReceipt. A receipt decoder written to EIP-2718 fails or
+      silently mis-parses. This is the only receipt-layout divergence in the
+      dataset outside OP Stack's deposit nonce.
+  - id: CIP-50
+    name: "unprotected legacy transactions"
+    adoption: adopted
+    src: core/types/celo_transaction_signing_tx_funcs.go:celoLegacyTxFuncs
+    note: >-
+      Celo L1 allowed unprotected (pre-EIP-155) legacy transactions but never
+      signed them through MakeSigner/LatestSigner. Historical-sender recovery
+      still honours that.
+  - id: Cel2
+    name: "L1 to L2 migration"
+    adoption: adopted
+    src: core/types/celo_transaction_signing_forks.go:cel2
+
+tx_types:
+  "0x7b":
+    name: CeloDynamicFeeTxV2 (CIP-64)
+    status: added
+    spec: CIP-64
+    src: core/types/celo_dynamic_fee_tx_v2.go:CeloDynamicFeeTxV2Type
+    fields: [ChainID, Nonce, GasTipCap, GasFeeCap, Gas, To, Value, Data, AccessList, FeeCurrency, V, R, S]
+    severity: high
+    src_live: "eth_getBlockByNumber @ 74884096 -> 12 of 19 transactions are type 0x7b"
+    note: >-
+      THE finding of this row. A 1559 transaction with one extra field,
+      `FeeCurrency`, naming an ERC-20 that pays for gas. It sits ON TOP of the OP
+      Stack envelope, one byte below Base's 0x79 and three below OP's 0x7e. It is
+      not a curiosity: at the probed block it was the MAJORITY transaction type
+      on the chain. A signer or indexer that handles OP Stack's 0x00-0x04 + 0x7e
+      fails on most Celo traffic, and the sighash covers FeeCurrency, so the
+      transaction cannot be re-signed as a 0x02.
+  "0x7c":
+    name: CeloDynamicFeeTx (legacy fee-currency tx)
+    status: removed
+    deprecated_at: 1742957258
+    src: "core/types/celo_dynamic_fee_tx.go:CeloDynamicFeeTxType, core/types/celo_transaction_signing_forks.go:deprecatedTxFuncs"
+    fields: [ChainID, Nonce, GasTipCap, GasFeeCap, Gas, FeeCurrency, GatewayFeeRecipient, GatewayFee, To, Value, Data, AccessList, V, R, S]
+    note: >-
+      The Celo L1 fee-currency type, carrying an extra GatewayFeeRecipient /
+      GatewayFee pair that 0x7b dropped. The cel2 fork maps it to
+      deprecatedTxFuncs, so sender recovery and signing both fail with
+      ErrDeprecatedTxType after the transition — but the type byte is STILL
+      DECODABLE and still present in chain history, which the celoLegacy fork
+      handles with celoDynamicFeeTxFuncs. `removed` means "not acceptable", not
+      "not encounterable": a historical-range indexer still meets it.
+  "0x00":
+    name: LegacyTx (12-field celo variant)
+    status: modified
+    severity: high
+    src: "core/types/celo_tx_legacy.go:celoTxRlpList, core/types/celo_tx_legacy.go:ethCompatibleTxNumFields"
+    note: >-
+      Celo's legacy transaction has TWO RLP shapes and no type byte to tell them
+      apart. DecodeRLP counts the list elements: 9 means the Ethereum layout,
+      anything else is decoded as the 12-field celo layout with FeeCurrency,
+      GatewayFeeRecipient and GatewayFee inserted after Gas. Any standard RLP
+      decoder handed a pre-Cel2 Celo legacy transaction either errors or
+      mis-assigns To/Value/Data. Deprecated for new transactions from cel2
+      (deprecatedTxFuncs), so this is a historical-data hazard, not a live one.
+  note: >-
+    Live set = op-stack's (0x00-0x04, 0x7e) PLUS 0x7b. The txpool accept set is
+    core/txpool/legacypool/legacypool.go:338.
+
+precompiles:
+  "0x00000000000000000000000000000000000000fd":
+    name: transfer (CELO token duality)
+    status: added
+    fork: cel2
+    src: "core/vm/celo_contracts.go:TransferPrecompileAddress, core/vm/contracts.go:PrecompiledCeloContractsCel2"
+    src_live: "eth_getCode @ 74884096 -> 0x (no bytecode; a native precompile, not a predeploy)"
+    severity: high
+    note: >-
+      A REAL added precompile on OP Stack, which op-stack itself has zero of. It
+      moves native CELO between two accounts so the CELO ERC-20 at
+      0x471E..a438 can be a token and the gas asset at once. Permissioned: it
+      reverts unless the immediate caller is the CeloToken address
+      (celoPrecompileContext.IsCallerCeloToken), and returns ErrWriteProtection
+      under STATICCALL. Cost is params.CallValueTransferGas; input must be
+      exactly 96 bytes. From Jovian it also warms `from` and `to` into the access
+      list — a gas-observable change to an existing precompile.
+
+      PLACEMENT HAZARD: 0xfd is INSIDE mainnet's own allocation path. Mainnet has
+      reserved 0x01-0x11 and grows upward; every other chain in this dataset that
+      added a precompile went to 0x0100 or far above (Tron 0x1000001+, Flare
+      0x1000...0002). Celo went to 0xfd, three addresses below 0x0100, which
+      mainnet already occupies. It is the closest any chain here has parked a
+      custom precompile to mainnet's frontier.
+  note: >-
+    One added address. All six of op-stack's same-address semantic divergences
+    (0x05, 0x08, 0x0c, 0x0e, 0x0f, 0x0100) are inherited unchanged — the newest
+    set in this tree is PrecompiledContractsJovian and it is byte-identical in
+    membership to op-stack's. The Celo map is consulted only AFTER the ethereum/OP
+    map misses (core/vm/evm.go:precompile), so Celo cannot shadow a mainnet
+    address even accidentally.
+
+system_contracts:
+  "0x15F344b9E6c3Cb6F0376A36A64928b13F62C6276":
+    name: FeeCurrencyDirectory
+    status: added
+    src: contracts/addresses/addresses.go:MainnetAddresses
+    src_live: "eth_getCode @ 74884096 -> 0x6080604052... (proxy bytecode present); eth_call getCurrencies() @ 74884318 -> 20 registered currencies"
+    severity: high
+    note: >-
+      A CONTRACT, not a precompile — it has bytecode and is CALLable normally.
+      The client reads it at the start of every block to build
+      FeeCurrencyContext (exchange rates + per-currency intrinsic gas), so
+      ordinary contract state is an input to the block's fee rules and to
+      intrinsic gas. Governance can change gas costs and fee validity without a
+      client release or a fork. Note the address here is the MAINNET one from the
+      client; CeloPredeploys.sol names 0x9212Fb..11BF, which is the SEPOLIA
+      directory and is EMPTY on mainnet — the contracts repo and the client
+      disagree, and the client is right.
+    src_doc: https://docs.celo.org/developer/fee-currency
+  "0x471EcE3750Da237f93B8E339c536989b8978a438":
+    name: CeloToken (GoldToken)
+    status: added
+    src: contracts/addresses/addresses.go:CeloToken
+    src_live: "eth_getCode @ 74884096 -> bytecode present"
+    note: >-
+      The native asset's ERC-20 face. The ONLY address permitted to call the
+      0xfd transfer precompile. Outside the 0x42.. predeploy range entirely —
+      it is a Celo L1 address carried through the migration.
+  "0xcD437749E43A154C07F3553504c68fBfD56B8778":
+    name: FeeHandler
+    status: added
+    src: contracts/addresses/addresses.go:FeeHandler
+    src_live: "eth_getCode @ 74884096 -> bytecode present"
+    severity: high
+    note: >-
+      From Cel2, the L2 base fee is credited HERE instead of OP Stack's
+      BaseFeeVault at 0x42..19. Anyone accounting OP chain revenue by reading
+      BaseFeeVault gets zero on Celo with no error. The redirect is the IsCel2
+      branch of the post-execution fee split in core/state_transition.go.
+  "0x4200000000000000000000000000000000000019":
+    name: BaseFeeVault
+    status: tombstoned
+    tombstoned_at: 1742957258
+    inherited_from: op-stack
+    src: contracts/addresses/addresses.go:FeeHandler
+    note: >-
+      OVERRIDE of the op-stack entry, per SCHEMA.md's override-by-key rule. The
+      predeploy still exists, but from Cel2 no base fee is ever routed to it —
+      the IsCel2 branch sends the amount to FeeHandler instead of
+      params.OptimismBaseFeeRecipient. Recorded as tombstoned rather than removed
+      because the address is still occupied and still callable.
+  "0x000000000000000000000000000000000000ce10":
+    name: CeloRegistry
+    status: added
+    src: optimism/packages/contracts-bedrock/src/celo/CeloPredeploys.sol:CELO_REGISTRY
+    src_live: "eth_getCode @ 74884096 -> bytecode present"
+    note: "Celo L1 name registry, migrated into the L2 genesis state."
+  "0x4200000000000000000000000000000000001022":
+    name: FeeCurrency (test token)
+    status: removed
+    src: optimism/packages/contracts-bedrock/src/celo/CeloPredeploys.sol:FEE_CURRENCY
+    src_live: "eth_getCode @ 74884096 -> 0x (EMPTY on mainnet)"
+    note: >-
+      CeloPredeploys.sol claims a predeploy at 0x42..1022 — far above OP's
+      highest real predeploy (0x42..2d). It is EMPTY on Celo mainnet. Recorded
+      because it is a live example of a predeploy list that does not describe the
+      chain: three of CeloPredeploys.sol's ten entries are dev/testnet addresses.
+  note: >-
+    Celo's system contracts are NOT in the 0x42.. namespace. They are ordinary
+    L1-era addresses carried across the migration, three of which
+    (CeloToken, FeeHandler, FeeCurrencyDirectory) are HARDCODED IN THE CLIENT and
+    switched on chain id. Sepolia has different addresses for all three. Any tool
+    holding "the OP predeploy set" as Celo's system-contract set is missing every
+    contract that matters here. The full OP Stack 0x42.. set is inherited
+    unchanged from the op-stack row.
+
+system_transactions:
+  fee_currency_debit:
+    name: "debitGasFees(from, value)"
+    status: added
+    src: contracts/fee_currencies.go:DebitFees
+    severity: high
+    note: >-
+      Before a 0x7b transaction executes, the client makes an EVM call from the
+      ZERO ADDRESS into the fee-currency ERC-20, spending up to the currency's
+      registered intrinsic gas. It is not part of the transaction's own call
+      tree. disableTracer removes it from tracer output entirely unless
+      Tracer.TraceDebitCredit is set, so debug_traceTransaction does not show the
+      user's gas being taken.
+  fee_currency_credit:
+    name: "creditGasFees(from, feeRecipient, _, communityFund, refund, tipTxFee, _, baseTxFee)"
+    status: added
+    src: contracts/fee_currencies.go:CreditFees
+    severity: high
+    note: >-
+      After execution, a second client-driven EVM call distributes tip, base fee
+      and the gas REFUND — for a fee-currency transaction returnGas does nothing
+      and the refund is minted back by this call instead. The l1DataFee is folded
+      into the tip because the deployed currencies do not implement the newer
+      interface. Also hidden from tracers by default.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode divergence beyond op-stack's (which is none). Celo's divergence is
+    entirely in the transaction envelope, the fee path and the system-contract
+    layer.
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 on the L2 base fee, with a floor, denominated per-currency
+  extra_components:
+    - name: fee currency (CIP-64)
+      severity: high
+      src: contracts/fee_currencies.go:GetFeeCurrencyContext
+      note: >-
+        Gas may be paid in any ERC-20 registered in the FeeCurrencyDirectory (20
+        of them at the probed block). Balance checks read the ERC-20's
+        balanceOf, not the account balance: canPayFee splits the requirement into
+        a native part (msg.Value) and an ERC-20 part (the gas fee). An account
+        with zero native CELO can transact.
+    - name: per-currency intrinsic gas
+      src: core/state_transition.go:IntrinsicGas
+      note: "read from FeeCurrencyDirectory.getCurrencyConfig; on-chain state, changeable by governance"
+    - name: base-fee floor
+      src: consensus/misc/eip1559/eip1559.go:CalcBaseFee
+      note: "25 gwei pre-Jovian (CeloConfig.EIP1559BaseFeeFloor); OP minBaseFee from Jovian"
+    - name: per-currency block gas pools
+      src: core/celo_multi_gaspool.go:MultiGasPool
+      note: >-
+        The block gas limit is subdivided: each allowlisted fee currency gets its
+        own GasPool sized as a fraction of the block limit, with a default pool
+        for native CELO. Disabled when deriving from L1 (isDeriving), because the
+        fractions are node-local config and must not affect derivation. A block
+        can therefore be "full" for one currency and open for another.
+    - name: exchange-rate conversion
+      src: common/exchange/rates.go:ConvertCeloToCurrency
+      note: "every fee quantity for a 0x7b tx is converted through the directory's rate"
+  note: >-
+    On top of op-stack's three components (L2 1559 + L1 data fee + operator fee),
+    Celo adds a currency dimension to all of them. eth_estimateGas covers neither
+    the L1 fee nor the per-currency intrinsic gas.
+  src: core/celo_state_transition.go:subFees
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: blobGasUsed
+      inherited_from: op-stack
+      note: "op-stack's Jovian DA-footprint repurposing; confirmed live at block 74884096"
+  note: >-
+    Post-Gingerbread the header is the standard op-geth header. PRE-Gingerbread
+    (Celo L1, before block 21616000) it is a TEN-field header —
+    BeforeGingerbreadHeader — with no UncleHash, Difficulty, GasLimit, MixDigest,
+    Nonce or BaseFee, and with an Address where a Hash normally sits.
+    Header.DecodeRLP picks the layout by measuring the length of the second RLP
+    element (20 bytes = pre-Gingerbread). A historical sync or an archive query
+    below 21616000 returns headers no Ethereum decoder can parse.
+  src: core/types/celo_block.go:BeforeGingerbreadHeader
+
+gotchas:
+  - >-
+    CELO CARRIES A CUSTOM TRANSACTION TYPE ON TOP OF OP STACK, and it is the
+    majority type on the chain. "OP Stack derivatives inherit the transaction
+    envelope" is false. 0x7b (CIP-64) adds a FeeCurrency field covered by the
+    signature hash; 0x7c and a 12-field variant of the untyped legacy transaction
+    survive in history. Four envelope shapes coexist where OP Stack has two.
+  - >-
+    Type 0x00 has two RLP layouts distinguished ONLY by element count — 9 fields
+    for the Ethereum shape, 12 for the Celo shape. There is no type byte and no
+    version flag. Every pre-Cel2 legacy transaction is a decoder hazard.
+  - >-
+    The 0x7b receipt has a fifth consensus field. Receipt decoding, not just
+    transaction decoding, diverges — and it is inside receiptsRoot, so this is a
+    consensus change, not a JSON-RPC nicety.
+  - >-
+    Gas can be paid in an ERC-20 the sender holds and never in native CELO. The
+    debit and credit are EVM calls the CLIENT makes into the token, from the zero
+    address, outside the transaction's call tree, and hidden from tracers unless
+    TraceDebitCredit is set. In the probed CIP-64 transaction the fee-currency
+    contract emitted no log at all, so an ERC-20 balance reconstructed from
+    Transfer events drifts from the real balance for every gas payer.
+  - >-
+    Intrinsic gas is read from contract storage. FeeCurrencyDirectory supplies a
+    per-currency intrinsic gas surcharge, so the same calldata has different
+    intrinsic cost depending on the fee currency — and governance can change it
+    without a fork.
+  - >-
+    The base fee does NOT go to BaseFeeVault (0x42..19). From Cel2 it goes to the
+    FeeHandler at 0xcD43..8778. OP-chain revenue tooling reads zero and reports
+    no error.
+  - >-
+    Celo's real system contracts are not in the 0x42.. range and three of them
+    are hardcoded in the client, switched on chain id. Meanwhile
+    CeloPredeploys.sol lists a Sepolia FeeCurrencyDirectory and a 0x42..1022
+    "predeploy" that is empty on mainnet. Trust the client's addresses.go, not
+    the contracts repo.
+  - >-
+    This client stops at OP Stack JOVIAN and at PRAGUE. There is no Karst field
+    and no osaka_time — not "not activated", but not representable. Anything the
+    op-stack row records at Osaka or Karst does not describe Celo.
+  - >-
+    Custom precompile at 0x00..fd — three addresses below 0x0100, inside the
+    range mainnet is growing into. Every other custom precompile in this dataset
+    is at 0x0100 or far above.

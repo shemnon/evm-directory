@@ -1,0 +1,639 @@
+schema_version: 2
+
+chain:
+  name: Kaia
+  slug: kaia
+  chain_id: 8217
+  role: fork
+  live: true
+  note: >-
+    Formerly Klaytn (merged with Finschia in 2024; the Go module, the header
+    fields and half the copyright headers still say klaytn). Descends from
+    go-ethereum by code, but forked early and rebuilt the transaction layer:
+    the account model, the transaction type space, the signing scheme and the
+    block header are all Kaia's own. The EVM interpreter tracks upstream
+    closely; nothing above it does.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    Kaia has kept pace with mainnet fork-for-fork and is CURRENT: Prague at
+    block 190670000 and Osaka at block 213333000, both already past on mainnet
+    (observed at 224632605). Unusually for this dataset the EVM layer is not
+    behind — the divergence is entirely structural, not generational.
+
+client:
+  name: kaia
+  repo: https://github.com/kaiachain/kaia
+  version: v2.2.2
+  commit: ac7c81f3a9759704b5ce77b42ae91851ce45a9c3
+  language: go
+  note: >-
+    v3.0.0-rc.1/rc.2 exist upstream but are pre-release; v2.2.2 is the newest
+    released tag. The tag is annotated, so the tag object (801b68b0) and the
+    commit (ac7c81f3) differ — the commit is what is pinned.
+
+live_probe:
+  endpoint: https://public-en.node.kaia.io
+  chain_id: 8217
+  observed_at_block: 224632605
+
+consensus:
+  engine: Istanbul BFT (PBFT variant), 22-node committee sampled per block
+  finality: immediate BFT finality; no uncles, no reorgs
+  block_time: 1s
+  block_time_src_live: "eth_getBlockByNumber @ 224632605 vs 224622605 -> exactly 10000s / 10000 blocks"
+
+baseline_fork: osaka
+
+forks:
+  src: params/config.go:MainnetChainConfig
+  note: >-
+    Activation is by BLOCK NUMBER, not timestamp — a fifth incompatible
+    activation mechanism alongside OP Stack's enforced timestamp equality,
+    Avalanche's assigned timestamps, Arbitrum's ArbOS version gating and
+    Polygon's block numbers (which Kaia matches). Fields are named
+    `<Fork>CompatibleBlock`, so a tool looking for `cancunTime` finds nothing.
+    Kaia interleaves its own forks with Ethereum's in one linear sequence.
+  timeline:
+  - {name: istanbul,  mainnet_equivalent: istanbul, activation_condition: "block 86816005",
+     note: "also the point at which Kaia's three custom precompiles were RELOCATED off 0x09-0x0b — see precompiles"}
+  - {name: london,    mainnet_equivalent: london,   activation_condition: "block 86816005"}
+  - {name: ethTxType, mainnet_equivalent: null,     activation_condition: "block 86816005",
+     note: "Kaia's own fork: enabled the 0x78-wrapped Ethereum typed-transaction envelope (0x01/0x02)"}
+  - {name: magma,     mainnet_equivalent: null,     activation_condition: "block 99841497",
+     note: "KIP-71 dynamic base fee; before this the gas price had to EQUAL the governance UnitPrice exactly"}
+  - {name: kore,      mainnet_equivalent: berlin,   activation_condition: "block 119750400",
+     note: "the map named PrecompiledContractsKore is Kaia's Berlin-equivalent precompile set (EIP-2565 modexp)"}
+  - {name: kip103,    mainnet_equivalent: null,     activation_condition: "block 119750400",
+     note: "treasury rebalance executed against a fixed contract address in the chain config"}
+  - {name: shanghai,  mainnet_equivalent: shanghai, activation_condition: "block 135456000"}
+  - {name: cancun,    mainnet_equivalent: cancun,   activation_condition: "block 147534000"}
+  - {name: randao,    mainnet_equivalent: null,     activation_condition: "block 147534000",
+     note: "KIP-114: added RandomReveal (96-byte BLS signature) and MixHash header fields"}
+  - {name: kaia,      mainnet_equivalent: null,     activation_condition: "block 162900480",
+     note: "the rebrand fork; also the point at which the priority fee started being paid — see fee_model"}
+  - {name: kip160,    mainnet_equivalent: null,     activation_condition: "block 162900480"}
+  - {name: prague,    mainnet_equivalent: prague,   activation_condition: "block 190670000"}
+  - {name: osaka,     mainnet_equivalent: osaka,    activation_condition: "block 213333000",
+     note: "live: block 224632605 observed, and 0x0100 returns a valid P256VERIFY result"}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    note: >-
+      Present in form, different in substance, and it CHANGED SILENTLY at the
+      Kaia fork. Before Kaia, EffectiveGasPrice returns the BASE FEE and nothing
+      else — a 1559 transaction's maxPriorityFeePerGas was accepted, charged for
+      in the balance check, and then discarded. From the Kaia fork the tip is
+      finally added. Separately, only HALF the total fee is burned at Magma
+      (getBurnAmountMagma = totalFee/2); at Kore the burn is half plus up to the
+      proposer's minting reward. Mainnet burns the entire base fee.
+    src: "blockchain/types/transaction.go:EffectiveGasPrice, kaiax/reward/impl/getter.go:getBurnAmountMagma, kaiax/reward/impl/getter.go:getBurnAmountKore"
+  4844:
+    status: modified
+    note: >-
+      Blob transactions exist but arrived at OSAKA, not Cancun: the tx pool
+      rejects TxTypeEthereumBlob unless rules.IsOsaka, and the header's
+      BlobGasUsed/ExcessBlobGas are only surfaced from the Osaka fork. A chain
+      that is "Cancun-equivalent" by fork name had no blobs for two fork
+      generations.
+    src: "blockchain/tx_pool.go:TxTypeEthereumBlob, api/api_eth.go:IsOsakaForkEnabled"
+  7702:
+    status: modified
+    severity: high
+    note: >-
+      SetCodeTx is implemented (TxTypeEthereumSetCode, wire form 0x78 0x04), but
+      like every Ethereum-format transaction it is only executable if the
+      sender's on-chain AccountKey is AccountKeyLegacy. An account that has ever
+      run TxTypeAccountUpdate cannot send one. 7702 and Kaia's own account-key
+      system are two independent, mutually exclusive mechanisms for decoupling
+      keys from addresses on the same chain.
+    src: "blockchain/types/tx_internal_data.go:TxTypeEthereumSetCode, blockchain/types/transaction.go:ErrLegacyTransactionMustBeWithLegacyKey"
+  2718:
+    status: modified
+    severity: high
+    note: >-
+      Kaia's envelope is EIP-2718-SHAPED BUT NOT EIP-2718. A typed transaction
+      is `rlp(txType) || rlp(body)` where txType is a uint16, and Ethereum's own
+      typed transactions are re-wrapped as `0x78 || <ethType> || rlp(body)` when
+      stored or gossiped. The `eth_` namespace strips the 0x78 on the way out
+      and re-adds it on the way in, so eth_sendRawTransaction and
+      eth_getRawTransactionByHash look standard while the consensus encoding is
+      not. See tx_types.
+    src: "blockchain/types/tx_internal_data_serializer.go:EncodeRLP, api/api_eth.go:EthereumTxTypeEnvelope"
+  4788: {status: removed, note: "no beacon chain; Istanbul BFT consensus, no parentBeaconBlockRoot header field",
+         src: "blockchain/types/block.go:Header"}
+  4895: {status: removed, note: "no withdrawals; no withdrawalsRoot header field",
+         src: "blockchain/types/block.go:Header"}
+  7685: {status: removed, note: "no EL-triggered requests; no requestsHash header field",
+         src: "blockchain/types/block.go:Header"}
+  7928: {status: removed, note: "no BlockAccessListHash; unshipped on mainnet too",
+         src: "blockchain/types/block.go:Header"}
+  1559_header:
+    status: modified
+    note: >-
+      The header carries BaseFee (from Magma) but has NO GasLimit field at all,
+      so the 1559 elasticity target is a governance parameter rather than a
+      header quantity. See header_fields.
+    src: blockchain/types/block.go:Header
+  7823: {status: inherited, note: "PrecompiledContractsOsaka builds bigModExp{eip7823: true}",
+         src: "blockchain/vm/contracts.go:PrecompiledContractsOsaka"}
+  7883: {status: inherited, note: "PrecompiledContractsOsaka builds bigModExp{eip7883: true}",
+         src: "blockchain/vm/contracts.go:PrecompiledContractsOsaka"}
+  7951:
+    status: inherited
+    note: >-
+      P256VERIFY at 0x0100 in PrecompiledContractsOsaka, matching mainnet's
+      address and (unlike OP Stack) reached through mainnet's own Osaka fork
+      rather than an earlier RIP-7212 adoption. Verified live.
+    src: "blockchain/vm/contracts.go:PrecompiledContractsOsaka"
+    src_live: "eth_call @ 224632605 to 0x0..0100 with a valid 160-byte RIP-7212 vector -> 0x..01"
+  2537: {status: inherited, note: "full BLS12-381 set at 0x0b-0x11 from the Prague map",
+         src: "blockchain/vm/contracts.go:PrecompiledContractsPrague"}
+
+non_eip_specs:
+  - {id: KIP-71, name: dynamic base fee, adoption: adopted, fork: magma,
+     note: "not EIP-1559: bounded between LowerBoundBaseFee 25 gkei and UpperBoundBaseFee 750 gkei, denominator 20, gas target 30M, max-block-gas-for-basefee 60M",
+     src: params/governance_params.go:DefaultLowerBoundBaseFee}
+  - {id: KIP-114, name: RANDAO, adoption: adopted, fork: randao,
+     note: "added RandomReveal (96-byte BLS signature over the parent) and MixHash to the header",
+     src: blockchain/types/block.go:Header}
+  - {id: KIP-113, name: BLS public key registry, adoption: adopted, fork: randao,
+     note: "on-chain registry at 0x3e80e75975bdb8e04B800485DD28BebeC6d97679, named in the chain config itself",
+     src: params/config.go:RandaoRegistry}
+  - {id: KIP-103, name: treasury rebalance, adoption: adopted, fork: kip103,
+     src: params/config.go:Kip103ContractAddress}
+  - {id: KIP-160, name: treasury rebalance v2, adoption: adopted, fork: kip160,
+     src: params/config.go:Kip160ContractAddress}
+  - {id: KIP-82, name: proposer/staker reward split, adoption: adopted, fork: kore,
+     src: kaiax/reward/impl/getter.go:getBurnAmountKore}
+
+tx_types:
+  # Enumerated exhaustively from the pinned source by iterating TxType over
+  # 0x0000-0x7810 and calling String() + NewTxInternalData() — see SUMMARY.md.
+  "0x00":
+    name: TxTypeLegacyTransaction
+    status: modified
+    note: >-
+      Kaia's legacy type. Encoded with NO type prefix (the serializer
+      short-circuits), so it is wire-identical to an Ethereum legacy tx — but it
+      is only executable if the sender's AccountKey is AccountKeyLegacy.
+    src: "blockchain/types/tx_internal_data_serializer.go:EncodeRLP, blockchain/types/transaction.go:ErrLegacyTransactionMustBeWithLegacyKey"
+  "0x08": {name: TxTypeValueTransfer, status: added, fields: [nonce, gasPrice, gas, to, value, from, txSignatures],
+           src: "blockchain/types/tx_internal_data.go:TxTypeValueTransfer"}
+  "0x09":
+    name: TxTypeFeeDelegatedValueTransfer
+    status: added
+    severity: high
+    fields: [nonce, gasPrice, gas, to, value, from, txSignatures, feePayer, feePayerSignatures]
+    note: >-
+      TWO SIGNERS, ONE TRANSACTION. See the tx_types note for the encoding.
+    src: "blockchain/types/tx_internal_data_fee_delegated_value_transfer.go:TxInternalDataFeeDelegatedValueTransfer"
+  "0x0a": {name: TxTypeFeeDelegatedValueTransferWithRatio, status: added,
+           note: "adds a feeRatio byte in [1,99]: that percentage of the fee is paid by the fee payer, the rest by the sender",
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedValueTransferWithRatio"}
+  "0x10": {name: TxTypeValueTransferMemo, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeValueTransferMemo"}
+  "0x11": {name: TxTypeFeeDelegatedValueTransferMemo, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedValueTransferMemo"}
+  "0x12": {name: TxTypeFeeDelegatedValueTransferMemoWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedValueTransferMemoWithRatio"}
+  "0x18":
+    name: TxTypeAccountCreation
+    status: tombstoned
+    note: >-
+      The constant exists, String() names it, and tx_internal_data_account_creation.go
+      is still in the tree — but the case in NewTxInternalData is COMMENTED OUT,
+      so decoding one returns errUndefinedTxType. The type byte is permanently
+      consumed by a feature that was withdrawn. Human-readable addresses, its
+      reason for existing, were never enabled.
+    src: "blockchain/types/tx_internal_data.go:TxTypeAccountCreation"
+  "0x20":
+    name: TxTypeAccountUpdate
+    status: added
+    severity: high
+    note: >-
+      Replaces the account's AccountKey. Once used with anything other than
+      AccountKeyLegacy, the account can NEVER AGAIN send an Ethereum-format
+      transaction (legacy or 0x78-wrapped typed) — ValidateSender rejects them
+      with ErrLegacyTransactionMustBeWithLegacyKey. An account can be made
+      permanently unusable from MetaMask, ethers, viem or any other standard
+      tool by a single transaction, and can be frozen outright with
+      AccountKeyFail.
+    src: "blockchain/types/tx_internal_data.go:TxTypeAccountUpdate, blockchain/types/transaction.go:ErrLegacyTransactionMustBeWithLegacyKey"
+  "0x21": {name: TxTypeFeeDelegatedAccountUpdate, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedAccountUpdate"}
+  "0x22": {name: TxTypeFeeDelegatedAccountUpdateWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedAccountUpdateWithRatio"}
+  "0x28": {name: TxTypeSmartContractDeploy, status: added,
+           note: "carries humanReadable and codeFormat fields that no Ethereum deployment has",
+           src: "blockchain/types/tx_internal_data.go:TxTypeSmartContractDeploy"}
+  "0x29": {name: TxTypeFeeDelegatedSmartContractDeploy, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedSmartContractDeploy"}
+  "0x2a": {name: TxTypeFeeDelegatedSmartContractDeployWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedSmartContractDeployWithRatio"}
+  "0x30": {name: TxTypeSmartContractExecution, status: added,
+           note: "the fee-delegatable equivalent of an ordinary contract call — this is the one that makes gasless dApps work on Kaia",
+           src: "blockchain/types/tx_internal_data.go:TxTypeSmartContractExecution"}
+  "0x31": {name: TxTypeFeeDelegatedSmartContractExecution, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedSmartContractExecution"}
+  "0x32": {name: TxTypeFeeDelegatedSmartContractExecutionWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedSmartContractExecutionWithRatio"}
+  "0x38": {name: TxTypeCancel, status: added,
+           note: "a first-class nonce-cancelling transaction: replaces a pending tx at the same nonce with a no-op. Mainnet has no such type; the idiom there is a self-send at a higher gas price.",
+           src: "blockchain/types/tx_internal_data.go:TxTypeCancel"}
+  "0x39": {name: TxTypeFeeDelegatedCancel, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedCancel"}
+  "0x3a": {name: TxTypeFeeDelegatedCancelWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedCancelWithRatio"}
+  "0x40":
+    name: TxTypeBatch
+    status: tombstoned
+    note: >-
+      Named by the iota sequence and by String(), never implemented:
+      NewTxInternalData has no case for it. Second permanently-consumed type
+      byte after 0x18.
+    src: "blockchain/types/tx_internal_data.go:TxTypeBatch"
+  "0x48": {name: TxTypeChainDataAnchoring, status: added,
+           note: "anchors a service-chain block hash into mainnet Kaia; the payload is opaque anchoring data, not an EVM call",
+           src: "blockchain/types/tx_internal_data.go:TxTypeChainDataAnchoring"}
+  "0x49": {name: TxTypeFeeDelegatedChainDataAnchoring, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedChainDataAnchoring"}
+  "0x4a": {name: TxTypeFeeDelegatedChainDataAnchoringWithRatio, status: added,
+           src: "blockchain/types/tx_internal_data.go:TxTypeFeeDelegatedChainDataAnchoringWithRatio"}
+  "0x78":
+    name: EthereumTxTypeEnvelope
+    status: added
+    severity: high
+    note: >-
+      NOT A TRANSACTION TYPE — a one-byte ESCAPE PREFIX. Ethereum typed
+      transactions are stored and gossiped as `0x78 || <ethType> || rlp(body)`,
+      giving internal type numbers 0x7801 AccessList, 0x7802 DynamicFee, 0x7803
+      Blob, 0x7804 SetCode. Kaia is a uint16 type space, not a byte one. The
+      `eth_` RPC namespace strips the prefix on output and prepends it on input,
+      so an Ethereum client never sees it — but anything reading block bodies,
+      p2p traffic or Kaia's own `kaia_` namespace does. 0x78 also COLLIDES with
+      Arbitrum's ArbitrumDepositTxType, the third collision in this dataset
+      between chains with no shared code.
+    src: "blockchain/types/tx_internal_data.go:EthereumTxTypeEnvelope, blockchain/types/tx_internal_data_serializer.go:EncodeRLP"
+  "0x7801": {name: TxTypeEthereumAccessList, status: inherited,
+             note: "EIP-2930; on the wire as 0x78 0x01. Legacy-key accounts only.",
+             src: "blockchain/types/tx_internal_data.go:TxTypeEthereumAccessList"}
+  "0x7802": {name: TxTypeEthereumDynamicFee, status: inherited,
+             note: "EIP-1559; on the wire as 0x78 0x02. Legacy-key accounts only. Tip discarded before the Kaia fork.",
+             src: "blockchain/types/tx_internal_data.go:TxTypeEthereumDynamicFee"}
+  "0x7803": {name: TxTypeEthereumBlob, status: modified,
+             note: "EIP-4844; on the wire as 0x78 0x03. Rejected by the tx pool until the OSAKA fork, not Cancun.",
+             src: "blockchain/tx_pool.go:TxTypeEthereumBlob"}
+  "0x7804": {name: TxTypeEthereumSetCode, status: modified,
+             note: "EIP-7702; on the wire as 0x78 0x04. Legacy-key accounts only — see eips.7702.",
+             src: "blockchain/types/tx_internal_data.go:TxTypeEthereumSetCode"}
+  note: >-
+    TWENTY-FOUR type numbers Ethereum does not have, in a space Ethereum's model
+    cannot express. Three structural breaks, in increasing order of how badly
+    they break an integrator:
+
+    (1) THE TYPE IS A uint16, NOT A BYTE. `type TxType uint16`. Values 0x00-0x4a
+    fit in a byte; 0x7801-0x7804 do not. Kaia's own JSON RPC reports these as
+    `typeInt`.
+
+    (2) THE SENDER IS A FIELD, NOT A RECOVERY. Every Kaia-native type carries an
+    explicit `from` address. ValidateSender does NOT ecrecover an address and
+    compare it — it recovers PUBLIC KEYS and asks whether they satisfy the
+    AccountKey registered on-chain for the declared `from`. Address and key are
+    fully decoupled: an account can be controlled by a 3-of-5 weighted multisig,
+    by different keys for different roles, or by nothing at all (AccountKeyFail).
+    `ecrecover(sig) == from` is false for well-formed Kaia transactions.
+
+    (3) TWO SIGNERS. A fee-delegated type appends `feePayer` and
+    `feePayerSignatures` after the sender's signatures, and BOTH signature
+    fields are LISTS of (v,r,s) triples, not single triples, because either
+    party may be a multisig account. The two parties sign different digests over
+    the same body:
+      sender:    keccak(rlp([ inner, chainId, 0, 0 ]))
+      fee payer: keccak(rlp([ inner, feePayer, chainId, 0, 0 ]))
+    where `inner` is the RLP of (type, nonce, gasPrice, gas, to, value, from,
+    ...). The fee payer's digest commits to its own address, so a fee-payer
+    signature cannot be lifted onto another transaction. This produces THREE
+    distinct hashes per transaction — Hash(), SenderTxHash() (the body without
+    the fee payer's address and signature, which is what the sender knows before
+    the payer exists) and, for 0x78-wrapped types, EthTxHash() (the hash without
+    the 0x78 prefix, so Ethereum tooling agrees). A tx-tracking system keyed on
+    one of the three will lose transactions.
+
+    Note also that Kaia's block header has no `gasLimit`, so per-transaction gas
+    is the only limit; see fee_model for the second, non-gas metering axis.
+
+non_evm_transactions:
+  note: >-
+    None. Unlike Tron, Avalanche or Sei, every Kaia transaction carries a leading
+    type number and is RLP-encoded. The divergence is in the SHAPE of the type
+    space, not in transactions escaping it.
+
+precompiles:
+  # verified: blockchain/vm/contracts.go:PrecompiledContractsOsaka (newest active set)
+  "0x00000000000000000000000000000000000003fd":
+    name: vmLog
+    status: added
+    note: >-
+      Writes its input to the NODE'S LOG FILE or stdout, gated on the
+      node-local params.VMLogTarget flag, and returns nil. It consumes gas and
+      changes no state, so it is consensus-safe, but it is the only precompile
+      in this dataset whose entire effect is a side effect outside the state
+      machine — and whether it does anything at all depends on how the operator
+      started the binary.
+    src: "blockchain/vm/contracts.go:vmLog, blockchain/vm/contracts.go:PrecompiledContractsOsaka"
+  "0x00000000000000000000000000000000000003fe":
+    name: feePayer
+    status: added
+    severity: high
+    note: >-
+      Returns `contract.FeePayerAddress` — the SECOND SENDER of a fee-delegated
+      transaction, as 20 raw bytes. This is the only way a contract can see who
+      is actually paying, and there is no mainnet equivalent because mainnet has
+      no such party. A contract that authorises on msg.sender alone cannot tell
+      a self-funded call from a sponsored one. Under eth_call, with no
+      transaction and therefore no fee payer, it returns the zero address —
+      verified live.
+    src: "blockchain/vm/contracts.go:feePayer, blockchain/vm/contracts.go:PrecompiledContractsOsaka"
+    src_live: "eth_call @ 224632605 to 0x0..03fe -> 0x0000000000000000000000000000000000000000 (20 bytes, not empty)"
+  "0x00000000000000000000000000000000000003ff":
+    name: validateSender
+    status: added
+    note: >-
+      Validates signatures against an account's on-chain AccountKey — the
+      account-abstraction primitive exposed to bytecode. Returns a single byte
+      0x01 or 0x00. Note it SWALLOWS its errors deliberately: a validation
+      failure returns 0x00 rather than reverting, so a caller that ignores the
+      return value silently treats every failure as a pass.
+    src: "blockchain/vm/contracts.go:validateSender, blockchain/vm/contracts.go:PrecompiledContractsOsaka"
+  "0x09":
+    name: BLAKE2F
+    status: inherited
+    note: >-
+      HISTORICAL COLLISION, RESOLVED. Before the Istanbul fork (block 86816005)
+      Kaia's PrecompiledContractsByzantium put vmLog at 0x09, feePayer at 0x0a
+      and validateSender at 0x0b — head-on with mainnet's BLAKE2F, KZG point
+      evaluation and BLS12_G1ADD. Kaia resolved it by MOVING ITS OWN THREE to
+      0x03fd-0x03ff and restoring the Ethereum semantics, the opposite choice to
+      Tron's 0x02xxxx shadow range where the Ethereum implementations were the
+      ones relocated. The old map is still compiled in and governs replay of
+      pre-Istanbul history; a client syncing from genesis executes both.
+    src: "blockchain/vm/contracts.go:PrecompiledContractsByzantium, blockchain/vm/contracts.go:PrecompiledContractsIstanbul"
+  "0x0100":
+    name: P256VERIFY
+    status: inherited
+    note: >-
+      Mainnet address, mainnet gas, reached through mainnet's own Osaka fork —
+      no RIP-7212 early adoption. Kaia is a control case for the dataset's
+      0x0100 finding: it is one of the few rows where 0x0100 is genuinely
+      equivalent rather than merely present.
+    src: "blockchain/vm/contracts.go:PrecompiledContractsOsaka"
+    src_live: "eth_call @ 224632605 to 0x0..0100 with a valid 160-byte RIP-7212 vector -> 0x..01"
+  note: >-
+    Three custom addresses at 0x03fd-0x03ff, deliberately just below 0x0400 and
+    far from both mainnet's upward growth (0x01-0x11) and the 0x0100 island. The
+    source even carries a warning comment reserving them before the fork landed.
+    Placement is disciplined; the interesting part is that they were NOT
+    disciplined before Istanbul, and the pre-Istanbul map is still live for
+    historical replay.
+
+    Every mainnet precompile 0x01-0x11 is present and unmodified at Osaka:
+    bigModExp{eip2565: true, eip7823: true, eip7883: true} matches mainnet Osaka
+    exactly, and there are no input caps of the OP Stack kind. Kaia's EVM layer
+    is one of the most faithful in this dataset; the divergence is entirely
+    above it.
+
+    One category note: the PrecompiledContract INTERFACE itself differs —
+    `Run(input, contract, evm)` and `GetRequiredGasAndComputationCost(input)`
+    rather than geth's `Run(input)` and `RequiredGas(input)`. Every precompile
+    on Kaia therefore has a computation cost as well as a gas cost. See
+    fee_model.
+
+system_contracts:
+  "0x3e80e75975bdb8e04B800485DD28BebeC6d97679":
+    name: KIP113 (BLS public key registry)
+    status: added
+    fork: randao
+    note: >-
+      Named in the chain config itself, not just deployed — RandaoRegistry.Records
+      maps the string "KIP113" to this address, and the registry contract's
+      initial state is installed by the client at (RandaoCompatibleBlock - 1).
+    src: params/config.go:RandaoRegistry
+  "0xD5ad6D61Dd87EdabE2332607C328f5cc96aeCB95":
+    name: KIP103 treasury rebalance
+    status: added
+    fork: kip103
+    src: params/config.go:Kip103ContractAddress
+  "0xa4df15717Da40077C0aD528296AdBBd046579Ee9":
+    name: KIP160 treasury rebalance v2
+    status: added
+    fork: kip160
+    src: params/config.go:Kip160ContractAddress
+  note: >-
+    Not predeploys in the OP Stack sense. These are contract ADDRESSES BAKED
+    INTO THE CHAIN CONFIG, at which the client executes privileged logic at a
+    fixed block. A fourth, the governance contract, is addressed indirectly
+    through the registry. The full on-chain governance/staking contract set is
+    NOT enumerated here — establishing it needs the kaia-contracts repo, which
+    is not pinned. See unrecorded notes in SUMMARY.md.
+
+system_transactions:
+  note: >-
+    Kaia has no system transactions in the EIP-4788/OP-deposit sense. Protocol
+    state changes happen in the consensus engine's Finalize (block reward
+    minting, fee burn, treasury rebalance at KIP-103/160), not as transactions
+    in the block body. Reward distribution is DEFERRED — DeferredTxFee is true
+    in the genesis governance config, so transaction fees are accumulated and
+    settled at block end rather than credited per transaction, which means the
+    proposer's balance does not move where mainnet's would.
+  src: params/config.go:MainnetChainConfig
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0x45"
+    name: GASLIMIT
+    severity: high
+    note: >-
+      There is no gasLimit field in the Kaia header. The value seen by
+      bytecode, and the value eth_getBlockByNumber reports, is the CONSTANT
+      params.UpperGasLimit = 500000000 (0x1dcd6500) — a compile-time number
+      synthesised for Ethereum compatibility, not a consensus quantity and not
+      a limit on anything. Any contract or tool that reads block.gaslimit to
+      size work, price gas or detect congestion gets a constant.
+    src: "params/config.go:UpperGasLimit, api/api_eth.go:UpperGasLimit"
+  - {op: "0x44", name: PREVRANDAO,
+     note: "before the Randao fork there was no mixHash at all; from Randao it is the KIP-114 BLS-derived RANDAO mix, not Ethereum's beacon randomness",
+     src: "blockchain/types/block.go:Header"}
+  note: >-
+    No opcode added or removed, and the jump table tracks upstream. But EVERY
+    opcode carries a second cost — see fee_model.computation_cost — so the
+    instruction set is identical while the cost model is two-dimensional.
+
+fee_model:
+  metering: "gas AND computation cost (two independent meters, both enforced)"
+  fee_market: "KIP-71 bounded dynamic base fee from Magma; a FIXED governance price before it"
+  extra_components:
+  - name: computation cost limit
+    severity: high
+    note: >-
+      A SECOND METERING AXIS with no mainnet analogue. Every opcode and every
+      precompile has a computation cost in addition to its gas cost, and a
+      transaction that exceeds OpcodeComputationCostLimit — 100,000,000 units
+      ("100ms") before Cancun, 150,000,000 ("150ms") from Cancun — fails, even
+      with unlimited gas remaining. Gas estimation and gas-bound loop
+      calibration ported from mainnet do not predict this failure, and the
+      failure is not an out-of-gas.
+    src: params/computation_cost_params.go:OpcodeComputationCostLimit
+  - name: fixed gas price before Magma
+    note: >-
+      Pre-Magma, ValidateTx rejects any transaction whose gasPrice is not
+      EXACTLY equal to the governance UnitPrice (25 gkei in the genesis config)
+      — not >=, ==, returning ErrInvalidUnitPrice. There was no gas auction at
+      all for the first ~100M blocks.
+    src: "blockchain/tx_pool.go:ErrInvalidUnitPrice, params/config.go:MainnetChainConfig"
+  - name: partial fee burn
+    note: >-
+      Magma burns totalFee/2. Kore burns totalFee/2 plus the remainder capped at
+      the proposer's minting reward. Mainnet burns the whole base fee.
+    src: "kaiax/reward/impl/getter.go:getBurnAmountMagma, kaiax/reward/impl/getter.go:getBurnAmountKore"
+  - name: fee delegation
+    severity: high
+    note: >-
+      For fee-delegated types the fee is paid by the feePayer account, not the
+      sender — wholly, or split by an integer feeRatio in [1,99] for the
+      WithRatio variants. Balance checks, nonce accounting and fee attribution
+      all have two subjects. A block explorer or accounting system that debits
+      `from` for the fee is wrong on every 0x09/0x0a/0x11/0x12/0x21/0x22/0x29/
+      0x2a/0x31/0x32/0x39/0x3a/0x49/0x4a transaction.
+    src: "blockchain/types/tx_internal_data.go:TxInternalDataFeePayer, blockchain/types/tx_internal_data.go:MaxFeeRatio"
+  - name: signature validation gas
+    note: >-
+      Because a sender may be a multisig or role-based account, validating the
+      sender costs a variable amount of gas returned by
+      AccountKey.SigValidationGas — intrinsic gas depends on the ACCOUNT'S KEY
+      STRUCTURE, not just on the transaction bytes.
+    src: "blockchain/types/transaction.go:ValidateSender, blockchain/types/accountkey/account_key.go:SigValidationGas"
+  note: >-
+    Base-fee bounds are governance parameters, not a formula: LowerBoundBaseFee
+    25000000000, UpperBoundBaseFee 750000000000, GasTarget 30000000,
+    MaxBlockGasUsedForBaseFee 60000000, BaseFeeDenominator 20. The base fee can
+    never fall below 25 gkei.
+
+header_fields:
+  src: blockchain/types/block.go:Header
+  added:
+  - {name: BlockScore, note: "replaces Difficulty in the struct; always 1 under BFT. Reported through eth_ RPC AS `difficulty`.",
+     src: blockchain/types/block.go:Header}
+  - {name: Rewardbase, note: "replaces Coinbase; the proposer's reward address. Reported through eth_ RPC as `miner`, but derived from the consensus engine's Author(), not from this field.",
+     src: blockchain/types/block.go:Header}
+  - {name: TimeFoS, note: "uint8 'fraction of a second' companion to Time, because 1-second blocks make whole-second timestamps ambiguous. Not exposed over eth_ RPC at all.",
+     src: blockchain/types/block.go:Header}
+  - {name: Governance, note: "RLP-encoded on-chain governance parameter changes, carried in the header itself",
+     src: blockchain/types/block.go:Header}
+  - {name: Vote, note: "the proposer's governance vote for this epoch",
+     src: blockchain/types/block.go:Header}
+  - {name: RandomReveal, spec: KIP-114, fork: randao, note: "96-byte BLS signature over the parent block number",
+     src: blockchain/types/block.go:Header}
+  removed:
+  - {name: UncleHash, note: "BFT finality; no ommers. eth_ RPC reports the CONSTANT EmptySha3Uncles under the key `sha3Uncles`.",
+     src: api/api_eth.go:EmptySha3Uncles}
+  - name: GasLimit
+    severity: high
+    note: >-
+      THERE IS NO BLOCK GAS LIMIT FIELD. eth_getBlockByNumber substitutes the
+      compile-time constant params.UpperGasLimit (500000000). Confirmed live:
+      every block reports gasLimit 0x1dcd6500.
+    src: api/api_eth.go:UpperGasLimit
+  - {name: Difficulty, note: "renamed to BlockScore; see added"}
+  - {name: Nonce, note: "no PoW nonce; eth_ RPC reports a zero BlockNonce", src: api/api_eth.go:BlockNonce}
+  - {name: MixDigest, note: "absent until Randao added MixHash as an optional tail field"}
+  - {name: WithdrawalsHash, note: "no beacon chain"}
+  - {name: ParentBeaconRoot, note: "no beacon chain"}
+  - {name: RequestsHash, note: "no EL-triggered requests"}
+  modified:
+  - name: Extra
+    severity: high
+    note: >-
+      Carries the Istanbul BFT consensus payload — validator addresses,
+      validator seals and the proposer seal. The eth_ namespace REPLACES IT WITH
+      EMPTY BYTES on the way out, with an in-source comment saying the real
+      value "cannot be used as meaningful way". So `extraData` over eth_ RPC is
+      not truncated or encoded differently: it is a lie of omission, and the
+      only way to read the real field is Kaia's own `kaia_` namespace. Confirmed
+      live: extraData is 0x on a block that certainly has consensus data.
+    src: api/api_eth.go:RpcMarshalEthHeader
+  - {name: Time, note: "*big.Int rather than uint64, paired with TimeFoS for sub-second resolution",
+     src: blockchain/types/block.go:Header}
+  - {name: BaseFee, fork: magma, note: "present from Magma; before that there is no field and the eth_ RPC substitutes params.ZeroBaseFee",
+     src: api/api_eth.go:ZeroBaseFee}
+  note: >-
+    Kaia's header shares only ParentHash, Root, TxHash, ReceiptHash, Bloom,
+    Number, GasUsed and Extra's position with Ethereum's. Six fields are Kaia's
+    own and eight of Ethereum's are absent. The eth_ namespace papers over the
+    gap with constants — EmptySha3Uncles, UpperGasLimit, an empty BlockNonce, an
+    empty extraData — so an Ethereum client sees a plausible header in which
+    four fields are fabricated and one is deliberately blanked.
+
+gotchas:
+- >-
+  A TRANSACTION CAN HAVE TWO SIGNERS AND THREE HASHES. Fee-delegated types carry
+  `feePayer` plus `feePayerSignatures` alongside the sender's, both as LISTS of
+  (v,r,s) because either party may be a multisig account. The two parties sign
+  different digests (the payer's commits to its own address). Hash(),
+  SenderTxHash() and EthTxHash() are three distinct values for one transaction.
+  Anything modelling "one transaction, one sender, one signature, one hash"
+  is wrong on roughly half of Kaia's type space.
+- >-
+  ecrecover(signature) != from. The sender is an explicit FIELD; the signature
+  is validated against the AccountKey registered on-chain for that address.
+  Keys are decoupled from addresses: weighted multisig, role-based keys
+  (separate keys for transacting, key rotation and fee payment), or
+  AccountKeyFail, which makes an account permanently unable to transact.
+- >-
+  ONE TxTypeAccountUpdate CAN CUT AN ACCOUNT OFF FROM ETHEREUM TOOLING FOREVER.
+  Ethereum-format transactions — legacy AND 0x78-wrapped typed, including
+  EIP-7702 — are only executable if the sender's AccountKey is still
+  AccountKeyLegacy. After an update, MetaMask, ethers and viem can no longer
+  move that account's funds, and the failure is a validation error, not a
+  signature mismatch, so it looks like a node problem.
+- >-
+  THE CONSENSUS ENVELOPE IS NOT EIP-2718. A typed transaction is
+  `rlp(uint16 type) || rlp(body)`, and an Ethereum typed transaction is
+  re-wrapped as `0x78 || <ethType> || rlp(body)`. The eth_ namespace adds and
+  strips the 0x78 so RPC looks standard; block bodies, p2p traffic and the
+  kaia_ namespace do not. Type numbers 0x7801-0x7804 do not fit in a byte.
+  0x78 also collides with Arbitrum's deposit type.
+- >-
+  THERE IS NO BLOCK GAS LIMIT. block.gaslimit and eth_getBlockByNumber's
+  gasLimit are both the compile-time constant 500000000. What actually bounds a
+  transaction is a SECOND METER: computation cost, capped at 150M units per
+  transaction from Cancun. A transaction can fail with plenty of gas left, and
+  gas estimation does not see it coming.
+- >-
+  extraData OVER eth_ RPC IS ALWAYS EMPTY BY DESIGN. The real field holds the
+  Istanbul BFT validator set and seals; the eth_ marshaller replaces it with
+  0x. Four other header fields (sha3Uncles, nonce, gasLimit, difficulty) are
+  synthesised constants or renames. Do not treat a Kaia block header from the
+  eth_ namespace as consensus data.
+- >-
+  PRE-ISTANBUL, KAIA'S PRECOMPILES COLLIDED WITH 0x09/0x0a/0x0b. vmLog, feePayer
+  and validateSender sat exactly where BLAKE2F, KZG and BLS12_G1ADD would later
+  go. Kaia moved ITS OWN to 0x03fd-0x03ff at Istanbul — the opposite resolution
+  to Tron, which relocated the Ethereum semantics instead. The old map is still
+  compiled in for historical replay, so a full-sync node executes both.
+- >-
+  THE PRIORITY FEE WAS DISCARDED FOR TWO YEARS. Before the Kaia fork (block
+  162900480) EffectiveGasPrice returns the base fee and ignores the tip
+  entirely, even though the tip was charged against the sender's balance in the
+  fee cap check. Only half the fee is burned even now.
+- >-
+  0x18 AND 0x40 ARE TOMBSTONED TYPE BYTES. TxTypeAccountCreation and TxTypeBatch
+  are named by the type enum and by String(), and neither can be decoded —
+  NewTxInternalData has no live case for them. They are permanently consumed.

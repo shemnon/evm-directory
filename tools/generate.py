@@ -119,7 +119,8 @@ def gen_precompiles(chains):
                     L.append(f"- **{name(c)} `{a}`** — {' '.join(e.get('note','').split())}")
         for e in (c.get("header_fields") or {}).get("modified") or []:
             if isinstance(e, dict) and e.get("severity") == "high":
-                L.append(f"- **{name(c)}** header `{e['name']}` — {' '.join(e.get('note','').split())}")
+                L.append(f"- **{name(c)}** header `{e.get('name', '?')}` — "
+                     f"{' '.join(e.get('note','').split())}")
         sc = c.get("system_contracts") or {}
         mb = sc.get("mutable_bytecode") if isinstance(sc, dict) else None
         if isinstance(mb, dict) and mb.get("severity") == "high":

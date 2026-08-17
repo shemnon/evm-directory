@@ -16,6 +16,8 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
     └── opBNB (v0.5.10, cancun)
 
 Tron — no upstream (role: independent)
+
+Hyperliquid (HyperEVM) — no upstream (role: independent)
 ```
 
 ## Fork mapping to mainnet
@@ -34,3 +36,4 @@ Tron — no upstream (role: independent)
 | World Chain | `osaka` | Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec (asserted at crates/chainspec/src/spec |
 | opBNB | `cancun` | THE DUAL-HERITAGE CASE. lineage.upstream is op-stack by code, but two of its precompiles come from BSC — blsSignatureVerify at 0x66 and cometBFTLightBlockValidate at 0x67, at BSC's addresses |
 | Tron | `cancun` | Tron versions its protocol as GreatVoyage releases with proposal-gated features, not as named hard forks mapped to Ethereum's. There is no fork-name mapping to record; feature activation is  |
+| Hyperliquid (HyperEVM) | `cancun` | No named fork schedule is published, no fork timestamps are exposed by the RPC, and with no client source there is no fork-condition table to read. Feature activation cannot be reconstructed |

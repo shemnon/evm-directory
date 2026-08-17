@@ -30,6 +30,10 @@ equivalent" is not a fact — BSC took Prague's EVM half and dropped its beacon 
 Repos are cloned shallow and pinned to a **released tag**, so every finding is
 reproducible. Each `SUMMARY.md` ends with the exact commands to re-verify it.
 
+Where no client is public, a row is built from **live probes of the running network**
+instead, pinned to a block height and marked `evidence: documented`. Such a row states
+what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.md).
+
 ## Status
 
 | Chain | Client | Pinned | Baseline |
@@ -46,6 +50,7 @@ reproducible. Each `SUMMARY.md` ends with the exact commands to re-verify it.
 | [World Chain](chains/worldchain/SUMMARY.md) | world-chain builder | `v2.4.2` | Osaka |
 | [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB fork) | `v0.5.10` | Cancun |
 | [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | Cancun (opcodes only) |
+| [Hyperliquid](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | live @ block `43436288` | pre-Prague (probed) |
 
 ## What the data shows
 
@@ -95,11 +100,18 @@ addresses and **six** divergent precompiles — input caps on BN256/BLS12-381 (a
 fault-proof constraint leaking into consensus) and P256VERIFY at half mainnet's gas.
 Any survey that diffs address lists calls it equivalent and is wrong six times.
 
-**`0x0100` is the one universal address, and it means something different everywhere.**
-All seven rows have P256VERIFY there, arriving through four unrelated forks — mainnet
-Osaka, OP Stack Fjord (RIP-7212), Avalanche Granite, and Tron. Five of the seven
-diverge from mainnet's semantics or gas. Presence proves nothing about lineage or
-fork level.
+**`0x0100` was the one universal address — until it wasn't.** Twelve of thirteen rows
+carry P256VERIFY there, arriving through four unrelated forks (mainnet Osaka, OP Stack
+Fjord/RIP-7212, Avalanche Granite, Tron), and most diverge from mainnet's semantics or
+gas. Presence proves nothing about lineage or fork level.
+
+Hyperliquid breaks it: `0x0100` is **empty**, behaving exactly like an unallocated
+address. That is worse than divergence. EIP-7951 signals *invalid signature* by
+returning empty output, which is byte-identical to what a missing precompile returns —
+so every P256 verification on that chain reports "invalid" forever, with no revert and
+no error. A passkey wallet ported there is broken and looks merely strict. Establishing
+this needed a *valid* signature and a mainnet control on identical calldata; the obvious
+probe, calling the address and checking for output, cannot tell the two cases apart.
 
 **Fork names lie in both directions.** BSC shipped Prague *seven weeks before mainnet*
 and Osaka five months after. Avalanche has P256VERIFY (an Osaka feature) without

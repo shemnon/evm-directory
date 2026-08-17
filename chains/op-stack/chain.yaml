@@ -1,11 +1,10 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: OP Stack
   slug: op-stack
   chain_id: null
   role: stack
-  is_chain: false
   live: true
   note: >-
     Not a chain. The shared codebase behind Optimism, Base, World Chain, Zora and
@@ -95,11 +94,11 @@ eips:
       on mainnet Osaka. A gas-bound loop calibrated on mainnet behaves differently.
     src: core/vm/contracts.go:PrecompiledContractsJovian
   7928:
-    status: absent
+    status: removed
     note: BlockAccessListHash header field absent; unshipped on mainnet too, so not yet a divergence.
 
 non_eip_specs:
-  - {id: RIP-7212, name: secp256r1 precompile, status: adopted, fork: fjord,
+  - {id: RIP-7212, name: secp256r1 precompile, adoption: adopted, fork: fjord,
      note: "same address as EIP-7951, different gas — see eips.7951"}
 
 tx_types:
@@ -210,6 +209,7 @@ header_fields:
   modified:
     - name: blobGasUsed
       fork: jovian
+      severity: high
       note: >-
         Repurposed to store the DA footprint. Same field name, same RLP position,
         same JSON key (`blobGasUsed`) — completely different meaning. An indexer

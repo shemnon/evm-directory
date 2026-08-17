@@ -1,11 +1,10 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: Avalanche subnet-evm (L1s / Subnets)
   slug: avalanche-subnet
   chain_id: null
-  role: fork
-  is_chain: false
+  role: template
   live: true
   note: >-
     Not a single chain — a CHAIN TEMPLATE. Every Avalanche L1/Subnet instantiates it
@@ -50,8 +49,8 @@ forks:
   - {name: granite, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100"}
 
 eips:
-  2537: {status: absent, note: "no Prague — BLS12-381 0x0b-0x11 unavailable"}
-  7702: {status: absent, note: "no Prague — tx type 0x04 does not exist"}
+  2537: {status: removed, note: "no Prague — BLS12-381 0x0b-0x11 unavailable"}
+  7702: {status: removed, note: "no Prague — tx type 0x04 does not exist"}
   4844: {status: removed, note: "no blob market on subnets"}
   7951:
     status: modified
@@ -59,7 +58,7 @@ eips:
     src: params/hooks_libevm.go:35,68-70
 
 non_eip_specs:
-  - {id: Avalanche Warp Messaging, name: cross-L1 messaging, status: optional,
+  - {id: Avalanche Warp Messaging, name: cross-L1 messaging, adoption: optional,
      src: "precompile/contracts/warp/module.go:23"}
 
 tx_types:
@@ -82,7 +81,8 @@ precompiles:
   "0x0200000000000000000000000000000000000000":
     name: ContractDeployerAllowList
     status: added
-    activation: opt-in (genesis key "contractDeployerAllowListConfig")
+    availability: optional
+    activation_condition: \'genesis key "contractDeployerAllowListConfig"\'
     src: precompile/contracts/deployerallowlist/module.go:22
     note: >-
       Gates CREATE/CREATE2 on an on-chain allowlist keyed by tx.ORIGIN (not
@@ -90,7 +90,8 @@ precompiles:
   "0x0200000000000000000000000000000000000001":
     name: ContractNativeMinter
     status: added
-    activation: opt-in (genesis key "contractNativeMinterConfig")
+    availability: optional
+    activation_condition: \'genesis key "contractNativeMinterConfig"\'
     src: precompile/contracts/nativeminter/module.go:24
     note: >-
       Allowlisted callers mint native coin directly via stateDB.AddBalance
@@ -99,25 +100,29 @@ precompiles:
   "0x0200000000000000000000000000000000000002":
     name: TxAllowList
     status: added
-    activation: opt-in (genesis key "txAllowListConfig")
+    availability: optional
+    activation_condition: \'genesis key "txAllowListConfig"\'
     src: precompile/contracts/txallowlist/module.go:22
     note: "gates transaction submission on msg.From, enforced in core/state_transition.go:361"
   "0x0200000000000000000000000000000000000003":
     name: FeeManager
     status: added
-    activation: opt-in (genesis key "feeManagerConfig")
+    availability: optional
+    activation_condition: \'genesis key "feeManagerConfig"\'
     src: precompile/contracts/feemanager/module.go:22
     note: "allowlisted callers rewrite the chain's fee config at runtime"
   "0x0200000000000000000000000000000000000004":
     name: RewardManager
     status: added
-    activation: opt-in (genesis key "rewardManagerConfig")
+    availability: optional
+    activation_condition: \'genesis key "rewardManagerConfig"\'
     src: precompile/contracts/rewardmanager/module.go:22
     note: "redirects or burns block fee rewards"
   "0x0200000000000000000000000000000000000005":
     name: Warp Messenger
     status: added
-    activation: opt-in (genesis key)
+    availability: optional
+    activation_condition: genesis key
     src: precompile/contracts/warp/module.go:23
     note: "same address as the C-Chain's warp precompile"
   "0x0100":

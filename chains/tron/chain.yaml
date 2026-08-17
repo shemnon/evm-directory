@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: Tron
@@ -50,34 +50,34 @@ forks:
 
 eips:
   1559:
-    status: absent
+    status: removed
     note: >-
       No base-fee market. BASEFEE (0x48) IS implemented but returns the
       governance-set ENERGY_FEE parameter (default 100 sun/energy), not a
       dynamically computed base fee. Same opcode, different quantity.
     src: actuator/src/main/java/org/tron/core/vm/OperationActions.java:550-556
   4844:
-    status: absent
+    status: removed
     note: >-
       No blobs. BLOBHASH and BLOBBASEFEE opcodes exist for bytecode compatibility;
       BLOBBASEFEE pushes zero unconditionally.
     src: actuator/src/main/java/org/tron/core/vm/OperationActions.java:698-701
-  2718: {status: absent, note: "no typed transaction envelope at all — see tx_types"}
-  2537: {status: absent, note: "no BLS12-381 precompiles"}
-  4844_kzg: {status: absent, note: "0x0a is occupied by validateMultiSign instead of KZG"}
+  2718: {status: removed, note: "no typed transaction envelope at all — see tx_types"}
+  2537: {status: removed, note: "no BLS12-381 precompiles"}
+  4844_kzg: {status: removed, note: "0x0a is occupied by validateMultiSign instead of KZG"}
   152:
     status: modified
     note: "BLAKE2F exists but at 0x020009, NOT at mainnet's 0x09 — 0x09 holds batchValidateSign"
-  7702: {status: absent}
-  4788: {status: absent, note: no beacon chain}
-  2935: {status: absent}
+  7702: {status: removed}
+  4788: {status: removed, note: no beacon chain}
+  2935: {status: removed}
   7951:
     status: modified
     note: "P256VERIFY present at 0x0100, matching the address used by mainnet, OP Stack and Avalanche"
     src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:212
 
 non_eip_specs:
-  - {id: TIP series, name: Tron Improvement Proposals, status: adopted,
+  - {id: TIP series, name: Tron Improvement Proposals, adoption: adopted,
      note: "activation by on-chain SR governance proposal, not by client release"}
 
 tx_types:

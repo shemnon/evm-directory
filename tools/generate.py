@@ -13,7 +13,7 @@ CHAINS = ROOT / "chains"
 ORDER = ["ethereum", "bnb", "avalanche-c", "avalanche-subnet", "op-stack", "worldchain", "tron"]
 
 MARK = {"added": "➕", "removed": "➖", "modified": "⚠️", "inherited": "=",
-        "pending": "◌", "absent": "➖", "optional": "◐"}
+        "pending": "◌", "tombstoned": "⊘"}
 
 def load():
     out = {}
@@ -53,8 +53,9 @@ def sortkey(a):
 
 def cell(entry, this_slug, org):
     if entry is None: return ""
-    st = entry.get("status", "inherited")
-    s = MARK.get(st, st)
+    s = MARK.get(entry.get("status", "inherited"), entry.get("status", ""))
+    if entry.get("availability") == "optional": s += "◐"
+    if entry.get("tombstoned_at"): s += "⏳"
     if entry.get("pending_conflict"): s += "‼️"
     if org and org != this_slug: s += "†"
     return s
@@ -84,11 +85,22 @@ def gen_precompiles(chains):
         nm = next((e.get("name", "") for e in tab[a].values() if e.get("name")), "")
         L.append(f"| `{a}` {nm} | " + " | ".join(row) + " |")
     L.append(legend())
-    L.append("## Notes worth reading\n")
+    L.append("## Silent divergences (`severity: high`)\n")
+    L.append("Divergences that produce wrong results with no revert, no error and no signal "
+             "to the caller — across every section, not just precompiles.\n")
     for s in slugs:
-        for a, e in (chains[s].get("precompiles") or {}).items():
-            if str(a).startswith("0x") and e.get("severity") == "high":
-                L.append(f"- **{name(chains[s])} `{a}`** — {e.get('note','').strip()}")
+        c = chains[s]
+        for sec in ("precompiles", "system_contracts"):
+            for a, e in (c.get(sec) or {}).items():
+                if isinstance(e, dict) and e.get("severity") == "high":
+                    L.append(f"- **{name(c)} `{a}`** — {' '.join(e.get('note','').split())}")
+        for e in (c.get("header_fields") or {}).get("modified") or []:
+            if isinstance(e, dict) and e.get("severity") == "high":
+                L.append(f"- **{name(c)}** header `{e['name']}` — {' '.join(e.get('note','').split())}")
+        sc = c.get("system_contracts") or {}
+        mb = sc.get("mutable_bytecode") if isinstance(sc, dict) else None
+        if isinstance(mb, dict) and mb.get("severity") == "high":
+            L.append(f"- **{name(c)}** system-contract bytecode — {' '.join(mb.get('note','').split())}")
     write("PRECOMPILES.md", "\n".join(L) + "\n")
 
 def gen_txtypes(chains):
@@ -160,6 +172,7 @@ def gen_matrix(chains):
                    if str(k).startswith("0x") and pred(v.get("status", "inherited")))
     row("Custom precompiles", lambda c, s: count(c, "precompiles", lambda x: x == "added") or "0")
     row("Modified precompiles", lambda c, s: count(c, "precompiles", lambda x: x == "modified") or "0")
+    row("Tombstoned precompiles", lambda c, s: count(c, "precompiles", lambda x: x == "tombstoned") or "0")
     row("Custom tx types", lambda c, s: count(c, "tx_types", lambda x: x == "added") or "0")
     row("Custom opcodes", lambda c, s: len((c.get("opcodes") or {}).get("added") or []) or "0")
     row("System contracts", lambda c, s: sum(1 for k in (c.get("system_contracts") or {})

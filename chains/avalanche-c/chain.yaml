@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: Avalanche C-Chain
@@ -77,20 +77,20 @@ eips:
       beacon-roots system contract has nothing to read.
     src: plugin/evm/wrapped_block.go:478-479
   2537:
-    status: absent
+    status: removed
     note: "BLS12-381 precompiles 0x0b-0x11 never adopted — C-Chain has no Prague"
-  2935: {status: absent, note: "Prague not adopted"}
-  6110: {status: absent, note: "Prague not adopted; no beacon chain"}
-  7002: {status: absent, note: "Prague not adopted; no beacon chain"}
-  7251: {status: absent, note: "Prague not adopted; no beacon chain"}
+  2935: {status: removed, note: "Prague not adopted"}
+  6110: {status: removed, note: "Prague not adopted; no beacon chain"}
+  7002: {status: removed, note: "Prague not adopted; no beacon chain"}
+  7251: {status: removed, note: "Prague not adopted; no beacon chain"}
   7702:
-    status: absent
+    status: removed
     note: >-
       NO EOA code delegation. Prague was never adopted, so tx type 0x04 does not
       exist. This is the single most consequential absence for wallets and
       account-abstraction tooling targeting the C-Chain.
-  7823: {status: absent, note: Osaka not adopted}
-  7883: {status: absent, note: Osaka not adopted}
+  7823: {status: removed, note: Osaka not adopted}
+  7883: {status: removed, note: Osaka not adopted}
   7951:
     status: modified
     note: >-
@@ -101,9 +101,9 @@ eips:
     src: params/hooks_libevm.go:35,81-86
 
 non_eip_specs:
-  - {id: ACP-176, name: dynamic fee / target gas excess, status: adopted,
+  - {id: ACP-176, name: dynamic fee / target gas excess, adoption: adopted,
      src: "consensus/dummy/consensus.go:79"}
-  - {id: Avalanche Warp Messaging, name: cross-subnet messaging, status: adopted, fork: durango,
+  - {id: Avalanche Warp Messaging, name: cross-subnet messaging, adoption: adopted, fork: durango,
      src: "precompile/contracts/warp/module.go:23"}
 
 tx_types:
@@ -155,22 +155,19 @@ precompiles:
   "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague"}
   "0x0100000000000000000000000000000000000000":
     name: GenesisContract
-    status: added
-    state: deprecated
+    status: tombstoned
     note: "always reverts (nativeasset.DeprecatedContract → vm.ErrExecutionReverted)"
     src: nativeasset/contract.go:25,167-171
   "0x0100000000000000000000000000000000000001":
     name: NativeAssetBalance
-    status: added
-    state: deprecated
+    status: tombstoned
     note: >-
       Live in Apricot Phase 2 and again in Phase 6; tombstoned at Banff. Now always
       reverts. Address is permanently burned — cannot be reused.
     src: nativeasset/contract.go:26
   "0x0100000000000000000000000000000000000002":
     name: NativeAssetCall
-    status: added
-    state: deprecated
+    status: tombstoned
     note: "same lifecycle as NativeAssetBalance; always reverts since Banff"
     src: nativeasset/contract.go:27
   "0x0200000000000000000000000000000000000005":

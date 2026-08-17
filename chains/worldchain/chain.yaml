@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: World Chain
@@ -50,8 +50,8 @@ forks:
   timeline:
   - {name: "bedrock..karst", mainnet_equivalent: see_op_stack, status: inherited}
   - {name: jovian, status: active, note: "hardfork.rs #[default] — 'World Chain is already on this hardfork'"}
-  - {name: tropo,  status: pending, activation: null, note: "ForkCondition::Never"}
-  - {name: strato, status: pending, activation: null, note: "ForkCondition::Never"}
+  - {name: tropo,  status: pending, activation_time: null, note: "ForkCondition::Never"}
+  - {name: strato, status: pending, activation_time: null, note: "ForkCondition::Never"}
 
 eips:
   # Everything inherited from op-stack. No World Chain EIP-level divergence today.
@@ -62,8 +62,7 @@ eips:
 non_eip_specs:
   - id: WIP-1001
     name: World Chain Native Account Abstraction
-    status: pending
-    spec_status: Draft
+    adoption: draft
     created: 2026-03-27
     src: specs/wips/wip-1001.md
     note: >-
@@ -73,40 +72,33 @@ non_eip_specs:
       crates/node/src/node.rs:81-83 describes WorldChainTxEnvelope as future work.
   - id: WIP-1002
     name: WorldID Subsidy Accounting
-    status: pending
-    spec_status: Draft
+    adoption: draft
   - id: WIP-1003
     name: World ID Transaction Subsidies
-    status: pending
-    spec_status: Draft
+    adoption: draft
   - id: WIP-1004
     name: EdDSA (Ed25519) Verification Precompile
-    status: pending
-    spec_status: Draft
+    adoption: draft
     src: specs/wips/wip-1004.md
     note: >-
       Proposes Ed25519 verification at 0x0100 with 2000 base gas + 12/word.
       That address is ALREADY OCCUPIED — see precompiles."0x0100".
   - id: WIP-1005
     name: Proof System Upgrade
-    status: pending
-    spec_status: Draft
+    adoption: draft
   - id: WIP-1006
     name: Proof System Architecture
-    status: pending
-    spec_status: Draft
+    adoption: draft
   - id: WIP-1007
     name: Flashblock Access Lists
-    status: pending
-    spec_status: Draft
+    adoption: draft
     category: Networking
   - id: WIP-1008
     name: Staked Subblocks and Unsafe-Head BFT
-    status: pending
-    spec_status: Draft
+    adoption: draft
   - id: PBH
     name: Priority Blockspace for Humans
-    status: active
+    adoption: adopted
     src: specs/pbh/
     note: >-
       NOT an EVM change. A transaction-ordering policy: txs calling pbhMulticall()

@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: BNB Smart Chain
@@ -31,25 +31,28 @@ consensus:
 
 baseline_fork: osaka
 
+recorded_at: 1755302400   # 2026-08-16
+stale_after: 1787625000   # 2026-08-25 Pasteur — 0x64/0x65 tombstone, precompile set changes
+
 forks:
   src: params/config.go:BSCChainConfig
   note: >-
     BSC bundles each Ethereum fork with a same-timestamp BSC fork. Two timing facts
     matter more than the names.
   timeline:
-  - {name: "shanghai + kepler",  activation: 1705996800, mainnet_equivalent: shanghai}
-  - {name: "cancun + haber",     activation: 1718863500, mainnet_equivalent: cancun}
-  - {name: "prague + pascal",    activation: 1742436600, mainnet_equivalent: prague,
+  - {name: "shanghai + kepler",  activation_time: 1705996800, mainnet_equivalent: shanghai}
+  - {name: "cancun + haber",     activation_time: 1718863500, mainnet_equivalent: cancun}
+  - {name: "prague + pascal",    activation_time: 1742436600, mainnet_equivalent: prague,
      note: "2025-03-20 — SEVEN WEEKS BEFORE mainnet's Prague (1746612311, 2025-05-07)"}
-  - {name: lorentz,  activation: 1745903100, mainnet_equivalent: null}
-  - {name: maxwell,  activation: 1751250600, mainnet_equivalent: null}
-  - {name: fermi,    activation: 1768357800, mainnet_equivalent: null}
-  - {name: "osaka + mendel", activation: 1777343400, mainnet_equivalent: osaka,
+  - {name: lorentz,  activation_time: 1745903100, mainnet_equivalent: null}
+  - {name: maxwell,  activation_time: 1751250600, mainnet_equivalent: null}
+  - {name: fermi,    activation_time: 1768357800, mainnet_equivalent: null}
+  - {name: "osaka + mendel", activation_time: 1777343400, mainnet_equivalent: osaka,
      note: "2026-04-28 — nearly five months AFTER mainnet's Osaka (2025-12-03)"}
-  - {name: pasteur, activation: 1787625000, status: pending,
-     note: "2026-08-25 — NOT YET LIVE as of 2026-08-16. Will deprecate 0x64 and 0x65."}
-  - {name: bpo1, activation: null, status: absent, note: "explicitly 'will be skipped in BSC'"}
-  - {name: bpo2, activation: null, status: absent, note: "explicitly 'will be skipped in BSC'"}
+  - {name: pasteur, activation_time: 1787625000, status: pending,
+     note: "not yet live; observed pre-activation on 2026-08-16. Will tombstone 0x64 and 0x65."}
+  - {name: bpo1, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
+  - {name: bpo2, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
 
 eips:
   2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)"}
@@ -80,7 +83,7 @@ eips:
     in the dataset of why fork names must not be trusted over EIP sets.
 
 non_eip_specs:
-  - {id: BEP-comprehensive, name: BSC BEP series, status: adopted,
+  - {id: BEP-comprehensive, name: BSC BEP series, adoption: adopted,
      note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs"}
 
 tx_types:
@@ -94,6 +97,7 @@ precompiles:
   "0x64":
     name: tmHeaderValidate
     status: added
+    tombstoned_at: 1787625000
     note: >-
       Tendermint header validation for the BNB Beacon Chain bridge. LIVE today.
       Will become tmHeaderValidateDeprecated at Pasteur (2026-08-25), after which it
@@ -102,6 +106,7 @@ precompiles:
   "0x65":
     name: iavlMerkleProofValidate
     status: added
+    tombstoned_at: 1787625000
     note: >-
       IAVL merkle proof validation. Currently the Plato variant; has been revised
       four times (base, Moran, Planck, Plato). Also tombstoned at Pasteur.
@@ -157,6 +162,7 @@ system_contracts:
   "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added}
   mutable_bytecode:
     mechanism: TryUpdateBuildInSystemContract
+    severity: high
     src: core/systemcontracts/upgrade.go:1111-1127
     note: >-
       BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode.
@@ -206,7 +212,7 @@ gotchas:
     (statedb.SetCode). Code at a fixed address can change with no transaction in any
     block. Indexers reconstructing contract history from transactions will miss it.
   - >-
-    0x64 and 0x65 become always-erroring at Pasteur (2026-08-25, nine days out) —
+    0x64 and 0x65 become always-erroring at Pasteur (activation_time 1787625000 = 2026-08-25) —
     the same tombstoning pattern as Avalanche's native-asset precompiles.
   - >-
     Only chain here with EIP-7702 besides mainnet, and the only one with zero

@@ -18,7 +18,7 @@ activation timestamps rather than a "current fork" label.
 `BPO1Time` and `BPO2Time` are `nil` with the comment *"will be skipped in BSC"* — the
 blob-parameter forks are explicitly declined.
 
-**Pasteur activates 2026-08-25 — nine days from today and not yet live.** All
+**Pasteur activates 2026-08-25 and was not yet live when this row was recorded (2026-08-16).** All
 precompile facts below are read from `PrecompiledContractsOsaka`, the currently
 active set, not from the newer Pasteur map in the same file.
 

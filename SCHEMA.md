@@ -20,6 +20,7 @@ Applies to entries in `precompiles`, `tx_types`, `opcodes`, `system_contracts`, 
 | `modified` | same address/number/name as mainnet, different semantics, gas, or encoding. **Must carry a `note`.** |
 | `tombstoned` | present but permanently non-functional — always reverts or errors. **Not the same as `removed`**: calling a tombstoned address fails, while calling an absent one succeeds with empty output. The address is permanently consumed. |
 | `pending` | specified or merged but not yet live on this chain |
+| `unrecorded` | **deliberately not established.** Renders as `?` in aggregate tables. Use this instead of omitting a fact: an omitted entry falls back to `inherited`, which would silently assert equivalence to mainnet that nobody verified. |
 
 `removed`, `modified` and `tombstoned` are the high-value rows — they are where
 integrations break. A chain that is honestly EVM-equivalent produces a nearly empty
@@ -113,6 +114,47 @@ addresses.
 
 `stack` and `template` rows are not chains; this is derivable from `role`, so there is
 no separate `is_chain` field.
+
+## Non-enumerable precompiles
+
+Base (from its Beryl upgrade) installs a `PrecompileLookup` that resolves precompiles
+**by predicate over the address** rather than from a fixed map. Roughly 2^72 addresses
+are precompiles. No address-keyed table can represent this.
+
+Such a chain records a `precompiles.dynamic_range` entry instead of address keys:
+
+```yaml
+precompiles:
+  dynamic_range:
+    name: B-20 token precompiles
+    status: added
+    pattern: "byte[0] == 0xb2 AND bytes[1..10] == 0 AND byte[10] in {0x00, 0x01}"
+    src: ...
+```
+
+The generator emits these in a dedicated section, and `verify.py` skips them — there
+is nothing to enumerate. Any consumer building a fixed precompile set must treat a
+`dynamic_range` as a membership test, not a list.
+
+## Lineage that is not a tree
+
+`lineage.upstream` assumes each chain has one parent. opBNB does not: its code is
+op-geth, but two precompiles and two fork names come from BSC. Such rows add
+`lineage.second_heritage: <slug>` — a documented escape hatch, so the fact is recorded
+rather than dropped to fit the model.
+
+Related caveat: inheritance resolves a descendant against the ancestor's **current**
+file, but a descendant pinned to an older client inherits the ancestor's **past**.
+opBNB's op-geth v0.5.10 stops at Fjord while the op-stack row pins a Jovian/Karst
+client, so opBNB has none of OP Stack's later changes. Record this in
+`lineage.sync_point`; the generated tables do not yet model it.
+
+## Evidence that lives in another row
+
+- `client.shared_with: <slug>` — this row has no clone; its evidence is another row's
+  (OP Mainnet shares op-stack's op-geth). `clone.sh` and `verify.py` follow it.
+- `client.companion_repos[]` — additional pinned repos supplying facts the main client
+  does not contain (OP Stack's predeploy definitions and per-chain fork schedules).
 
 ## Stack nodes and inheritance
 

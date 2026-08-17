@@ -36,11 +36,57 @@ reproducible. Each `SUMMARY.md` ends with the exact commands to re-verify it.
 |---|---|---|---|
 | [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.5` | Osaka (baseline) |
 | [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.7.8` | Osaka |
+| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.0` | Prague |
 | [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | Cancun |
-| [Avalanche subnet-evm](chains/avalanche-subnet/SUMMARY.md) | subnet-evm | `v0.8.0` | Cancun |
+| [Avalanche subnet-evm](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | Cancun |
+| [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.11.3` | Osaka (ArbOS 50) |
 | [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.2` | Osaka |
+| [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.2` | Osaka |
+| [Base](chains/base/SUMMARY.md) | base-reth-node | `v1.2.0` | Osaka |
 | [World Chain](chains/worldchain/SUMMARY.md) | world-chain builder | `v2.4.2` | Osaka |
+| [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB fork) | `v0.5.10` | Cancun |
 | [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | Cancun (opcodes only) |
+
+## What the data shows
+
+**Address collisions are real, shipped, and multiplying.** Arbitrum's ArbSys, ArbInfo,
+ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy `0x64`–`0x69` — *exactly*
+the six addresses BSC uses for its cross-chain and consensus precompiles. Two of the
+largest EVM chains, no shared code, six identical addresses, unrelated functions.
+opBNB makes `0x66` and `0x67` three-way. Polygon and BSC both put a contract called
+`ValidatorContract` at `0x…1000`, with different code. Any tool holding one global
+address-keyed map is wrong on some major chain.
+
+**Two allocation frontiers are closing on each other.** Mainnet assigns transaction
+type bytes upward from `0x04`. Chains assign downward from the `0x7f` ceiling:
+Arbitrum `0x78`, Base `0x79`, OP Stack `0x7e`, Polygon `0x7f`. The legal range is
+`0x00`–`0x7f` and there is no registry in between.
+
+**Some precompiles cannot be listed at all.** Base installs a lookup that resolves
+precompiles by *predicate over the address* — every `0xb2`-prefixed address matching
+its B-20 pattern is a precompile, ~2^72 of them. An address-keyed table is
+structurally incapable of representing this, so the schema records the predicate.
+
+**"Runs the OP Stack" constrains almost nothing.** OP Mainnet's delta file is empty.
+Base, on the same stack and the same client version, reimplements the EVM layer in
+Rust, adds five fixed precompiles plus the dynamic range, native account abstraction
+(EIP-8130) with its own tx type `0x79`, and four bespoke forks. opBNB, also on the OP
+Stack, carries BSC's precompiles and is frozen three fork-generations back.
+
+**Same-address divergence comes in four flavours,** each harder to detect than
+enumeration: OP Stack **caps inputs** (call reverts), Avalanche **omits** (feature
+absent), Polygon **reprices** (identical result, up to 22× the gas), Tron **replaces**
+(`0x03` returns something that is not RIPEMD160).
+
+**Fork activation has four incompatible mechanisms.** OP Stack enforces timestamp
+equality at startup; Avalanche assigns timestamps; Arbitrum gates on ArbOS version and
+ignores timestamps entirely; Polygon uses block numbers. "Read the fork timestamp"
+fails on half the dataset.
+
+**The schema keeps meeting axes it doesn't have.** Arbitrum's Stylus runs WebAssembly
+beside the EVM — "no custom opcodes" is true and misses an entire second VM. Base's
+precompiles aren't enumerable. opBNB has two parents. Each is recorded explicitly
+rather than flattened into a convenient zero.
 
 ## What the first pass established
 

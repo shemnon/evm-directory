@@ -19,12 +19,23 @@ MAINNET_STD = set(range(0x01, 0x12)) | {0x100}   # 0x01-0x11 plus P256VERIFY
 # coreth/subnet-evm consume ava-labs/libevm, so 0x01-0x11 are not in the tree.
 EXTERNAL_BASE = {"avalanche-c", "avalanche-subnet"}
 
-def repo(slug):
+def repo(slug, chain=None):
+    """The clone holding this row's evidence. Rows may carry companion repos, and
+    rows with client.shared_with borrow their ancestor's clone."""
+    if chain:
+        shared = chain.get("client", {}).get("shared_with")
+        if shared: slug = shared
     d = ROOT / "chains" / slug / "repos"
-    return next((p for p in d.iterdir() if p.is_dir()), None) if d.exists() else None
+    if not d.exists(): return None
+    dirs = [p for p in d.iterdir() if p.is_dir()]
+    if chain:
+        want = chain["client"]["repo"].rstrip("/").split("/")[-1]
+        for p in dirs:
+            if p.name == want: return p
+    return next(iter(sorted(dirs)), None)
 
-def text(slug, rel):
-    p = repo(slug)
+def text(slug, rel, chain=None):
+    p = repo(slug, chain)
     f = p / rel if p else None
     return f.read_text(errors="replace") if f and f.exists() else ""
 
@@ -94,15 +105,43 @@ def ex_tron():
             re.finditer(r"(\w+Addr)\s*=\s*new DataWord\(\s*\"([0-9a-fA-F]{64})\"\s*\)", s)}
 def ex_worldchain():
     return set()   # runs stock OP Stack execution; no precompiles of its own
+def ex_optimism():
+    return set()   # adds nothing; evidence is op-stack's
+def ex_arbitrum():
+    return go_addrs(text("arbitrum", "go-ethereum/core/types/arbitrum_signer.go"))
+def ex_polygon():
+    return go_addrs(block(text("polygon", "core/vm/contracts.go"),
+                          "var PrecompiledContractsChicago = "))
+def ex_opbnb():
+    # this client stops at Fjord — that IS its live set
+    return go_addrs(block(text("opbnb", "core/vm/contracts.go"),
+                          "var PrecompiledContractsFjord = "))
+def ex_base():
+    """Rust: `pub const ADDRESS: Address = address!("..")`. The B-20 dynamic range is
+    a predicate, not an address, so it is deliberately not enumerated here."""
+    p = repo("base", {"client": {"repo": "https://github.com/base/base"}})
+    out = set()
+    if p:
+        for f in (p / "crates" / "common" / "precompiles" / "src").rglob("*.rs"):
+            for m in re.finditer(r'pub const ADDRESS: Address = address!\("(0x)?([0-9a-fA-F]{40})"\)',
+                                 f.read_text(errors="replace")):
+                out.add(int(m.group(2), 16))
+    return out
 
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
-           "tron": ex_tron, "worldchain": ex_worldchain}
+           "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
+           "arbitrum": ex_arbitrum, "polygon": ex_polygon, "opbnb": ex_opbnb,
+           "base": ex_base}
 
 TXTYPE_FILES = {
     "ethereum": ["core/types/transaction.go"], "bnb": ["core/types/transaction.go"],
     "op-stack": ["core/types/transaction.go", "core/types/deposit_tx.go"],
+    "polygon": ["core/types/transaction.go"],
+    "opbnb": ["core/types/transaction.go", "core/types/deposit_tx.go"],
+    "arbitrum": ["go-ethereum/core/types/transaction.go"],
     "avalanche-c": [], "avalanche-subnet": [], "tron": [], "worldchain": [],
+    "optimism": [], "base": [],
 }
 def ex_txtypes(slug):
     out = set()
@@ -122,7 +161,7 @@ def main():
         c = yaml.safe_load(f.read_text())
         print(f"\n{slug}  ({c['client']['name']} {c['client']['version']})")
 
-        r = repo(slug)
+        r = repo(slug, c)
         if r is None:
             print("  ! no clone — run tools/clone.sh"); problems += 1; continue
         import subprocess
@@ -136,6 +175,8 @@ def main():
 
         # --- precompiles, both directions ---
         found, dec = EXTRACT[slug](), declared(c, "precompiles")
+        # a dynamic range is a predicate, not an address; nothing to enumerate
+        dyn = (c.get("precompiles") or {}).get("dynamic_range")
         # entries a chain declares as removed/pending are expected NOT to be in source
         expect = {a for a, v in dec.items()
                   if v.get("status") in (None, "added", "modified", "tombstoned", "inherited")
@@ -144,13 +185,20 @@ def main():
         if slug in EXTERNAL_BASE:
             expect = {a for a in expect if a not in set(range(0x01, 0x12))}
         missing = {a for a in expect if a not in found}
-        unlisted = {a for a in found if a not in dec and a not in MAINNET_STD}
+        # Some sources define precompiles and system contracts in one file (Arbitrum's
+        # arbitrum_signer.go), so the extractor cannot tell the categories apart.
+        # Check membership in either; category discipline is a review concern, not
+        # something the extractor can adjudicate.
+        elsewhere = set(declared(c, "system_contracts"))
+        unlisted = {a for a in found if a not in dec and a not in elsewhere
+                    and a not in MAINNET_STD}
         for a in sorted(missing):
             print(f"  MISSING  precompile 0x{a:02x} declared but not found in source"); problems += 1
         for a in sorted(unlisted):
             print(f"  UNLISTED precompile 0x{a:02x} in source but not in chain.yaml"); problems += 1
         if not missing and not unlisted:
-            print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared)")
+            extra = "  +1 dynamic range (not enumerable)" if dyn else ""
+            print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
 
         # --- tx types ---
         tf, td = ex_txtypes(slug), declared(c, "tx_types")

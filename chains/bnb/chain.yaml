@@ -55,6 +55,10 @@ forks:
   - {name: bpo2, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
 
 eips:
+  4844:
+    status: inherited
+    note: "blob market present; Cancun/Prague/Osaka blob schedules configured"
+    src: params/config.go:BSCChainConfig.BlobScheduleConfig
   2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)"}
   7702: {status: inherited, note: "tx type 0x04 present — the only non-mainnet chain here with EIP-7702"}
   7823: {status: inherited, note: "bigModExp{eip7823: true} matches mainnet Osaka exactly"}

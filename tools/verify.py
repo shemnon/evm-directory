@@ -173,7 +173,13 @@ def provenance(c):
             else: t["none"] += 1
     return t
 
-CITE = re.compile(r"([\w./\-]+\.(?:go|java|rs|proto|sol|md))(?::([\w.\-]+))?")
+# An extension ALLOWLIST was the wrong design: every new chain brings a new language,
+# and a citation in an unlisted one was silently accepted rather than checked. That hole
+# was found twice — first .sol (25 op-stack citations), then .yul/.toml/.cpp/.hpp, which
+# left 27 of Monad's 34 citations unverified. Match any dotted extension instead, so a
+# new language is checked by default rather than trusted by default. Requiring the
+# extension to start with a letter keeps version strings ("v1.2.3", "0.153.14") out.
+CITE = re.compile(r"([\w./\-]+\.[a-z][a-z0-9]{0,5})(?::([\w.\-]+))?")
 LINEREF = re.compile(r"^\d+(?:-\d+)?$")
 
 def roots(slug, chain):
@@ -205,9 +211,11 @@ def check_citations(raw, rs):
     line number, a path relative to the wrong directory, and a sibling that was one
     directory up. Every path in a comma-separated citation is checked, not just the
     first, which is how the second of those survived."""
-    bad, nsym, nline = [], 0, 0
+    bad, nsym, nline, nopath = [], 0, 0, 0
     for m in re.finditer(r"(?<![_\w])src: (.+)", raw):
-        for path, ref in CITE.findall(m.group(1)):
+        found = CITE.findall(m.group(1))
+        if not found: nopath += 1      # prose or a bare directory — nothing to resolve
+        for path, ref in found:
             f = resolve_cite(path, rs)
             if f is None:
                 bad.append(f"BAD SRC   {path} does not exist in any pinned clone"); continue
@@ -222,7 +230,7 @@ def check_citations(raw, rs):
                 nsym += 1
             else:
                 bad.append(f"BAD SYM   '{ref}' does not appear in {path}")
-    return bad, nsym, nline
+    return bad, nsym, nline, nopath
 
 def check_live(raw):
     """A live claim without a block height is unreproducible AND unverifiable."""
@@ -289,13 +297,14 @@ def main():
         if ex is None:
             print("  ! NO EXTRACTOR — precompile list NOT cross-checked against source")
             unextracted.append(slug)
-            bad, nsym, nline = check_citations(f.read_text(), roots(slug, c))
+            bad, nsym, nline, nopath = check_citations(f.read_text(), roots(slug, c))
             bad += check_live(f.read_text())
             for b in bad:
                 print(f"  {b}"); problems += 1
             if not bad and (nsym or nline):
                 print(f"  citations ok    {nsym} symbol(s) confirmed, "
-                      f"{nline} line ref(s) in range")
+                      f"{nline} line ref(s) in range"
+                      + (f", {nopath} citing no path" if nopath else ""))
             print(f"  evidence  {tally}")
             continue
         found, dec = ex(), declared(c, "precompiles")
@@ -340,12 +349,14 @@ def main():
         # --- evidence rule, enforced. `src_doc:`/`src_live:` deliberately point
         # OUTSIDE the clone, so they are checked for shape, not for existence.
         raw = f.read_text()
-        bad, nsym, nline = check_citations(raw, roots(slug, c))
+        bad, nsym, nline, nopath = check_citations(raw, roots(slug, c))
         bad += check_live(raw)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):
-            print(f"  citations ok    {nsym} symbol(s) confirmed, {nline} line ref(s) in range")
+            print(f"  citations ok    {nsym} symbol(s) confirmed, "
+                  f"{nline} line ref(s) in range"
+                  + (f", {nopath} citing no path" if nopath else ""))
         print(f"  evidence  {tally}")
 
     print(f"\n{'=' * 60}")

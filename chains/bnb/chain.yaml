@@ -1,0 +1,213 @@
+schema_version: 1
+
+chain:
+  name: BNB Smart Chain
+  slug: bnb
+  chain_id: 56
+  role: fork
+  live: true
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    Full-repo geth fork, closely rebased. Tracks mainnet through OSAKA and has the
+    Amsterdam/BPO scaffolding present. The most mainnet-faithful chain in this
+    dataset at the EVM layer.
+
+client:
+  name: bsc
+  repo: https://github.com/bnb-chain/bsc
+  version: v1.7.8
+  commit: cdb7548b5baacfdae92f9f63437d6456411665f3
+  language: go
+
+consensus:
+  engine: Parlia (Proof of Staked Authority)
+  block_time: 450ms
+  block_time_history: "3000ms default -> 1500ms Lorentz -> 750ms Maxwell -> 450ms Fermi"
+  block_time_src: consensus/parlia/parlia.go:61-64
+
+baseline_fork: osaka
+
+forks:
+  src: params/config.go:BSCChainConfig
+  note: >-
+    BSC bundles each Ethereum fork with a same-timestamp BSC fork. Two timing facts
+    matter more than the names.
+  timeline:
+  - {name: "shanghai + kepler",  activation: 1705996800, mainnet_equivalent: shanghai}
+  - {name: "cancun + haber",     activation: 1718863500, mainnet_equivalent: cancun}
+  - {name: "prague + pascal",    activation: 1742436600, mainnet_equivalent: prague,
+     note: "2025-03-20 — SEVEN WEEKS BEFORE mainnet's Prague (1746612311, 2025-05-07)"}
+  - {name: lorentz,  activation: 1745903100, mainnet_equivalent: null}
+  - {name: maxwell,  activation: 1751250600, mainnet_equivalent: null}
+  - {name: fermi,    activation: 1768357800, mainnet_equivalent: null}
+  - {name: "osaka + mendel", activation: 1777343400, mainnet_equivalent: osaka,
+     note: "2026-04-28 — nearly five months AFTER mainnet's Osaka (2025-12-03)"}
+  - {name: pasteur, activation: 1787625000, status: pending,
+     note: "2026-08-25 — NOT YET LIVE as of 2026-08-16. Will deprecate 0x64 and 0x65."}
+  - {name: bpo1, activation: null, status: absent, note: "explicitly 'will be skipped in BSC'"}
+  - {name: bpo2, activation: null, status: absent, note: "explicitly 'will be skipped in BSC'"}
+
+eips:
+  2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)"}
+  7702: {status: inherited, note: "tx type 0x04 present — the only non-mainnet chain here with EIP-7702"}
+  7823: {status: inherited, note: "bigModExp{eip7823: true} matches mainnet Osaka exactly"}
+  7883: {status: inherited, note: "bigModExp{eip7883: true} matches mainnet Osaka exactly"}
+  7951: {status: inherited, note: "p256Verify{eip7951: true} — mainnet gas, unlike OP Stack"}
+  2935:
+    status: inherited
+    note: >-
+      The ONLY Ethereum system contract BSC keeps. Notably its bytecode is installed
+      by the client at the Prague transition via statedb.SetCode
+      (core/systemcontracts/upgrade.go:1117-1120), and the code comment calls it
+      "a special system contract in bsc, which can't be upgraded".
+  4788:
+    status: removed
+    note: >-
+      No beacon roots. ActiveSystemContracts takes an early-return IsInBSC() branch
+      that omits BEACON_ROOTS_ADDRESS entirely — BSC has no beacon chain.
+    src: params/config.go:1917-1923
+  6110: {status: removed, note: "no DEPOSIT_CONTRACT_ADDRESS in the IsInBSC branch"}
+  7002: {status: removed, note: "no WITHDRAWAL_REQUEST_PREDEPLOY in the IsInBSC branch"}
+  7251: {status: removed, note: "no CONSOLIDATION_REQUEST_PREDEPLOY in the IsInBSC branch"}
+  note: >-
+    BSC's Prague adoption is a clean split: it takes the EVM-facing half (BLS12-381,
+    EIP-7702, EIP-2935) and drops the entire beacon/staking half (4788, 6110, 7002,
+    7251), which is meaningless without a beacon chain. This is the clearest example
+    in the dataset of why fork names must not be trusted over EIP sets.
+
+non_eip_specs:
+  - {id: BEP-comprehensive, name: BSC BEP series, status: adopted,
+     note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs"}
+
+tx_types:
+  note: >-
+    0x00-0x04, IDENTICAL to mainnet including EIP-7702 SetCodeTx. No BSC-specific
+    envelope types. The only chain in this dataset with zero tx-type divergence.
+  src: core/types/transaction.go:48-52
+
+precompiles:
+  # verified: core/vm/contracts.go:PrecompiledContractsOsaka (LIVE set as of 2026-08-16)
+  "0x64":
+    name: tmHeaderValidate
+    status: added
+    note: >-
+      Tendermint header validation for the BNB Beacon Chain bridge. LIVE today.
+      Will become tmHeaderValidateDeprecated at Pasteur (2026-08-25), after which it
+      returns errors.New("deprecated") — tombstoned, not removed.
+    src: core/vm/contracts.go:343, contracts_lightclient.go:139-147
+  "0x65":
+    name: iavlMerkleProofValidate
+    status: added
+    note: >-
+      IAVL merkle proof validation. Currently the Plato variant; has been revised
+      four times (base, Moran, Planck, Plato). Also tombstoned at Pasteur.
+    src: core/vm/contracts.go:344
+  "0x66":
+    name: blsSignatureVerify
+    status: added
+    fork: luban
+    src: core/vm/contracts.go:345
+  "0x67":
+    name: cometBFTLightBlockValidate
+    status: added
+    fork: luban
+    note: "currently the Hertz variant; Pasteur introduces another"
+    src: core/vm/contracts.go:346
+  "0x68":
+    name: verifyDoubleSignEvidence
+    status: added
+    note: "consensus slashing evidence verification exposed to the EVM"
+    src: core/vm/contracts.go:347
+  "0x69":
+    name: secp256k1SignatureRecover
+    status: added
+    note: "distinct from ECRECOVER at 0x01"
+    src: core/vm/contracts.go:348
+  "0x0100": {name: P256VERIFY, status: inherited, note: "mainnet semantics and gas"}
+  note: >-
+    ADDRESS PLACEMENT RISK. BSC's custom precompiles occupy 0x64-0x69 (decimal
+    100-105), which sits BETWEEN mainnet's occupied 0x01-0x11 and 0x0100. Mainnet
+    allocates upward from 0x11, leaving only 0x12-0x63 of headroom before collision.
+    Every other chain in this dataset placed customs at 0x0100.., 0x0200.. or higher.
+    BSC is the one on a collision course, and two of these addresses are being
+    tombstoned rather than freed — permanently consumed.
+
+system_contracts:
+  # verified: core/systemcontracts/const.go:5-21
+  "0x0000000000000000000000000000000000001000": {name: ValidatorContract, status: added}
+  "0x0000000000000000000000000000000000001001": {name: SlashContract, status: added}
+  "0x0000000000000000000000000000000000001002": {name: SystemRewardContract, status: added}
+  "0x0000000000000000000000000000000000001003": {name: LightClientContract, status: added}
+  "0x0000000000000000000000000000000000001004": {name: TokenHubContract, status: added}
+  "0x0000000000000000000000000000000000001005": {name: RelayerIncentivizeContract, status: added}
+  "0x0000000000000000000000000000000000001006": {name: RelayerHubContract, status: added}
+  "0x0000000000000000000000000000000000001007": {name: GovHubContract, status: added}
+  "0x0000000000000000000000000000000000001008": {name: TokenManagerContract, status: added}
+  "0x0000000000000000000000000000000000002000": {name: CrossChainContract, status: added}
+  "0x0000000000000000000000000000000000002001": {name: StakingContract, status: added}
+  "0x0000000000000000000000000000000000002002": {name: StakeHubContract, status: added}
+  "0x0000000000000000000000000000000000002003": {name: StakeCreditContract, status: added}
+  "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added}
+  "0x0000000000000000000000000000000000002005": {name: GovTokenContract, status: added}
+  "0x0000000000000000000000000000000000002006": {name: TimelockContract, status: added}
+  "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added}
+  mutable_bytecode:
+    mechanism: TryUpdateBuildInSystemContract
+    src: core/systemcontracts/upgrade.go:1111-1127
+    note: >-
+      BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode.
+      Twenty per-fork bytecode directories exist (bruno, euler, gibbs, moran,
+      planck, plato, luban, kepler, feynman, haber_fix, bohr, pascal, lorentz,
+      maxwell, fermi, pasteur, ...). Unique in this dataset: on every other chain,
+      code at an address changes only by transaction. Here the client swaps it, so
+      the same address can have completely different behaviour across a fork with no
+      on-chain transaction to observe.
+
+system_transactions:
+  note: >-
+    Parlia inserts system transactions from the block coinbase to system contracts
+    (consensus/parlia/parlia.go:1357,1945). isToSystemContract gates them.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 (London active at block 31302048)
+  extra_components: []
+  note: blob market present (Cancun/Prague/Osaka blob schedules configured); BPO forks skipped
+
+header_fields:
+  added: []
+  removed: []
+  modified: []
+
+gotchas:
+  - >-
+    BSC shipped Prague SEVEN WEEKS BEFORE Ethereum mainnet (2025-03-20 vs 2025-05-07)
+    and Osaka nearly five months AFTER (2026-04-28 vs 2025-12-03). "Behind mainnet"
+    is not a stable property of a chain — it flips fork to fork.
+  - >-
+    BSC took Prague's EVM half (BLS12-381, EIP-7702, EIP-2935) and dropped its
+    beacon half (4788, 6110, 7002, 7251) via an explicit IsInBSC() early return.
+    A fork-name-only survey would record "Prague" and be wrong about four EIPs.
+  - >-
+    Custom precompiles at 0x64-0x69 leave only 0x12-0x63 of headroom before mainnet
+    grows into them. This is the placement risk flagged from the Ethereum baseline,
+    realised.
+  - >-
+    System contract bytecode is REPLACED BY THE CLIENT at fork boundaries
+    (statedb.SetCode). Code at a fixed address can change with no transaction in any
+    block. Indexers reconstructing contract history from transactions will miss it.
+  - >-
+    0x64 and 0x65 become always-erroring at Pasteur (2026-08-25, nine days out) —
+    the same tombstoning pattern as Avalanche's native-asset precompiles.
+  - >-
+    Only chain here with EIP-7702 besides mainnet, and the only one with zero
+    transaction-type divergence.

@@ -1,0 +1,181 @@
+schema_version: 1
+
+chain:
+  name: Ethereum Mainnet
+  slug: ethereum
+  chain_id: 1
+  role: baseline
+  live: true
+
+lineage:
+  upstream: null            # this IS the root
+  ancestry: []
+  note: >-
+    All other rows in this dataset are expressed relative to this file.
+    ethereum/execution-specs is the normative spec; go-ethereum is used here as the
+    verification surface because the spec repo has no released mainnet-fork branch
+    (default branch is forks/amsterdam, i.e. unshipped).
+
+client:
+  name: go-ethereum
+  repo: https://github.com/ethereum/go-ethereum
+  version: v1.17.5
+  commit: 9621c6ad10934a01b5514886fb6fbd87640b6c05
+  language: go
+  note: reference-by-consensus, not by fiat; cross-check against execution-specs
+
+consensus:
+  engine: proof-of-stake (gasper)
+  finality: ~13 min (2 epochs)
+  block_time: 12s
+
+baseline_fork: osaka
+
+forks:
+  src: params/config.go:MainnetChainConfig
+  timeline:
+  - name: shanghai
+    activation: 1681338455
+    mainnet_equivalent: self
+  - name: cancun
+    activation: 1710338135
+    mainnet_equivalent: self
+  - name: prague
+    activation: 1746612311
+    mainnet_equivalent: self
+  - name: osaka
+    activation: 1764798551
+    mainnet_equivalent: self
+  - name: bpo1
+    activation: 1765290071
+    mainnet_equivalent: self
+    note: blob-parameter-only fork; target 10 / max 15
+  - name: bpo2
+    activation: 1767747671
+    mainnet_equivalent: self
+    note: blob-parameter-only fork; target 14 / max 21 — current live blob schedule
+  - name: bogota
+    activation: null
+    status: pending
+    note: >-
+      next named fork in geth's ordering (amsterdam -> bogota -> ubt per
+      params/config.go:465-467). Not scheduled. BPO3/BPO4 blob configs exist in
+      params but are not on the mainnet schedule.
+
+eips:
+  # Baseline chain: every mainnet EIP is `inherited` by definition, so this section
+  # lists only what forks care about downstream — the specs other chains commonly
+  # disable, delay, or alter. Presence here = "mainnet has it, check the other rows".
+  155:  {status: inherited, name: replay protection / chain id}
+  1559: {status: inherited, name: fee market, note: "commonly disabled or altered downstream (ETC removes it entirely)"}
+  2537: {status: inherited, name: BLS12-381 precompiles, fork: prague}
+  2935: {status: inherited, name: historical block hashes in state, fork: prague}
+  3607: {status: inherited, name: reject txs from senders with code}
+  4788: {status: inherited, name: beacon block root in EVM, fork: cancun}
+  4844: {status: inherited, name: shard blob transactions, fork: cancun, note: "frequent absence downstream — no blob market on most non-L1s"}
+  6110: {status: inherited, name: supply validator deposits on chain, fork: prague}
+  7002: {status: inherited, name: execution-layer triggerable exits, fork: prague}
+  7251: {status: inherited, name: increase MAX_EFFECTIVE_BALANCE, fork: prague}
+  7702: {status: inherited, name: set EOA account code, fork: prague}
+  7823: {status: inherited, name: modexp upper bounds, fork: osaka, src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+  7883: {status: inherited, name: modexp gas cost increase, fork: osaka, src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+  7951: {status: inherited, name: secp256r1 (P256VERIFY) precompile, fork: osaka,
+         note: "shipped on L2s as RIP-7212 years before mainnet — expect downstream chains to have it at the SAME address 0x0100 but under an earlier fork name"}
+
+non_eip_specs: []
+
+tx_types:
+  # verified: core/types/transaction.go:48-52
+  "0x00": {name: LegacyTx,     status: inherited, spec: frontier/EIP-155}
+  "0x01": {name: AccessListTx, status: inherited, spec: EIP-2930}
+  "0x02": {name: DynamicFeeTx, status: inherited, spec: EIP-1559}
+  "0x03": {name: BlobTx,       status: inherited, spec: EIP-4844}
+  "0x04": {name: SetCodeTx,    status: inherited, spec: EIP-7702}
+  src: core/types/transaction.go
+  note: >-
+    0x00 is the untyped RLP legacy envelope. Typed envelopes are 0x00-0x7f;
+    0x80-0xff are reserved to avoid RLP ambiguity, which is why OP Stack's
+    deposit type sits at 0x7e — the top of the legal range, chosen to minimise
+    collision risk with future mainnet types.
+
+precompiles:
+  # verified: core/vm/contracts.go:PrecompiledContractsOsaka
+  "0x01": {name: ECRECOVER,        status: inherited, spec: frontier}
+  "0x02": {name: SHA256,           status: inherited, spec: frontier}
+  "0x03": {name: RIPEMD160,        status: inherited, spec: frontier}
+  "0x04": {name: IDENTITY,         status: inherited, spec: frontier}
+  "0x05": {name: MODEXP,           status: inherited, spec: "EIP-198/2565/7823/7883"}
+  "0x06": {name: BN256_ADD,        status: inherited, spec: "EIP-196/1108"}
+  "0x07": {name: BN256_SCALAR_MUL, status: inherited, spec: "EIP-196/1108"}
+  "0x08": {name: BN256_PAIRING,    status: inherited, spec: "EIP-197/1108"}
+  "0x09": {name: BLAKE2F,          status: inherited, spec: EIP-152}
+  "0x0a": {name: KZG_POINT_EVALUATION, status: inherited, spec: EIP-4844}
+  "0x0b": {name: BLS12_G1ADD,      status: inherited, spec: EIP-2537}
+  "0x0c": {name: BLS12_G1MSM,      status: inherited, spec: EIP-2537}
+  "0x0d": {name: BLS12_G2ADD,      status: inherited, spec: EIP-2537}
+  "0x0e": {name: BLS12_G2MSM,      status: inherited, spec: EIP-2537}
+  "0x0f": {name: BLS12_PAIRING,    status: inherited, spec: EIP-2537}
+  "0x10": {name: BLS12_MAP_FP_TO_G1,  status: inherited, spec: EIP-2537}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: inherited, spec: EIP-2537}
+  "0x0100": {name: P256VERIFY,     status: inherited, spec: "EIP-7951 (= RIP-7212)", fork: osaka}
+  src: core/vm/contracts.go:PrecompiledContractsOsaka
+  note: >-
+    Contiguous 0x01-0x11, then a deliberate jump to 0x0100. That gap is the
+    convention forks exploit: nearly every chain in this dataset places its custom
+    precompiles far away from the mainnet range to stay collision-free as mainnet
+    grows. Chains that did NOT do this are worth flagging.
+
+system_contracts:
+  # verified: params/protocol_params.go:246-262. Real bytecode, NOT precompiles.
+  "0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02":
+    {name: Beacon roots, status: inherited, spec: EIP-4788, fork: cancun}
+  "0x0000F90827F1C53a10cb7A02335B175320002935":
+    {name: Historical block hashes, status: inherited, spec: EIP-2935, fork: prague}
+  "0x00000961Ef480Eb55e80D19ad83579A64c007002":
+    {name: Withdrawal request queue, status: inherited, spec: EIP-7002, fork: prague}
+  "0x0000BBdDc7CE488642fb579F8B00f3a590007251":
+    {name: Consolidation request queue, status: inherited, spec: EIP-7251, fork: prague}
+  "0x00000000219ab540356cBB839Cbe05303d7705fa":
+    {name: Beacon deposit contract, status: inherited, spec: EIP-6110,
+     src: "params/config.go:MainnetChainConfig.DepositContractAddress"}
+  src: params/protocol_params.go
+
+system_transactions:
+  sender: "0xfffffffffffffffffffffffffffffffffffffffe"
+  note: >-
+    EIP-4788 SYSTEM_ADDRESS. Not a tx type — an implicit pre-block call. Chains that
+    add protocol-driven state changes (OP deposits, Avalanche atomic ops) belong in
+    this category, not in tx_types, unless they define an actual type byte.
+  src: params/protocol_params.go:SystemAddress
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: baseline — the full Osaka jump table is the reference set
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 (base fee burned + priority tip)
+  blob_fee_market: EIP-4844 independent 1559-style market, target 14 / max 21 (BPO2)
+  extra_components: []
+  gas_limit: validator-adjustable, ~1/1024 per block
+
+header_fields:
+  added: []
+  removed: []
+  modified: []
+  note: baseline — Osaka header is the reference shape
+
+gotchas:
+  - >-
+    P256VERIFY at 0x0100 landed on mainnet only at Osaka (Dec 2025) but has been on
+    OP-Stack chains as RIP-7212 since well before. A contract that feature-detects it
+    will behave differently across chains that are otherwise "Prague-equivalent".
+  - >-
+    "Prague-equivalent" is ambiguous downstream: EIP-7702 and EIP-2537 shipped in the
+    same fork, and forks frequently adopt one without the other. Always record the
+    EIP set, never just the fork name. This is the reason the eips: map exists.
+  - >-
+    BPO forks change only blob target/max. A chain claiming "Osaka-equivalent" may
+    still have a completely different blob schedule, or no blob market at all.

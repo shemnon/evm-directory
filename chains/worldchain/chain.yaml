@@ -1,0 +1,194 @@
+schema_version: 1
+
+chain:
+  name: World Chain
+  slug: worldchain
+  chain_id: 480
+  role: fork
+  live: true
+  chain_id_src: crates/rpc/tests/fork_simulate.rs:46
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: null
+  note: >-
+    Not a client fork. World Chain runs stock OP Stack execution (op-reth / op-geth)
+    and adds an external block BUILDER. The repo pinned here is the builder, not a
+    node. All EVM semantics are inherited unchanged from op-stack; consult that file.
+  sync_point: >-
+    Follows the OP Stack upgrade sequence through Karst, then diverges to its own
+    schedule (crates/chainspec/src/hardfork.rs). Currently defaulted to Jovian.
+
+client:
+  name: world-chain (builder)
+  repo: https://github.com/worldcoin/world-chain
+  version: v2.4.2
+  commit: 33281430d5458697ef92ffba035bba245c5a0691
+  language: rust
+  built_on: reth / op-reth
+  note: >-
+    A block-building sidecar, not an execution client. Execution is stock OP Stack.
+
+consensus:
+  engine: OP Stack (sequencer) + rollup-boost external block production
+  block_time: 2s
+  note: >-
+    rollup-boost multiplexes engine API calls to both the default EL and the World
+    Chain builder, and falls back to the default EL block if the builder is late or
+    returns an invalid block. The builder therefore cannot change state-transition
+    rules — only ordering.
+
+baseline_fork: osaka
+
+forks:
+  src: crates/chainspec/src/hardfork.rs
+  note: >-
+    Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two
+    World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec
+    (asserted at crates/chainspec/src/spec.rs:578-579) — declared, not scheduled.
+  timeline:
+  - {name: "bedrock..karst", mainnet_equivalent: see_op_stack, status: inherited}
+  - {name: jovian, status: active, note: "hardfork.rs #[default] — 'World Chain is already on this hardfork'"}
+  - {name: tropo,  status: pending, activation: null, note: "ForkCondition::Never"}
+  - {name: strato, status: pending, activation: null, note: "ForkCondition::Never"}
+
+eips:
+  # Everything inherited from op-stack. No World Chain EIP-level divergence today.
+  note: >-
+    No deltas beyond op-stack's. World Chain's own EIP-shaped changes live in the
+    WIP series and are all Draft (see non_eip_specs).
+
+non_eip_specs:
+  - id: WIP-1001
+    name: World Chain Native Account Abstraction
+    status: pending
+    spec_status: Draft
+    created: 2026-03-27
+    src: specs/wips/wip-1001.md
+    note: >-
+      Would add typed tx 0x1D and a WORLD_CHAIN_ACCOUNT_MANAGER predeploy. The spec
+      states it "MUST NOT activate until every parameter below is assigned in fork
+      configuration"; no such parameters are assigned in this tree. Not implemented:
+      crates/node/src/node.rs:81-83 describes WorldChainTxEnvelope as future work.
+  - id: WIP-1002
+    name: WorldID Subsidy Accounting
+    status: pending
+    spec_status: Draft
+  - id: WIP-1003
+    name: World ID Transaction Subsidies
+    status: pending
+    spec_status: Draft
+  - id: WIP-1004
+    name: EdDSA (Ed25519) Verification Precompile
+    status: pending
+    spec_status: Draft
+    src: specs/wips/wip-1004.md
+    note: >-
+      Proposes Ed25519 verification at 0x0100 with 2000 base gas + 12/word.
+      That address is ALREADY OCCUPIED — see precompiles."0x0100".
+  - id: WIP-1005
+    name: Proof System Upgrade
+    status: pending
+    spec_status: Draft
+  - id: WIP-1006
+    name: Proof System Architecture
+    status: pending
+    spec_status: Draft
+  - id: WIP-1007
+    name: Flashblock Access Lists
+    status: pending
+    spec_status: Draft
+    category: Networking
+  - id: WIP-1008
+    name: Staked Subblocks and Unsafe-Head BFT
+    status: pending
+    spec_status: Draft
+  - id: PBH
+    name: Priority Blockspace for Humans
+    status: active
+    src: specs/pbh/
+    note: >-
+      NOT an EVM change. A transaction-ordering policy: txs calling pbhMulticall()
+      or handleAggregatedOps() on the PBHEntryPoint contract, carrying a valid World
+      ID PBHPayload, get top-of-block priority. PBH transactions are "standard OP
+      transactions" (specs/pbh/txs.md:3) and PBHEntryPoint is an ordinary deployed
+      contract, not a predeploy or precompile. Belongs in a block-policy column, not
+      an EVM-difference column.
+
+tx_types:
+  "0x1D":
+    name: WorldChainTx
+    status: pending
+    spec: WIP-1001
+    src: specs/wips/wip-1001.md
+    note: >-
+      Draft only; not implemented in this tree. COLLISION RISK: mainnet's typed-tx
+      allocations grow upward from 0x04 (currently at 0x04/EIP-7702), and 0x1D (29)
+      sits inside that growth path. Contrast OP Stack's 0x7e, deliberately placed at
+      the top of the legal 0x00-0x7f range for exactly this reason.
+  note: >-
+    Live set = op-stack's (0x00-0x04 plus 0x7e deposit). No live additions.
+
+precompiles:
+  "0x0100":
+    name: "P256VERIFY (live); EdDSA proposed"
+    status: modified
+    inherited_from: op-stack
+    pending_conflict: WIP-1004
+    spec: "EIP-7951 live / WIP-1004 proposed"
+    src: specs/wips/wip-1004.md
+    conflict: true
+    note: >-
+      WIP-1004 specifies EDDSA_PRECOMPILE_ADDRESS = 0x0100. That address already
+      holds P256VERIFY on World Chain today — inherited from OP Stack Fjord
+      (RIP-7212) and matching mainnet EIP-7951. The draft does not acknowledge the
+      overlap, and its stated rationale (wip-1004.md:105) rests on two stale
+      premises: that Ethereum reserves only "0x01-0x0A" (mainnet has reserved
+      0x01-0x11 since Prague/EIP-2537), and that RIP-7212 established a convention
+      of "placing non-mainnet precompiles starting at 0x0100" (RIP-7212 OCCUPIES
+      0x0100 rather than opening the range above it). The spec does say the address
+      "MAY be revised by maintainers before activation," so this is a draft to fix,
+      not shipped behaviour. Recorded because it is exactly the allocation-collision
+      class this dataset exists to surface.
+  note: >-
+    Live set is identical to op-stack's, including all six of op-stack's semantic
+    divergences from mainnet. World Chain adds nothing live.
+
+system_contracts:
+  note: >-
+    Inherits the OP Stack 0x42.. set. PBHEntryPoint is a normal deployed contract
+    (pkg/contracts/src/pbh/PBHEntryPointImplV1.sol), NOT a predeploy — it holds no
+    reserved address and requires no client support.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+
+fee_model:
+  metering: gas
+  note: inherits op-stack's three-component model (L2 1559 + L1 data fee + operator fee)
+
+header_fields:
+  added: []
+  removed: []
+  modified: []
+  note: inherits op-stack's repurposed blobGasUsed
+
+gotchas:
+  - >-
+    World Chain has ZERO live EVM divergence from OP Stack. Its differentiator (PBH)
+    is a block-ordering policy enforced by an external builder that cannot alter the
+    state transition — rollup-boost falls back to the default EL block if the
+    builder misbehaves. Anyone expecting "the World ID chain" to have custom
+    precompiles or account types today is reading the roadmap, not the chain.
+  - >-
+    The entire WIP series (1001-1008) is Draft, and the two World-Chain-specific
+    hardforks (Tropo, Strato) are ForkCondition::Never. This chain's interesting
+    deltas are all in the future tense.
+  - >-
+    WIP-1004 proposes EdDSA at 0x0100, already occupied by P256VERIFY. Draft-stage
+    and explicitly revisable, but it shows how quickly the "custom precompiles live
+    far from mainnet" convention erodes once 0x0100 itself became a mainnet address
+    at Osaka.

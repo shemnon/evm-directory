@@ -1,0 +1,234 @@
+schema_version: 1
+
+chain:
+  name: OP Stack
+  slug: op-stack
+  chain_id: null
+  role: stack
+  is_chain: false
+  live: true
+  note: >-
+    Not a chain. The shared codebase behind Optimism, Base, World Chain, Zora and
+    others. Descendant chains declare only their own deltas on top of this file.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    op-geth v1.101702.2 tracks go-ethereum through Osaka. Header struct is identical
+    to geth v1.17.5 except that op-geth lacks EIP-7928 BlockAccessListHash (an
+    unshipped Amsterdam field) and repurposes BlobGasUsed. Rebase, not divergence.
+
+client:
+  name: op-geth
+  repo: https://github.com/ethereum-optimism/op-geth
+  version: v1.101702.2
+  commit: e8800cffe53d459cde8a07c8e8f1de9d86e79e07
+  language: go
+  note: >-
+    The EL only. Predeploy bytecode, the derivation pipeline and superchain fork
+    schedules live in ethereum-optimism/optimism, which is NOT cloned here — facts
+    that depend on it are marked out_of_tree.
+
+consensus:
+  engine: derived from L1 (single sequencer + fault proofs)
+  finality: inherits L1 finality after challenge window
+  block_time: 2s (typical)
+
+baseline_fork: osaka
+
+forks:
+  src: params/config.go
+  mapping_src: params/config.go:1687-1694
+  note: >-
+    OP fork times are independent config fields, but CheckConfigForkOrder ENFORCES
+    equality with their Ethereum counterparts — a config that violates this is
+    rejected at startup. This makes the fork mapping a verified fact, not a claim.
+  timeline:
+  - {name: bedrock,  mainnet_equivalent: null,     note: OP genesis of the current architecture}
+  - {name: regolith, mainnet_equivalent: null}
+  - {name: canyon,   mainnet_equivalent: shanghai, enforced: "ShanghaiTime == CanyonTime"}
+  - {name: ecotone,  mainnet_equivalent: cancun,   enforced: "CancunTime == EcotoneTime"}
+  - {name: fjord,    mainnet_equivalent: null,     note: introduced P256VERIFY at 0x0100 as RIP-7212}
+  - {name: granite,  mainnet_equivalent: null,     note: capped BN256 pairing input}
+  - {name: holocene, mainnet_equivalent: null}
+  - {name: isthmus,  mainnet_equivalent: prague,   enforced: "PragueTime == IsthmusTime"}
+  - {name: jovian,   mainnet_equivalent: null,     note: capped BLS12-381 inputs; repurposed blobGasUsed for DA}
+  - {name: karst,    mainnet_equivalent: null,     note: newest predicate present in this tree}
+  - {name: interop,  mainnet_equivalent: null,     note: cross-L2 inbox at 0x42..22}
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      1559 applies to the L2 base fee, but total user cost = L2 execution fee +
+      L1 data fee + (from Isthmus) operator fee. Fee estimation that models only
+      1559 underestimates cost on every OP chain.
+    src: core/types/rollup_cost.go
+  4844:
+    status: removed
+    note: >-
+      No blob market on L2. Blobs are an L1 DA mechanism for the batcher; there is
+      no user-facing BlobTx. The blobGasUsed header field is repurposed (see
+      header_fields), which is strictly worse than absence for anyone parsing it.
+  7951:
+    status: modified
+    note: >-
+      P256VERIFY exists at the same address as mainnet but costs 3450 gas
+      (P256VerifyGasFjord, the RIP-7212 value) instead of mainnet's 6900
+      (P256VerifyGas). The OP fork branch is checked BEFORE the Osaka branch in
+      activePrecompiledContracts, so reaching Osaka does NOT restore mainnet
+      pricing. Shipped at Fjord, years before mainnet's Osaka.
+    src: params/protocol_params.go:183-184, core/vm/contracts.go:304-316
+  7823:
+    status: removed
+    note: >-
+      MODEXP upper bounds. Jovian's precompile map builds bigModExp{eip2565: true}
+      with eip7823 false, vs mainnet Osaka's eip7823 true. OP accepts modexp inputs
+      that mainnet rejects.
+    src: core/vm/contracts.go:PrecompiledContractsJovian
+  7883:
+    status: removed
+    note: >-
+      MODEXP gas increase. Same cause as 7823 — MODEXP is CHEAPER on OP Stack than
+      on mainnet Osaka. A gas-bound loop calibrated on mainnet behaves differently.
+    src: core/vm/contracts.go:PrecompiledContractsJovian
+  7928:
+    status: absent
+    note: BlockAccessListHash header field absent; unshipped on mainnet too, so not yet a divergence.
+
+non_eip_specs:
+  - {id: RIP-7212, name: secp256r1 precompile, status: adopted, fork: fjord,
+     note: "same address as EIP-7951, different gas — see eips.7951"}
+
+tx_types:
+  "0x7e":
+    name: DepositTx
+    status: added
+    spec: OP Stack Bedrock
+    src: core/types/deposit_tx.go:27
+    fields: [SourceHash, From, To, Mint, Value, Gas, IsSystemTransaction, Data]
+    note: >-
+      Unsigned and unpriced. No nonce, no signature (v/r/s), no gasPrice or
+      gasTipCap. Inserted by the derivation pipeline from L1 events, not submitted
+      by users. `Mint` creates native ETH from nothing — the only tx type in this
+      dataset that increases total supply. Any tool assuming "every tx has a
+      recoverable sender signature" breaks here.
+  note: >-
+    0x7e is the top of the legal typed-envelope range (0x00-0x7f), chosen to
+    maximise distance from mainnet's allocations growing upward from 0x04.
+
+precompiles:
+  # verified: core/vm/contracts.go:PrecompiledContractsJovian (newest active set)
+  "0x05":
+    name: MODEXP
+    status: modified
+    note: "no EIP-7823 bounds, no EIP-7883 repricing — cheaper and more permissive than mainnet Osaka"
+  "0x08":
+    name: BN256_PAIRING
+    status: modified
+    note: >-
+      input capped at 81984 bytes / 427 pairs (Bn256PairingMaxInputSizeJovian);
+      Granite capped it at 112687 first. Mainnet has NO cap. Reverts with
+      errBadPairingInputSize where mainnet succeeds.
+    src: params/protocol_params.go:194
+  "0x0c":
+    name: BLS12_G1MSM
+    status: modified
+    note: "input capped at 288960 bytes / 1806 pairs; mainnet uncapped"
+    src: params/protocol_params.go:195
+  "0x0e":
+    name: BLS12_G2MSM
+    status: modified
+    note: "input capped at 278784 bytes / 968 pairs; mainnet uncapped"
+    src: params/protocol_params.go:196
+  "0x0f":
+    name: BLS12_PAIRING
+    status: modified
+    note: "input capped at 156672 bytes / 408 pairs; mainnet uncapped"
+    src: params/protocol_params.go:197
+  "0x0100":
+    name: P256VERIFY
+    status: modified
+    note: "3450 gas vs mainnet's 6900; present since Fjord, long before mainnet Osaka"
+    src: params/protocol_params.go:183-184
+  note: >-
+    Zero added addresses. Every OP Stack precompile divergence is a SEMANTIC change
+    at a mainnet address — the hardest kind to detect, because address enumeration
+    finds nothing. The four input caps exist so accelerated precompiles stay under
+    the fault-proof VM's 16M gas limit (params/protocol_params.go:190).
+
+system_contracts:
+  # only those referenced by the EL itself; full 0x42.. set is out_of_tree
+  "0x4200000000000000000000000000000000000015":
+    {name: L1Block, status: added, src: "core/types/rollup_cost.go:68",
+     note: "holds L1 base fee, blob base fee, fee scalars, operator fee params"}
+  "0x4200000000000000000000000000000000000016":
+    {name: L2ToL1MessagePasser, status: added, src: "params/protocol_params.go:31"}
+  "0x4200000000000000000000000000000000000019":
+    {name: BaseFeeVault, status: added, src: "params/protocol_params.go:27"}
+  "0x420000000000000000000000000000000000001A":
+    {name: L1FeeVault, status: added, src: "params/protocol_params.go:29"}
+  "0x420000000000000000000000000000000000001B":
+    {name: OperatorFeeVault, status: added, src: "params/protocol_params.go:33"}
+  "0x4200000000000000000000000000000000000022":
+    {name: CrossL2Inbox, status: added, fork: interop, src: "params/interop.go:5"}
+  out_of_tree: >-
+    The complete 0x42.. predeploy set (WETH9, L2StandardBridge, GasPriceOracle,
+    L2CrossDomainMessenger, ...) is defined in ethereum-optimism/optimism, not in
+    op-geth. Only the six the EL itself references are verified here. Anything more
+    would violate the evidence rule.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode divergence. OP Stack's claim of EVM equivalence holds at the opcode
+    layer; it breaks at the precompile and fee layers instead.
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 on L2 base fee
+  extra_components:
+    - name: L1 data fee
+      note: "charged per tx for L1 DA. Three successive formulas: Bedrock, Ecotone, Fjord."
+      src: core/types/rollup_cost.go:NewL1CostFunc
+    - name: operator fee
+      fork: isthmus
+      note: "scalar * gasUsed + constant, from OperatorFeeParamsSlot in L1Block"
+      src: core/types/rollup_cost.go:NewOperatorCostFunc
+  note: >-
+    Three independent fee components. eth_estimateGas covers only the first.
+
+header_fields:
+  added: []
+  removed:
+    - {name: BlockAccessListHash, spec: EIP-7928,
+       note: "present in geth v1.17.5 as optional; absent here. Unshipped on mainnet, so not yet a live divergence."}
+  modified:
+    - name: blobGasUsed
+      fork: jovian
+      note: >-
+        Repurposed to store the DA footprint. Same field name, same RLP position,
+        same JSON key (`blobGasUsed`) — completely different meaning. An indexer
+        computing blob economics from OP chain headers gets silent garbage rather
+        than an error. This is the single nastiest divergence found so far.
+      src: core/types/block.go:24-26
+  src: core/types/block.go
+
+gotchas:
+  - >-
+    Address enumeration finds ZERO custom precompiles on OP Stack, yet six mainnet
+    addresses behave differently. Any survey that only diffs address lists reports
+    "fully equivalent" and is wrong.
+  - >-
+    activePrecompiledContracts checks IsOptimismJovian BEFORE IsOsaka. An OP chain
+    that activates Osaka does NOT get mainnet's Osaka precompile semantics — the OP
+    branch shadows it permanently. "Osaka-equivalent" is false for OP chains.
+  - >-
+    Deposit transactions (0x7e) have no signature and no gas price, and can mint
+    native ETH. Sender-recovery and fee-accounting assumptions both break.
+  - >-
+    blobGasUsed means DA footprint from Jovian on, not blob gas.

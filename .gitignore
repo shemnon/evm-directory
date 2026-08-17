@@ -1,0 +1,3 @@
+chains/*/repos/
+.DS_Store
+tools/.venv/

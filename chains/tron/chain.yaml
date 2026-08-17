@@ -1,0 +1,264 @@
+schema_version: 1
+
+chain:
+  name: Tron
+  slug: tron
+  chain_id: 728126428
+  role: independent
+  equivalence: behavioural
+  live: true
+  note: >-
+    Not a fork of any Ethereum client. java-tron reimplements EVM semantics in Java
+    with its own resource model, transaction format and address encoding. Deltas
+    below are BEHAVIOURAL comparisons against mainnet, not code diffs.
+
+lineage:
+  upstream: null
+  ancestry: []
+  inspired_by: ethereumj (defunct)
+  note: >-
+    Bears structural traces of the old ethereumj codebase (class names like
+    DataWord, Program, PrecompiledContracts) but has no live upstream to sync from.
+    Nothing here is a rebase; every mainnet feature had to be re-implemented, which
+    is why the divergences are semantic rather than configurational.
+
+client:
+  name: java-tron
+  repo: https://github.com/tronprotocol/java-tron
+  version: GreatVoyage-v4.8.2.1
+  commit: f8b05d40abc949fa588ab64d8fd8fd82845ebeed
+  language: java
+
+consensus:
+  engine: DPoS (27 Super Representatives)
+  block_time: 3s
+
+baseline_fork: cancun
+baseline_note: >-
+  Opcode-level only. Tron implements the full Cancun opcode set (PUSH0, MCOPY,
+  TLOAD/TSTORE, BLOBHASH, BLOBBASEFEE) but adopts essentially none of Ethereum's
+  transaction, fee or system-contract architecture. "Cancun-equivalent" describes
+  the jump table and nothing else.
+
+forks:
+  src: GreatVoyage release series
+  note: >-
+    Tron versions its protocol as GreatVoyage releases with proposal-gated features,
+    not as named hard forks mapped to Ethereum's. There is no fork-name mapping to
+    record; feature activation is by on-chain SR governance proposal.
+  timeline: []
+
+eips:
+  1559:
+    status: absent
+    note: >-
+      No base-fee market. BASEFEE (0x48) IS implemented but returns the
+      governance-set ENERGY_FEE parameter (default 100 sun/energy), not a
+      dynamically computed base fee. Same opcode, different quantity.
+    src: actuator/src/main/java/org/tron/core/vm/OperationActions.java:550-556
+  4844:
+    status: absent
+    note: >-
+      No blobs. BLOBHASH and BLOBBASEFEE opcodes exist for bytecode compatibility;
+      BLOBBASEFEE pushes zero unconditionally.
+    src: actuator/src/main/java/org/tron/core/vm/OperationActions.java:698-701
+  2718: {status: absent, note: "no typed transaction envelope at all — see tx_types"}
+  2537: {status: absent, note: "no BLS12-381 precompiles"}
+  4844_kzg: {status: absent, note: "0x0a is occupied by validateMultiSign instead of KZG"}
+  152:
+    status: modified
+    note: "BLAKE2F exists but at 0x020009, NOT at mainnet's 0x09 — 0x09 holds batchValidateSign"
+  7702: {status: absent}
+  4788: {status: absent, note: no beacon chain}
+  2935: {status: absent}
+  7951:
+    status: modified
+    note: "P256VERIFY present at 0x0100, matching the address used by mainnet, OP Stack and Avalanche"
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:212
+
+non_eip_specs:
+  - {id: TIP series, name: Tron Improvement Proposals, status: adopted,
+     note: "activation by on-chain SR governance proposal, not by client release"}
+
+tx_types:
+  note: >-
+    Tron has NO EIP-2718 typed-transaction envelope and no RLP transaction encoding.
+    Transactions are protobuf messages carrying one of 43 ContractType values. Only
+    two of them enter the EVM: CreateSmartContract (30) and TriggerSmartContract
+    (31). The remaining 41 are protocol operations — staking, voting, governance
+    proposals, asset issuance, exchanges, shielded transfers — with no EVM analogue.
+    Because none has a type byte, none can appear in this section.
+  src: protocol/src/main/protos/core/Tron.proto:337-378
+
+non_evm_transactions:
+  note: >-
+    43 protobuf ContractType values (0-59, sparse). Listed here are the two that
+    reach the EVM plus representative examples of the rest.
+  entries:
+  - {id: 30, name: CreateSmartContract, status: added, note: "EVM contract deployment"}
+  - {id: 31, name: TriggerSmartContract, status: added, note: "EVM contract call"}
+  - {id: 1,  name: TransferContract, status: added, note: "native TRX transfer — NOT an EVM tx"}
+  - {id: 4,  name: VoteWitnessContract, status: added}
+  - {id: 51, name: ShieldedTransferContract, status: added, note: "zk-SNARK shielded TRC-20"}
+  - {id: 54, name: FreezeBalanceV2Contract, status: added, note: "stake for resources"}
+  - {id: 57, name: DelegateResourceContract, status: added}
+  full_list_src: protocol/src/main/protos/core/Tron.proto:337-378
+
+precompiles:
+  # verified: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:133-213
+  "0x03":
+    name: "Ripempd160 (misnamed)"
+    status: modified
+    severity: high
+    note: >-
+      Does NOT compute RIPEMD160. The implementation computes SHA256(data), copies
+      the first 20 bytes into a 20-byte buffer, and returns SHA256 of that buffer —
+      no RIPEMD anywhere, despite the class name. Ethereum's actual RIPEMD160 is
+      available at 0x020003 as EthRipemd160. Same address as mainnet, entirely
+      different function, no error signalled.
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:552-580
+  "0x09":
+    name: batchValidateSign
+    status: modified
+    severity: high
+    note: >-
+      COLLISION. Mainnet's 0x09 is BLAKE2F (EIP-152). Tron placed its batch
+      signature validator there. Tron's BLAKE2F lives at 0x020009 instead.
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:149,255
+  "0x0a":
+    name: validateMultiSign
+    status: modified
+    severity: high
+    note: >-
+      COLLISION. Mainnet's 0x0a is KZG point evaluation (EIP-4844). Tron placed its
+      multisig validator there.
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:151,258
+  "0x05":
+    name: MODEXP
+    status: modified
+    note: "no EIP-7823 bounds, no EIP-7883 repricing; energy-metered rather than gas-metered"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 never implemented"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 never implemented"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 never implemented"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 never implemented"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 never implemented"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 never implemented"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 never implemented"}
+  "0x0100":
+    name: P256VERIFY
+    status: modified
+    note: "same address as mainnet/OP Stack/Avalanche — the fourth independent arrival at 0x0100"
+  "0x020003":
+    name: EthRipemd160
+    status: added
+    note: "the REAL RIPEMD160, relocated. Plain Hash.ripemd160(data)."
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:208,1976-1995
+  "0x020009":
+    name: Blake2F
+    status: added
+    note: "the real EIP-152 BLAKE2F, relocated out of 0x09"
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:210
+  "0x1000001": {name: verifyMintProof, status: added, note: "shielded TRC-20 zk-SNARK"}
+  "0x1000002": {name: verifyTransferProof, status: added, note: "shielded TRC-20 zk-SNARK"}
+  "0x1000003": {name: verifyBurnProof, status: added, note: "shielded TRC-20 zk-SNARK"}
+  "0x1000004": {name: merkleHash, status: added}
+  "0x1000005": {name: rewardBalance, status: added, note: staking rewards}
+  "0x1000006": {name: isSrCandidate, status: added, note: consensus state}
+  "0x1000007": {name: voteCount, status: added}
+  "0x1000008": {name: usedVoteCount, status: added}
+  "0x1000009": {name: receivedVoteCount, status: added}
+  "0x100000a": {name: totalVoteCount, status: added}
+  "0x100000b": {name: getChainParameter, status: added, note: "reads governance parameters"}
+  "0x100000c": {name: availableUnfreezeV2Size, status: added}
+  "0x100000d": {name: unfreezableBalanceV2, status: added}
+  "0x100000e": {name: expireUnfreezeBalanceV2, status: added}
+  "0x100000f": {name: delegatableResource, status: added}
+  "0x1000010": {name: resourceV2, status: added}
+  "0x1000011": {name: checkUnDelegateResource, status: added}
+  "0x1000012": {name: resourceUsage, status: added}
+  "0x1000013": {name: totalResource, status: added}
+  "0x1000014": {name: totalDelegatedResource, status: added}
+  "0x1000015": {name: totalAcquiredResource, status: added}
+  note: >-
+    Three address regions. 0x01-0x0a overlaps mainnet's range and diverges inside it
+    at 0x03/0x09/0x0a. 0x02xxxx is a compatibility SHADOW RANGE holding true
+    Ethereum implementations at mainnet_address + 0x020000. 0x1000001-0x1000015 is
+    Tron's own safe range. The shadow range is unique in this dataset: rather than
+    fix the collisions, Tron relocated the Ethereum semantics to a parallel map.
+
+system_contracts:
+  note: none — Tron has no predeploy/system-contract concept
+
+opcodes:
+  added:
+    - {op: "0xd0", name: CALLTOKEN,   note: "call transferring a TRC-10 token"}
+    - {op: "0xd1", name: TOKENBALANCE}
+    - {op: "0xd2", name: CALLTOKENVALUE}
+    - {op: "0xd3", name: CALLTOKENID}
+    - {op: "0xd4", name: ISCONTRACT}
+    - {op: "0xd5", name: FREEZE}
+    - {op: "0xd6", name: UNFREEZE}
+    - {op: "0xd7", name: FREEZEEXPIRETIME}
+    - {op: "0xd8", name: VOTEWITNESS,  note: "consensus voting from inside the EVM"}
+    - {op: "0xd9", name: WITHDRAWREWARD}
+    - {op: "0xda", name: FREEZEBALANCEV2}
+    - {op: "0xdb", name: UNFREEZEBALANCEV2}
+    - {op: "0xdc", name: CANCELALLUNFREEZEV2}
+    - {op: "0xdd", name: WITHDRAWEXPIREUNFREEZE}
+    - {op: "0xde", name: DELEGATERESOURCE}
+    - {op: "0xdf", name: UNDELEGATERESOURCE}
+  removed:
+    - {op: "0x44", name: PREVRANDAO, note: "absent — no randomness beacon"}
+  modified:
+    - {op: "0x48", name: BASEFEE,     note: "returns governance ENERGY_FEE, not a 1559 base fee"}
+    - {op: "0x4a", name: BLOBBASEFEE, note: "always pushes zero"}
+  src: actuator/src/main/java/org/tron/core/vm/Op.java:242-257
+  note: >-
+    The ONLY chain in this dataset with custom opcodes. All 16 sit at 0xd0-0xdf,
+    which mainnet has never allocated — so despite being the most divergent chain
+    here, Tron's OPCODE placement is collision-free. Its precompile placement is not.
+    Staking, voting and reward withdrawal are reachable as single opcodes.
+
+fee_model:
+  metering: energy + bandwidth (dual resource), NOT gas
+  fee_market: none
+  note: >-
+    Execution consumes ENERGY; transaction size consumes BANDWIDTH. Both are
+    obtained by staking (freezing) TRX, or paid for by burning TRX at the
+    governance-set ENERGY_FEE (default 100 sun per energy,
+    DynamicPropertiesStore.java:74). Price is set by SR proposal, not by a market.
+    Transactions carry a fee_limit rather than a gas price. An account with enough
+    staked TRX executes for free, which has no mainnet analogue.
+  src: chainbase/src/main/java/org/tron/core/store/DynamicPropertiesStore.java:73-75,481
+
+header_fields:
+  note: >-
+    Block structure is protobuf, not RLP, and shares no field layout with an
+    Ethereum header. Field-level diffing is not meaningful.
+
+gotchas:
+  - >-
+    0x03 is named RIPEMD160 and is not RIPEMD160. It returns
+    SHA256(SHA256(data)[0:20]). Contracts ported from Ethereum that call 0x03 get
+    silently wrong hashes — no revert, no error, just different bytes. The real
+    RIPEMD160 is at 0x020003.
+  - >-
+    0x09 and 0x0a are occupied by batchValidateSign and validateMultiSign, colliding
+    head-on with mainnet's BLAKE2F and KZG point evaluation. The genuine Ethereum
+    implementations were relocated to a 0x02xxxx shadow range rather than the
+    collisions being resolved.
+  - >-
+    16 custom opcodes at 0xd0-0xdf make staking, voting and reward withdrawal
+    single-instruction operations. Any EVM tool with a fixed jump table decodes Tron
+    bytecode incorrectly.
+  - >-
+    No RLP, no EIP-2718, no signed-transaction envelope shared with Ethereum. 43
+    protobuf contract types, only 2 of which touch the EVM. Address encoding differs
+    too (base58 with a 0x41 prefix).
+  - >-
+    Energy and bandwidth are staked resources, not purchased gas. A sufficiently
+    staked account pays nothing. Fee estimation, gas golfing and 1559 tooling have
+    no meaning here.
+  - >-
+    BASEFEE returns a governance parameter. It is present, it is not zero, and it is
+    not a base fee — the most subtly misleading opcode in the dataset.

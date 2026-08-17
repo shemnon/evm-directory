@@ -1,0 +1,251 @@
+schema_version: 1
+
+chain:
+  name: Avalanche C-Chain
+  slug: avalanche-c
+  chain_id: 43114
+  role: fork
+  live: true
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum (via libevm)
+  note: >-
+    As of v0.16.0 coreth is NOT a whole-repo geth fork. It consumes
+    ava-labs/libevm — a geth fork published as a library with explicit extension
+    hooks — and layers Avalanche behaviour through RulesExtra hooks
+    (params/hooks_libevm.go). Structurally the cleanest fork relationship in this
+    dataset: divergence is concentrated in hook implementations rather than
+    scattered through a patched tree.
+  sync_point: >-
+    libevm v1.13.15-0.20251016142715. EVM behaviour tracks geth through CANCUN
+    only — see forks.
+
+client:
+  name: coreth
+  repo: https://github.com/ava-labs/coreth
+  version: v0.16.0
+  commit: 64c271b44104f67c6c5ac2dee343f18b0e648f6e
+  language: go
+  note: the C-Chain VM plugin for avalanchego; subnet-evm is its sibling
+
+consensus:
+  engine: Snowman++ (Avalanche consensus)
+  finality: sub-second, single-slot
+  block_time: ~2s
+
+baseline_fork: cancun
+
+forks:
+  src: params/extras/network_upgrades.go, params/config_extra.go
+  mapping_src: params/config_extra.go:82-89
+  note: >-
+    Only two Avalanche upgrades map onto Ethereum forks, and the mapping is an
+    explicit assignment, not a coincidence:
+    `c.ShanghaiTime = durango` and `c.CancunTime = etna`.
+    There is NO PragueTime or OsakaTime assignment anywhere in the tree.
+  timeline:
+  - {name: "Apricot Phase 1-6", mainnet_equivalent: null}
+  - {name: apricot_phase3, mainnet_equivalent: london, note: "sets LondonBlock = 0"}
+  - {name: banff,   mainnet_equivalent: null, note: deprecated the native-asset precompiles}
+  - {name: cortina, mainnet_equivalent: null}
+  - {name: durango, mainnet_equivalent: shanghai, enforced: "ShanghaiTime = durango"}
+  - {name: etna,    mainnet_equivalent: cancun,   enforced: "CancunTime = etna"}
+  - {name: fortuna, mainnet_equivalent: null}
+  - {name: granite, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100 — out of Ethereum's fork order"}
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      Avalanche uses its own dynamic-fee mechanism (ACP-176 target gas excess,
+      consensus/dummy/consensus.go:79) rather than mainnet's 1559 base-fee update
+      rule. London is marked active but fee dynamics differ.
+  4844:
+    status: removed
+    note: >-
+      Cancun is active via Etna, but blobs are explicitly disabled. Block validation
+      REJECTS any header with blobGasUsed != 0 or excessBlobGas != 0
+      (errBlobsNotEnabled). The header fields exist and are pinned to zero.
+    src: plugin/evm/wrapped_block.go:480-487
+  4788:
+    status: modified
+    note: >-
+      parentBeaconRoot must be the EMPTY HASH — there is no beacon chain. The field
+      is structurally present (Cancun compliance) and semantically inert, so the
+      beacon-roots system contract has nothing to read.
+    src: plugin/evm/wrapped_block.go:478-479
+  2537:
+    status: absent
+    note: "BLS12-381 precompiles 0x0b-0x11 never adopted — C-Chain has no Prague"
+  2935: {status: absent, note: "Prague not adopted"}
+  6110: {status: absent, note: "Prague not adopted; no beacon chain"}
+  7002: {status: absent, note: "Prague not adopted; no beacon chain"}
+  7251: {status: absent, note: "Prague not adopted; no beacon chain"}
+  7702:
+    status: absent
+    note: >-
+      NO EOA code delegation. Prague was never adopted, so tx type 0x04 does not
+      exist. This is the single most consequential absence for wallets and
+      account-abstraction tooling targeting the C-Chain.
+  7823: {status: absent, note: Osaka not adopted}
+  7883: {status: absent, note: Osaka not adopted}
+  7951:
+    status: modified
+    note: >-
+      P256VERIFY at 0x0100, added at GRANITE — an Avalanche-specific upgrade, not
+      Osaka. Adopted OUT OF ORDER: the C-Chain has 0x0100 but does NOT have the
+      BLS12-381 precompiles at 0x0b-0x11 that mainnet shipped two forks earlier.
+      Fork-level inference from precompile presence fails here in both directions.
+    src: params/hooks_libevm.go:35,81-86
+
+non_eip_specs:
+  - {id: ACP-176, name: dynamic fee / target gas excess, status: adopted,
+     src: "consensus/dummy/consensus.go:79"}
+  - {id: Avalanche Warp Messaging, name: cross-subnet messaging, status: adopted, fork: durango,
+     src: "precompile/contracts/warp/module.go:23"}
+
+tx_types:
+  note: >-
+    EVM envelope types come from libevm: 0x00-0x03. 0x04 (EIP-7702 SetCode) is
+    ABSENT because Prague was never adopted. Blob txs (0x03) exist as a type but
+    cannot be included — blob gas is pinned to zero at the header level.
+  "0x03":
+    name: BlobTx
+    status: removed
+    note: "type exists in libevm but blocks with nonzero blob gas are rejected"
+    src: plugin/evm/wrapped_block.go:480-487
+  "0x04":
+    name: SetCodeTx
+    status: removed
+    note: "EIP-7702 not adopted — Prague absent"
+
+non_evm_transactions:
+  # SCHEMA NOTE: these have no EIP-2718 type byte and are not RLP. New category.
+  note: >-
+    Atomic transactions move value between the C-Chain and Avalanche's X/P chains.
+    They are UTXO-based, serialised with Avalanche's own codec (not RLP), and
+    registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) —
+    they live entirely OUTSIDE the EIP-2718 envelope while still being included in
+    C-Chain blocks. No type byte can be assigned to them, which is why they cannot
+    appear in tx_types.
+  entries:
+  - name: UnsignedImportTx
+    status: added
+    src: plugin/evm/atomic/import_tx.go:48
+    fields: [NetworkID, BlockchainID, SourceChain, ImportedInputs, Outs]
+  - name: UnsignedExportTx
+    status: added
+    src: plugin/evm/atomic/export_tx.go:46
+    fields: [NetworkID, BlockchainID, DestinationChain, Ins, ExportedOutputs]
+
+precompiles:
+  # verified: params/hooks_libevm.go:81-86 (PrecompiledContractsGranite = current)
+  "0x05":
+    name: MODEXP
+    status: modified
+    note: "Cancun-level (eip2565 only) — no EIP-7823 bounds, no EIP-7883 repricing, because Osaka was never adopted"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague"}
+  "0x0100000000000000000000000000000000000000":
+    name: GenesisContract
+    status: added
+    state: deprecated
+    note: "always reverts (nativeasset.DeprecatedContract → vm.ErrExecutionReverted)"
+    src: nativeasset/contract.go:25,167-171
+  "0x0100000000000000000000000000000000000001":
+    name: NativeAssetBalance
+    status: added
+    state: deprecated
+    note: >-
+      Live in Apricot Phase 2 and again in Phase 6; tombstoned at Banff. Now always
+      reverts. Address is permanently burned — cannot be reused.
+    src: nativeasset/contract.go:26
+  "0x0100000000000000000000000000000000000002":
+    name: NativeAssetCall
+    status: added
+    state: deprecated
+    note: "same lifecycle as NativeAssetBalance; always reverts since Banff"
+    src: nativeasset/contract.go:27
+  "0x0200000000000000000000000000000000000005":
+    name: Warp Messenger
+    status: added
+    fork: durango
+    note: >-
+      Stateful precompile for Avalanche Warp Messaging. Uses block predicates
+      (GetPredicateResults) — a mechanism with no mainnet analogue: results are
+      computed outside normal EVM execution and read by the precompile.
+    src: precompile/contracts/warp/module.go:23
+  "0x0100":
+    name: P256VERIFY
+    status: modified
+    fork: granite
+    note: "adopted at Granite, out of Ethereum fork order — see eips.7951"
+  note: >-
+    Two distinct custom ranges: 0x0100..00-02 (legacy native-asset, all tombstoned)
+    and 0x0200..05 (warp). Both are far from mainnet's 0x01-0x11, following the
+    convention. The three tombstoned addresses are the clearest example in this
+    dataset of precompile addresses being permanently consumed: they cannot be
+    reused and cannot be removed, only made to revert.
+
+system_contracts:
+  note: >-
+    None of Ethereum's system contracts are present. Beacon roots (0x000F3df6..) is
+    meaningless without a beacon chain; EIP-2935 history, EIP-7002/7251 queues and
+    the deposit contract all require Prague, which was never adopted.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode divergence. Avalanche's changes are concentrated in precompiles, fee
+    dynamics and the atomic-tx layer.
+
+fee_model:
+  metering: gas
+  fee_market: ACP-176 dynamic fee (target gas excess), NOT mainnet's 1559 update rule
+  extra_components: []
+  note: >-
+    London is active (LondonBlock = 0 from Apricot Phase 3) so 1559-shaped fields
+    exist, but the base-fee update algorithm is Avalanche's own.
+  src: consensus/dummy/consensus.go:79
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - {name: blobGasUsed,   note: "must be 0", src: "plugin/evm/wrapped_block.go:480-483"}
+    - {name: excessBlobGas, note: "must be 0", src: "plugin/evm/wrapped_block.go:484-487"}
+    - {name: parentBeaconRoot, note: "must be the empty hash — no beacon chain", src: "plugin/evm/wrapped_block.go:478-479"}
+  note: >-
+    Cancun's header shape is adopted for compatibility, then every Cancun-specific
+    field is constrained to a constant. Structurally conformant, semantically empty.
+
+gotchas:
+  - >-
+    NO EIP-7702. The C-Chain is Cancun-equivalent, not Prague — tx type 0x04 does
+    not exist and no BLS12-381 precompiles are available. Wallets and AA stacks that
+    assume Prague on any major EVM chain break here.
+  - >-
+    P256VERIFY at 0x0100 exists WITHOUT BLS12-381 at 0x0b-0x11, because it arrived
+    via Avalanche's own Granite fork rather than Osaka. Inferring a chain's fork
+    level from which precompiles are present fails in both directions on this chain.
+  - >-
+    Three precompile addresses (0x0100..00/01/02) are tombstoned: they always revert.
+    They are neither absent nor functional — calling them fails differently than
+    calling an empty account, which returns success.
+  - >-
+    Atomic import/export transactions are not RLP and have no EIP-2718 type byte.
+    Any indexer that enumerates "all transactions in a block" via the EVM envelope
+    silently misses all cross-chain value movement.
+  - >-
+    Cancun header fields are present but pinned to constants. blobGasUsed == 0 is
+    enforced, not conventional — contrast OP Stack, which repurposed the same field
+    to mean something else entirely.

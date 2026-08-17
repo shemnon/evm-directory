@@ -33,7 +33,7 @@ consensus:
 baseline_fork: osaka
 
 forks:
-  src: "op-stack/repos/superchain-registry/superchain/configs/mainnet/op.toml"
+  src: "superchain-registry/superchain/configs/mainnet/op.toml"
   note: >-
     Read from the superchain registry rather than the client, because OP Stack fork
     times are per-chain configuration, not client constants.

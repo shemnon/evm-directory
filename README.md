@@ -92,4 +92,23 @@ chains/<slug>/
 tools/generate.py   regenerates the four top-level tables
 ```
 
-Regenerate with `tools/.venv/bin/python tools/generate.py`.
+## Tooling
+
+```
+tools/clone.sh      re-fetch the pinned evidence (gitignored) from chain.yaml
+tools/verify.py     re-extract facts from source, diff against chain.yaml
+tools/generate.py   regenerate the four top-level tables
+```
+
+`verify.py` is what keeps the "from source, not docs" claim honest. Facts reach
+`chain.yaml` by a human reading a file once; the verifier re-reads the source and
+reports drift in both directions:
+
+- **MISSING** — declared in `chain.yaml`, absent from source (transcription error)
+- **UNLISTED** — present in source, undeclared (coverage gap — the worse direction)
+- **BAD SRC** — an evidence pointer that no longer resolves
+- **PIN MISMATCH** — the clone is not at the recorded commit
+
+It also fails if a tag has been moved upstream, which is why commits are pinned
+alongside tags. All four failure modes are exercised; a verifier that cannot fail is
+worse than none.

@@ -1,0 +1,517 @@
+schema_version: 2
+
+chain:
+  name: Monad
+  slug: monad
+  chain_id: 143
+  role: independent
+  equivalence: behavioural
+  live: true
+  chain_id_src: category/execution/monad/chain/monad_mainnet.cpp:MonadMainnet
+  note: >-
+    An independent C++ EVM by Category Labs, not a fork of any Ethereum client.
+    Everything below is a BEHAVIOURAL comparison against mainnet, not a code
+    diff. This is the first row in the dataset where "the EIP is implemented"
+    and "the EIP behaves like mainnet" come apart completely — Monad implements
+    the Osaka opcode set faithfully and then changes gas refunds, memory
+    pricing, cold-access pricing and the fee market underneath it.
+
+lineage:
+  upstream: null
+  ancestry: []
+  fork_of: null
+  inspired_by: "evmc / evmone (interfaces only, being removed)"
+  note: >-
+    The tree keeps `monad_eth_revision` as a drop-in replacement for
+    `evmc_revision` and static_asserts the two 1:1 through Osaka, but the EVM
+    itself — interpreter, JIT ("native compilation"), state database (MonadDb),
+    and transaction scheduler — is original C++. The remaining evmc/evmone
+    dependency is confined to test and benchmark paths.
+
+client:
+  name: monad (execution)
+  repo: https://github.com/category-labs/monad
+  version: v0.16.0
+  commit: e81ffe31cd30fe3455d1233e4ee6c9b3f017bad0
+  language: c++
+  note: >-
+    Formerly published as category-labs/monad-execution; that path 404s now.
+    monad-labs/* does not exist. This is the execution half only — consensus,
+    the mempool, the base-fee rule and the execution delay live in monad-bft,
+    pinned below at the SAME release train (v0.16.0, same-day commit).
+  companion_repos:
+  - {name: monad-bft, repo: "https://github.com/category-labs/monad-bft",
+     version: v0.16.0, commit: c616743d1358186605e1c1b74a3d6c4fdd9dd48c,
+     language: rust,
+     provides: "consensus, deferred-execution delay, the Monad TFM base-fee rule, per-revision chain params"}
+
+live_probe:
+  endpoint: https://rpc.monad.xyz
+  chain_id: 143
+  observed_at_block: 96823552      # 0x5c56b00
+
+consensus:
+  engine: MonadBFT (pipelined HotStuff-style BFT, BLS aggregate signatures)
+  finality: single-slot, no reorg after commit
+  block_time: "vote_pace 300ms at chain params v0.12.0"
+  src: monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0
+  note: >-
+    DEFERRED EXECUTION. Consensus commits a block's transaction LIST before any
+    node has executed it. A proposal carries `execution_inputs` (a pre-execution
+    Ethereum header) plus `delayed_execution_results`: the fully executed header
+    — state root included — of the block EXECUTION_DELAY (= 3) seq-numbers
+    earlier. Ordering is agreed at height N; the state root for height N is
+    agreed at height N+3. See
+    category/execution/monad/core/monad_block.hpp:delayed_execution_results and
+    monad-bft/monad-eth-block-policy/src/lib.rs:get_expected_execution_results.
+
+baseline_fork: osaka
+baseline_note: >-
+  MonadTraits<MONAD_NINE>::evm_rev() == MONAD_ETH_OSAKA, and MONAD_NINE has been
+  the mainnet revision since 1773930600 (2026-03-19). Osaka names the opcode and
+  precompile SET only. EIP-4844 and EIP-7685 are switched off inside the same
+  traits block, and gas accounting diverges at four independent points, so
+  "Osaka-equivalent" is a claim about the jump table and nothing more.
+
+forks:
+  src: category/execution/monad/chain/monad_mainnet.cpp:MonadMainnet
+  note: >-
+    Two independent fork ladders, and they are NOT aligned. The EVM revision
+    ladder is `monad_revision` (MONAD_ZERO..MONAD_NEXT), gated on timestamp in
+    the execution client. The consensus/params ladder is `MonadChainRevision`
+    (V_0_7_0..V_0_12_0), gated on consensus ROUND in monad-bft. A tool that
+    reads only one of them sees half the chain's history. Mainnet skips
+    MONAD_FOUR and MONAD_FIVE entirely: it goes THREE -> SIX.
+  timeline:
+  - {name: MONAD_TWO, activation_time: 0, mainnet_equivalent: cancun,
+     note: "genesis revision; max code size already 128 KiB"}
+  - {name: MONAD_THREE, activation_time: 1755091800, mainnet_equivalent: cancun}
+  - {name: MONAD_SIX, activation_time: 1762266600, mainnet_equivalent: prague,
+     note: "2025-11-04. First Prague revision on mainnet; MONAD_FOUR and MONAD_FIVE never activated here."}
+  - {name: MONAD_SEVEN, activation_time: 1762525800, mainnet_equivalent: prague,
+     note: "2025-11-07. monad_pricing_version 1: cold account 2500 -> 10000, cold storage 2000 -> 8000."}
+  - {name: MONAD_EIGHT, activation_time: 1763649000, mainnet_equivalent: prague}
+  - name: MONAD_NINE
+    activation_time: 1773930600
+    mainnet_equivalent: osaka
+    note: >-
+      2026-03-19. Current mainnet revision. Raises evm_rev to Osaka, activates
+      MIP-3 (linear memory pricing + 8 MB cap) and the reserve-balance
+      precompile at 0x1001.
+  - {name: MONAD_TEN, status: pending, activation_time: null,
+     note: "MIP-8 page-encoded storage: SSTORE repriced to 100 base + 2800 per first page write + 17000 per page growth"}
+  - {name: MONAD_NEXT, status: pending, activation_time: null, note: "MIP-12"}
+  - {name: "chain params V_0_12_0", activation_condition: "consensus round 89758000 (~2026-07-23)",
+     note: "tx_limit 3750, proposal_gas_limit 150M, vote_pace 300ms — monad-bft ladder, not the EVM one"}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    src: "monad-bft/monad-tfm/src/base_fee.rs:compute_base_fee_math, monad-bft/monad-tfm/src/base_fee.rs:MIN_BASE_FEE"
+    src_live: "eth_getBlockByNumber @ 96823552 -> baseFeePerGas 0x174876e800 (exactly MIN_BASE_FEE, 100 gwei)"
+    note: >-
+      Replaced wholesale by the Monad TFM. Differences from EIP-1559, all of
+      them consensus-relevant: the target is 80% of the gas limit, not 50%; the
+      update is an adaptive exponential whose step size is damped by an EWMA
+      `trend` and variance `moment` carried in the CONSENSUS header
+      (MonadConsensusBlockHeaderV2), not derivable from the Ethereum header;
+      the base fee is clamped to [100 gwei, 1e17 wei]; and the input is the SUM
+      OF TRANSACTION GAS LIMITS in the parent block, not gas consumed. The
+      execution client does not recompute it — it only checks that the
+      consensus header's base_fee equals execution_inputs.base_fee_per_gas.
+      Any "next base fee" estimator ported from Ethereum is wrong on every
+      input.
+  3529:
+    status: removed
+    severity: high
+    src: "category/execution/monad/monad_transaction_gas.cpp:compute_gas_refund, category/execution/ethereum/execute_transaction.cpp:execute_final"
+    src_live: "eth_getTransactionByHash + eth_getTransactionReceipt @ 96823552 -> gas 0xafc8 / gasUsed 0xafc8 and gas 0xdad08 / gasUsed 0xdad08"
+    note: >-
+      THE finding of this row, and it is bigger than EIP-3529. From MONAD_ONE
+      onwards compute_gas_refund returns 0 UNCONDITIONALLY — not just the SSTORE
+      clear refund, but the Yellow Paper's g* itself. execute_final then computes
+      `gas_used = tx.gas_limit - gas_refund`, so gas_used is IDENTICALLY the
+      transaction's gas limit. The sender is charged for gas they never spent,
+      the receipt's gasUsed reports the LIMIT, and block.gasUsed is the sum of
+      limits. SSTORE still accumulates ctx->gas_refund; it is simply discarded.
+      Confirmed live on two unrelated user transactions. Nothing reverts and
+      nothing errors: gas profiling, refund-based patterns, and any "how much did
+      this cost" analytic silently reports the wrong number.
+  2929:
+    status: modified
+    src: "category/vm/evm/traits.hpp:monad_pricing_version"
+    note: >-
+      From MONAD_SEVEN, cold account access costs 10000 (mainnet 2600 total /
+      2500 surcharge) and cold storage access 8000 (mainnet 2100 / 2000
+      surcharge) — a 4x repricing of every cold SLOAD, BALANCE, EXTCODE*, CALL
+      and SELFDESTRUCT. Same opcodes, same behaviour, four times the gas.
+  4844:
+    status: removed
+    src: "category/vm/evm/traits.hpp:MonadTraits, category/execution/ethereum/validate_transaction.cpp:TypeNotSupported"
+    src_live: "eth_getBlockByNumber @ 96823552 -> blobGasUsed 0x0, excessBlobGas 0x0"
+    note: >-
+      eip_4844_active() is hardcoded false for every Monad revision, with an
+      in-source note that enabling it would require reserve-balance accounting
+      for blob gas. Type-0x03 transactions are rejected with TypeNotSupported.
+      blobGasUsed / excessBlobGas exist in the header and are pinned to zero —
+      contrast OP Stack, which repurposes the same field.
+  7685:
+    status: modified
+    severity: high
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    src_live: "eth_getBlockByNumber @ 96823552 -> requestsHash 0x0000...0000"
+    note: >-
+      requestsHash is PRESENT in every Prague-and-later Monad header and is
+      ALWAYS THE ZERO HASH — not the keccak of an empty request list
+      (0xe3b0c442...b855) that mainnet and other Prague chains emit for a block
+      with no requests. eip_7685_active() is false, and the in-source comment
+      says monad-bft proposes and validates the field as zero. A verifier that
+      recomputes the empty-requests hash and compares gets a mismatch on every
+      Monad block. This is the second field in the dataset whose presence is
+      worse than its absence.
+  7702:
+    status: modified
+    src: "category/vm/runtime/create.cpp:can_create_inside_delegated"
+    note: >-
+      SetCode transactions are accepted, but can_create_inside_delegated() is
+      FALSE on Monad and TRUE for plain Ethereum traits. A CREATE or CREATE2
+      executed while the current recipient is a 7702-delegated account exits with
+      an error where mainnet Prague permits it. A delegate contract that deploys
+      is portable to every other chain in this dataset and not to this one.
+  170:
+    status: modified
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    note: >-
+      MAX_CODE_SIZE_MONAD_TWO = 128 KiB from MONAD_TWO, against EIP-170's 24 KiB.
+      Contracts exist on Monad that no other EVM chain can hold.
+  3860:
+    status: modified
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    note: "max initcode 256 KiB from MONAD_FOUR (2 x 128 KiB), against EIP-3860's 48 KiB"
+  7823:
+    status: inherited
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    note: "MODEXP upper bounds active at Osaka, i.e. at MONAD_NINE — unlike OP Stack, which dropped them"
+  7883:
+    status: inherited
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    note: "MODEXP repricing active at Osaka/MONAD_NINE"
+  7951:
+    status: modified
+    src: "category/vm/evm/traits.hpp:MonadTraits"
+    note: >-
+      P256VERIFY at 0x0100 activates at MONAD_FOUR, i.e. from the Prague-era
+      revisions, ahead of Osaka. The fifth independent early arrival at 0x0100
+      in this dataset. Gas was not established — see eips.7951 caveat in
+      SUMMARY.md.
+  4788:
+    status: unrecorded
+    note: >-
+      parentBeaconBlockRoot is present in the header and was 0x0000..0000 at the
+      probed block, but no source read was done on whether the 0x000F3df6..
+      beacon-roots contract is installed or whether the ring buffer is written.
+      Monad has no beacon chain, so the field's meaning is undetermined here.
+  2935:
+    status: unrecorded
+    note: >-
+      A monad_block_hash_history test file exists in the tree, but the
+      BLOCKHASH/history-contract semantics under deferred execution were not
+      established from source.
+  7623:
+    status: inherited
+    src: "category/execution/ethereum/execute_transaction.cpp:execute_final"
+    note: >-
+      The floor-data-gas top-up runs at Prague and later, and is applied AFTER
+      gas_used has already been set to the full gas limit — so it can only ever
+      raise the charge further.
+
+non_eip_specs:
+  - id: MIP-3
+    name: "Linear memory pricing with an 8 MB peak"
+    adoption: adopted
+    fork: MONAD_NINE
+    severity: high
+    src: "category/vm/runtime/types.hpp:memory_cost_from_word_count, category/vm/runtime/types.hpp:is_memory_size_in_bound"
+    note: >-
+      Memory expansion costs `word_count / 2` gas instead of the Yellow Paper's
+      `3*c + c^2/512`. The quadratic term is gone, so large memory is orders of
+      magnitude cheaper. In exchange, total memory across the whole call stack is
+      hard-capped at 8 MB and exceeding it exits with OutOfGas REGARDLESS of the
+      gas supplied. Two opposite-direction breaks in one change: memory-heavy
+      code that mainnet prices out runs cheaply here, and memory-heavy code that
+      mainnet would happily execute for enough gas cannot run here at all.
+  - id: MIP-8
+    name: "Page-encoded storage and SSTORE repricing"
+    adoption: draft
+    fork: MONAD_TEN
+    src: category/vm/runtime/storage.cpp:sstore
+    note: >-
+      Not live. Replaces EIP-2200 SSTORE pricing with a page model: 100 base,
+      +2800 on the first write to a page, +17000 when the state grows a page.
+      Pricing stops tracking the value's before/after state and starts tracking
+      the physical database.
+  - id: MIP-11
+    name: "Priority fee distribution"
+    adoption: draft
+    src: category/execution/monad/staking/util/constants.hpp:PRIORITY_FEE_DIST_ADDRESS
+    note: >-
+      mip_11_active() returns false for every revision. The address
+      0xfee5fee5fee5fee5fee5fee5fee5fee5fee5fee5 is reserved for it and has no
+      code today. Until it activates the priority fee goes to the block
+      beneficiary as on mainnet.
+  - id: MIP-12
+    name: "unnamed staking change"
+    adoption: draft
+    fork: MONAD_NEXT
+    src: category/vm/evm/traits.hpp:MonadTraits
+  - id: "Monad TFM"
+    name: "Transaction Fee Mechanism (base fee + reserve balance)"
+    adoption: adopted
+    src: monad-bft/monad-tfm/src/base_fee.rs:compute_base_fee_math
+
+tx_types:
+  note: >-
+    NO custom type bytes. TransactionType is legacy / 2930 / 1559 / 4844 / 7702,
+    and 4844 is rejected at validation, so the live set is 0x00-0x02 and 0x04.
+    Monad is the rare chain that diverges hard WITHOUT touching the envelope —
+    which is exactly why an address- or type-byte-diffing survey reports it as
+    equivalent. The divergence is entirely inside execution and consensus.
+  src: category/execution/ethereum/validate_transaction.cpp:TypeNotSupported
+  "0x03":
+    name: BlobTx
+    status: removed
+    src: category/execution/ethereum/validate_transaction.cpp:TypeNotSupported
+    note: "rejected with TransactionError::TypeNotSupported; eip_4844_active() is false at every revision"
+
+precompiles:
+  "0x0000000000000000000000000000000000001000":
+    name: StakingContract
+    status: added
+    fork: MONAD_FOUR
+    severity: high
+    src: "category/execution/monad/staking/util/constants.hpp:STAKING_CA, category/execution/monad/monad_precompiles.cpp:check_call_precompile"
+    src_live: "eth_getCode @ 96823552 -> 0x (no bytecode; native precompile)"
+    note: >-
+      A 15-method staking system reachable as a PRECOMPILE: addValidator,
+      delegate, undelegate, compound, withdraw, claimRewards, changeCommission,
+      externalReward, plus validator/delegator/valset getters, dispatched by
+      4-byte selector with a per-method fixed gas cost and a 40000-gas fallback.
+
+      THREE-WAY ADDRESS COLLISION, and it is worse than the ones already in this
+      dataset. BSC and Polygon both put a `ValidatorContract` at 0x…1000 — as
+      SYSTEM CONTRACTS, with bytecode. Monad puts validator staking at the same
+      address as a PRECOMPILE, with no bytecode at all. EXTCODESIZE(0x1000)
+      returns 0 here and non-zero there, so the standard "is there a contract at
+      this address" probe answers differently on three chains that all have
+      staking logic there. Rejects DELEGATECALL/CALLCODE and any non-zero call
+      flag with EVMC_REJECTED.
+  "0x0000000000000000000000000000000000001001":
+    name: ReserveBalanceContract
+    status: added
+    fork: MONAD_NINE
+    src: "category/execution/monad/reserve_balance/reserve_balance_contract.hpp:RESERVE_BALANCE_CA, category/execution/monad/monad_precompiles.cpp:is_precompile"
+    src_live: "eth_getCode @ 96823552 -> 0x (no bytecode; native precompile)"
+    note: >-
+      Exposes the reserve-balance mechanism (see fee_model) to contracts. Gated
+      on MONAD_NINE in both is_precompile and check_call_precompile, so before
+      that revision the address was an ordinary empty account — a precompile set
+      that changes membership mid-chain.
+  "0x0100":
+    name: P256VERIFY
+    status: modified
+    src: category/vm/evm/traits.hpp:MonadTraits
+    note: >-
+      Present from MONAD_FOUR, before Monad reached Osaka. Address matches
+      mainnet, OP Stack, Avalanche and Tron. Gas was not read from source —
+      recorded as `modified` on the activation-timing difference alone.
+  note: >-
+    Two added addresses, both at 0x1000-0x1001. Mainnet's reserved range is
+    0x01-0x11 growing upward and 0x0100; 0x1000 is clear of it but collides with
+    BSC's and Polygon's system-contract convention. The base 0x01-0x11 set is
+    Monad's own C++ reimplementation (category/execution/ethereum/precompiles*),
+    not a shared library — so equality of the ADDRESS SET says nothing about
+    equality of the implementations, which is this row's whole point.
+
+system_contracts:
+  note: >-
+    None. The mainnet genesis allocation is a SINGLE funded account and nothing
+    else (monad_mainnet_alloc.hpp). Everything Monad adds is a precompile, not a
+    predeploy. Confirmed live: 0x1000, 0x1001 and 0xfee5..fee5 all return empty
+    code.
+  src: category/execution/monad/chain/monad_mainnet_alloc.hpp:MONAD_MAINNET_ALLOC
+
+system_transactions:
+  staking_syscall:
+    name: "consensus system transaction"
+    status: added
+    fork: MONAD_FOUR
+    severity: high
+    src: "category/execution/monad/system_sender.hpp:SYSTEM_SENDER, category/execution/monad/validate_system_transaction.cpp:static_validate_system_transaction"
+    src_live: "eth_getTransactionByHash @ 96823552 -> tx 0 of the block: type 0x0, from 0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e, to 0x1000, gas 0x0, gasPrice 0x0, value 0xf9ccd8a1c5080000, v 0x141"
+    note: >-
+      Monad's protocol-driven state changes are NOT a distinct transaction type
+      and NOT unsigned. They are ordinary EIP-155-signed LEGACY (0x00)
+      transactions from a fixed key, 0x6f49a8F6..DC9e, addressed to the staking
+      precompile with gas_limit 0, gasPrice 0 and an empty authorization list.
+      They are counted in transactionsRoot and returned by eth_getBlockByTxIndex
+      like any user transaction. static_validate_monad_body requires that every
+      system transaction precedes every user transaction in the block.
+
+      Compare OP Stack's 0x7e, which announces itself with a type byte. Monad's
+      is indistinguishable from a user transaction by type, and distinguishable
+      only by sender address. A tool classifying "protocol vs user" by tx type
+      counts these as user transactions and books an 18-MON transfer with a zero
+      gas price as organic activity. Verified live: the probed block's tx index 0
+      is exactly this.
+  note: >-
+    Executed by a separate executor (dispatch_transaction routes on
+    sender == SYSTEM_SENDER), which re-validates the transaction with a synthetic
+    2,000,000 gas limit purely to pass the intrinsic-gas check.
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+    - {op: "0x55", name: SSTORE, fork: MONAD_TEN, status: pending,
+       note: "min_gas lowered to 100 under MIP-8; not live"}
+  note: >-
+    Zero opcode-set divergence — make_opcode_table for every Monad revision
+    delegates to the Ethereum table for the matching evm_rev. This is the trap:
+    the jump table is identical while the PRICE of memory expansion, cold access
+    and the whole refund path is not, and none of that is visible in an opcode
+    diff.
+  src: category/vm/evm/opcodes.hpp:make_opcode_table
+
+fee_model:
+  metering: gas
+  fee_market: "Monad TFM — adaptive exponential base fee, 80% target, damped by trend/moment"
+  extra_components:
+    - name: no gas refund
+      severity: high
+      src: category/execution/monad/monad_transaction_gas.cpp:compute_gas_refund
+      note: "the sender pays gas_limit * gas_price on every transaction; see eips.3529"
+    - name: reserve balance
+      severity: high
+      src: "category/execution/monad/reserve_balance.cpp:monad_default_max_reserve_balance_mon, category/execution/monad/reserve_balance.cpp:dipped_into_reserve"
+      note: >-
+        The mechanism that makes deferred execution safe, and it has no mainnet
+        analogue. Each EOA (and each 7702-delegated account) has a reserve of up
+        to 10 MON that consensus treats as guaranteed available for fees.
+        dipped_into_reserve walks every account touched by a transaction and
+        reverts the transaction if any of them ends below its reserve threshold —
+        so a transaction can fail because of a balance change to an account it
+        merely paid, not because of anything it did wrong. The staking
+        precompile is explicitly exempt.
+    - name: fee-only balance precheck
+      src: category/execution/monad/validate_monad_transaction.cpp:InsufficientBalanceForFee
+      note: >-
+        From MONAD_FOUR, a transaction is valid when balance >= gas_limit *
+        gas_price, WITHOUT covering tx.value. Mainnet requires both. The
+        transaction is included, charged and then fails inside execution with
+        EVMC_INSUFFICIENT_BALANCE — and execute_create_message increments the
+        sender's nonce by hand for the depth-0 case that Ethereum can never
+        reach.
+    - name: minimum base fee
+      src: category/execution/monad/min_base_fee.cpp:monad_min_base_fee_wei
+      note: "100 gwei floor, matching monad-bft's MIN_BASE_FEE; the chain sits on it at the probed block"
+    - name: proposal gas limit
+      src: monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0
+      note: "150,000,000 gas and 3,750 transactions per proposal at chain params v0.12.0"
+  note: >-
+    Every input to the fee market is a gas LIMIT, never gas consumed: the sender
+    is charged their limit, and the base-fee update rule sums the parent block's
+    transaction limits. Monad has made gas limit, not gas usage, the economic
+    unit — which is self-consistent and incompatible with every fee estimator
+    written for Ethereum.
+
+header_fields:
+  added:
+    - name: slot_number
+      spec: EIP-7843
+      status: pending
+      src: category/execution/ethereum/core/block.hpp:slot_number
+      note: >-
+        The Monad consensus ROUND, surfaced to execution as evmc_tx_context
+        .block_round. DELIBERATELY NOT RLP-ENCODED — encoding it now would change
+        every block hash with no fork gate — so it is in-memory only and is
+        populated ONLY on the consensus execution path. RPC and trace
+        re-execution leave it nullopt and read 0, so an opcode reading the round
+        can return a different value under eth_call than it did in the block.
+  removed: []
+  modified:
+    - name: requestsHash
+      severity: high
+      note: "always the zero hash, never the empty-request-list hash; see eips.7685"
+    - name: blobGasUsed
+      note: "present, pinned to zero (contrast OP Stack, which repurposes it as a DA footprint)"
+    - name: excessBlobGas
+      note: "present, pinned to zero"
+    - name: gasUsed
+      severity: high
+      note: >-
+        Not the gas consumed by the block. Equal to the sum of the transactions'
+        gas LIMITS, because gas_used per transaction is the limit. Same field,
+        same JSON key, different quantity — and it feeds the base-fee update.
+  src: category/execution/ethereum/core/block.hpp:BlockHeader
+  note: >-
+    The RLP header layout is Ethereum's. The state_root is a REAL merkle root of
+    that block's post-state (TrieDb::state_root), not a zero hash and not the
+    parent's — Monad does not lag the root within the header. What lags is
+    AGREEMENT: see consensus and gotchas.
+
+gotchas:
+  - >-
+    gasUsed IS THE GAS LIMIT. compute_gas_refund returns 0 from MONAD_ONE on, so
+    execute_final's `gas_used = gas_limit - refund` degenerates to gas_used ==
+    gas_limit for every transaction. Senders pay for gas they never spent;
+    receipts, block totals and the base-fee input all report limits. Confirmed
+    live on two unrelated transactions at block 96823552, both with gasUsed
+    byte-identical to the submitted gas. This is the single most consequential
+    "the EIP is present but does not behave" case in the dataset.
+  - >-
+    The header's stateRoot is a genuine post-state root — but consensus commits
+    the block's transaction ordering BEFORE anyone executes it. The executed
+    header of block N is carried in block N+3's proposal and validated there
+    (EXECUTION_DELAY = 3). "The block is final" and "the state root is agreed"
+    are three blocks apart. An indexer that treats a committed block as having a
+    settled state root is reading a value no quorum has voted on yet.
+  - >-
+    requestsHash is the ZERO hash on every block, not keccak of the empty list.
+    Any Prague header verifier recomputes 0xe3b0c442..b855 and fails.
+  - >-
+    The first transaction in a block may be a protocol transaction that looks
+    exactly like a user transaction: legacy type 0x00, real EIP-155 signature,
+    gas 0, gasPrice 0, sender 0x6f49a8F6..DC9e, recipient 0x1000, moving MON.
+    There is no type byte to filter on. It is inside transactionsRoot.
+  - >-
+    Staking lives at 0x1000 as a PRECOMPILE with no bytecode, colliding with
+    BSC's and Polygon's ValidatorContract system contracts at the same address.
+    Three chains, staking logic at one address, and EXTCODESIZE distinguishes
+    them.
+  - >-
+    Memory is priced linearly (word_count/2) and capped at 8 MB across the whole
+    call stack. Cheaper than mainnet up to the cap, impossible past it, and the
+    failure is OutOfGas no matter how much gas you send.
+  - >-
+    Cold account and cold storage access cost 4x mainnet from MONAD_SEVEN.
+    Contract code is unchanged, opcodes are unchanged, gas is not.
+  - >-
+    CREATE inside a 7702-delegated account is an error here and legal on mainnet.
+  - >-
+    A transaction only needs to cover its FEE, not its value, to be included.
+    It is charged, its nonce is burned, and it fails with insufficient balance
+    inside execution — a state Ethereum's validity rules make unreachable.
+  - >-
+    A transaction can revert because some OTHER account it touched fell below its
+    10 MON reserve. Failure depends on the balances of accounts the transaction
+    merely paid.
+  - >-
+    Contracts can be 128 KiB. Anything that assumes EIP-170's 24 KiB ceiling —
+    verification pipelines, bytecode indexers, proxy tooling — is undersized by
+    5x.
+  - >-
+    Two fork ladders that do not line up: monad_revision (timestamp-gated, in the
+    C++ client) and MonadChainRevision (consensus-round-gated, in monad-bft).
+    Mainnet skips MONAD_FOUR and MONAD_FIVE outright. "Which fork is Monad on"
+    has two correct answers.

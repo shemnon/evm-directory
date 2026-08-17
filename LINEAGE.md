@@ -14,10 +14,18 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
     └── Base (v1.2.0, osaka)
     └── World Chain (v2.4.2, osaka)
     └── opBNB (v0.5.10, cancun)
+    └── Celo (celo-v2.2.4, prague)
+  └── Kaia (v2.2.2, osaka)
+  └── Linea (releases/linea-besu-package/v2.1.1, osaka)
+  └── Sei (v6.6.1, prague)
 
 Tron — no upstream (role: independent)
 
 Hyperliquid (HyperEVM) — no upstream (role: independent)
+
+Monad — no upstream (role: independent)
+
+zkSync Era — no upstream (role: independent)
 ```
 
 ## Fork mapping to mainnet
@@ -36,4 +44,10 @@ Hyperliquid (HyperEVM) — no upstream (role: independent)
 | World Chain | `osaka` | Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec (asserted at crates/chainspec/src/spec |
 | opBNB | `cancun` | THE DUAL-HERITAGE CASE. lineage.upstream is op-stack by code, but two of its precompiles come from BSC — blsSignatureVerify at 0x66 and cometBFTLightBlockValidate at 0x67, at BSC's addresses |
 | Tron | `cancun` | Tron versions its protocol as GreatVoyage releases with proposal-gated features, not as named hard forks mapped to Ethereum's. There is no fork-name mapping to record; feature activation is  |
+| Celo | `prague` | Two fork axes. Ethereum/OP forks come from the embedded superchain registry and are subject to op-geth's CheckConfigForkOrder equality rules (params/config.go:1745 enforces PragueTime == Ist |
 | Hyperliquid (HyperEVM) | `cancun` | No named fork schedule is published, no fork timestamps are exposed by the RPC, and with no client source there is no fork-condition table to read. Feature activation cannot be reconstructed |
+| Kaia | `osaka` | Activation is by BLOCK NUMBER, not timestamp — a fifth incompatible activation mechanism alongside OP Stack's enforced timestamp equality, Avalanche's assigned timestamps, Arbitrum's ArbOS v |
+| Linea | `osaka` | Fork schedule read from upstream Besu's bundled linea-mainnet.json, cross-checked against Maru's beacon genesis (maru/app/src/main/resources/beacon-genesis-files/ linea-mainnet-genesis.json, |
+| Monad | `osaka` | Two independent fork ladders, and they are NOT aligned. The EVM revision ladder is `monad_revision` (MONAD_ZERO..MONAD_NEXT), gated on timestamp in the execution client. The consensus/params |
+| Sei | `prague` | Sei has TWO independent upgrade axes and they do not line up. (1) Ethereum fork level, set by the CancunTime/PragueTime chain-config params, both defaulted to 0 — Sei was born Prague-equival |
+| zkSync Era | `osaka` | Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account / EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no mainnet-equivalence claim to  |

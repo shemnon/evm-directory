@@ -1,0 +1,536 @@
+schema_version: 2
+
+chain:
+  name: zkSync Era
+  slug: zksync-era
+  chain_id: 324
+  role: independent
+  equivalence: behavioural
+  live: true
+  evidence: source
+  note: >-
+    Not a fork of any Ethereum client and not an EVM. The native virtual machine is
+    EraVM: a register machine with 17 opcode families, ergs instead of gas, and its
+    own bytecode format produced by zksolc. EVM bytecode runs only inside EvmEmulator,
+    a system contract that interprets it. Every delta below is a BEHAVIOURAL
+    comparison; there is no code lineage to diff against go-ethereum.
+
+lineage:
+  upstream: null
+  ancestry: []
+  note: >-
+    Independent implementation. The node is Rust; the "system contracts" that supply
+    the semantics an Ethereum client would hardcode (nonces, code storage, deployment,
+    the EVM itself) are Solidity and Yul in a separate repository. There is no upstream
+    to rebase from, so every Ethereum feature present here was re-implemented, which is
+    why the divergences are semantic rather than configurational.
+  absorbs: >-
+    ZK Stack framework row in practice — Abstract, Sophon, Lens and Cronos zkEVM run
+    this codebase. Recorded as a chain rather than a `stack` because the ZK Stack's
+    per-chain variation was not measured here.
+
+client:
+  name: zksync-era
+  repo: https://github.com/matter-labs/zksync-era
+  version: core-v31.5.0
+  commit: fa3a9b9453f09fc9d060396ae44937dbcff44c7d
+  language: rust
+  note: >-
+    The node alone establishes almost nothing about EVM semantics. Two companions are
+    required and both are pinned by this repo itself: era-contracts at the exact
+    submodule commit (the system contracts, the EVM emulator, address derivation), and
+    zksync-protocol at the exact Cargo tag (EraVM's opcode and address-space
+    definitions). Citations below are written relative to whichever clone holds them.
+  companion_repos:
+  - {name: era-contracts, repo: "https://github.com/matter-labs/era-contracts",
+     commit: 101ab952b2c7b03e7648e30842f081042afc2d9a,
+     provides: "system contracts, EvmEmulator.yul, CREATE/CREATE2 derivation; pinned as the `contracts` git submodule of this tag"}
+  - {name: zksync-protocol, repo: "https://github.com/matter-labs/zksync-protocol",
+     version: v0.153.14, commit: 4b2c1e618c6df65e9cdf656172a60fee6c91a2d4,
+     provides: "EraVM opcode set, kernel address space, ergs constants; pinned as zk_evm_1_5_2 in core/Cargo.toml"}
+
+live_probe:
+  endpoint: https://mainnet.era.zksync.io
+  chain_id: 324
+  observed_at_block: 71584105
+
+consensus:
+  engine: single sequencer, validity (zk) proofs verified on Ethereum L1
+  finality: L1 finality after proof verification
+  block_time: sub-second L2 blocks, batched into L1 batches
+  note: >-
+    Two block concepts. L2 blocks are what eth_getBlockByNumber returns; L1 batches are
+    the proving unit and appear as l1BatchNumber / l1BatchTimestamp on each block. The
+    field is null until the batch is sealed, so a freshly returned block has no batch.
+
+baseline_fork: osaka
+baseline_note: >-
+  A claim about the EVM EMULATOR only, and a partial one. The emulator implements the
+  Cancun opcode set (PUSH0, MCOPY, TLOAD/TSTORE) and stubs the blob opcodes. It does
+  not implement SELFDESTRUCT or CALLCODE at all, and it caps MODEXP operands far below
+  any Ethereum fork's bound. EraVM itself has no relationship to any Ethereum fork.
+  There is no fork timeline to map: zkSync versions its protocol as numbered protocol
+  versions activated by an L1 upgrade transaction, not as named hard forks.
+
+forks:
+  src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+  note: >-
+    Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account /
+    EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no
+    mainnet-equivalence claim to record, so the timeline is empty rather than guessed.
+  timeline: []
+
+eips:
+  2718:
+    status: modified
+    severity: high
+    note: >-
+      The typed-transaction envelope exists but zkSync allocates OUTSIDE its legal
+      range. EIP-2718 confines transaction types to 0x00-0x7f; zkSync's protocol-upgrade
+      type is 0xfe and its L1 priority type is 0xff, values EIP-2718 reserves precisely
+      so they can never be transaction types. Both appear in eth_getTransactionByHash
+      output. Every other chain in this dataset crowded downward toward the 0x7f ceiling
+      (Arbitrum 0x78, Base 0x79, OP 0x7e, Polygon 0x7f); zkSync went straight through it.
+    src: "core/lib/types/src/lib.rs:PRIORITY_OPERATION_L2_TX_TYPE"
+  1559:
+    status: modified
+    note: >-
+      A base fee exists (observed 0x2b275d0) but the market is not Ethereum's. Fees are
+      computed from an L1 gas price plus a separately quoted pubdata price, and every
+      transaction additionally declares gas_per_pubdata. Block gasLimit is the sentinel
+      BATCH_GAS_LIMIT = 1 << 50.
+    src: "core/lib/multivm/src/versions/vm_latest/constants.rs:BATCH_GAS_LIMIT"
+    src_live: "eth_getBlockByNumber @ 71584105 -> baseFeePerGas 0x2b275d0, gasLimit 0x4000000000000"
+  4844:
+    status: removed
+    note: >-
+      No user-facing blob transactions. EIP_4844_TX_TYPE exists in the tree but only in
+      core/lib/eth_client, for posting blobs TO L1. The blob opcodes exist in the EVM
+      emulator as stubs — see opcodes.
+    src: "core/lib/eth_client/src/types.rs:EIP_4844_TX_TYPE"
+  4788: {status: removed, note: "no beacon chain; no parentBeaconBlockRoot in the block envelope",
+         src_live: "eth_getBlockByNumber @ 71584105 -> field absent from the result object"}
+  4895: {status: removed, note: "no withdrawalsRoot in the block envelope",
+         src_live: "eth_getBlockByNumber @ 71584105 -> field absent from the result object"}
+  2935: {status: removed, note: "no history-storage contract; absent from the system-contract address space",
+         src: "core/lib/constants/src/contracts.rs:SYSTEM_CONTEXT_ADDRESS"}
+  7685: {status: removed, note: "no requestsHash in the block envelope",
+         src_live: "eth_getBlockByNumber @ 71584105 -> field absent from the result object"}
+  7702:
+    status: removed
+    note: >-
+      Absent, and structurally unnecessary: zkSync has had native account abstraction
+      since launch, so the problem 7702 solves does not exist here. Grepping
+      core/lib/types for 7702, SetCode or authorization_list returns nothing. But code
+      that DETECTS smart accounts by looking for a 0xef0100 delegation prefix finds
+      nothing on zkSync and concludes every account is an EOA — while in fact every
+      account is a contract.
+    src: "core/lib/types/src/lib.rs:EIP_712_TX_TYPE"
+  2537: {status: removed, note: "no BLS12-381 precompiles at 0x0b-0x11; those addresses revert",
+         src_live: "eth_getCode @ 71584105 for 0x0b, 0x0c, 0x0f, 0x10, 0x11 -> 0x (empty); eth_call -> execution reverted"}
+  152: {status: removed, note: "no BLAKE2F at 0x09",
+        src_live: "eth_call to 0x09 @ 71584105 -> execution reverted"}
+  1052:
+    status: modified
+    severity: high
+    note: >-
+      EXTCODEHASH is masked for addresses <= 0xff so it returns keccak256("") for
+      0x01-0xff exactly as mainnet does for its precompiles. P256VERIFY sits at 0x0100,
+      which is ABOVE that mask, so on zkSync it has a REAL code hash and a real
+      extcodesize while on mainnet the same address is codeless. Any contract that
+      classifies an address by EXTCODEHASH == keccak("") gets opposite answers at
+      0x0100 on the two chains.
+    src: "system-contracts/contracts/AccountCodeStorage.sol:CURRENT_MAX_PRECOMPILE_ADDRESS"
+    src_live: "eth_getCode @ 71584105 -> 0x0100 returns 480 bytes of EraVM bytecode"
+  1014:
+    status: modified
+    severity: high
+    note: >-
+      CREATE2 addresses are derived differently AND depend on different inputs. See
+      precompiles/system_contracts notes and gotchas — this is the single most likely
+      thing to lose money.
+    src: "system-contracts/contracts/ContractDeployer.sol:getNewAddressCreate2"
+  170:
+    status: modified
+    note: >-
+      EIP-170's 24576-byte deployed-code limit and EIP-3860's 2x initcode limit apply to
+      EVM-emulated contracts. Native EraVM bytecode is not bounded by them; it is bounded
+      by its own word-count encoding in the versioned code hash.
+    src: "system-contracts/contracts/EvmEmulator.yul"
+  7823:
+    status: modified
+    severity: high
+    note: >-
+      THE PROOF CONSTRAINT. MODEXP operands are capped at 32 BYTES each — base, exponent
+      and modulus alike — and the source says why in one sentence: "The current value
+      (32 bytes) violates EVM equivalence. This value comes from circuit limitations."
+      Mainnet's own bound, introduced by EIP-7823 at Osaka, is 1024 bytes. zkSync is 32x
+      tighter, and was tighter years before mainnet had any bound at all. A 2048-bit RSA
+      verification — 256-byte modulus, the overwhelmingly common use of MODEXP — is
+      impossible on zkSync Era.
+    src: "system-contracts/contracts/EvmEmulator.yul"
+  7883: {status: unrecorded,
+         note: "MODEXP repricing not compared. The emulator computes its own modexp gas from iteration count and operand size; whether that schedule matches Osaka's for the operand sizes zkSync still permits was not established."}
+  7951:
+    status: modified
+    note: >-
+      P256VERIFY exists at 0x0100 as in RIP-7212 — another independent arrival at that
+      address — but it is a deployed EraVM contract rather than a
+      codeless precompile, so EXTCODESIZE and EXTCODEHASH diverge from mainnet's. Gas is
+      EraVM ergs, not comparable to mainnet's 6900.
+    src: "crates/zkevm_opcode_defs/src/system_params.rs:SECP256R1_VERIFY_PRECOMPILE_ADDRESS"
+    src_live: "eth_getCode @ 71584105 -> 480 bytes at 0x0100"
+
+non_eip_specs:
+  - {id: ZKsync protocol versions, name: numbered protocol upgrades, adoption: adopted,
+     note: "activation by an L1 upgrade transaction that swaps bootloader / default-account / EVM-emulator bytecode hashes, not by a client release or a timestamp"}
+
+tx_types:
+  "0x71":
+    name: EIP-712 transaction (native account abstraction)
+    status: added
+    spec: zkSync EIP-712 envelope
+    src: "core/lib/types/src/lib.rs:EIP_712_TX_TYPE"
+    fields: [nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, gasPerPubdata, factoryDeps, customSignature, paymasterParams]
+    note: >-
+      Signed as EIP-712 typed data, not as a keccak of the RLP payload, so the signing
+      domain includes the chain id structurally. Carries four fields with no mainnet
+      analogue: gasPerPubdata (a second, independent price the sender commits to),
+      factoryDeps (bytecodes published alongside the transaction — deployment does not
+      go through initcode), customSignature (arbitrary bytes validated by the sender's
+      own account contract, so signatures need not be secp256k1 at all) and
+      paymasterParams (a third-party fee payer, protocol-level rather than an ERC-4337
+      bundler convention).
+  "0xfe":
+    name: ProtocolUpgradeTx
+    status: added
+    src: "core/lib/types/src/lib.rs:PROTOCOL_UPGRADE_TX_TYPE"
+    note: "outside EIP-2718's legal 0x00-0x7f range; carries new base-system-contract bytecode hashes"
+  "0xff":
+    name: L1 priority operation (L1->L2)
+    status: added
+    src: "core/lib/types/src/lib.rs:PRIORITY_OPERATION_L2_TX_TYPE"
+    note: >-
+      Outside EIP-2718's legal range. The L1->L2 message path, the analogue of OP
+      Stack's 0x7e deposit. Sender is an L1 address aliased into L2.
+  "0x03":
+    name: BlobTx
+    status: removed
+    note: "no user-facing blob transactions on L2"
+    src: "core/lib/types/src/transaction_request.rs:rlp"
+  "0x04":
+    name: SetCodeTx
+    status: removed
+    note: "EIP-7702 not implemented — see eips.7702"
+    src: "core/lib/types/src/transaction_request.rs:rlp"
+  note: >-
+    Accepted L2 types are 0x00 (legacy), 0x01, 0x02 and 0x71; protocol types are 0xfe
+    and 0xff. The dispatch in TransactionRequest::rlp ends in
+    `Some(_) => unreachable!("Unknown tx type")`, so the list is exhaustive.
+
+precompiles:
+  # EraVM has no precompiles in the mainnet sense. Everything below is a deployed
+  # contract that internally issues the EraVM PrecompileCall instruction. Addresses
+  # <= 0xff are MASKED to look codeless to the EVM (extcodesize 0, extcodehash
+  # keccak("")) while eth_getCode over JSON-RPC returns their real bytecode.
+  "0x03":
+    name: RIPEMD160
+    status: tombstoned
+    note: >-
+      Absent, and the address is permanently consumed. Calling it does not succeed with
+      empty output the way an unallocated mainnet address would — it REVERTS, because
+      every address below 2^16 is EraVM kernel space and a kernel address with no
+      deployed code aborts the call. Verified against a control: 0xdeadbeef returns 0x
+      success, 0x03 / 0x09 / 0x0a / 0xffff all revert. This is the fourth independent
+      arrival at tombstoning in the dataset (after Avalanche and BSC), and the first that
+      is wholesale: the WHOLE 0x0000-0xffff range is tombstoned by an address-space rule
+      rather than per address.
+    src: "crates/zkevm_opcode_defs/src/system_params.rs:ADDRESS_UNRESTRICTED_SPACE"
+    src_live: "eth_call to 0x03 @ 71584105 -> execution reverted; eth_call to 0xdeadbeef @ 71584105 -> 0x"
+  "0x09": {name: BLAKE2F, status: tombstoned, note: "kernel-space address with no code; reverts",
+           src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0a": {name: KZG_POINT_EVALUATION, status: tombstoned, note: "kernel-space address with no code; reverts",
+           src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0b": {name: BLS12_G1ADD, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0c": {name: BLS12_G1MSM, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0d": {name: BLS12_G2ADD, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0e": {name: BLS12_G2MSM, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x0f": {name: BLS12_PAIRING, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: tombstoned, src_live: "eth_call @ 71584105 -> execution reverted"}
+  "0x01":
+    name: ECRECOVER
+    status: modified
+    note: >-
+      Deployed Yul contract at the mainnet address, not native code. The mask makes it
+      look codeless to the EVM; eth_getCode returns 608 bytes of EraVM bytecode. Gas is
+      ergs, unrelated to mainnet's 3000.
+    src: "system-contracts/contracts/precompiles/Ecrecover.yul"
+    src_live: "eth_getCode @ 71584105 -> 608 bytes"
+  "0x02": {name: SHA256, status: modified, note: "deployed Yul contract at the mainnet address; ergs-metered",
+           src: "system-contracts/contracts/precompiles/SHA256.yul",
+           src_live: "eth_getCode @ 71584105 -> 736 bytes"}
+  "0x04": {name: IDENTITY, status: modified, note: "deployed Yul contract; ergs-metered",
+           src: "system-contracts/contracts/precompiles/Identity.yul",
+           src_live: "eth_getCode @ 71584105 -> 416 bytes"}
+  "0x05":
+    name: MODEXP
+    status: modified
+    severity: high
+    note: >-
+      Operands capped at 32 bytes each by circuit limitations — see eips.7823. Over the
+      cap the emulator sets gasToCharge to MAX_UINT64, so the sub-call runs out of gas
+      and returns 0 rather than reverting. A contract that ignores the CALL return
+      value (the common Solidity low-level pattern) proceeds with an empty result.
+    src: "system-contracts/contracts/precompiles/Modexp.yul"
+    src_live: "eth_getCode @ 71584105 -> 1184 bytes"
+  "0x06": {name: BN256_ADD, status: modified, src: "system-contracts/contracts/precompiles/EcAdd.yul",
+           src_live: "eth_getCode @ 71584105 -> 352 bytes"}
+  "0x07": {name: BN256_MUL, status: modified, src: "system-contracts/contracts/precompiles/EcMul.yul",
+           src_live: "eth_getCode @ 71584105 -> 352 bytes"}
+  "0x08": {name: BN256_PAIRING, status: modified, src: "system-contracts/contracts/precompiles/EcPairing.yul",
+           src_live: "eth_getCode @ 71584105 -> 800 bytes"}
+  "0x0100":
+    name: P256VERIFY
+    status: modified
+    severity: high
+    note: >-
+      Above the 0xff mask, so unlike 0x01-0x08 it presents as an ordinary contract:
+      non-zero EXTCODESIZE and a real EXTCODEHASH, where mainnet's 0x0100 is codeless.
+      See eips.1052.
+    src: "system-contracts/contracts/precompiles/P256Verify.yul"
+    src_live: "eth_getCode @ 71584105 -> 480 bytes"
+  "0x8010":
+    name: KECCAK256
+    status: added
+    note: >-
+      Keccak is a PRECOMPILE here, not an opcode-internal primitive. EraVM has no
+      KECCAK256 instruction; hashing is a call to 0x8010 that issues PrecompileCall.
+    src: "system-contracts/contracts/precompiles/Keccak256.yul"
+    src_live: "eth_getCode @ 71584105 -> 480 bytes"
+  "0x8012":
+    name: CodeOracle
+    status: added
+    note: "decommits a bytecode by its versioned hash; the mechanism EXTCODECOPY is built on"
+    src: "system-contracts/contracts/precompiles/CodeOracle.yul"
+  note: >-
+    The category boundary breaks down here and the schema cannot express it cleanly.
+    These are real deployed bytecode (system_contract by SCHEMA.md's definition) that
+    the chain then MASKS to report extcodesize 0 and extcodehash keccak("") to the EVM
+    (precompile by SCHEMA.md's definition), while JSON-RPC eth_getCode returns the real
+    bytecode to off-chain callers (system_contract again). The in-EVM view and the
+    off-chain view of the same address disagree by design. They are recorded here rather
+    than under system_contracts because that is where an integrator will look for them,
+    with the disagreement stated. The mask stops at 0xff, so 0x0100 escapes it.
+
+system_contracts:
+  "0x0000000000000000000000000000000000008001": {name: Bootloader, status: added,
+    note: "the formal sender of every system operation; executes the whole block as one program",
+    src: "core/lib/constants/src/contracts.rs:BOOTLOADER_ADDRESS"}
+  "0x0000000000000000000000000000000000008002": {name: AccountCodeStorage, status: added,
+    note: "holds the address -> versioned-code-hash map; implements EXTCODEHASH's masking rule",
+    src: "core/lib/constants/src/contracts.rs:ACCOUNT_CODE_STORAGE_ADDRESS"}
+  "0x0000000000000000000000000000000000008003": {name: NonceHolder, status: added,
+    note: "nonces are contract state, not an account field; deployment nonce and transaction nonce are separate counters in one slot",
+    src: "core/lib/constants/src/contracts.rs:NONCE_HOLDER_ADDRESS"}
+  "0x0000000000000000000000000000000000008004": {name: KnownCodesStorage, status: added,
+    src: "core/lib/constants/src/contracts.rs:KNOWN_CODES_STORAGE_ADDRESS"}
+  "0x0000000000000000000000000000000000008005": {name: ImmutableSimulator, status: added,
+    note: "immutables live in a contract, not in deployed bytecode",
+    src: "core/lib/constants/src/contracts.rs:IMMUTABLE_SIMULATOR_STORAGE_ADDRESS"}
+  "0x0000000000000000000000000000000000008006": {name: ContractDeployer, status: added,
+    note: "ALL deployment goes through this contract; CREATE/CREATE2 address derivation lives here",
+    src: "core/lib/constants/src/contracts.rs:CONTRACT_DEPLOYER_ADDRESS"}
+  "0x0000000000000000000000000000000000008007": {name: ForceDeployer, status: added,
+    src: "core/lib/constants/src/contracts.rs:CONTRACT_FORCE_DEPLOYER_ADDRESS"}
+  "0x0000000000000000000000000000000000008008": {name: L1Messenger, status: added,
+    src: "core/lib/constants/src/contracts.rs:L1_MESSENGER_ADDRESS"}
+  "0x0000000000000000000000000000000000008009": {name: MsgValueSimulator, status: added,
+    note: "EraVM far-calls carry no value; msg.value is simulated by routing through this contract",
+    src: "core/lib/constants/src/contracts.rs:MSG_VALUE_SIMULATOR_ADDRESS"}
+  "0x000000000000000000000000000000000000800a": {name: L2BaseToken, status: added,
+    note: "the native token balance is ERC-20-like contract state, not an account field",
+    src: "core/lib/constants/src/contracts.rs:L2_BASE_TOKEN_ADDRESS"}
+  "0x000000000000000000000000000000000000800b": {name: SystemContext, status: added,
+    note: "supplies chainid, block number, timestamp, basefee — the values mainnet reads from the header",
+    src: "core/lib/constants/src/contracts.rs:SYSTEM_CONTEXT_ADDRESS"}
+  "0x000000000000000000000000000000000000800c": {name: BootloaderUtilities, status: added,
+    src: "core/lib/constants/src/contracts.rs:BOOTLOADER_UTILITIES_ADDRESS"}
+  "0x000000000000000000000000000000000000800d": {name: EventWriter, status: added,
+    note: "LOG0-LOG4 are not opcodes; events are written by calling this contract",
+    src: "core/lib/constants/src/contracts.rs:EVENT_WRITER_ADDRESS"}
+  "0x000000000000000000000000000000000000800e": {name: Compressor, status: added,
+    src: "core/lib/constants/src/contracts.rs:COMPRESSOR_ADDRESS"}
+  "0x000000000000000000000000000000000000800f": {name: ComplexUpgrader, status: added,
+    src: "core/lib/constants/src/contracts.rs:COMPLEX_UPGRADER_ADDRESS"}
+  "0x0000000000000000000000000000000000008011": {name: PubdataChunkPublisher, status: added,
+    src: "core/lib/constants/src/contracts.rs:PUBDATA_CHUNK_PUBLISHER_ADDRESS"}
+  "0x0000000000000000000000000000000000008013":
+    name: EvmGasManager
+    status: added
+    note: >-
+      Bookkeeping for the EVM emulator: EVM gas is a second, simulated resource layered
+      on top of EraVM ergs. A contract cannot observe both, and GAS inside emulated EVM
+      bytecode reports the simulated quantity.
+    src: "core/lib/constants/src/contracts.rs:EVM_GAS_MANAGER_ADDRESS"
+    src_live: "eth_getCode @ 71584105 -> 3616 bytes"
+  "0x0000000000000000000000000000000000008014": {name: EvmPredeploysManager, status: added,
+    src: "core/lib/constants/src/contracts.rs:EVM_PREDEPLOYS_MANAGER_ADDRESS"}
+  "0x0000000000000000000000000000000000008015": {name: EvmHashesStorage, status: added,
+    note: "maps EraVM versioned hashes of emulated contracts back to their true EVM keccak code hash, so EXTCODEHASH can answer correctly for EVM bytecode",
+    src: "core/lib/constants/src/contracts.rs:EVM_HASHES_STORAGE_ADDRESS"}
+  "0x0000000000000000000000000000000000010000": {name: Create2Factory, status: added,
+    note: "first address of the USER_CONTRACTS_OFFSET range at 2^16 — outside kernel space, so ordinary rules apply",
+    src: "core/lib/constants/src/contracts.rs:CREATE2_FACTORY_ADDRESS"}
+  "0x0000000000000000000000000000000000010002": {name: L2Bridgehub, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_BRIDGEHUB_ADDRESS"}
+  "0x0000000000000000000000000000000000010003": {name: L2AssetRouter, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_ASSET_ROUTER_ADDRESS"}
+  "0x0000000000000000000000000000000000010004": {name: L2NativeTokenVault, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_NATIVE_TOKEN_VAULT_ADDRESS"}
+  "0x0000000000000000000000000000000000010005": {name: L2MessageRoot, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_MESSAGE_ROOT_ADDRESS"}
+  "0x0000000000000000000000000000000000010006": {name: SloadContract, status: added,
+    src: "core/lib/constants/src/contracts.rs:SLOAD_CONTRACT_ADDRESS"}
+  "0x000000000000000000000000000000000001000d": {name: L2InteropCenter, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_INTEROP_CENTER_ADDRESS"}
+  "0x000000000000000000000000000000000001000e": {name: L2InteropHandler, status: added,
+    src: "core/lib/constants/src/contracts.rs:L2_INTEROP_HANDLER_ADDRESS"}
+  note: >-
+    Two ranges, and the boundary between them is a protocol rule rather than a
+    convention. Kernel space is every address below 2^16 (ADDRESS_UNRESTRICTED_SPACE);
+    contracts there may use privileged EraVM instructions, and empty addresses there
+    revert instead of succeeding. 0x8000-0xffff holds the system contracts;
+    0x10000 upward (USER_CONTRACTS_OFFSET) holds "built-in but unprivileged" contracts.
+    The 0x8000 offset was chosen explicitly to stay clear of Ethereum's precompiles,
+    which is why zkSync is the one chain here with NO address collision against mainnet.
+    Full list: the entries above are those the node references by name; the L1-side and
+    interop sets in era-contracts are larger and are not enumerated here.
+
+system_transactions:
+  note: >-
+    The bootloader executes the entire block as a single EraVM program and performs the
+    per-block bookkeeping (SystemContext updates, pubdata publication, fee settlement)
+    without any of it being a transaction. There is no mainnet analogue: on Ethereum
+    these would be either implicit client behaviour or EIP-4788-style system calls.
+
+opcodes:
+  added:
+    - {op: "n/a", name: "EraVM instruction set", note: "17 opcode families — Invalid, Nop, Add, Sub, Mul, Div, Jump, Context, Shift, Binop, Ptr, NearCall, Log, FarCall, Ret, UMA — over 16 registers, not a 256-entry byte jump table"}
+  removed:
+    - {op: "0xff", name: SELFDESTRUCT, note: "the EVM emulator lists 0xFF among its 'Unused opcode' cases; it is invalid, not a no-op"}
+    - {op: "0xf2", name: CALLCODE, note: "also an 'Unused opcode' case in the emulator"}
+  modified:
+    - {op: "0x44", name: PREVRANDAO, severity: high,
+       note: "returns the fixed constant 2500000000000000. The source comment reads 'This value is fixed in EraVM'. Present, non-zero, identical in every block — a contract using it for randomness gets the same number forever, with no error. Same failure shape as Tron's BASEFEE."}
+    - {op: "0x49", name: BLOBHASH, note: "always 0 — 'We don't fully support BLOBHASH. Just return 0'"}
+    - {op: "0x4a", name: BLOBBASEFEE, note: "always 1, the EIP-4844 minimum"}
+    - {op: "0x5a", name: GAS, note: "reports simulated EVM gas maintained by EvmGasManager (0x8013), not EraVM ergs. Two resources, one opcode."}
+  src: "crates/zkevm_opcode_defs/src/definitions/all.rs:Opcode"
+  emulator_src: "system-contracts/contracts/EvmEmulator.yul"
+  note: >-
+    Two instruction sets coexist on one chain. Contracts compiled by zksolc are EraVM
+    bytecode and never execute an EVM opcode; contracts deployed as EVM bytecode are
+    interpreted by EvmEmulator.yul, a 6198-line Yul program. The `removed` and
+    `modified` rows above describe the EMULATOR. For native EraVM contracts the whole
+    EVM opcode table is inapplicable, which is a stronger statement than any row in this
+    section can carry. The emulator IS live on Era mainnet: zks_getProtocolVersion
+    reports a non-zero evm_emulator base-system-contract hash.
+
+fee_model:
+  metering: "ergs (EraVM) plus a separate pubdata budget; EVM gas is simulated on top for emulated contracts"
+  fee_market: "L1-derived gas price plus an independently quoted pubdata price"
+  extra_components:
+    - name: pubdata
+      note: >-
+        Every transaction declares gas_per_pubdata in its EIP-712 envelope and pays for
+        the bytes it forces onto L1 separately from computation. L1_GAS_PER_PUBDATA_BYTE
+        is 17 and COMPUTATIONAL_PRICE_FOR_PUBDATA is 80. A block is capped at 110000
+        pubdata bytes (MAX_PUBDATA_PER_BLOCK) independent of gas — a storage-heavy
+        transaction can exhaust a block while using almost no computation.
+      src: "core/lib/constants/src/fees/mod.rs:L1_GAS_PER_PUBDATA_BYTE"
+    - name: paymaster
+      note: >-
+        Protocol-level third-party fee payment, part of the transaction envelope rather
+        than an ERC-4337 convention. The paymaster is called before validation and can
+        refuse.
+      src: "system-contracts/contracts/interfaces/IAccount.sol:prepareForPaymaster"
+    - name: per-transaction ergs ceiling
+      note: "MAX_TX_ERGS_LIMIT is 80,000,000 ergs; ERGS_PER_CIRCUIT is 80,000, so the ceiling is literally a circuit count"
+      src: "crates/zkevm_opcode_defs/src/system_params.rs:MAX_TX_ERGS_LIMIT"
+  note: >-
+    Refunds are computed by the bootloader after execution, so the gas actually charged
+    is not derivable from the receipt's gasUsed the way it is on mainnet. Nothing about
+    eth_estimateGas transfers: the estimate must cover computation, pubdata, and the
+    account contract's own validation logic.
+
+header_fields:
+  added:
+    - {name: l1BatchNumber, note: "the proving batch this L2 block belongs to; NULL until the batch is sealed, so a just-returned block has none",
+       src_live: "eth_getBlockByNumber @ 71584105 -> l1BatchNumber null"}
+    - {name: l1BatchTimestamp, note: "batch timestamp, distinct from the L2 block timestamp"}
+  removed:
+    - {name: withdrawalsRoot, spec: EIP-4895, note: "absent from the block envelope"}
+    - {name: blobGasUsed, spec: EIP-4844}
+    - {name: excessBlobGas, spec: EIP-4844}
+    - {name: parentBeaconBlockRoot, spec: EIP-4788}
+    - {name: requestsHash, spec: EIP-7685}
+  modified:
+    - {name: gasLimit, note: "the sentinel BATCH_GAS_LIMIT = 1 << 50 (0x4000000000000), not a real limit",
+       src: "core/lib/multivm/src/versions/vm_latest/constants.rs:BATCH_GAS_LIMIT"}
+    - {name: miner, note: "always the zero address"}
+    - {name: extraData, note: "always empty"}
+    - {name: sealFields, note: "always an empty array"}
+  src_live: "eth_getBlockByNumber @ 71584105 -> keys: baseFeePerGas difficulty extraData gasLimit gasUsed hash l1BatchNumber l1BatchTimestamp logsBloom miner mixHash nonce number parentHash receiptsRoot sealFields sha3Uncles size stateRoot timestamp totalDifficulty transactions transactionsRoot uncles"
+  note: >-
+    The block envelope is shaped like a pre-Shanghai Ethereum block with two extra
+    fields. Every Shanghai, Cancun and Prague header field is simply absent, which is
+    the honest outcome and differs from OP Stack (repurposes blobGasUsed) and Avalanche
+    (keeps the field and pins it to zero). Three chains, three different treatments of
+    the same absent feature.
+
+gotchas:
+  - >-
+    CREATE2 ADDRESSES ARE DIFFERENT, AND SO ARE THEIR INPUTS. Native derivation is
+    keccak256(keccak256("zksyncCreate2") || sender || salt || bytecodeHash ||
+    keccak256(constructorInput)) — a different prefix AND an extra input. Mainnet's
+    CREATE2 address does not depend on constructor arguments, because they are baked
+    into the initcode being hashed; zkSync hashes them separately, so two deployments
+    with the same salt and bytecode but different constructor arguments land at
+    DIFFERENT addresses. Every counterfactual-address pattern — Safe wallets,
+    deterministic deployers, L2 address preimages computed off-chain — is wrong here
+    unless it was written for zkSync. CREATE uses keccak256("zksyncCreate") || sender
+    || nonce, not RLP.
+  - >-
+    ...AND THERE ARE TWO SCHEMES AT ONCE. Contracts deployed through the EVM emulator
+    use MAINNET derivation: 0xff || sender || salt || bytecodeHash for CREATE2 and
+    RLP(sender, nonce) for CREATE. So on one chain, at one block, the address a factory
+    produces depends on whether that factory is EraVM or EVM bytecode. No other chain in
+    this dataset has two live address-derivation rules.
+  - >-
+    Every account is a contract. There is no EOA: externally owned addresses run
+    DefaultAccount, which implements validateTransaction / executeTransaction /
+    payForTransaction. Signature verification is the account's own code and need not be
+    secp256k1 — the customSignature field in tx type 0x71 exists for exactly that. Code
+    that assumes a recoverable ECDSA sender, or that a codeless address cannot initiate
+    a transaction, is wrong on every address.
+  - >-
+    MODEXP operands are capped at 32 bytes by circuit limitations, and the source says
+    so in those words. 2048-bit RSA verification is impossible. Over the cap the call is
+    priced at MAX_UINT64 gas so it runs out of gas and returns 0 instead of reverting —
+    a caller that ignores the CALL return value proceeds with empty output.
+  - >-
+    PREVRANDAO returns 2500000000000000 in every block, forever.
+  - >-
+    eth_getCode(0x01) returns 608 bytes of EraVM bytecode while EXTCODESIZE(0x01) inside
+    the EVM returns 0. The on-chain and off-chain views of the same address disagree by
+    design, and the mask that produces this stops at 0xff — so at 0x0100 (P256VERIFY)
+    both views report a real contract, where mainnet reports none.
+  - >-
+    Calling an unallocated address below 0x10000 REVERTS. On mainnet, and on zkSync
+    above 0x10000, it succeeds with empty output. This is the one place zkSync fails
+    LOUDER than mainnet, and it is worth knowing before porting error handling.
+  - >-
+    Transaction types 0xfe and 0xff are outside EIP-2718's legal 0x00-0x7f range, and
+    both appear in RPC output. A decoder that treats a leading byte >= 0xc0 as legacy
+    RLP misparses every L1->L2 transaction on the chain.

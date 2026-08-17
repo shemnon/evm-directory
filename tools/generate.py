@@ -39,6 +39,16 @@ def is_stack(c): return c["chain"].get("role") == "stack"
 def order(chains):
     return [s for s in ORDER if s in chains] + [s for s in chains if s not in ORDER]
 
+def canon(a):
+    """One address, one row. Rows write the same address in different widths —
+    `0x0100` and `0x0000...0100` are both P256VERIFY — and keying on the raw string
+    split them into two rows, so Sei's absence never lined up with the address it was
+    absent from. Normalise to minimal even-length hex, which preserves the existing
+    short form for precompiles and the full 40-digit form for predeploys."""
+    try: h = f"{int(a, 16):x}"
+    except Exception: return a
+    return "0x" + h.rjust(2, "0").rjust(len(h) + len(h) % 2, "0")
+
 def addr_rows(chains, section):
     """Collect address->{slug: entry} across chains, resolving stack inheritance."""
     table, origin = {}, {}
@@ -49,10 +59,12 @@ def addr_rows(chains, section):
         if up in chains and is_stack(chains[up]):
             for k, v in (chains[up].get(section) or {}).items():
                 if not str(k).startswith("0x"): continue
+                k = canon(k)
                 table.setdefault(k, {})[slug] = v
                 origin.setdefault((k, slug), up)
         for k, v in (c.get(section) or {}).items():
             if not str(k).startswith("0x"): continue
+            k = canon(k)
             table.setdefault(k, {})[slug] = v
             origin[(k, slug)] = slug
     return table, origin

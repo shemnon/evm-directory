@@ -51,6 +51,12 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB fork) | `v0.5.10` | Cancun |
 | [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | Cancun (opcodes only) |
 | [Hyperliquid](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | live @ block `43436288` | pre-Prague (probed) |
+| [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | Prague |
+| [Kaia](chains/kaia/SUMMARY.md) | kaia | `v2.2.2` | Osaka |
+| [Linea](chains/linea/SUMMARY.md) | besu + Linea plugins | `linea-besu-package/v2.1.1` | Osaka |
+| [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.0` | Osaka |
+| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.6.1` | Prague |
+| [zkSync Era](chains/zksync-era/SUMMARY.md) | zksync-era | `core-v31.5.0` | Osaka |
 
 ## What the data shows
 
@@ -100,18 +106,46 @@ addresses and **six** divergent precompiles — input caps on BN256/BLS12-381 (a
 fault-proof constraint leaking into consensus) and P256VERIFY at half mainnet's gas.
 Any survey that diffs address lists calls it equivalent and is wrong six times.
 
-**`0x0100` was the one universal address — until it wasn't.** Twelve of thirteen rows
-carry P256VERIFY there, arriving through four unrelated forks (mainnet Osaka, OP Stack
-Fjord/RIP-7212, Avalanche Granite, Tron), and most diverge from mainnet's semantics or
-gas. Presence proves nothing about lineage or fork level.
+**`0x0100` was the one universal address — until it wasn't.** Of the thirteen rows that
+declare it, eleven carry P256VERIFY there, arriving through five unrelated forks
+(mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, Kaia), and most
+diverge from mainnet's semantics or gas. Presence proves nothing about lineage or fork
+level.
 
-Hyperliquid breaks it: `0x0100` is **empty**, behaving exactly like an unallocated
-address. That is worse than divergence. EIP-7951 signals *invalid signature* by
-returning empty output, which is byte-identical to what a missing precompile returns —
-so every P256 verification on that chain reports "invalid" forever, with no revert and
-no error. A passkey wallet ported there is broken and looks merely strict. Establishing
-this needed a *valid* signature and a mainnet control on identical calldata; the obvious
-probe, calling the address and checking for output, cannot tell the two cases apart.
+**Two chains break it, and the second one harder.** On Hyperliquid `0x0100` is simply
+empty. On **Sei it is empty even though the chain has P256VERIFY** — at `0x1011`,
+ABI-dispatched as `verify(bytes)`, where the raw 160-byte call reverts. Sei's geth fork
+stops at Prague and installs custom precompiles only where the built-in map is empty, so
+it structurally cannot occupy a mainnet address.
+
+That is worse than divergence. EIP-7951 signals *invalid signature* by returning empty
+output, byte-identical to what a missing precompile returns — so every P256 verification
+on both chains reports "invalid" forever, with no revert and no error. A passkey wallet
+ported there is broken and looks merely strict.
+
+Establishing this needs a **valid** signature plus a mainnet control on identical
+calldata. The obvious probe — call the address, check for output — cannot tell the two
+cases apart, which is why an address-diff survey reports both chains as fine.
+
+**Proof-system constraints leak into consensus — and it is a law, not an anecdote.**
+Three chains, three unrelated mechanisms, same cause. OP Stack caps precompile *input
+size* (call reverts). Linea budgets prover *work per block* — `RIPEMD_BLOCKS=0`,
+`BLAKE_ROUNDS=0` — so those precompiles execute in `eth_call` and can never be mined.
+zkSync caps modexp *operand width* at 32 bytes, 32× tighter than EIP-7823, making
+2048-bit RSA impossible; its source says so outright: *"violates EVM equivalence… comes
+from circuit limitations."* No single detection strategy finds all three.
+
+**"Runs the OP Stack" does not mean it inherits the envelope.** Celo carries its own
+transaction type `0x7b` (CIP-64, gas paid in an ERC-20) *on top of* OP Stack — and it is
+the **dominant type**, 61% of transactions in the blocks sampled, not an edge case. Its
+receipts carry a fifth consensus field inside `receiptsRoot`. Resolving
+`ethereum → op-stack → X` therefore does **not** give you X's type-byte set.
+
+The type-byte space is also nearly full. `0x78` Arbitrum *and* Kaia, `0x79` Base,
+`0x7b`/`0x7c` Celo, `0x7e` the OP family, `0x7f` Polygon — only `0x7a` and `0x7d` remain
+below EIP-2718's `0x7f` ceiling. Kaia does not even fit: its type is a **`uint16`**
+(`0x7801`–`0x7804`), and it re-wraps Ethereum transactions as `0x78 || ethType || rlp`,
+so the RPC looks standard while the consensus encoding is not.
 
 **Fork names lie in both directions.** BSC shipped Prague *seven weeks before mainnet*
 and Osaka five months after. Avalanche has P256VERIFY (an Osaka feature) without

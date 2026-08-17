@@ -50,7 +50,8 @@ forks:
   - {name: zombie, mainnet_equivalent: null}
 
 eips:
-  7702: {status: inherited, note: "present as a distinct tx type alongside EIP-8130"}
+  7702: {status: inherited, note: "present as a distinct tx type alongside EIP-8130",
+         src: "crates/common/consensus/src/transaction/tx_type.rs:OpTxType"}
   8130:
     status: added
     note: >-
@@ -109,7 +110,7 @@ precompiles:
     fork: beryl
     severity: high
     pattern: "byte[0] == 0xb2 AND bytes[1..10] == 0 AND byte[10] in {0x00 asset, 0x01 stablecoin}"
-    src: crates/common/precompiles/src/b20_factory/variant.rs:66-80, lookup.rs
+    src: crates/common/precompiles/src/b20_factory/variant.rs:66-80, crates/common/precompiles/src/lookup.rs
     note: >-
       NOT ENUMERABLE. Beryl installs a PrecompileLookup (BerylLookup) that resolves
       precompiles by PREDICATE over the address rather than from a fixed map. Every

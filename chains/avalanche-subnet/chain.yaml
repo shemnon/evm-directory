@@ -49,9 +49,10 @@ forks:
   - {name: granite, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100"}
 
 eips:
-  2537: {status: removed, note: "no Prague — BLS12-381 0x0b-0x11 unavailable"}
-  7702: {status: removed, note: "no Prague — tx type 0x04 does not exist"}
-  4844: {status: removed, note: "no blob market on subnets"}
+  2537: {status: removed, note: "no Prague — BLS12-381 0x0b-0x11 unavailable", src: "params/config_extra.go:SetEthUpgrades"}
+  7702: {status: removed, note: "no Prague — tx type 0x04 does not exist", src: "params/config_extra.go:SetEthUpgrades"}
+  4844: {status: removed, note: "no blob market on subnets",
+         src: "plugin/evm/wrapped_block.go:errBlobsNotEnabled"}
   7951:
     status: modified
     note: "P256VERIFY at 0x0100 via Granite, not Osaka — same out-of-order adoption as the C-Chain"
@@ -62,7 +63,7 @@ non_eip_specs:
      src: "precompile/contracts/warp/module.go:23"}
 
 tx_types:
-  "0x04": {name: SetCodeTx, status: removed, note: "EIP-7702 not adopted"}
+  "0x04": {name: SetCodeTx, status: removed, note: "EIP-7702 not adopted", src: "params/config_extra.go:SetEthUpgrades"}
   note: "0x00-0x03 from libevm; no subnet-specific envelope types"
 
 precompiles:
@@ -71,13 +72,14 @@ precompiles:
     name: MODEXP
     status: modified
     note: "Cancun-level (eip2565 only) — no EIP-7823 bounds, no EIP-7883 repricing, because Osaka was never adopted"
-  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague"}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague"}
+    src: "params/config_extra.go:SetEthUpgrades"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
   "0x0200000000000000000000000000000000000000":
     name: ContractDeployerAllowList
     status: added

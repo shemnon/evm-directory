@@ -63,6 +63,7 @@ eips:
       L2 gas pricing is ArbOS's own speed-limit-based mechanism plus a separate L1
       data-posting charge (arbos/l1pricing, arbos/l2pricing), not mainnet's base-fee
       update rule.
+    src: "arbos/l2pricing/model.go:UpdatePricingModel, arbos/l1pricing/l1pricing.go:L1PricingState"
   3541:
     status: modified
     severity: high
@@ -97,13 +98,20 @@ non_eip_specs:
 
 tx_types:
   # verified: go-ethereum/core/types/transaction.go:48-54
-  "0x64": {name: ArbitrumDepositTx, status: added, note: "L1->L2 deposit"}
-  "0x65": {name: ArbitrumUnsignedTx, status: added, note: "unsigned, L1-originated"}
-  "0x66": {name: ArbitrumContractTx, status: added}
-  "0x68": {name: ArbitrumRetryTx, status: added, note: "retryable ticket redemption"}
-  "0x69": {name: ArbitrumSubmitRetryableTx, status: added}
-  "0x6A": {name: ArbitrumInternalTx, status: added, note: "ArbOS-internal state updates"}
-  "0x78": {name: ArbitrumLegacyTx, status: added, note: "pre-Nitro classic transactions"}
+  "0x64": {name: ArbitrumDepositTx, status: added, note: "L1->L2 deposit",
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumDepositTx"}
+  "0x65": {name: ArbitrumUnsignedTx, status: added, note: "unsigned, L1-originated",
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumUnsignedTx"}
+  "0x66": {name: ArbitrumContractTx, status: added,
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumContractTx"}
+  "0x68": {name: ArbitrumRetryTx, status: added, note: "retryable ticket redemption",
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumRetryTx"}
+  "0x69": {name: ArbitrumSubmitRetryableTx, status: added,
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumSubmitRetryableTx"}
+  "0x6A": {name: ArbitrumInternalTx, status: added, note: "ArbOS-internal state updates",
+           src: "go-ethereum/core/types/arb_types.go:ArbitrumInternalTx"}
+  "0x78": {name: ArbitrumLegacyTx, status: added, note: "pre-Nitro classic transactions",
+           src: "go-ethereum/core/types/arbitrum_legacy_tx.go:ArbitrumLegacyTxData"}
   note: >-
     SEVEN custom transaction types — the most of any chain in this dataset, versus
     OP Stack's one. All sit in the legal 0x00-0x7f envelope range but low in it:
@@ -114,25 +122,44 @@ tx_types:
 
 precompiles:
   # verified: go-ethereum/core/types/arbitrum_signer.go
-  "0x64": {name: ArbSys, status: added, note: "core system precompile: L2->L1 messaging, block numbers"}
-  "0x65": {name: ArbInfo, status: added}
-  "0x66": {name: ArbAddressTable, status: added}
-  "0x67": {name: ArbBLS, status: added}
-  "0x68": {name: ArbFunctionTable, status: added}
-  "0x69": {name: ArbosTest, status: added}
-  "0x6b": {name: ArbOwnerPublic, status: added}
-  "0x6c": {name: ArbGasInfo, status: added}
-  "0x6d": {name: ArbAggregator, status: added}
-  "0x6e": {name: ArbRetryableTx, status: added}
-  "0x6f": {name: ArbStatistics, status: added}
-  "0x70": {name: ArbOwner, status: added, note: "chain-owner-only administrative functions"}
-  "0x71": {name: ArbWasm, status: added, note: "Stylus program activation"}
-  "0x72": {name: ArbWasmCache, status: added}
-  "0x73": {name: ArbNativeTokenManager, status: added}
-  "0x74": {name: ArbFilteredTransactionsManager, status: added, note: "ArbOS 60 transaction filtering"}
-  "0xc8": {name: NodeInterface, status: added, note: "RPC-only virtual contract, not consensus state"}
-  "0xc9": {name: NodeInterfaceDebug, status: added}
-  "0xff": {name: ArbDebug, status: added}
+  "0x64": {name: ArbSys, status: added, note: "core system precompile: L2->L1 messaging, block numbers",
+           src: "precompiles/ArbSys.go:ArbSys"}
+  "0x65": {name: ArbInfo, status: added,
+           src: "precompiles/ArbInfo.go:ArbInfo"}
+  "0x66": {name: ArbAddressTable, status: added,
+           src: "precompiles/ArbAddressTable.go:ArbAddressTable"}
+  "0x67": {name: ArbBLS, status: added,
+           src: "precompiles/ArbBLS.go:ArbBLS"}
+  "0x68": {name: ArbFunctionTable, status: added,
+           src: "precompiles/ArbFunctionTable.go:ArbFunctionTable"}
+  "0x69": {name: ArbosTest, status: added,
+           src: "precompiles/ArbosTest.go:ArbosTest"}
+  "0x6b": {name: ArbOwnerPublic, status: added,
+           src: "precompiles/ArbOwnerPublic.go:ArbOwnerPublic"}
+  "0x6c": {name: ArbGasInfo, status: added,
+           src: "precompiles/ArbGasInfo.go:ArbGasInfo"}
+  "0x6d": {name: ArbAggregator, status: added,
+           src: "precompiles/ArbAggregator.go:ArbAggregator"}
+  "0x6e": {name: ArbRetryableTx, status: added,
+           src: "precompiles/ArbRetryableTx.go:ArbRetryableTx"}
+  "0x6f": {name: ArbStatistics, status: added,
+           src: "precompiles/ArbStatistics.go:ArbStatistics"}
+  "0x70": {name: ArbOwner, status: added, note: "chain-owner-only administrative functions",
+           src: "precompiles/ArbOwner.go:ArbOwner"}
+  "0x71": {name: ArbWasm, status: added, note: "Stylus program activation",
+           src: "precompiles/ArbWasm.go:ArbWasm"}
+  "0x72": {name: ArbWasmCache, status: added,
+           src: "precompiles/ArbWasmCache.go:ArbWasmCache"}
+  "0x73": {name: ArbNativeTokenManager, status: added,
+           src: "precompiles/ArbNativeTokenManager.go:ArbNativeTokenManager"}
+  "0x74": {name: ArbFilteredTransactionsManager, status: added, note: "ArbOS 60 transaction filtering",
+           src: "precompiles/ArbFilteredTransactionsManager.go:ArbFilteredTransactionsManager"}
+  "0xc8": {name: NodeInterface, status: added, note: "RPC-only virtual contract, not consensus state",
+           src: "execution/nodeinterface/node_interface.go:NodeInterface"}
+  "0xc9": {name: NodeInterfaceDebug, status: added,
+           src: "execution/nodeinterface/debug.go:NodeInterfaceDebug"}
+  "0xff": {name: ArbDebug, status: added,
+           src: "precompiles/ArbDebug.go:ArbDebug"}
   note: >-
     NINETEEN custom precompiles, the most of any chain here. ADDRESS COLLISION: the
     six at 0x64-0x69 are exactly the six BSC uses for tmHeaderValidate,
@@ -143,13 +170,17 @@ precompiles:
 
 system_contracts:
   "0x00000000000000000000000000000000000A4B05":
-    {name: ArbOS (ArbosAddress), status: added, note: "ArbOS internal actor address"}
+    {name: ArbOS (ArbosAddress), status: added, note: "ArbOS internal actor address",
+     src: "go-ethereum/core/types/arbitrum_signer.go:ArbosAddress"}
   "0xA4B05FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF":
-    {name: ArbosState, status: added}
+    {name: ArbosState, status: added,
+     src: "go-ethereum/core/types/arbitrum_signer.go:ArbosStateAddress"}
   "0xA4B0500000000000000000000000000000000001":
-    {name: FilteredTransactionsState, status: added, fork: "ArbOS 60"}
+    {name: FilteredTransactionsState, status: added, fork: "ArbOS 60",
+     src: "go-ethereum/core/types/arbitrum_signer.go:FilteredTransactionsStateAddress"}
   "0xA4B00000000000000000000000000000000000f6":
-    {name: L1PricerFundsPool, status: added}
+    {name: L1PricerFundsPool, status: added,
+     src: "go-ethereum/core/types/arbitrum_signer.go:L1PricerFundsPoolAddress"}
   src: go-ethereum/core/types/arbitrum_signer.go
 
 opcodes:

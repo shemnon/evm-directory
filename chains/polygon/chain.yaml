@@ -63,11 +63,16 @@ eips:
       simply absent from the map, unlike Avalanche which keeps it and pins blob gas
       to zero.
     src: core/vm/contracts.go:PrecompiledContractsChicago
-  7702: {status: inherited, note: "SetCodeTxType 0x04 present"}
-  7823: {status: inherited, note: "bigModExp eip7823 true in Chicago, despite no Osaka fork"}
-  7883: {status: inherited, note: "bigModExp eip7883 true in Chicago"}
-  7951: {status: inherited, note: "p256Verify eip7951 true at 0x0100 in Chicago"}
-  2537: {status: modified, note: "BLS12-381 present at 0x0b-0x11 but REPRICED by PIP-88"}
+  7702: {status: inherited, note: "SetCodeTxType 0x04 present",
+         src: "core/types/transaction.go:SetCodeTxType"}
+  7823: {status: inherited, note: "bigModExp eip7823 true in Chicago, despite no Osaka fork",
+         src: "core/vm/contracts.go:PrecompiledContractsChicago"}
+  7883: {status: inherited, note: "bigModExp eip7883 true in Chicago",
+         src: "core/vm/contracts.go:PrecompiledContractsChicago"}
+  7951: {status: inherited, note: "p256Verify eip7951 true at 0x0100 in Chicago",
+         src: "core/vm/contracts.go:PrecompiledContractsChicago, params/protocol_params.go:P256VerifyGasEIP7951"}
+  2537: {status: modified, note: "BLS12-381 present at 0x0b-0x11 but REPRICED by PIP-88",
+         src: "params/protocol_params.go:Bls12381G1AddGasPIP88"}
 
 non_eip_specs:
   - id: PIP-88
@@ -92,18 +97,30 @@ tx_types:
 
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsChicago (live set)
-  "0x06": {name: BN256_ADD, status: modified, note: "PIP-88 gas x3.6 (540 vs 150)"}
-  "0x07": {name: BN256_SCALAR_MUL, status: modified, note: "PIP-88 gas x2.1 (12600 vs 6000)"}
-  "0x08": {name: BN256_PAIRING, status: modified, note: "PIP-88 base x1.5, per-point x1.5"}
-  "0x09": {name: BLAKE2F, status: modified, note: "PIP-88 GFROUND 22 vs 1 — a 22x per-round surcharge"}
-  "0x0a": {name: KZG_POINT_EVALUATION, status: removed, note: "absent from the Chicago map — no EIP-4844"}
-  "0x0b": {name: BLS12_G1ADD, status: modified, note: "PIP-88 gas x2.8"}
-  "0x0c": {name: BLS12_G1MSM, status: modified, note: "PIP-88 gas x6.1 at k=1"}
-  "0x0d": {name: BLS12_G2ADD, status: modified, note: "PIP-88 gas x2.7"}
-  "0x0e": {name: BLS12_G2MSM, status: modified, note: "PIP-88 gas x6.4 at k=1"}
-  "0x0f": {name: BLS12_PAIRING, status: modified, note: "PIP-88 repricing"}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: modified, note: "PIP-88 repricing"}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: modified, note: "PIP-88 repricing"}
+  "0x06": {name: BN256_ADD, status: modified, note: "PIP-88 gas x3.6 (540 vs 150)",
+           src: "params/protocol_params.go:Bn256AddGasIstanbulPIP88"}
+  "0x07": {name: BN256_SCALAR_MUL, status: modified, note: "PIP-88 gas x2.1 (12600 vs 6000)",
+           src: "params/protocol_params.go:Bn256ScalarMulGasIstanbulPIP88"}
+  "0x08": {name: BN256_PAIRING, status: modified, note: "PIP-88 base x1.5, per-point x1.5",
+           src: "params/protocol_params.go:Bn256PairingBaseGasIstanbulPIP88"}
+  "0x09": {name: BLAKE2F, status: modified, note: "PIP-88 GFROUND 22 vs 1 — a 22x per-round surcharge",
+           src: "params/protocol_params.go:GFROUNDPIP88"}
+  "0x0a": {name: KZG_POINT_EVALUATION, status: removed, note: "absent from the Chicago map — no EIP-4844",
+           src: "core/vm/contracts.go:PrecompiledContractsChicago"}
+  "0x0b": {name: BLS12_G1ADD, status: modified, note: "PIP-88 gas x2.8",
+           src: "params/protocol_params.go:Bls12381G1AddGasPIP88"}
+  "0x0c": {name: BLS12_G1MSM, status: modified, note: "PIP-88 gas x6.1 at k=1",
+           src: "params/protocol_params.go:Bls12381G1MulGasPIP88"}
+  "0x0d": {name: BLS12_G2ADD, status: modified, note: "PIP-88 gas x2.7",
+           src: "params/protocol_params.go:Bls12381G2AddGasPIP88"}
+  "0x0e": {name: BLS12_G2MSM, status: modified, note: "PIP-88 gas x6.4 at k=1",
+           src: "params/protocol_params.go:Bls12381G2MulGasPIP88"}
+  "0x0f": {name: BLS12_PAIRING, status: modified, note: "PIP-88 repricing",
+           src: "params/protocol_params.go:Bls12381PairingBaseGasPIP88"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: modified, note: "PIP-88 repricing",
+           src: "params/protocol_params.go:Bls12381MapG1GasPIP88"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: modified, note: "PIP-88 repricing",
+           src: "params/protocol_params.go:Bls12381MapG2GasPIP88"}
   note: >-
     ZERO custom addresses, ELEVEN modified ones. Polygon's divergence is almost
     entirely gas repricing at mainnet addresses — the same silent class as OP Stack's
@@ -115,7 +132,7 @@ system_contracts:
     name: ValidatorContract
     status: added
     severity: high
-    src: params/config.go:429
+    src: "params/config.go:BorConfig.ValidatorContract"
     note: >-
       COLLISION: BSC also uses 0x..1000 for a contract it also calls
       ValidatorContract. Same address, same name, different chains, different code
@@ -125,7 +142,7 @@ system_contracts:
     name: StateReceiverContract
     status: added
     severity: high
-    src: params/config.go:430
+    src: "params/config.go:BorConfig.StateReceiverContract"
     note: "COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose."
 
 opcodes:

@@ -23,8 +23,8 @@ Only addresses that differ from mainnet somewhere are listed; a blank cell means
 | `0x0f` BLS12_PAIRING | = |  | ➖ | ➖ | ⚠️ | ⚠️† | ➖ |
 | `0x10` BLS12_MAP_FP_TO_G1 | = |  | ➖ | ➖ |  |  | ➖ |
 | `0x11` BLS12_MAP_FP2_TO_G2 | = |  | ➖ | ➖ |  |  | ➖ |
-| `0x64` tmHeaderValidate |  | ➕ |  |  |  |  |  |
-| `0x65` iavlMerkleProofValidate |  | ➕ |  |  |  |  |  |
+| `0x64` tmHeaderValidate |  | ➕⏳ |  |  |  |  |  |
+| `0x65` iavlMerkleProofValidate |  | ➕⏳ |  |  |  |  |  |
 | `0x66` blsSignatureVerify |  | ➕ |  |  |  |  |  |
 | `0x67` cometBFTLightBlockValidate |  | ➕ |  |  |  |  |  |
 | `0x68` verifyDoubleSignEvidence |  | ➕ |  |  |  |  |  |
@@ -53,20 +53,25 @@ Only addresses that differ from mainnet somewhere are listed; a blank cell means
 | `0x1000013` totalResource |  |  |  |  |  |  | ➕ |
 | `0x1000014` totalDelegatedResource |  |  |  |  |  |  | ➕ |
 | `0x1000015` totalAcquiredResource |  |  |  |  |  |  | ➕ |
-| `0x0100000000000000000000000000000000000000` GenesisContract |  |  | ➕ |  |  |  |  |
-| `0x0100000000000000000000000000000000000001` NativeAssetBalance |  |  | ➕ |  |  |  |  |
-| `0x0100000000000000000000000000000000000002` NativeAssetCall |  |  | ➕ |  |  |  |  |
-| `0x0200000000000000000000000000000000000000` ContractDeployerAllowList |  |  |  | ➕ |  |  |  |
-| `0x0200000000000000000000000000000000000001` ContractNativeMinter |  |  |  | ➕ |  |  |  |
-| `0x0200000000000000000000000000000000000002` TxAllowList |  |  |  | ➕ |  |  |  |
-| `0x0200000000000000000000000000000000000003` FeeManager |  |  |  | ➕ |  |  |  |
-| `0x0200000000000000000000000000000000000004` RewardManager |  |  |  | ➕ |  |  |  |
-| `0x0200000000000000000000000000000000000005` Warp Messenger |  |  | ➕ | ➕ |  |  |  |
+| `0x0100000000000000000000000000000000000000` GenesisContract |  |  | ⊘ |  |  |  |  |
+| `0x0100000000000000000000000000000000000001` NativeAssetBalance |  |  | ⊘ |  |  |  |  |
+| `0x0100000000000000000000000000000000000002` NativeAssetCall |  |  | ⊘ |  |  |  |  |
+| `0x0200000000000000000000000000000000000000` ContractDeployerAllowList |  |  |  | ➕◐ |  |  |  |
+| `0x0200000000000000000000000000000000000001` ContractNativeMinter |  |  |  | ➕◐ |  |  |  |
+| `0x0200000000000000000000000000000000000002` TxAllowList |  |  |  | ➕◐ |  |  |  |
+| `0x0200000000000000000000000000000000000003` FeeManager |  |  |  | ➕◐ |  |  |  |
+| `0x0200000000000000000000000000000000000004` RewardManager |  |  |  | ➕◐ |  |  |  |
+| `0x0200000000000000000000000000000000000005` Warp Messenger |  |  | ➕ | ➕◐ |  |  |  |
 
 Legend: ➕ added · ➖ removed/absent · ⚠️ modified (same address, different semantics) · = inherited · ◌ pending · ◐ opt-in · † inherited from a stack ancestor
 
-## Notes worth reading
+## Silent divergences (`severity: high`)
 
+Divergences that produce wrong results with no revert, no error and no signal to the caller — across every section, not just precompiles.
+
+- **BNB Smart Chain `mutable_bytecode`** — BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode. Twenty per-fork bytecode directories exist (bruno, euler, gibbs, moran, planck, plato, luban, kepler, feynman, haber_fix, bohr, pascal, lorentz, maxwell, fermi, pasteur, ...). Unique in this dataset: on every other chain, code at an address changes only by transaction. Here the client swaps it, so the same address can have completely different behaviour across a fork with no on-chain transaction to observe.
+- **BNB Smart Chain** system-contract bytecode — BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode. Twenty per-fork bytecode directories exist (bruno, euler, gibbs, moran, planck, plato, luban, kepler, feynman, haber_fix, bohr, pascal, lorentz, maxwell, fermi, pasteur, ...). Unique in this dataset: on every other chain, code at an address changes only by transaction. Here the client swaps it, so the same address can have completely different behaviour across a fork with no on-chain transaction to observe.
+- **OP Stack** header `blobGasUsed` — Repurposed to store the DA footprint. Same field name, same RLP position, same JSON key (`blobGasUsed`) — completely different meaning. An indexer computing blob economics from OP chain headers gets silent garbage rather than an error. This is the single nastiest divergence found so far.
 - **Tron `0x03`** — Does NOT compute RIPEMD160. The implementation computes SHA256(data), copies the first 20 bytes into a 20-byte buffer, and returns SHA256 of that buffer — no RIPEMD anywhere, despite the class name. Ethereum's actual RIPEMD160 is available at 0x020003 as EthRipemd160. Same address as mainnet, entirely different function, no error signalled.
 - **Tron `0x09`** — COLLISION. Mainnet's 0x09 is BLAKE2F (EIP-152). Tron placed its batch signature validator there. Tron's BLAKE2F lives at 0x020009 instead.
 - **Tron `0x0a`** — COLLISION. Mainnet's 0x0a is KZG point evaluation (EIP-4844). Tron placed its multisig validator there.

@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 chain:
   name: Ethereum Mainnet
@@ -35,27 +35,27 @@ forks:
   src: params/config.go:MainnetChainConfig
   timeline:
   - name: shanghai
-    activation: 1681338455
+    activation_time: 1681338455
     mainnet_equivalent: self
   - name: cancun
-    activation: 1710338135
+    activation_time: 1710338135
     mainnet_equivalent: self
   - name: prague
-    activation: 1746612311
+    activation_time: 1746612311
     mainnet_equivalent: self
   - name: osaka
-    activation: 1764798551
+    activation_time: 1764798551
     mainnet_equivalent: self
   - name: bpo1
-    activation: 1765290071
+    activation_time: 1765290071
     mainnet_equivalent: self
     note: blob-parameter-only fork; target 10 / max 15
   - name: bpo2
-    activation: 1767747671
+    activation_time: 1767747671
     mainnet_equivalent: self
     note: blob-parameter-only fork; target 14 / max 21 — current live blob schedule
   - name: bogota
-    activation: null
+    activation_time: null
     status: pending
     note: >-
       next named fork in geth's ordering (amsterdam -> bogota -> ubt per

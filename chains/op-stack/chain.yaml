@@ -77,6 +77,7 @@ eips:
       No blob market on L2. Blobs are an L1 DA mechanism for the batcher; there is
       no user-facing BlobTx. The blobGasUsed header field is repurposed (see
       header_fields), which is strictly worse than absence for anyone parsing it.
+    src: "core/txpool/validation.go:ValidateTransaction"
   7702:
     status: inherited
     note: >-
@@ -109,6 +110,7 @@ eips:
   7928:
     status: removed
     note: BlockAccessListHash header field absent; unshipped on mainnet too, so not yet a divergence.
+    src: "core/types/block.go:Header"
 
 non_eip_specs:
   - {id: RIP-7212, name: secp256r1 precompile, adoption: adopted, fork: fjord,
@@ -137,6 +139,7 @@ precompiles:
     name: MODEXP
     status: modified
     note: "no EIP-7823 bounds, no EIP-7883 repricing — cheaper and more permissive than mainnet Osaka"
+    src: "core/vm/contracts.go:PrecompiledContractsJovian"
   "0x08":
     name: BN256_PAIRING
     status: modified

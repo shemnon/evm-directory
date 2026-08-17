@@ -62,12 +62,16 @@ eips:
       No blobs. BLOBHASH and BLOBBASEFEE opcodes exist for bytecode compatibility;
       BLOBBASEFEE pushes zero unconditionally.
     src: actuator/src/main/java/org/tron/core/vm/OperationActions.java:698-701
-  2718: {status: removed, note: "no typed transaction envelope at all — see tx_types"}
-  2537: {status: removed, note: "no BLS12-381 precompiles"}
-  4844_kzg: {status: removed, note: "0x0a is occupied by validateMultiSign instead of KZG"}
+  2718: {status: removed, note: "no typed transaction envelope at all — see tx_types",
+         src: "protocol/src/main/protos/core/Tron.proto:Transaction"}
+  2537: {status: removed, note: "no BLS12-381 precompiles",
+         src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  4844_kzg: {status: removed, note: "0x0a is occupied by validateMultiSign instead of KZG",
+             src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:validateMultiSignAddr"}
   152:
     status: modified
     note: "BLAKE2F exists but at 0x020009, NOT at mainnet's 0x09 — 0x09 holds batchValidateSign"
+    src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:blake2FAddr"
   7702: {status: removed}
   4788: {status: removed, note: no beacon chain}
   2935: {status: removed}
@@ -137,17 +141,26 @@ precompiles:
     name: MODEXP
     status: modified
     note: "no EIP-7823 bounds, no EIP-7883 repricing; energy-metered rather than gas-metered"
-  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 never implemented"}
-  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 never implemented"}
-  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 never implemented"}
-  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 never implemented"}
-  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 never implemented"}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 never implemented"}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 never implemented"}
+    src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:ModExp"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 never implemented",
+           src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress"}
   "0x0100":
     name: P256VERIFY
     status: modified
     note: "same address as mainnet/OP Stack/Avalanche — the fourth independent arrival at 0x0100"
+    src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:P256Verify"
   "0x020003":
     name: EthRipemd160
     status: added
@@ -158,27 +171,48 @@ precompiles:
     status: added
     note: "the real EIP-152 BLAKE2F, relocated out of 0x09"
     src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:210
-  "0x1000001": {name: verifyMintProof, status: added, note: "shielded TRC-20 zk-SNARK"}
-  "0x1000002": {name: verifyTransferProof, status: added, note: "shielded TRC-20 zk-SNARK"}
-  "0x1000003": {name: verifyBurnProof, status: added, note: "shielded TRC-20 zk-SNARK"}
-  "0x1000004": {name: merkleHash, status: added}
-  "0x1000005": {name: rewardBalance, status: added, note: staking rewards}
-  "0x1000006": {name: isSrCandidate, status: added, note: consensus state}
-  "0x1000007": {name: voteCount, status: added}
-  "0x1000008": {name: usedVoteCount, status: added}
-  "0x1000009": {name: receivedVoteCount, status: added}
-  "0x100000a": {name: totalVoteCount, status: added}
-  "0x100000b": {name: getChainParameter, status: added, note: "reads governance parameters"}
-  "0x100000c": {name: availableUnfreezeV2Size, status: added}
-  "0x100000d": {name: unfreezableBalanceV2, status: added}
-  "0x100000e": {name: expireUnfreezeBalanceV2, status: added}
-  "0x100000f": {name: delegatableResource, status: added}
-  "0x1000010": {name: resourceV2, status: added}
-  "0x1000011": {name: checkUnDelegateResource, status: added}
-  "0x1000012": {name: resourceUsage, status: added}
-  "0x1000013": {name: totalResource, status: added}
-  "0x1000014": {name: totalDelegatedResource, status: added}
-  "0x1000015": {name: totalAcquiredResource, status: added}
+  "0x1000001": {name: verifyMintProof, status: added, note: "shielded TRC-20 zk-SNARK",
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:VerifyMintProof"}
+  "0x1000002": {name: verifyTransferProof, status: added, note: "shielded TRC-20 zk-SNARK",
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:VerifyTransferProof"}
+  "0x1000003": {name: verifyBurnProof, status: added, note: "shielded TRC-20 zk-SNARK",
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:VerifyBurnProof"}
+  "0x1000004": {name: merkleHash, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:MerkleHash"}
+  "0x1000005": {name: rewardBalance, status: added, note: staking rewards,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:RewardBalance"}
+  "0x1000006": {name: isSrCandidate, status: added, note: consensus state,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:IsSrCandidate"}
+  "0x1000007": {name: voteCount, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:VoteCount"}
+  "0x1000008": {name: usedVoteCount, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:UsedVoteCount"}
+  "0x1000009": {name: receivedVoteCount, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:ReceivedVoteCount"}
+  "0x100000a": {name: totalVoteCount, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:TotalVoteCount"}
+  "0x100000b": {name: getChainParameter, status: added, note: "reads governance parameters",
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:GetChainParameter"}
+  "0x100000c": {name: availableUnfreezeV2Size, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:AvailableUnfreezeV2Size"}
+  "0x100000d": {name: unfreezableBalanceV2, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:UnfreezableBalanceV2"}
+  "0x100000e": {name: expireUnfreezeBalanceV2, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:ExpireUnfreezeBalanceV2"}
+  "0x100000f": {name: delegatableResource, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:DelegatableResource"}
+  "0x1000010": {name: resourceV2, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:ResourceV2"}
+  "0x1000011": {name: checkUnDelegateResource, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:CheckUnDelegateResource"}
+  "0x1000012": {name: resourceUsage, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:ResourceUsage"}
+  "0x1000013": {name: totalResource, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:TotalResource"}
+  "0x1000014": {name: totalDelegatedResource, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:TotalDelegatedResource"}
+  "0x1000015": {name: totalAcquiredResource, status: added,
+               src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:TotalAcquiredResource"}
   note: >-
     Three address regions. 0x01-0x0a overlaps mainnet's range and diverges inside it
     at 0x03/0x09/0x0a. 0x02xxxx is a compatibility SHADOW RANGE holding true

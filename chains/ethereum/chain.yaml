@@ -66,31 +66,43 @@ eips:
   # Baseline chain: every mainnet EIP is `inherited` by definition, so this section
   # lists only what forks care about downstream — the specs other chains commonly
   # disable, delay, or alter. Presence here = "mainnet has it, check the other rows".
-  155:  {status: inherited, name: replay protection / chain id}
-  1559: {status: inherited, name: fee market, note: "commonly disabled or altered downstream (ETC removes it entirely)"}
-  2537: {status: inherited, name: BLS12-381 precompiles, fork: prague}
-  2935: {status: inherited, name: historical block hashes in state, fork: prague}
-  3607: {status: inherited, name: reject txs from senders with code}
-  4788: {status: inherited, name: beacon block root in EVM, fork: cancun}
-  4844: {status: inherited, name: shard blob transactions, fork: cancun, note: "frequent absence downstream — no blob market on most non-L1s"}
-  6110: {status: inherited, name: supply validator deposits on chain, fork: prague}
-  7002: {status: inherited, name: execution-layer triggerable exits, fork: prague}
-  7251: {status: inherited, name: increase MAX_EFFECTIVE_BALANCE, fork: prague}
-  7702: {status: inherited, name: set EOA account code, fork: prague}
+  155:  {status: inherited, name: replay protection / chain id,
+          src: "core/types/transaction_signing.go:NewEIP155Signer"}
+  1559: {status: inherited, name: fee market, note: "commonly disabled or altered downstream (ETC removes it entirely)",
+          src: "consensus/misc/eip1559/eip1559.go:CalcBaseFee"}
+  2537: {status: inherited, name: BLS12-381 precompiles, fork: prague,
+          src: "core/vm/contracts.go:PrecompiledContractsPrague"}
+  2935: {status: inherited, name: historical block hashes in state, fork: prague,
+          src: "core/state_processor.go:ProcessParentBlockHash"}
+  3607: {status: inherited, name: reject txs from senders with code,
+          src: "core/state_transition.go:preCheck"}
+  4788: {status: inherited, name: beacon block root in EVM, fork: cancun,
+          src: "core/state_processor.go:ProcessBeaconBlockRoot"}
+  4844: {status: inherited, name: shard blob transactions, fork: cancun, note: "frequent absence downstream — no blob market on most non-L1s",
+          src: "core/types/tx_blob.go:BlobTx"}
+  6110: {status: inherited, name: supply validator deposits on chain, fork: prague,
+          src: "core/state_processor.go:ParseDepositLogs"}
+  7002: {status: inherited, name: execution-layer triggerable exits, fork: prague,
+          src: "core/state_processor.go:ProcessWithdrawalQueue"}
+  7251: {status: inherited, name: increase MAX_EFFECTIVE_BALANCE, fork: prague,
+          src: "core/state_processor.go:ProcessConsolidationQueue"}
+  7702: {status: inherited, name: set EOA account code, fork: prague,
+          src: "core/types/tx_setcode.go:SetCodeTx"}
   7823: {status: inherited, name: modexp upper bounds, fork: osaka, src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
   7883: {status: inherited, name: modexp gas cost increase, fork: osaka, src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
   7951: {status: inherited, name: secp256r1 (P256VERIFY) precompile, fork: osaka,
-         note: "shipped on L2s as RIP-7212 years before mainnet — expect downstream chains to have it at the SAME address 0x0100 but under an earlier fork name"}
+         note: "shipped on L2s as RIP-7212 years before mainnet — expect downstream chains to have it at the SAME address 0x0100 but under an earlier fork name",
+         src: "core/vm/contracts.go:p256Verify"}
 
 non_eip_specs: []
 
 tx_types:
   # verified: core/types/transaction.go:48-52
-  "0x00": {name: LegacyTx,     status: inherited, spec: frontier/EIP-155}
-  "0x01": {name: AccessListTx, status: inherited, spec: EIP-2930}
-  "0x02": {name: DynamicFeeTx, status: inherited, spec: EIP-1559}
-  "0x03": {name: BlobTx,       status: inherited, spec: EIP-4844}
-  "0x04": {name: SetCodeTx,    status: inherited, spec: EIP-7702}
+  "0x00": {name: LegacyTx,     status: inherited, spec: frontier/EIP-155, src: "core/types/transaction.go:LegacyTxType"}
+  "0x01": {name: AccessListTx, status: inherited, spec: EIP-2930, src: "core/types/transaction.go:AccessListTxType"}
+  "0x02": {name: DynamicFeeTx, status: inherited, spec: EIP-1559, src: "core/types/transaction.go:DynamicFeeTxType"}
+  "0x03": {name: BlobTx,       status: inherited, spec: EIP-4844, src: "core/types/transaction.go:BlobTxType"}
+  "0x04": {name: SetCodeTx,    status: inherited, spec: EIP-7702, src: "core/types/transaction.go:SetCodeTxType"}
   src: core/types/transaction.go
   note: >-
     0x00 is the untyped RLP legacy envelope. Typed envelopes are 0x00-0x7f;
@@ -100,24 +112,24 @@ tx_types:
 
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsOsaka
-  "0x01": {name: ECRECOVER,        status: inherited, spec: frontier}
-  "0x02": {name: SHA256,           status: inherited, spec: frontier}
-  "0x03": {name: RIPEMD160,        status: inherited, spec: frontier}
-  "0x04": {name: IDENTITY,         status: inherited, spec: frontier}
-  "0x05": {name: MODEXP,           status: inherited, spec: "EIP-198/2565/7823/7883"}
-  "0x06": {name: BN256_ADD,        status: inherited, spec: "EIP-196/1108"}
-  "0x07": {name: BN256_SCALAR_MUL, status: inherited, spec: "EIP-196/1108"}
-  "0x08": {name: BN256_PAIRING,    status: inherited, spec: "EIP-197/1108"}
-  "0x09": {name: BLAKE2F,          status: inherited, spec: EIP-152}
-  "0x0a": {name: KZG_POINT_EVALUATION, status: inherited, spec: EIP-4844}
-  "0x0b": {name: BLS12_G1ADD,      status: inherited, spec: EIP-2537}
-  "0x0c": {name: BLS12_G1MSM,      status: inherited, spec: EIP-2537}
-  "0x0d": {name: BLS12_G2ADD,      status: inherited, spec: EIP-2537}
-  "0x0e": {name: BLS12_G2MSM,      status: inherited, spec: EIP-2537}
-  "0x0f": {name: BLS12_PAIRING,    status: inherited, spec: EIP-2537}
-  "0x10": {name: BLS12_MAP_FP_TO_G1,  status: inherited, spec: EIP-2537}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: inherited, spec: EIP-2537}
-  "0x0100": {name: P256VERIFY,     status: inherited, spec: "EIP-7951 (= RIP-7212)", fork: osaka}
+  "0x01": {name: ECRECOVER,        status: inherited, spec: frontier, src: "core/vm/contracts.go:ecrecover"}
+  "0x02": {name: SHA256,           status: inherited, spec: frontier, src: "core/vm/contracts.go:sha256hash"}
+  "0x03": {name: RIPEMD160,        status: inherited, spec: frontier, src: "core/vm/contracts.go:ripemd160hash"}
+  "0x04": {name: IDENTITY,         status: inherited, spec: frontier, src: "core/vm/contracts.go:dataCopy"}
+  "0x05": {name: MODEXP,           status: inherited, spec: "EIP-198/2565/7823/7883", src: "core/vm/contracts.go:bigModExp"}
+  "0x06": {name: BN256_ADD,        status: inherited, spec: "EIP-196/1108", src: "core/vm/contracts.go:bn256AddIstanbul"}
+  "0x07": {name: BN256_SCALAR_MUL, status: inherited, spec: "EIP-196/1108", src: "core/vm/contracts.go:bn256ScalarMulIstanbul"}
+  "0x08": {name: BN256_PAIRING,    status: inherited, spec: "EIP-197/1108", src: "core/vm/contracts.go:bn256PairingIstanbul"}
+  "0x09": {name: BLAKE2F,          status: inherited, spec: EIP-152, src: "core/vm/contracts.go:blake2F"}
+  "0x0a": {name: KZG_POINT_EVALUATION, status: inherited, spec: EIP-4844, src: "core/vm/contracts.go:kzgPointEvaluation"}
+  "0x0b": {name: BLS12_G1ADD,      status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381G1Add"}
+  "0x0c": {name: BLS12_G1MSM,      status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381G1MultiExp"}
+  "0x0d": {name: BLS12_G2ADD,      status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381G2Add"}
+  "0x0e": {name: BLS12_G2MSM,      status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381G2MultiExp"}
+  "0x0f": {name: BLS12_PAIRING,    status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381Pairing"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1,  status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381MapG1"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: inherited, spec: EIP-2537, src: "core/vm/contracts.go:bls12381MapG2"}
+  "0x0100": {name: P256VERIFY,     status: inherited, spec: "EIP-7951 (= RIP-7212)", fork: osaka, src: "core/vm/contracts.go:p256Verify"}
   src: core/vm/contracts.go:PrecompiledContractsOsaka
   note: >-
     Contiguous 0x01-0x11, then a deliberate jump to 0x0100. That gap is the
@@ -128,13 +140,17 @@ precompiles:
 system_contracts:
   # verified: params/protocol_params.go:246-262. Real bytecode, NOT precompiles.
   "0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02":
-    {name: Beacon roots, status: inherited, spec: EIP-4788, fork: cancun}
+    {name: Beacon roots, status: inherited, spec: EIP-4788, fork: cancun,
+     src: "params/protocol_params.go:BeaconRootsAddress"}
   "0x0000F90827F1C53a10cb7A02335B175320002935":
-    {name: Historical block hashes, status: inherited, spec: EIP-2935, fork: prague}
+    {name: Historical block hashes, status: inherited, spec: EIP-2935, fork: prague,
+     src: "params/protocol_params.go:HistoryStorageAddress"}
   "0x00000961Ef480Eb55e80D19ad83579A64c007002":
-    {name: Withdrawal request queue, status: inherited, spec: EIP-7002, fork: prague}
+    {name: Withdrawal request queue, status: inherited, spec: EIP-7002, fork: prague,
+     src: "params/protocol_params.go:WithdrawalQueueAddress"}
   "0x0000BBdDc7CE488642fb579F8B00f3a590007251":
-    {name: Consolidation request queue, status: inherited, spec: EIP-7251, fork: prague}
+    {name: Consolidation request queue, status: inherited, spec: EIP-7251, fork: prague,
+     src: "params/protocol_params.go:ConsolidationQueueAddress"}
   "0x00000000219ab540356cBB839Cbe05303d7705fa":
     {name: Beacon deposit contract, status: inherited, spec: EIP-6110,
      src: "params/config.go:MainnetChainConfig.DepositContractAddress"}

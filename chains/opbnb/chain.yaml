@@ -46,16 +46,21 @@ forks:
   - {name: prague,  activation_time: null, status: pending, note: "PragueTime is nil across every opBNB config"}
 
 eips:
-  7702: {status: removed, note: "SetCodeTxType is absent from core/types/transaction.go entirely"}
-  2537: {status: removed, note: "no Prague — no BLS12-381 at 0x0b-0x11"}
-  4844: {status: removed, note: no L2 blob market}
-  7951: {status: modified, note: "P256VERIFY at 0x0100 via OP Stack Fjord"}
+  7702: {status: removed, note: "SetCodeTxType is absent from core/types/transaction.go entirely",
+         src: "core/types/transaction.go, params/config.go:PragueTime"}
+  2537: {status: removed, note: "no Prague — no BLS12-381 at 0x0b-0x11",
+         src: "core/vm/contracts.go:PrecompiledContractsFjord"}
+  4844: {status: removed, note: no L2 blob market,
+         src: "core/txpool/validation.go:ValidateTransaction"}
+  7951: {status: modified, note: "P256VERIFY at 0x0100 via OP Stack Fjord",
+         src: "core/vm/contracts.go:PrecompiledContractsFjord, params/protocol_params.go:P256VerifyGas"}
 
 non_eip_specs:
   - {id: BEP-derived, name: BSC cross-chain precompiles, adoption: adopted, fork: fermat}
 
 tx_types:
-  "0x04": {name: SetCodeTx, status: removed, note: "not defined in this client"}
+  "0x04": {name: SetCodeTx, status: removed, note: "not defined in this client",
+           src: "core/types/transaction.go"}
   "0x7e": {name: DepositTx, status: added, spec: OP Stack, src: core/types/deposit_tx.go:27}
   note: "0x00-0x03 plus OP Stack's 0x7e. No 0x04."
 
@@ -72,7 +77,8 @@ precompiles:
     status: added
     src: core/vm/contracts.go
     note: "BSC's precompile; also collides with Arbitrum's ArbBLS at 0x67"
-  "0x0100": {name: P256VERIFY, status: modified, note: "inherited from OP Stack Fjord (RIP-7212 gas)"}
+  "0x0100": {name: P256VERIFY, status: modified, note: "inherited from OP Stack Fjord (RIP-7212 gas)",
+             src: "core/vm/contracts.go:PrecompiledContractsFjord, params/protocol_params.go:P256VerifyGas"}
   note: >-
     Two added addresses, both borrowed from BSC rather than invented — making 0x66
     and 0x67 three-way collisions across BSC, opBNB and Arbitrum.

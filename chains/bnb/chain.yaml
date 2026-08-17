@@ -59,11 +59,16 @@ eips:
     status: inherited
     note: "blob market present; Cancun/Prague/Osaka blob schedules configured"
     src: params/config.go:BSCChainConfig.BlobScheduleConfig
-  2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)"}
-  7702: {status: inherited, note: "tx type 0x04 present — the only non-mainnet chain here with EIP-7702"}
-  7823: {status: inherited, note: "bigModExp{eip7823: true} matches mainnet Osaka exactly"}
-  7883: {status: inherited, note: "bigModExp{eip7883: true} matches mainnet Osaka exactly"}
-  7951: {status: inherited, note: "p256Verify{eip7951: true} — mainnet gas, unlike OP Stack"}
+  2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)",
+         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+  7702: {status: inherited, note: "tx type 0x04 present — the only non-mainnet chain here with EIP-7702",
+         src: "core/types/transaction.go:SetCodeTxType"}
+  7823: {status: inherited, note: "bigModExp{eip7823: true} matches mainnet Osaka exactly",
+         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+  7883: {status: inherited, note: "bigModExp{eip7883: true} matches mainnet Osaka exactly",
+         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+  7951: {status: inherited, note: "p256Verify{eip7951: true} — mainnet gas, unlike OP Stack",
+         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
   2935:
     status: inherited
     note: >-
@@ -71,15 +76,19 @@ eips:
       by the client at the Prague transition via statedb.SetCode
       (core/systemcontracts/upgrade.go:1117-1120), and the code comment calls it
       "a special system contract in bsc, which can't be upgraded".
+    src: "core/systemcontracts/upgrade.go:TryUpdateBuildInSystemContract"
   4788:
     status: removed
     note: >-
       No beacon roots. ActiveSystemContracts takes an early-return IsInBSC() branch
       that omits BEACON_ROOTS_ADDRESS entirely — BSC has no beacon chain.
     src: params/config.go:1917-1923
-  6110: {status: removed, note: "no DEPOSIT_CONTRACT_ADDRESS in the IsInBSC branch"}
-  7002: {status: removed, note: "no WITHDRAWAL_REQUEST_PREDEPLOY in the IsInBSC branch"}
-  7251: {status: removed, note: "no CONSOLIDATION_REQUEST_PREDEPLOY in the IsInBSC branch"}
+  6110: {status: removed, note: "no DEPOSIT_CONTRACT_ADDRESS in the IsInBSC branch",
+         src: "params/config.go:ActiveSystemContracts"}
+  7002: {status: removed, note: "no WITHDRAWAL_REQUEST_PREDEPLOY in the IsInBSC branch",
+         src: "params/config.go:ActiveSystemContracts"}
+  7251: {status: removed, note: "no CONSOLIDATION_REQUEST_PREDEPLOY in the IsInBSC branch",
+         src: "params/config.go:ActiveSystemContracts"}
   note: >-
     BSC's Prague adoption is a clean split: it takes the EVM-facing half (BLS12-381,
     EIP-7702, EIP-2935) and drops the entire beacon/staking half (4788, 6110, 7002,
@@ -106,7 +115,7 @@ precompiles:
       Tendermint header validation for the BNB Beacon Chain bridge. LIVE today.
       Will become tmHeaderValidateDeprecated at Pasteur (2026-08-25), after which it
       returns errors.New("deprecated") — tombstoned, not removed.
-    src: core/vm/contracts.go:343, contracts_lightclient.go:139-147
+    src: core/vm/contracts.go:343, core/vm/contracts_lightclient.go:139-147
   "0x65":
     name: iavlMerkleProofValidate
     status: added
@@ -136,7 +145,8 @@ precompiles:
     status: added
     note: "distinct from ECRECOVER at 0x01"
     src: core/vm/contracts.go:348
-  "0x0100": {name: P256VERIFY, status: inherited, note: "mainnet semantics and gas"}
+  "0x0100": {name: P256VERIFY, status: inherited, note: "mainnet semantics and gas",
+             src: "core/vm/contracts.go:PrecompiledContractsOsaka, params/protocol_params.go:P256VerifyGas"}
   note: >-
     ADDRESS PLACEMENT RISK. BSC's custom precompiles occupy 0x64-0x69 (decimal
     100-105), which sits BETWEEN mainnet's occupied 0x01-0x11 and 0x0100. Mainnet
@@ -147,23 +157,23 @@ precompiles:
 
 system_contracts:
   # verified: core/systemcontracts/const.go:5-21
-  "0x0000000000000000000000000000000000001000": {name: ValidatorContract, status: added}
-  "0x0000000000000000000000000000000000001001": {name: SlashContract, status: added}
-  "0x0000000000000000000000000000000000001002": {name: SystemRewardContract, status: added}
-  "0x0000000000000000000000000000000000001003": {name: LightClientContract, status: added}
-  "0x0000000000000000000000000000000000001004": {name: TokenHubContract, status: added}
-  "0x0000000000000000000000000000000000001005": {name: RelayerIncentivizeContract, status: added}
-  "0x0000000000000000000000000000000000001006": {name: RelayerHubContract, status: added}
-  "0x0000000000000000000000000000000000001007": {name: GovHubContract, status: added}
-  "0x0000000000000000000000000000000000001008": {name: TokenManagerContract, status: added}
-  "0x0000000000000000000000000000000000002000": {name: CrossChainContract, status: added}
-  "0x0000000000000000000000000000000000002001": {name: StakingContract, status: added}
-  "0x0000000000000000000000000000000000002002": {name: StakeHubContract, status: added}
-  "0x0000000000000000000000000000000000002003": {name: StakeCreditContract, status: added}
-  "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added}
-  "0x0000000000000000000000000000000000002005": {name: GovTokenContract, status: added}
-  "0x0000000000000000000000000000000000002006": {name: TimelockContract, status: added}
-  "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added}
+  "0x0000000000000000000000000000000000001000": {name: ValidatorContract, status: added, src: "core/systemcontracts/const.go:ValidatorContract"}
+  "0x0000000000000000000000000000000000001001": {name: SlashContract, status: added, src: "core/systemcontracts/const.go:SlashContract"}
+  "0x0000000000000000000000000000000000001002": {name: SystemRewardContract, status: added, src: "core/systemcontracts/const.go:SystemRewardContract"}
+  "0x0000000000000000000000000000000000001003": {name: LightClientContract, status: added, src: "core/systemcontracts/const.go:LightClientContract"}
+  "0x0000000000000000000000000000000000001004": {name: TokenHubContract, status: added, src: "core/systemcontracts/const.go:TokenHubContract"}
+  "0x0000000000000000000000000000000000001005": {name: RelayerIncentivizeContract, status: added, src: "core/systemcontracts/const.go:RelayerIncentivizeContract"}
+  "0x0000000000000000000000000000000000001006": {name: RelayerHubContract, status: added, src: "core/systemcontracts/const.go:RelayerHubContract"}
+  "0x0000000000000000000000000000000000001007": {name: GovHubContract, status: added, src: "core/systemcontracts/const.go:GovHubContract"}
+  "0x0000000000000000000000000000000000001008": {name: TokenManagerContract, status: added, src: "core/systemcontracts/const.go:TokenManagerContract"}
+  "0x0000000000000000000000000000000000002000": {name: CrossChainContract, status: added, src: "core/systemcontracts/const.go:CrossChainContract"}
+  "0x0000000000000000000000000000000000002001": {name: StakingContract, status: added, src: "core/systemcontracts/const.go:StakingContract"}
+  "0x0000000000000000000000000000000000002002": {name: StakeHubContract, status: added, src: "core/systemcontracts/const.go:StakeHubContract"}
+  "0x0000000000000000000000000000000000002003": {name: StakeCreditContract, status: added, src: "core/systemcontracts/const.go:StakeCreditContract"}
+  "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added, src: "core/systemcontracts/const.go:GovernorContract"}
+  "0x0000000000000000000000000000000000002005": {name: GovTokenContract, status: added, src: "core/systemcontracts/const.go:GovTokenContract"}
+  "0x0000000000000000000000000000000000002006": {name: TimelockContract, status: added, src: "core/systemcontracts/const.go:TimelockContract"}
+  "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added, src: "core/systemcontracts/const.go:TokenRecoverPortalContract"}
   mutable_bytecode:
     mechanism: TryUpdateBuildInSystemContract
     severity: high

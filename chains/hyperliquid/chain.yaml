@@ -1,0 +1,669 @@
+schema_version: 2
+
+chain:
+  name: Hyperliquid (HyperEVM)
+  slug: hyperliquid
+  chain_id: 999
+  role: independent
+  equivalence: behavioural
+  live: true
+  evidence: documented
+  note: >-
+    THE FIRST `documented` ROW. Hyperliquid publishes no execution-client source, so
+    there is no repo to clone, no tag to pin and no commit to diff. Every fact below
+    rests on `src_live:` (an RPC observation of the running network) or `src_doc:` (a
+    Hyperliquid docs URL) — never on `src:`. Deltas are BEHAVIOURAL comparisons
+    against mainnet, established by probing, in the same sense as the Tron row.
+    The probe is the primary evidence here; the docs are corroboration.
+
+lineage:
+  upstream: null
+  ancestry: []
+  fork_of: null
+  note: >-
+    No public client, therefore no verifiable ancestry. The node does however LEAK
+    its implementation through error strings: invalid opcodes return `OpcodeNotFound`
+    and the KZG precompile returns `Revm precompile error: c-kzg feature is not
+    enabled`. Both are revm (Rust) error variants — go-ethereum says `invalid opcode`
+    and returns a semantic KZG error. This is strong circumstantial evidence that
+    HyperEVM embeds revm, but it is an INFERENCE FROM ERROR STRINGS, not a code diff,
+    and it is recorded as such. `role: independent` is the honest classification: we
+    cannot verify shared ancestry, only observe behaviour.
+  inferred_engine: revm (from error strings only — unverified)
+  src_live: "eth_call 0x0c opcode @ 43436288 -> EVM error: OpcodeNotFound; eth_call 0x...0a @ 43436288 -> Revm precompile error: c-kzg feature is not enabled"
+
+live_probe:
+  endpoint: https://rpc.hyperliquid.xyz/evm
+  chain_id: 999
+  observed_at_block: 43436288
+  observed_at: 2026-08-17
+  chain_id_src_live: "eth_chainId @ 43436288 -> 0x3e7 (999); net_version -> 999; web3_clientVersion -> hyperliquid evm Mainnet (no client name or version)"
+  block_scan_range: 43436288-43436407
+  caveat: >-
+    CRITICAL, AND ITSELF A FINDING. This endpoint IGNORES the block parameter on every
+    state-reading method. eth_call, eth_getCode, eth_getBalance and
+    eth_getTransactionCount return LATEST state no matter what height is requested,
+    silently and with no error: eth_call of the NUMBER opcode pinned at block 0x1
+    returns the current head, and eth_getCode of CoreWriter pinned at block 0x1
+    returns its full 544 bytes even though block 1 predates its deployment by months.
+    eth_getBlockByNumber DOES honour the parameter. So `observed_at_block` here means
+    "the head at the time of observation", not "the height the result was computed
+    at" — the pin records WHEN, and cannot record AT WHAT HEIGHT, because the public
+    endpoint will not serve historical state. Replaying these probes needs a true
+    archive node, which is not publicly available for this chain. Every src_live entry
+    below inherits this caveat.
+  caveat_src_live: "eth_call NUMBER @ block param 0x1 -> 43436842 (head at request time); eth_getCode 0x3333...3333 @ block param 0x1 -> 544 bytes"
+
+consensus:
+  engine: HyperBFT
+  finality: single-slot (BFT), no reorgs by construction
+  block_time: 1s (small blocks) / 60s (large blocks) — interleaved in ONE chain
+  src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/dual-block-architecture
+  note: >-
+    The headline divergence. HyperEVM produces TWO block kinds in a single, strictly
+    increasing block-number sequence, drawn from two independent mempools. Observed
+    directly over 120 consecutive blocks from 43436288: small blocks carry a 3,000,000
+    gas limit and arrive every 1s; large blocks carry a 30,000,000 gas limit and arrive
+    every 60s. In the scanned window the large blocks fell at 43436329, 43436390 and
+    43436451 — gaps of exactly 61 blocks and exactly 60 seconds.
+  src_live: "eth_getBlockByNumber 43436288-43436487 @ 43436288 -> gasLimit histogram {3000000: 197, 30000000: 3}; large blocks at 43436329, 43436390, 43436451; block-number gaps 61, timestamp gaps 60"
+
+baseline_fork: cancun
+baseline_note: >-
+  Cancun, WITHOUT blobs and WITHOUT the beacon-chain half — and this is measured, not
+  claimed. Positive evidence for Cancun: the full Cancun opcode set executes (PUSH0,
+  MCOPY, TLOAD/TSTORE, BLOBHASH, BLOBBASEFEE all probed working) and the header carries
+  withdrawalsRoot, blobGasUsed, excessBlobGas and parentBeaconBlockRoot. Negative
+  evidence against Prague: no `requestsHash` field in any of 120 headers scanned
+  (EIP-7685), BLS12-381 absent at 0x0b-0x11 (EIP-2537), and the EIP-2935 history
+  contract has no code. Negative evidence against Osaka: P256VERIFY is absent from
+  0x0100. Hyperliquid's own docs agree — "The HyperEVM implements the Cancun hardfork
+  without blob support" — so for once the doc and the probe say the same thing.
+
+forks:
+  note: >-
+    No named fork schedule is published, no fork timestamps are exposed by the RPC, and
+    with no client source there is no fork-condition table to read. Feature activation
+    cannot be reconstructed from outside. What IS observable is that the chain changed
+    under its own feet: the small-block gas limit was 2,000,000 at blocks 1 through
+    10,000,000 and 3,000,000 by block 20,000,000. That is a live parameter change with
+    no fork name attached to it.
+  src_live: "eth_getBlockByNumber @ 43436288 -> gasLimit 2000000 at blocks 1/100/1000000/10000000; 3000000 at block 20000000 and 40000000; genesis-adjacent block 1 timestamp 1739849780 = 2025-02-18"
+  timeline: []
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      Present but altered in two ways. (1) PRIORITY FEES ARE BURNED, not paid to a
+      proposer — the docs state this explicitly and attribute it to HyperBFT, and it
+      is consistent with `miner` being the zero address in all 120 headers scanned and
+      eth_maxPriorityFeePerGas returning 0. (2) The base fee has a HARD FLOOR at
+      exactly 100,000,000 wei (0.1 gwei): across blocks 43436384-43436396 the base fee
+      stayed pinned at 100000000 through 13 consecutive blocks whose gas used ranged
+      from 0 to 1,067,253 against a 3,000,000 limit — far below target, where stock
+      EIP-1559 would have decayed it ~12.5% per block. It did not move at all.
+      Separately, the 1559 target is ambiguous by construction here: two block kinds
+      with a 10x gas-limit difference share one fee series.
+    src_live: "eth_getBlockByNumber 43436384-43436396 @ 43436288 -> baseFeePerGas 100000000 in all 13 blocks while gasUsed ranged 0..1067253 of 3000000; eth_maxPriorityFeePerGas -> 0x0; miner 0x00..00 in 120/120 headers"
+    src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm
+  4844:
+    status: removed
+    note: >-
+      No blobs, confirmed three independent ways: blobGasUsed and excessBlobGas are
+      0x0 in all 120 headers scanned, eth_blobBaseFee is not a supported method, and
+      the KZG precompile at 0x0a always errors (see precompiles."0x0a", which is
+      tombstoned rather than removed — the distinction matters). The BLOBHASH and
+      BLOBBASEFEE opcodes remain in the jump table for bytecode compatibility;
+      BLOBBASEFEE returns 1, the correct value for excessBlobGas == 0.
+    src_live: "eth_getBlockByNumber 43436288-43436407 @ 43436288 -> blobGasUsed 0x0 in 120/120; eth_blobBaseFee -> Method not found; eth_call BLOBBASEFEE @ 43436288 -> 0x..01"
+    src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm
+  2537:
+    status: removed
+    note: >-
+      BLS12-381 absent. Probed with VALID-LENGTH input and a mainnet control: 0x0b with
+      256 zero bytes (infinity + infinity) returns empty on HyperEVM and 128 zero bytes
+      on mainnet. All of 0x0b-0x11 behave identically to the known-unallocated address
+      0x12 — empty success, 21000 gas. This is `removed`, not `tombstoned`: the calls
+      succeed with empty output rather than failing.
+    src_live: "eth_call 0x...0b @ 43436288 <- 256 zero bytes -> 0x (empty); mainnet control same input -> 128 zero bytes; 0x0b-0x11 identical to unallocated 0x12"
+  7951:
+    status: removed
+    severity: high
+    note: >-
+      P256VERIFY IS NOT AT 0x0100. Verified with a locally generated, locally checked
+      P-256 signature and an Ethereum mainnet control on the identical calldata:
+      mainnet returns 0x...01, HyperEVM returns empty. This is the first row in the
+      dataset WITHOUT P256VERIFY at 0x0100 — see gotchas, it is a direct counterexample
+      to the "0x0100 is the one universal address" finding. severity: high because
+      EIP-7951 signals an invalid signature by returning empty output, which is exactly
+      what an absent precompile returns: every P256 verification silently reports
+      "invalid" with no revert and no error.
+    src_live: "eth_call 0x...0100 @ 43436288 <- valid 160-byte P256 vector -> 0x (empty); Ethereum mainnet control, same calldata -> 0x00..01"
+  4788:
+    status: removed
+    note: >-
+      No beacon chain. The header field parentBeaconBlockRoot is retained but is the
+      zero hash in all 120 blocks scanned, and the beacon-roots contract at
+      0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 has no code.
+    src_live: "eth_getCode 0x000F3df6...Beac02 @ 43436288 -> 0x (empty); parentBeaconBlockRoot 0x00..00 in 120/120 headers"
+  2935:
+    status: removed
+    note: "history-storage contract 0x0000F90827F1C53a10cb7A02335B175320002935 has no code"
+    src_live: "eth_getCode 0x0000F908...002935 @ 43436288 -> 0x (empty)"
+  7685:
+    status: removed
+    note: >-
+      No execution-layer requests. The `requestsHash` header field is entirely absent
+      from every block returned, at every height sampled from block 1 to the head —
+      not zero, absent. This is the cleanest single measurement that the chain is
+      pre-Prague.
+    src_live: "eth_getBlockByNumber @ 43436288 -> requestsHash absent in 120/120 headers 43436288-43436407, and at blocks 1, 100, 1000000, 10000000, 20000000, 30000000, 40000000"
+  7002:
+    status: removed
+    note: "withdrawal-request contract 0x00000961Ef480Eb55e80D19ad83579A64c007002 has no code"
+    src_live: "eth_getCode 0x00000961...007002 @ 43436288 -> 0x (empty)"
+  7251:
+    status: removed
+    note: "consolidation-request contract 0x0000BBdDc7CE488642fb579F8B00f3a590007251 has no code"
+    src_live: "eth_getCode 0x0000BBdD...007251 @ 43436288 -> 0x (empty)"
+  4895:
+    status: removed
+    note: >-
+      No beacon withdrawals. The withdrawalsRoot field is retained and is the
+      empty-trie root 0x56e81f17..b421 in all 120 blocks scanned, with an empty
+      withdrawals list in every one. There is no beacon chain to withdraw from.
+    src_live: "eth_getBlockByNumber 43436288-43436407 @ 43436288 -> withdrawalsRoot 0x56e81f17..b421 and withdrawals [] in 120/120"
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO IS ALWAYS ZERO. The opcode executes and pushes 0, and mixHash is the
+      zero hash in all 120 headers scanned. There is no randomness beacon behind it.
+      severity: high because it fails silently in the most dangerous possible way — a
+      contract using PREVRANDAO as a randomness source gets a constant, publicly known
+      value forever, with no revert and no signal. Note this is a DIFFERENT failure
+      mode from Tron, which removed the opcode outright: here it is present and lying.
+    src_live: "eth_call PREVRANDAO 0x44 @ 43436288 -> 0x00..00; mixHash 0x00..00 in 120/120 headers"
+  1153: {status: inherited, note: "TLOAD/TSTORE probed working: TSTORE 1 then TLOAD returns 1",
+         src_live: "eth_call initcode 600160005d60005c @ 43436288 -> 0x00..01"}
+  5656: {status: inherited, note: "MCOPY executes",
+         src_live: "eth_call initcode with MCOPY 0x5e @ 43436288 -> OK, no OpcodeNotFound"}
+  3855: {status: inherited, note: "PUSH0 executes; also present in deployed CoreWriter bytecode",
+         src_live: "eth_call initcode 5f.. @ 43436288 -> 0x00..00"}
+  3198: {status: inherited, note: "BASEFEE returns the block base fee, 100000000 wei at the pinned height",
+         src_live: "eth_call BASEFEE 0x48 @ 43436288 -> 0x5f5e100 (100000000)"}
+  7702:
+    status: unrecorded
+    note: >-
+      Could not be established. No type-0x04 transaction appeared in a 60-block,
+      ~450-transaction sample, and the eth_sendRawTransaction decoder returns an
+      identical message for every type byte tried (0x01, 0x02, 0x03, 0x04, 0x05, 0x7e,
+      0x7f and legacy all give "failed to decode signed transaction"), so the decoder
+      cannot be used to distinguish a supported type from an unsupported one. No public
+      source exists to read. Deliberately left unrecorded rather than inferred from the
+      Cancun baseline.
+  2930: {status: unrecorded, note: "no type-0x01 transaction observed in a ~450-tx sample; absence in a sample is not evidence of absence in the protocol, and the decoder cannot distinguish"}
+  6780: {status: unrecorded, note: "SELFDESTRUCT semantics not probed — would require deploying a contract, which needs a funded key"}
+  3529: {status: unrecorded}
+  7823: {status: unrecorded, note: "MODEXP returns the correct value for 3^2 mod 5, matching a mainnet control, but the EIP-7823 upper bounds were not probed"}
+  7883: {status: unrecorded, note: "MODEXP repricing not measured"}
+  152:  {status: inherited, note: "BLAKE2F at 0x09 rejects malformed input as a precompile, unlike Tron which displaced it",
+         src_live: "eth_call 0x...09 @ 43436288 <- 0 bytes -> EVM error: PrecompileError"}
+
+non_eip_specs:
+  note: >-
+    Hyperliquid publishes no numbered improvement-proposal series. There is no HIP-style
+    spec process for EVM-level changes to record: the docs are the only specification,
+    and they are prose. This absence is itself part of why the row is `documented`.
+
+tx_types:
+  "0x00":
+    name: legacy
+    status: inherited
+    src_live: "eth_getBlockByNumber with full txs, 60 blocks around 43436494 @ 43436288 -> 36 transactions of type 0x0"
+  "0x02":
+    name: EIP-1559 dynamic fee
+    status: inherited
+    src_live: "eth_getBlockByNumber with full txs, 60 blocks around 43436494 @ 43436288 -> 347 transactions of type 0x2, with accessList, maxFeePerGas and maxPriorityFeePerGas"
+  "0x01":
+    name: EIP-2930 access list
+    status: unrecorded
+    note: "not observed in a ~450-transaction sample; the decoder gives an identical error for all type bytes so presence could not be tested"
+  "0x03":
+    name: EIP-4844 blob
+    status: unrecorded
+    note: >-
+      Not observed, and unusable in practice regardless: blob validation requires the
+      KZG precompile, which always errors here, and blobGasUsed is pinned to zero in
+      every header. Recorded as unrecorded rather than removed because the type byte
+      itself was never directly tested — the inference is strong but it is an
+      inference, and this row does not launder inference into measurement.
+  "0x04":
+    name: EIP-7702 set code
+    status: unrecorded
+    note: "see eips.7702 — could not be established from outside"
+  note: >-
+    Only 0x00 and 0x02 were seen live. No chain-specific type byte was observed, which
+    is notable: Hyperliquid moves value between HyperEVM and HyperCore WITHOUT a custom
+    transaction type, using ordinary transactions to two system contracts plus off-EVM
+    interpretation of the logs they emit. Contrast Arbitrum 0x78, Base 0x79, OP 0x7e
+    and Polygon 0x7f, all of which needed a type byte for far less.
+
+precompiles:
+  note: >-
+    Three regions, established entirely by probing. (1) 0x01-0x09 behave as mainnet —
+    ecrecover, sha256, ripemd160, identity, modexp, ecAdd, ecMul, ecPairing and blake2f
+    were each checked against a known vector or a live Ethereum mainnet control and all
+    matched. (2) 0x0a is tombstoned and 0x0b-0x11 and 0x0100 are absent. (3) 0x0800-
+    0x0814 are 21 HyperCore read precompiles, a contiguous block whose boundaries were
+    probed in both directions. The DISCRIMINATOR used throughout is the one SCHEMA.md
+    names: a live precompile given malformed input FAILS (here: `EVM error:
+    PrecompileError`), while an unallocated address SUCCEEDS with empty output and
+    costs exactly 21000 gas. Names for the 0x0800 block follow Hyperliquid docs and SDK
+    convention; what the PROBE established is the address, the accepted input width and
+    the returned output width, which is stated per entry.
+  boundary_src_live: "eth_call @ 43436288 <- empty calldata -> 0x07fd/0x07fe/0x07ff return 0x (empty success); 0x0800 through 0x0814 return EVM error: PrecompileError; 0x0815/0x0816/0x0817/0x0820 return 0x (empty success)"
+  "0x01":
+    name: ECRECOVER
+    status: inherited
+    note: "verified equal to mainnet on a shared vector, not assumed from the baseline"
+    src_live: "eth_call 0x...01 @ 43436288 <- 128-byte vector -> 0x00..7156526fbd7a3c72969b54f64e42c10fbb768c8a; Ethereum mainnet control, same calldata -> identical"
+  "0x02":
+    name: SHA256
+    status: inherited
+    src_live: "eth_call 0x...02 @ 43436288 <- empty -> 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (sha256 of empty string)"
+  "0x03":
+    name: RIPEMD160
+    status: inherited
+    note: "genuinely RIPEMD160, unlike Tron 0x03 which returns something else entirely under the same name"
+    src_live: "eth_call 0x...03 @ 43436288 <- empty -> 0x00..9c1185a5c5e9fc54612808977ee8f548b2258d31 (ripemd160 of empty string, left-padded)"
+  "0x04":
+    name: IDENTITY
+    status: inherited
+    src_live: "eth_call 0x...04 @ 43436288 <- 0xdeadbeef -> 0xdeadbeef"
+  "0x05":
+    name: MODEXP
+    status: inherited
+    note: >-
+      Returns the correct value and matches a live mainnet control. Only correctness was
+      checked; the EIP-7823 input bounds and EIP-7883 repricing were NOT probed, so those
+      two EIPs remain unrecorded.
+    src_live: "eth_call 0x...05 @ 43436288 <- 3^2 mod 5 -> 0x04; Ethereum mainnet control, same calldata -> 0x04"
+  "0x06":
+    name: BN256_ADD
+    status: inherited
+    src_live: "eth_call 0x...06 @ 43436288 <- 128 zero bytes -> 64 zero bytes (point at infinity)"
+  "0x07":
+    name: BN256_SCALAR_MUL
+    status: inherited
+    src_live: "eth_call 0x...07 @ 43436288 <- 96 zero bytes -> 64 zero bytes"
+  "0x08":
+    name: BN256_PAIRING
+    status: inherited
+    src_live: "eth_call 0x...08 @ 43436288 <- empty -> 0x00..01 (true, the correct empty-pairing result)"
+  "0x09":
+    name: BLAKE2F
+    status: inherited
+    note: "present and validating input length — contrast Tron, which displaced BLAKE2F off 0x09 entirely"
+    src_live: "eth_call 0x...09 @ 43436288 <- 0 bytes -> EVM error: PrecompileError (a live precompile rejecting bad input, not an empty address)"
+  "0x0a":
+    name: KZG point evaluation
+    status: tombstoned
+    severity: high
+    note: >-
+      PRESENT IN DISPATCH, PERMANENTLY NON-FUNCTIONAL. Every call — including a
+      well-formed 192-byte input — returns `Revm precompile error: c-kzg feature is not
+      enabled`. The address is not empty (an empty address would succeed with no
+      output); it resolves to a precompile whose implementation was compiled out of the
+      binary. Mainnet control on the same 192 zero bytes returns a semantic error,
+      `mismatched versioned hash`, proving the mainnet precompile is live and merely
+      rejecting the input. This is the exact `tombstoned` vs `removed` distinction
+      SCHEMA.md draws, arrived at from the outside by behaviour alone — and it is the
+      only tombstone in the dataset caused by a BUILD FLAG rather than a deliberate
+      deprecation. The address is consumed either way.
+    src_live: "eth_call 0x...0a @ 43436288 <- 192 zero bytes -> Revm precompile error: c-kzg feature is not enabled; same call with 0 bytes -> identical error; Ethereum mainnet control, 192 zero bytes -> mismatched versioned hash"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — empty success on valid-length input", src_live: "eth_call 0x...0b @ 43436288 <- 256 zero bytes -> 0x; mainnet control -> 128 zero bytes"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...0c @ 43436288 -> 0x (empty success, identical to unallocated 0x12)"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...0d @ 43436288 -> 0x (empty success)"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...0e @ 43436288 -> 0x (empty success)"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...0f @ 43436288 -> 0x (empty success)"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...10 @ 43436288 <- 64 zero bytes -> 0x (empty success)"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent", src_live: "eth_call 0x...11 @ 43436288 -> 0x (empty success)"}
+  "0x0100":
+    name: P256VERIFY
+    status: removed
+    severity: high
+    note: >-
+      ABSENT. The one universal address in this dataset is empty here — see eips.7951
+      and gotchas. Behaves exactly like the unallocated address 0x0101: empty success,
+      21000 gas.
+    src_live: "eth_call 0x...0100 @ 43436288 <- valid 160-byte P256 vector -> 0x; Ethereum mainnet control same calldata -> 0x00..01; 0x0101 unallocated control -> 0x"
+  "0x0000000000000000000000000000000000000800":
+    name: position (perp position)
+    status: added
+    note: "accepts 64 bytes (address + index), returns 160 bytes; rejects 32 bytes"
+    src_live: "eth_call 0x...0800 @ 43436288 <- 64 bytes -> 160-byte return; <- 32 bytes -> EVM error: PrecompileError"
+    src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore
+  "0x0000000000000000000000000000000000000801":
+    name: spotBalance
+    status: added
+    note: "accepts 64 bytes (address + token id), returns 96 bytes; rejects 32 bytes"
+    src_live: "eth_call 0x...0801 @ 43436288 <- 64 bytes -> 96-byte return; <- 32 bytes -> EVM error: PrecompileError"
+  "0x0000000000000000000000000000000000000802":
+    name: userVaultEquity
+    status: added
+    note: "present (rejects malformed input as a precompile) but the accepted input encoding was NOT established — both 32- and 64-byte inputs were rejected. Signature unrecorded."
+    src_live: "eth_call 0x...0802 @ 43436288 <- 32 and 64 bytes -> EVM error: PrecompileError (address is live; encoding unknown)"
+  "0x0000000000000000000000000000000000000803":
+    name: withdrawable
+    status: added
+    note: "accepts 32 bytes (address), returns 32 bytes"
+    src_live: "eth_call 0x...0803 @ 43436288 <- 32-byte address -> 0x00..01adb0 (109488)"
+  "0x0000000000000000000000000000000000000804":
+    name: delegations
+    status: added
+    note: "accepts 32 bytes (address), returns 64 bytes (ABI dynamic head + length)"
+    src_live: "eth_call 0x...0804 @ 43436288 <- 32-byte address -> 64-byte return beginning 0x..20"
+  "0x0000000000000000000000000000000000000805":
+    name: delegatorSummary
+    status: added
+    note: "accepts 32 bytes (address), returns 128 bytes"
+    src_live: "eth_call 0x...0805 @ 43436288 <- 32-byte address -> 128-byte return"
+  "0x0000000000000000000000000000000000000806":
+    name: markPx
+    status: added
+    note: "accepts 32 bytes (asset index), returns 32 bytes; distinct values per index"
+    src_live: "eth_call 0x...0806 @ 43436288 <- index 0 -> 0x..09c54a (640330); <- index 1 -> 0x..02e96b (190827)"
+  "0x0000000000000000000000000000000000000807":
+    name: oraclePx
+    status: added
+    note: >-
+      The ONLY read-precompile address Hyperliquid documentation names explicitly; the
+      docs give it as the example and do not enumerate the other twenty. Doc and probe
+      agree.
+    src_live: "eth_call 0x...0807 @ 43436288 <- index 0 -> 0x..09c69f (640671)"
+    src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore
+  "0x0000000000000000000000000000000000000808":
+    name: spotPx
+    status: added
+    src_live: "eth_call 0x...0808 @ 43436288 <- index 0 -> 0x..7113a8 (7410088)"
+  "0x0000000000000000000000000000000000000809":
+    name: l1BlockNumber (HyperCore block height)
+    status: added
+    note: >-
+      Takes NO arguments — the only read precompile that accepts empty calldata. Returns
+      HyperCore's own block height, which is a completely separate and far larger
+      counter than the EVM block number: 1,113,794,421 versus 43,436,288 at the same
+      moment, a ratio of about 25. Two clocks are visible inside one EVM. Note the
+      value also ADVANCED between two calls both pinned to the same block height, which
+      is how the endpoint-ignores-block-parameter caveat was first noticed.
+    src_live: "eth_call 0x...0809 @ 43436288 <- empty calldata -> 0x425fb775 (1113794421), and on a later identical call -> 0x425fd83b (1113905723)"
+  "0x000000000000000000000000000000000000080a":
+    name: perpAssetInfo
+    status: added
+    note: "accepts 32 bytes, returns 256 bytes"
+    src_live: "eth_call 0x...080a @ 43436288 <- index 0 -> 256-byte return"
+  "0x000000000000000000000000000000000000080b":
+    name: spotInfo
+    status: added
+    note: "accepts 32 bytes, returns 192 bytes"
+    src_live: "eth_call 0x...080b @ 43436288 <- index 0 -> 192-byte return"
+  "0x000000000000000000000000000000000000080c":
+    name: tokenInfo
+    status: added
+    note: "accepts 32 bytes, returns 384 bytes — the widest return in the set"
+    src_live: "eth_call 0x...080c @ 43436288 <- index 0 -> 384-byte return"
+  "0x000000000000000000000000000000000000080d":
+    name: tokenSupply
+    status: added
+    note: "accepts 32 bytes, returns 352 bytes"
+    src_live: "eth_call 0x...080d @ 43436288 <- index 0 -> 352-byte return"
+  "0x000000000000000000000000000000000000080e":
+    name: bbo (best bid/offer)
+    status: added
+    note: "accepts 32 bytes, returns 64 bytes (two words)"
+    src_live: "eth_call 0x...080e @ 43436288 <- index 0 -> 64-byte return beginning 0x..09c540"
+  "0x000000000000000000000000000000000000080f":
+    name: accountMarginSummary
+    status: added
+    note: "present but input encoding NOT established — 32- and 64-byte inputs both rejected. Signature unrecorded."
+    src_live: "eth_call 0x...080f @ 43436288 <- 32 and 64 bytes -> EVM error: PrecompileError (address is live; encoding unknown)"
+  "0x0000000000000000000000000000000000000810":
+    name: coreUserExists
+    status: added
+    note: "accepts 32 bytes (address), returns a 32-byte boolean; returned true for an address active on the EVM"
+    src_live: "eth_call 0x...0810 @ 43436288 <- 32-byte address -> 0x00..01 (true)"
+  "0x0000000000000000000000000000000000000811":
+    name: unrecorded
+    status: added
+    note: "address is live — rejects every input width tried (0, 32 bytes as address, 32 bytes as index) with PrecompileError. Function and signature unrecorded."
+    src_live: "eth_call 0x...0811 @ 43436288 <- 0/32-byte inputs -> EVM error: PrecompileError (live, not empty)"
+  "0x0000000000000000000000000000000000000812":
+    name: unrecorded
+    status: added
+    note: "accepts 32 bytes as an index, returns 256 bytes. Function name unrecorded."
+    src_live: "eth_call 0x...0812 @ 43436288 <- 32-byte index 0 -> 256-byte return beginning 0x..01f4 (500)"
+  "0x0000000000000000000000000000000000000813":
+    name: unrecorded
+    status: added
+    note: "address is live — rejects every input width tried. Function and signature unrecorded."
+    src_live: "eth_call 0x...0813 @ 43436288 <- 0/32-byte inputs -> EVM error: PrecompileError (live, not empty)"
+  "0x0000000000000000000000000000000000000814":
+    name: unrecorded
+    status: added
+    note: "accepts 32 bytes as an index, returns 96 bytes. Highest live precompile address — 0x0815 is empty. Function name unrecorded."
+    src_live: "eth_call 0x...0814 @ 43436288 <- 32-byte index 0 -> 96-byte return beginning 0x..02; 0x0815 -> 0x (empty success)"
+
+system_contracts:
+  note: >-
+    Both entries below are REAL EVM BYTECODE at fixed addresses, confirmed by
+    eth_getCode returning nonzero. They are system_contracts, NOT precompiles — the
+    distinction SCHEMA.md says gets conflated constantly, and one that third-party
+    write-ups about this chain get wrong routinely. Hyperliquid own docs get it right,
+    calling CoreWriter "a system contract". What makes both remarkable is that neither
+    does anything to EVM state: each is a gas burn plus a LOG, and the actual effect is
+    produced off-EVM by HyperCore reading that log.
+  "0x3333333333333333333333333333333333333333":
+    name: CoreWriter
+    status: added
+    severity: high
+    note: >-
+      544 bytes of bytecode. Disassembly of the deployed code shows the WHOLE contract:
+      one selector 0x17938e13, an empty 400-iteration loop (PUSH2 0x0190, pure gas
+      burn), then LOG2 of one event, then return. The selector is keccak
+      "sendRawAction(bytes)" and the log topic 0x8c7f585f..12e3 is keccak
+      "RawAction(address,bytes)" — both recomputed locally and matched exactly against
+      the constants embedded in the bytecode and against live logs on chain. Measured
+      cost agrees with the disassembly: eth_estimateGas gives 47042 against a 21000
+      baseline, and 400 loop iterations plus a two-topic log is about that.
+      severity: high. THERE IS NO SUCCESS SIGNAL. sendRawAction has no return value and
+      cannot revert on a rejected action, because the EVM side only emits a log —
+      HyperCore interprets it afterwards, asynchronously, outside the EVM. A contract
+      that places an order, cancels one, or moves funds through CoreWriter receives a
+      successful call whether HyperCore accepts or rejects the action. Every EVM-level
+      guarantee stops at the log boundary, and no amount of checking the return value
+      helps because there is none.
+    src_live: "eth_getCode 0x3333...3333 @ 43436288 -> 544 bytes, dispatch on 0x17938e13, PUSH2 0x0190 loop, LOG2 topic0 0x8c7f585fb295f7eb1e6aeb8fba61b23a4fe60beda405f0045073b185c74412e3; eth_getLogs -> 27 RawAction logs in 400 blocks to head, payloads beginning 0x0100000d; eth_estimateGas -> 47042 vs 21000 baseline"
+    src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore
+  "0x2222222222222222222222222222222222222222":
+    name: native HYPE bridge to HyperCore
+    status: added
+    severity: high
+    note: >-
+      122 bytes. The disassembly is even smaller than CoreWriter: it REVERTS if
+      calldatasize is nonzero, so it accepts only plain value transfers, and on an empty
+      call it emits LOG2 with topic 0x88a5966d..5874 carrying msg.value as data and
+      msg.sender as an indexed topic. That topic is keccak "Received(address,uint256)",
+      recomputed locally and matched against live logs. Same shape as CoreWriter and the
+      same hazard: sending native HYPE here moves it to HyperCore by log interpretation,
+      with no EVM-level confirmation that the credit occurred, and it is a one-way door
+      for anything sent by mistake. Its account also reports a nonce of 1015323, which
+      no ordinary contract would accumulate — see system_transactions.
+    src_live: "eth_getCode 0x2222...2222 @ 43436288 -> 122 bytes, CALLDATASIZE guard then LOG2 topic0 0x88a5966d370b9919b20f3e2c13ff65706f196a4e32cc2c12bf57088f88525874; eth_getLogs -> 4 Received logs in 800 blocks to head, e.g. block 43436417 value 0x2be0a6e276cc2c00"
+  "0x5555555555555555555555555555555555555555":
+    name: unrecorded (2041 bytes of code present)
+    status: unrecorded
+    note: >-
+      Code exists at this vanity address, but it could NOT be established from the RPC
+      whether it is a protocol-installed predeploy or an ordinary contract someone
+      deployed to a mined vanity address. That distinction is the whole point of the
+      system_contracts category, so it is left unrecorded rather than guessed.
+    src_live: "eth_getCode 0x5555...5555 @ 43436288 -> 2041 bytes (provenance not determinable via RPC)"
+  "0x4200000000000000000000000000000000000015":
+    name: OP Stack L1Block (control probe)
+    status: removed
+    note: "checked as a negative control — no OP Stack predeploys here, as expected for a non-OP chain"
+    src_live: "eth_getCode 0x4200...0015 @ 43436288 -> 0x (empty)"
+
+system_transactions:
+  note: >-
+    Strongly suspected and NOT established. The bridge contract at 0x2222 reports
+    eth_getTransactionCount of 1015323, a value no ordinary contract accumulates, since
+    a contract nonce only increments on CREATE. The natural reading is that HyperCore
+    credits HYPE into the EVM by originating protocol transactions from that address,
+    which would make them system_transactions in this schema sense. But no such
+    transaction was found in the sampled blocks, no receipt carries a distinguishing
+    field, and debug_ tracing is not exposed on the public endpoint. The Core-to-EVM
+    direction is therefore unrecorded; only the EVM-to-Core direction (the two log
+    emitters above) was observed directly.
+  status: unrecorded
+  src_live: "eth_getTransactionCount 0x2222...2222 @ 43436288 -> 0xf7c1b (1015323); no matching transaction found in 60 sampled blocks; debug_traceBlockByNumber -> Method not found"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+    - {op: "0x44", name: PREVRANDAO, note: "always pushes 0 — see eips.4399, severity high"}
+    - {op: "0x41", name: COINBASE, note: "always pushes the zero address; there is no block proposer to pay"}
+  note: >-
+    NO CUSTOM OPCODES. Twenty-four unallocated mainnet opcodes were probed by executing
+    them as init code — 0x0c, 0x0d, 0x0e, 0x0f, 0x1e, 0x1f, 0x21, 0x4b, 0x4c, 0x4d,
+    0x4e, 0x4f, 0xa5, 0xa6, 0xb0, 0xb1, 0xc0, 0xd0, 0xe0, 0xee, 0xf6, 0xf7, 0xf8, 0xfc
+    — and every one returned OpcodeNotFound. The jump table is stock. This is a real
+    finding, not an empty section: HyperEVM reaches an entire order book from inside
+    the EVM and did it without touching the instruction set, which is the opposite of
+    Tron, whose sixteen custom opcodes at 0xd0-0xdf make staking and voting single
+    instructions. Same problem, two opposite answers.
+  src_live: "eth_call init code <opcode> 60005260206000f3 @ 43436288 -> OpcodeNotFound for all 24 unallocated opcodes probed; PUSH0/MCOPY/TLOAD/TSTORE/BLOBHASH/BLOBBASEFEE/CHAINID/NUMBER/TIMESTAMP/GASLIMIT/BASEFEE/SELFBALANCE all execute"
+
+fee_model:
+  metering: gas
+  fee_market: EIP-1559 with a hard base-fee floor and burned priority fees
+  extra_components: none
+  note: >-
+    Gas, and nothing exotic in the metering — but three divergences in the market.
+    (1) Priority fees are BURNED rather than paid to a proposer; the docs attribute
+    this to HyperBFT, and it matches the zero-address miner in every header and
+    eth_maxPriorityFeePerGas returning 0. (2) The base fee has a hard floor at
+    100,000,000 wei that stock EIP-1559 does not have — observed unmoved across 13
+    consecutive blocks running far under target. (3) The 1559 controller spans two
+    block kinds with a 10x gas-limit difference, so "the" target is not a single
+    number. There is NO L1 data-fee component: receipts carry only the standard fields
+    (no l1Fee, no operator fee), which distinguishes this cleanly from every OP Stack
+    row in the dataset. Observed gas costs above a 21000 baseline: HyperCore read
+    precompiles 2392 (0x0809, no args) to 3579 (0x0806, one word), CoreWriter 26042.
+  src_live: "eth_getBlockReceipts 43436390 @ 43436288 -> receipt keys are the standard set with no l1Fee or DA field; eth_estimateGas -> 21000 EOA, 21000 absent address 0x0815, 23392 precompile 0x0809, 24579 precompile 0x0806, 47042 CoreWriter"
+  src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm
+
+header_fields:
+  added: []
+  removed:
+    - {field: requestsHash, note: "EIP-7685 field entirely absent from the JSON, at every height sampled from block 1 to head — the cleanest evidence the chain is pre-Prague"}
+  modified:
+    - name: stateRoot
+      severity: high
+      note: >-
+        ALWAYS THE ZERO HASH. Not merely at the pinned height — zero in all 120 blocks
+        scanned AND at blocks 1, 100, 1,000,000, 10,000,000, 20,000,000, 30,000,000 and
+        40,000,000. HyperEVM headers commit to no state root at all. Corroborating and
+        independent: eth_getProof is not a supported method on the endpoint, which is
+        exactly what one would expect when there is no state trie to prove against.
+        The consequence is that the header cannot be used to verify any state claim —
+        no light clients, no Merkle state proofs, no trust-minimised bridge that reads
+        HyperEVM state from a header. severity: high because the field is PRESENT and
+        well-formed in the JSON; anything that reads it gets a valid-looking 32-byte
+        value that means nothing, with no error anywhere.
+    - name: timestamp
+      severity: high
+      note: >-
+        NOT STRICTLY INCREASING. A large block carries the SAME timestamp as the small
+        block immediately before it: blocks 43436389 and 43436390 both report
+        1786980420. Two of 119 transitions in the scanned window were non-increasing,
+        matching exactly the two large blocks it contained. Mainnet requires
+        timestamp[n] > timestamp[n-1]; here consecutive distinct blocks tie. Anything
+        that assumes strict monotonicity — an indexer ordering by timestamp, a contract
+        computing an elapsed-time delta and dividing, a TWAP — sees a zero interval.
+        The docs describe the block numbers as "a unique increasing sequence" and say
+        nothing whatsoever about timestamps.
+    - name: gasLimit
+      note: "alternates 3,000,000 (small) and 30,000,000 (large) within one chain; was 2,000,000 for small blocks earlier in the chain history"
+    - name: mixHash
+      note: "always the zero hash — no randomness beacon; see opcodes PREVRANDAO"
+    - name: parentBeaconBlockRoot
+      note: "field retained, always the zero hash — no beacon chain"
+    - name: miner
+      note: "always the zero address — priority fees are burned, there is no proposer to credit"
+    - name: extraData
+      note: "always empty (0x) in every block scanned"
+    - name: blobGasUsed / excessBlobGas
+      note: "fields retained, both pinned to 0x0 in every block scanned — no blobs"
+    - name: withdrawalsRoot
+      note: "field retained, always the empty-trie root with an empty withdrawals list"
+  src_live: "eth_getBlockByNumber 43436288-43436407 @ 43436288 -> stateRoot 0x00..00 120/120, requestsHash absent 120/120, mixHash 0x00..00 120/120, parentBeaconBlockRoot 0x00..00 120/120, miner 0x00..00 120/120, extraData 0x 120/120, blobGasUsed 0x0 120/120, withdrawalsRoot 0x56e81f17..b421 120/120, non-increasing timestamps 2/119; eth_getProof -> Method not found"
+
+gotchas:
+  - >-
+    stateRoot is the zero hash in every block, at every height sampled across the whole
+    chain history. HyperEVM headers commit to no state. eth_getProof is not served
+    either. There is no way to prove a HyperEVM state fact against a block header, so
+    light clients and trust-minimised state bridges are structurally impossible — and
+    the field is still present and well-formed, so tooling reads a plausible 32-byte
+    value and never errors.
+  - >-
+    0x0100 IS EMPTY. This is the first row in the dataset with no P256VERIFY at 0x0100,
+    directly falsifying "0x0100 is the one universal address" as a universal. Worse, it
+    fails silently: EIP-7951 signals an invalid signature by returning empty output,
+    which is precisely what an absent precompile returns. Every P256 verification on
+    this chain reports "invalid signature" forever, with no revert and no error. Any
+    passkey or WebAuthn wallet ported here is broken and looks like it is merely
+    rejecting bad signatures.
+  - >-
+    Two consecutive blocks can share a timestamp. Every large block carries the same
+    timestamp as the small block before it — two of 119 transitions in the scanned
+    window. Any elapsed-time computation across that boundary yields zero, and anything
+    dividing by it reverts. The dual-block docs promise increasing block NUMBERS and
+    say nothing about timestamps.
+  - >-
+    CoreWriter cannot tell you it failed. The entire contract is a gas burn plus one
+    log; HyperCore interprets that log asynchronously outside the EVM. sendRawAction
+    has no return value and does not revert on a rejected action, so a contract that
+    places an order or moves funds gets a successful call regardless of the outcome.
+    The same is true of the native bridge at 0x2222, which is a receive-and-log
+    contract. Every EVM-level guarantee stops at the log boundary.
+  - >-
+    0x0a is a tombstone made by a build flag. KZG point evaluation is present in the
+    precompile dispatch but always returns "c-kzg feature is not enabled", even for a
+    well-formed 192-byte input, while mainnet returns a semantic error for the same
+    bytes. It fails rather than returning empty, which is what separates a tombstone
+    from an absent address — and unlike BSC's and Avalanche's deliberate tombstones,
+    this one looks like a compile-time omission.
+  - >-
+    The public RPC silently ignores the block parameter on every state-reading method.
+    eth_call, eth_getCode, eth_getBalance and eth_getTransactionCount all return LATEST
+    state at any requested height, with no error: CoreWriter returns its full 544 bytes
+    "at block 1", months before it existed. Only eth_getBlockByNumber honours the
+    parameter. Any historical simulation, fork-testing setup or archive replay pointed
+    at this endpoint is quietly reading the present. This also bounds what THIS row can
+    claim — see live_probe.caveat.
+  - >-
+    No custom opcodes and no custom transaction type. HyperEVM reaches an entire order
+    book from inside the EVM using nothing but 21 read precompiles and two log-emitting
+    system contracts. Compare Tron, which needed 16 opcodes at 0xd0-0xdf for less, and
+    Arbitrum, Base, OP and Polygon, which each burned a type byte. The interesting
+    divergence here is not in the instruction set at all — it is in the block schedule,
+    the header, and the asynchronous boundary between the EVM and HyperCore.
+  - >-
+    PREVRANDAO is present and always zero, as is COINBASE. Tron removed PREVRANDAO
+    outright, which at least fails loudly; here it executes and returns a constant that
+    any attacker knows in advance.

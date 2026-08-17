@@ -31,7 +31,11 @@ while read -r slug repo version commit; do
 done < <($PY - <<'EOF'
 import pathlib, yaml
 for f in sorted(pathlib.Path("chains").glob("*/chain.yaml")):
-    c = yaml.safe_load(f.read_text())["client"]
+    y = yaml.safe_load(f.read_text())
+    # `evidence: documented` rows have no client and nothing to clone
+    c = y.get("client")
+    if not c or y["chain"].get("evidence") == "documented":
+        continue
     print(f.parent.name, c["repo"].replace("https://github.com/", ""), c["version"], c["commit"])
 EOF
 )

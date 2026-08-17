@@ -73,14 +73,70 @@ importance rating.
 
 ## Evidence rule
 
-Every non-obvious claim carries a `src:` pointing at a path and symbol inside the
-pinned clone, e.g. `core/vm/contracts.go:PrecompiledContractsOsaka`. If a fact came
-from documentation rather than source, it is `src_doc:` with a URL and is treated as
-**unverified** until confirmed in code. Docs lie; shipped code does not.
+Every non-obvious claim carries its **provenance**, in one of three keys. Which key a
+fact uses is part of the fact, not a footnote about it.
 
-`tools/verify.py` re-extracts what it can from the pinned clones and diffs against
-these files, so the evidence rule is enforced mechanically rather than by good
-intentions.
+| key | meaning | reproduced by |
+|---|---|---|
+| `src:` | a path and symbol inside the pinned clone, e.g. `core/vm/contracts.go:PrecompiledContractsOsaka`. | `tools/verify.py` re-extracts and diffs |
+| `src_doc:` | a URL to the chain's own documentation. **Weakest kind** — docs describe intent, and lag or contradict what shipped. | nothing; a human re-reads it |
+| `src_live:` | an observation of the running network: an RPC method, the address or subject, and the **block height it was observed at**. | replaying the same call against an archive node at that block |
+
+`src_live:` is *stronger* than `src_doc:` and answers a different question than `src:`.
+Source says what a client would do; a live probe says what the network actually did.
+For a chain with no public client it is the only primary evidence available, and for a
+chain with one it catches the gap between the pinned tag and what validators run.
+
+**A live claim must pin its block, exactly as a source claim pins its commit.** An
+unpinned RPC result is not evidence — it is unreproducible *and* unverifiable, which is
+worse than a doc link. The endpoint is declared once per chain:
+
+```yaml
+live_probe:
+  endpoint: https://rpc.example.org
+  chain_id: 999
+  observed_at_block: 12345678      # the default height for this row's src_live entries
+```
+
+```yaml
+precompiles:
+  "0x0000000000000000000000000000000000000800":
+    name: L1 read precompile
+    status: added
+    src_live: "eth_call @ 12345678 -> 0x0000...002a (32-byte position)"
+    src_doc: https://example.org/docs/precompiles
+```
+
+Both keys may appear on one entry, and should when both exist: the doc states intent,
+the probe states behaviour, and a disagreement between them is itself a finding.
+
+### `evidence:` — the row's overall footing
+
+Set on `chain:`. Defaults to `source`.
+
+| evidence | meaning |
+|---|---|
+| `source` | a client repo is pinned; `src:` is the expected default for facts. |
+| `documented` | **no public client exists.** No `client.commit`, nothing to clone. Facts rest on `src_doc:` and `src_live:` only. |
+
+A `documented` row has no clone, so `clone.sh` skips it and `verify.py` reports it as
+`SKIP (documented)` rather than a failure — a permanently-red build is a build nobody
+reads, which would degrade verification for the rows that *can* be checked.
+
+### Mixing in the aggregate tables
+
+The generated tables **merge all three kinds without distinction.** A cell in
+MATRIX.md may rest on source, docs, or a live probe, and does not say which.
+
+This is deliberate, and it is a bet: that a merged table is more useful than a
+correctly-hedged one, and that the hedge can be reinstated later. It is safe to make
+only because provenance is retained per-fact in `chain.yaml` — splitting the tables by
+evidence kind, or filtering the weakest kind out, stays a mechanical change over data
+already collected. Nothing has to be re-derived.
+
+The cost is that a reader cannot see the mix from the table. `verify.py` prints the
+per-chain tally so the ratio stays visible to anyone maintaining the dataset, and so a
+row quietly drifting toward doc-only evidence is noticeable before it is load-bearing.
 
 ## Category boundaries (these get conflated constantly)
 
@@ -174,9 +230,11 @@ ancestor already declared **replaces** it and must carry a `note` explaining why
 
 ```yaml
 schema_version: 2
-chain:        # name, slug, chain_id, role, live
+chain:        # name, slug, chain_id, role, live, evidence
 lineage:      # upstream, ancestry, fork_of, sync_point
 client:       # reference client: repo, version tag, pinned commit, language
+              # omitted entirely when chain.evidence is `documented`
+live_probe:   # endpoint, chain_id, observed_at_block — pins src_live claims
 consensus:    # engine, finality, block time
 baseline_fork: osaka      # the mainnet fork this chain claims equivalence to
 forks:        # src, note, timeline[] with activation_time / mainnet_equivalent

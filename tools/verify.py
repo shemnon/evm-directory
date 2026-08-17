@@ -8,6 +8,11 @@ reports both directions of drift.
   MISSING  declared in chain.yaml, not found in source  (transcription error)
   UNLISTED found in source, not declared in chain.yaml  (coverage gap — worse)
 
+Rows with `chain.evidence: documented` have no client to clone, so there is nothing
+to re-extract; they are reported SKIP and are not drift. Every row also gets a
+provenance tally (src / src_live / src_doc / none), because the aggregate tables
+merge the three kinds and the mix is invisible there by design.
+
 Exit 1 on any drift. Run after `tools/clone.sh`.
 """
 import pathlib, re, sys, yaml
@@ -150,16 +155,59 @@ def ex_txtypes(slug):
             out.add(int(m.group(1), 16))
     return out
 
+PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
+                 "non_evm_transactions", "system_transactions"]
+
+def provenance(c):
+    """Tally how each fact in this row is evidenced. The generated tables merge
+    source, docs and live probes without distinction (SCHEMA.md, 'Mixing in the
+    aggregate tables'), so this counter is the only place the ratio is visible."""
+    t = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
+    for sec in PROV_SECTIONS:
+        d = c.get(sec) or {}
+        if not isinstance(d, dict): continue
+        for v in d.values():
+            if not isinstance(v, dict): continue
+            for k in ("src", "src_live", "src_doc"):
+                if k in v: t[k] += 1; break
+            else: t["none"] += 1
+    return t
+
 def declared(c, section):
     return {int(k, 16): v for k, v in (c.get(section) or {}).items()
             if isinstance(k, str) and k.startswith("0x") and isinstance(v, dict)}
 
 def main():
     problems = 0
+    totals = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
+    skipped = []
     for f in sorted((ROOT / "chains").glob("*/chain.yaml")):
         slug = f.parent.name
         c = yaml.safe_load(f.read_text())
-        print(f"\n{slug}  ({c['client']['name']} {c['client']['version']})")
+        cl = c.get("client") or {}
+        documented = c["chain"].get("evidence") == "documented"
+
+        prov = provenance(c)
+        for k in totals: totals[k] += prov[k]
+        tally = "  ".join(f"{k}={v}" for k, v in prov.items() if v)
+
+        if documented:
+            # No client exists to clone, so nothing can be re-extracted. This is a
+            # declared footing, not a failure: a permanently-red build is one nobody
+            # reads, which would degrade verification for the rows that CAN be checked.
+            lp = c.get("live_probe") or {}
+            at = lp.get("observed_at_block")
+            print(f"\n{slug}  (documented — no public client)")
+            print(f"  SKIP    nothing to re-extract"
+                  + (f"; live probes pinned at block {at}" if at else ""))
+            if not at and prov["src_live"]:
+                print("  ! src_live present but live_probe.observed_at_block is unset "
+                      "— unpinned live claims are not reproducible"); problems += 1
+            print(f"  evidence  {tally or 'no facts recorded'}")
+            skipped.append(slug)
+            continue
+
+        print(f"\n{slug}  ({cl.get('name', '?')} {cl.get('version', '?')})")
 
         r = repo(slug, c)
         if r is None:
@@ -213,14 +261,34 @@ def main():
             if not tmiss and not tunl:
                 print(f"  tx types ok  ({len(tf)} in source)")
 
-        # --- evidence rule: src: must point at a real file ---
+        # --- evidence rule: `src:` must point at a real file in the clone.
+        # `src_doc:` and `src_live:` deliberately point OUTSIDE it, so they are
+        # checked for shape instead of for existence on disk. The old pattern
+        # `src(?:_\w+)?:` matched them too and would flag a scheme-less doc path.
+        raw = f.read_text()
         bad = set()
-        for m in re.finditer(r"src(?:_\w+)?: [\"']?([^\s,}:\"']+\.(?:go|java|rs|proto|md))", f.read_text()):
+        for m in re.finditer(r"(?<![_\w])src: [\"']?([^\s,}:\"']+\.(?:go|java|rs|proto|md))", raw):
             if r and not (r / m.group(1)).exists(): bad.add(m.group(1))
         for b in sorted(bad):
             print(f"  BAD SRC  {b} does not exist in the pinned clone"); problems += 1
+        # a live claim without a block height is unreproducible AND unverifiable
+        for m in re.finditer(r"src_live: [\"']?([^\n\"']+)", raw):
+            if "@" not in m.group(1):
+                print(f"  UNPINNED src_live has no block height: {m.group(1)[:60]}")
+                problems += 1
+        print(f"  evidence  {tally}")
 
-    print(f"\n{'=' * 60}\n{'DRIFT: ' + str(problems) + ' problem(s)' if problems else 'clean — chain.yaml matches source'}")
+    print(f"\n{'=' * 60}")
+    tot = sum(totals.values())
+    if tot:
+        mix = "  ".join(f"{k} {v} ({100 * v // tot}%)" for k, v in totals.items() if v)
+        print(f"evidence mix across {tot} facts:  {mix}")
+        print("  the aggregate tables merge these without distinction — by design, and")
+        print("  reversible, because provenance is retained per fact in chain.yaml.")
+    if skipped:
+        print(f"documented rows (not verifiable, not drift): {', '.join(skipped)}")
+    print('DRIFT: ' + str(problems) + ' problem(s)' if problems
+          else 'clean — chain.yaml matches source')
     return 1 if problems else 0
 
 if __name__ == "__main__":

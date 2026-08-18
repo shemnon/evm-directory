@@ -110,6 +110,31 @@ tx_types:
     deposit type sits at 0x7e — the top of the legal range, chosen to minimise
     collision risk with future mainnet types.
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    The baseline. secp256k1 is the ONLY scheme that can authorize a transaction, and
+    the address is the hash of the recovered public key, so ecrecover(sig) == from is
+    an identity rather than a check. EIP-7702 does not change this: the SetCode
+    authorization and the transaction are both still secp256k1: delegated code may
+    verify anything it likes, but only after a secp256k1 signature has already
+    authorized the call.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/types/transaction_signing.go:Sender"
+    secp256r1:
+      status: inherited
+      authorizes: no
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY (EIP-7951) is a tool for CONTRACTS. A P-256 key cannot sign a
+        transaction at any fork level. The distinction this whole axis exists to make.
+      src: "core/vm/contracts.go:p256Verify"
+
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsOsaka
   "0x01": {name: ECRECOVER,        status: inherited, spec: frontier, src: "core/vm/contracts.go:ecrecover"}

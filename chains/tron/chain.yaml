@@ -108,6 +108,42 @@ non_evm_transactions:
   - {id: 57, name: DelegateResourceContract, status: added}
   full_list_src: protocol/src/main/protos/core/Tron.proto:337-378
 
+tx_authorization:
+  key_binding: declared
+  signers_per_tx: 1
+  note: >-
+    Two schemes, chosen by NODE CONFIG rather than by consensus. crypto.engine selects
+    ECKey (secp256k1) or SM2, and the switch reaches BOTH the transaction
+    sender-recovery path and the ECRECOVER precompile, so the two stay paired. Mainnet
+    runs the ECKey default; SM2 is a latent property of the codebase, not live mainnet
+    behaviour. Two nodes configured differently would disagree on who signed a
+    transaction AND on what 0x01 returns — a consensus split, not a graceful error.
+    Separately, Tron's permission system (owner/witness/active, weighted keys with
+    thresholds) decouples the signing key from the address, so a signature need not
+    come from the account's own key.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      availability: optional
+      activation_condition: 'node config crypto.engine = "ECKey" (the default)'
+      src: "chainbase/src/main/java/org/tron/core/capsule/TransactionCapsule.java:signatureToAddress, common/src/main/java/org/tron/core/Constant.java:ECKey_ENGINE"
+    sm2:
+      status: added
+      authorizes: protocol
+      precompile: "0x01"
+      availability: optional
+      activation_condition: "node config crypto.engine != ECKey"
+      note: >-
+        SM2, the Chinese national-standard curve, implements the same SignInterface as
+        secp256k1 and is swapped in wholesale. NOT a per-transaction choice: it
+        replaces the chain's signature algorithm entirely. It has no dedicated
+        precompile of its own — 0x01 becomes SM2 recovery under the same config, which
+        is why this is not an unpaired scheme, but it does mean 0x01's semantics are
+        set by node configuration rather than by a fork rule.
+      src: "crypto/src/main/java/org/tron/common/crypto/SignUtils.java:fromPrivate, crypto/src/main/java/org/tron/common/crypto/sm2/SM2.java"
+
 precompiles:
   # verified: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:133-213
   "0x03":

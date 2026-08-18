@@ -147,6 +147,67 @@ The cost is that a reader cannot see the mix from the table. `verify.py` prints 
 per-chain tally so the ratio stays visible to anyone maintaining the dataset, and so a
 row quietly drifting toward doc-only evidence is noticeable before it is load-bearing.
 
+## `tx_authorization:` — what can sign a transaction
+
+An axis of its own, independent of `precompiles`. **A precompile that verifies a
+signature scheme is not the same as that scheme being able to authorize a
+transaction**, and the two come apart in both directions. Eleven rows carry
+P256VERIFY, and on almost all of them a P-256 key still cannot move a single wei —
+the precompile is a tool for *contracts*, not an authentication method for *senders*.
+
+```yaml
+tx_authorization:
+  key_binding: derived        # derived | declared | account_code
+  signers_per_tx: 1
+  note: >-
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: ...
+```
+
+### `authorizes:` — how far the scheme reaches
+
+| value | meaning |
+|---|---|
+| `protocol` | the client itself validates a signature in this scheme to authorize a transaction. Mainnet's secp256k1. |
+| `account_code` | only reachable through account-abstraction code: the protocol runs the account's own validator, which decides. zkSync's `customSignature`. |
+| `no` | the chain can *verify* this scheme but it can never authorize a transaction. The normal state of P-256 on a chain with P256VERIFY. |
+
+### `precompile:` — the paired verifier, or `none`
+
+The address of the precompile that verifies this same scheme, or `none`.
+
+**`authorizes: protocol` together with `precompile: none` is the finding to look for.**
+It means the chain accepts transaction signatures that its own contracts have no way to
+check — an on-chain verifier, a multisig, or an account-recovery contract cannot
+validate the very signatures the protocol just accepted. Record it, and say so in the
+`note`.
+
+The reverse pairing — `authorizes: no` with a real precompile address — is ordinary and
+needs no comment beyond the address.
+
+### `key_binding:` — how the address relates to the key
+
+| value | meaning |
+|---|---|
+| `derived` | the address IS the hash of the public key; `ecrecover(sig) == from` is an identity. Mainnet. |
+| `declared` | the sender is an explicit field, checked against a key registered on-chain. `ecrecover(sig) != from`. Kaia's `AccountKey`, Tron's permission system. |
+| `account_code` | there is no protocol-level key at all; the account's code decides what a valid signature is. zkSync. |
+
+`signers_per_tx` is normally 1. Kaia's fee-delegated types carry two independent
+signers with two different digests, and each side may itself be a weighted multisig —
+so the field counts *parties*, not signatures, and the `note` carries the rest.
+
+### Config-switchable schemes
+
+A scheme selected by node configuration rather than by consensus rules takes
+`availability: optional` with an `activation_condition`. These deserve suspicion: if
+two nodes disagree on the setting they disagree on who signed what, which is a
+consensus split rather than a graceful error.
+
 ## Category boundaries (these get conflated constantly)
 
 - **precompile** — native code at an address, no bytecode in state, no `EXTCODESIZE`.
@@ -250,6 +311,7 @@ forks:        # src, note, timeline[] with activation_time / mainnet_equivalent
 eips:         # EIP number -> {status, note, src}. Mainnet-relative. THE core table.
 non_eip_specs: # chain's own spec series, keyed by adoption:
 tx_types:     # type byte -> {name, status, spec, src}
+tx_authorization:  # what can SIGN a tx — independent of precompiles
 non_evm_transactions:  # protocol txs with no type byte
 precompiles:  # address -> {name, status, availability, spec, src}
 system_contracts:

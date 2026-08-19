@@ -184,6 +184,51 @@ tx_types:
     way Arbitrum (0x78), Base (0x79), OP Stack (0x7e) and Polygon (0x7f) did. Its
     envelope is mainnet's MINUS one type, not plus one.
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    No delta from mainnet, established from a DIFFERENT codebase rather than assumed.
+    Linea runs upstream Besu, which shares no code with go-ethereum, so restating
+    secp256k1 here is positive evidence and not duplication: a second independent
+    implementation reaches the same answer. Linea's divergence is entirely in what a
+    plugin will let into a block (profitability, trace limits, blob and delegate-code
+    rejection) — those are refusals to INCLUDE an already-authorized transaction, not
+    changes to who may authorize one. Nothing in the Linea plugin tree or the tracer
+    touches SignatureAlgorithmFactory; Maru's SealVerifier does, but consensus seals
+    are not transaction authorization. The one fact worth recording is that Besu, unlike
+    geth, has a switch here at all — see secp256r1.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/core/Transaction.java:getSender, crypto/algorithms/src/main/java/org/hyperledger/besu/crypto/SignatureAlgorithmFactory.java:DEFAULT_EC_CURVE_NAME"
+    secp256r1:
+      status: inherited
+      authorizes: no
+      precompile: "0x0100"
+      note: >-
+        Recorded because the CLIENT differs, not because Linea does. Besu can replace
+        the transaction signature curve wholesale: SignatureAlgorithmFactory accepts
+        exactly {secp256k1, secp256r1}, and BesuCommand calls switchInstance with
+        whatever `ecCurve` the genesis file names. Linea's genesis names none — the
+        built-in linea-mainnet.json config block has no ecCurve key — so
+        DEFAULT_INSTANCE = SECP256K1 stands and a P-256 key cannot move a wei. P256VERIFY
+        at 0x0100 is present via EIP-7951 at Osaka and is, as everywhere else, a tool
+        for contracts.
+
+        Two things distinguish this from Tron's superficially identical crypto.engine
+        switch, and both make it less alarming. First, Besu reads ecCurve from the
+        GENESIS FILE, which is network-wide consensus configuration, not per-node
+        config: two Linea nodes cannot silently disagree about who signed what, because
+        they cannot disagree about genesis. Second, if it were ever flipped, ECRECOVER
+        would follow — ECRECPrecompiledContract takes its algorithm from the same
+        factory instance — so 0x01 and the sender-recovery path stay paired by
+        construction and the scheme could never become an unpaired one. No
+        `availability: optional` is recorded for this reason: it is a latent property
+        of the codebase, and there is no per-deployment knob on Linea to opt into.
+      src: "crypto/algorithms/src/main/java/org/hyperledger/besu/crypto/SignatureAlgorithmFactory.java:switchInstance, app/src/main/java/org/hyperledger/besu/cli/BesuCommand.java:getEcCurveFromGenesisFile, evm/src/main/java/org/hyperledger/besu/evm/precompile/ECRECPrecompiledContract.java:SignatureAlgorithmFactory, config/src/main/resources/linea-mainnet.json, evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:P256_VERIFY"
 precompiles:
   # EVM-level set is stock upstream Besu Osaka:
   # evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka

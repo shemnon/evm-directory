@@ -139,19 +139,28 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "arbitrum": ex_arbitrum, "polygon": ex_polygon, "opbnb": ex_opbnb,
            "base": ex_base}
 
-TXTYPE_FILES = {
-    "ethereum": ["core/types/transaction.go"], "bnb": ["core/types/transaction.go"],
-    "op-stack": ["core/types/transaction.go", "core/types/deposit_tx.go"],
-    "polygon": ["core/types/transaction.go"],
-    "opbnb": ["core/types/transaction.go", "core/types/deposit_tx.go"],
-    "arbitrum": ["go-ethereum/core/types/transaction.go"],
-    "avalanche-c": [], "avalanche-subnet": [], "tron": [], "worldchain": [],
-    "optimism": [], "base": [],
+# A DIRECTORY, not a file list. The hand-maintained list of files failed open the
+# same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
+# core/types/post_exec_tx.go, which was not on the list, so 0x7D was never reported
+# UNLISTED and the coverage gap in op-stack's tx_types went unnoticed. Globbing the
+# directory means a new type in a new file is caught by default.
+TXTYPE_DIRS = {
+    "ethereum": "core/types", "bnb": "core/types", "op-stack": "core/types",
+    "polygon": "core/types", "opbnb": "core/types",
+    "arbitrum": "go-ethereum/core/types",
+    "avalanche-c": None, "avalanche-subnet": None, "tron": None, "worldchain": None,
+    "optimism": None, "base": None,
 }
-def ex_txtypes(slug):
+def ex_txtypes(slug, chain=None):
+    d = TXTYPE_DIRS.get(slug)
+    if not d: return set()
+    r = repo(slug, chain)
+    p = (r / d) if r else None
+    if not p or not p.is_dir(): return set()
     out = set()
-    for rel in TXTYPE_FILES.get(slug, []):
-        for m in re.finditer(r"TxType\s*=\s*(0x[0-9a-fA-F]+)", text(slug, rel)):
+    for f in sorted(p.glob("*.go")):
+        for m in re.finditer(r"TxType\s*=\s*(0x[0-9a-fA-F]+)",
+                             f.read_text(errors="replace")):
             out.add(int(m.group(1), 16))
     return out
 
@@ -334,8 +343,8 @@ def main():
             print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
 
         # --- tx types ---
-        tf, td = ex_txtypes(slug), declared(c, "tx_types")
-        if TXTYPE_FILES.get(slug):
+        tf, td = ex_txtypes(slug, c), declared(c, "tx_types")
+        if TXTYPE_DIRS.get(slug):
             texp = {a for a, v in td.items() if v.get("status") in (None, "added", "modified", "inherited")}
             tmiss = {a for a in texp if a not in tf}
             tunl = {a for a in tf if a not in td and a > 0x04}

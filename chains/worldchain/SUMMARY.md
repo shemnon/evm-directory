@@ -88,6 +88,33 @@ the allocation-collision class this dataset exists to surface — and because it
 how fast the "custom precompiles live far from mainnet" convention eroded once
 `0x0100` itself became a mainnet address at Osaka.
 
+## Transaction authorization: World ID does not authorize transactions
+
+This is the axis where World Chain looks most likely to diverge and does not. Execution
+is stock OP Stack, so secp256k1 is the only scheme that authorizes, `key_binding` is
+`derived`, and `0x7e` deposits are unsigned — all of it inherited from op-stack, and the
+row states no live delta.
+
+The distinction matters because PBH *looks* like a second authorization scheme. It is
+not. The semaphore proof travels in the `signature` field of an ERC-4337
+`PackedUserOperation`, inside a bundle addressed to `PBHEntryPoint` — an ordinary
+deployed contract. The builder's pool validator checks the proof only **after**
+`inner.validate_one` has already accepted the transaction as a valid OP transaction,
+i.e. after ordinary secp256k1 sender recovery has succeeded. The proof buys top-of-block
+**priority**, not authority. It does not even reach `authorizes: account_code`: ERC-4337
+is contract-level, so the protocol runs no account validator. And rollup-boost falls
+back to the default EL's block if the builder returns an invalid one, so the builder
+cannot make a proof authorize anything the EL would have rejected.
+
+The one genuine proposal on this axis is **WIP-1001**, and it is a change of *kind*
+rather than of curve: a `0x1D` envelope executed with a `WORLD_CHAIN_ACCOUNT_MANAGER`
+account "framed as the sender", where an immutable EIP-1271 admin signer and a ring of
+EIP-1271 session verifiers decide what a valid signature is. The spec states the
+principle outright — no signer-specific authentication as a native execution path — so
+if it ever ships, World Chain's `key_binding` becomes `account_code` for `0x1D` and stays
+`derived` for everything else. Every activation parameter is still TBD, including the
+EdDSA precompile address that collides with P256VERIFY. Recorded `pending`.
+
 ## Re-verify
 
 ```

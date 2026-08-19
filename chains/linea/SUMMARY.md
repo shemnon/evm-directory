@@ -216,6 +216,41 @@ window nobody built against.
   code; they are proxies; the implementation was not decoded.
 - **Whether forced-inclusion bypasses module limits.**
 
+## Transaction authorization: mainnet's answer, reached by a different codebase
+
+Linea has no delta on this axis, and establishing that is worth more here than
+elsewhere: Besu shares no code with go-ethereum, so a second independent implementation
+reaching the same answer is positive evidence rather than duplication.
+`Transaction.getSender()` takes its algorithm from `SignatureAlgorithmFactory`, whose
+`DEFAULT_INSTANCE` is `SECP256K1`, and that is the whole story for who may authorize a
+transaction. Linea's divergence is entirely in what a plugin will let into a *block* —
+profitability, trace limits, blob and delegate-code rejection — and those are refusals to
+include an already-authorized transaction, not changes to who may authorize one. Nothing
+in the plugin tree or the tracer touches `SignatureAlgorithmFactory`; Maru's
+`SealVerifier` does, but consensus seals are not transaction authorization.
+
+One fact is worth recording anyway, because the **client** differs even though the chain
+does not: **Besu can replace the transaction signature curve wholesale.**
+`SignatureAlgorithmFactory.switchInstance` accepts exactly `{secp256k1, secp256r1}`, and
+`BesuCommand` calls it with whatever `ecCurve` the genesis names. geth has no such
+switch. Linea's genesis names none — the built-in `linea-mainnet.json` config block has
+no `ecCurve` key — so `SECP256K1` stands and a P-256 key cannot move a wei.
+
+Two things separate this from Tron's superficially identical `crypto.engine` switch, and
+both make it far less alarming:
+
+- Besu reads `ecCurve` from the **genesis file**, i.e. network-wide consensus
+  configuration, not per-node config. Two Linea nodes cannot silently disagree about who
+  signed what, because they cannot disagree about genesis. Tron's switch is a node
+  setting, and two differently-configured Tron nodes disagree on sender recovery.
+- If it were ever flipped, **ECRECOVER would follow**: `ECRECPrecompiledContract` takes
+  its algorithm from the same factory instance, so `0x01` and the sender-recovery path
+  stay paired by construction and the scheme could never become an unpaired one.
+
+For that reason the row records `secp256r1` as `authorizes: no` / `precompile: 0x0100`
+with a note, and deliberately does **not** mark it `availability: optional` — there is no
+per-deployment knob on Linea to opt into.
+
 ## Re-verify
 
 ```

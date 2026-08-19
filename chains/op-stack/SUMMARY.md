@@ -96,6 +96,53 @@ full predeploy set (WETH9, L2StandardBridge, GasPriceOracle, L2CrossDomainMessen
 …) lives in `ethereum-optimism/optimism`, which is not cloned here, and is marked
 `out_of_tree` rather than filled in from memory.
 
+## Transaction authorization: the sender that was never signed for
+
+`tx_authorization:` asks what makes the protocol accept a transaction as authorized by
+its sender. For OP Stack **user** transactions the answer is mainnet's, exactly:
+`recoverPlain` is the only recovery routine in the tree, the address is still the hash
+of the recovered key, and the single OP addition to the signer chain —
+`NewIsthmusSigner` — differs from geth's Prague signer only by *removing* blob
+transactions from the accepted set. It changes which envelopes may carry a signature,
+never how one is checked. P256VERIFY at `0x0100` is a tool for contracts; a P-256 key
+cannot move a wei here any more than on mainnet.
+
+The delta is `0x7e`. A deposit is **authorized without a signature at all**:
+
+- `rawSignatureValues()` returns `0, 0, 0`, and `sigHash()` **panics** with
+  `"deposit cannot be signed"` — the type cannot acquire a signature even in principle.
+- The signer short-circuits on the type byte *before any cryptography* and returns the
+  envelope's own `From` field verbatim. The sender is **read out of the transaction**,
+  not recovered from it — the one place where this row's `key_binding: derived` does
+  not hold.
+- The txpool rejects every deposit, with the client stating why in as many words: *"No
+  unauthenticated deposits allowed in the transaction pool … the external engine-API
+  user authenticates deposits."* A deposit can only arrive through the authenticated
+  engine API.
+
+So what authorizes it? Construction by the derivation pipeline. For *user* deposits the
+chain is real but one layer down: `op-node` scans L1 receipts for the portal's
+`TransactionDeposited` logs, and `OptimismPortal2.depositTransaction` sets
+`from = msg.sender`, aliased by `applyL1ToL2Alias` when the L1 caller is a contract — so
+an L1 secp256k1 signature is ultimately behind it. But the pipeline also **synthesizes
+deposits with no L1 event behind them at all**: the L1-attributes transaction from
+`0xdead…0001`, and the network-upgrade transactions from `0x4210…0000` and from the
+**zero address**. Nobody holds a key for those senders. They are authorized by protocol
+construction and by nothing else.
+
+Modelled as a scheme-like entry `unsigned` with `signers_per_tx: 0` on that path. It
+carries `authorizes: protocol` + `precompile: none`, which is the pairing the schema
+tells you to hunt for — and it is **deliberately not that finding**. That finding is
+about a chain accepting *signatures* its own contracts cannot verify. Here there is no
+signature, so there was never anything for a precompile to be paired with. The
+integrator hazard is the mirror image and just as sharp: `ecrecover` over a `0x7e`
+envelope returns garbage rather than failing, because every field it reads is zero.
+
+A second unsigned path exists in the same tree — `PostExecTxType` `0x7D`, whose signer
+branch returns the **zero address** and whose `sigHash` also panics. The client has the
+type, its marshalling and its receipt handling, but no producer and no fork gate, so
+whether it is reachable on any live chain is recorded as `unrecorded`.
+
 ## Re-verify
 
 ```

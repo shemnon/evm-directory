@@ -45,6 +45,15 @@ Isthmus landed two days after mainnet's Prague — the tightest tracking of any 
 here. For contrast, World Chain runs the same stack and reached Isthmus on 2025-11-25,
 over six months later, and has not activated Karst at all.
 
+## Transaction authorization: empty here too
+
+The `tx_authorization:` axis is where a chain is most likely to have diverged quietly —
+a second curve, a declared sender, a config-switchable algorithm — and OP Mainnet has
+none of it. Same client, same clone (`client.shared_with`), same signer chain byte for
+byte: secp256k1 only, `key_binding: derived`, one signer, and op-stack's unsigned `0x7e`
+deposit path inherited whole. The row states nothing on this axis, which is the correct
+answer and not a gap.
+
 ## Re-verify
 
 ```

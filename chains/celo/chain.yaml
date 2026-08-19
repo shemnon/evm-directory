@@ -245,6 +245,60 @@ tx_types:
     Live set = op-stack's (0x00-0x04, 0x7e) PLUS 0x7b. The txpool accept set is
     core/txpool/legacypool/legacypool.go:338.
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    THE QUESTION THIS ROW ANSWERS: CIP-64 (0x7b) pays gas in an ERC-20, so does the
+    fee currency change who can authorize? No. `dynamicTxSender` is plain
+    `recoverPlain` over the type's own sighash, the FeeCurrency field is inside that
+    sighash but outside the authorization decision, and the sender is still the payer
+    — there is no second party, so signers_per_tx stays 1. Contrast Kaia, where
+    fee delegation genuinely adds a signer. Nothing survives from Celo's L1 validator
+    or attestation machinery either: that was authorized-signer state inside
+    Accounts.sol, contract-level and never a protocol signature path, and the client's
+    entire celo fork list is {cel2, celoLegacy} with no attestation entry. What Cel2
+    DID carry across is a modified sender-RECOVERY overlay, below.
+  schemes:
+    secp256k1:
+      status: modified
+      authorizes: protocol
+      precompile: "0x01"
+      severity: high
+      note: >-
+        Same curve, same key_binding, but `celoSigner` wraps the upstream signer and
+        picks a per-tx-type recovery routine from a fork list before upstream ever
+        sees the transaction — so four things differ from mainnet, all of them about
+        WHEN a signature is accepted rather than what a signature is:
+
+        (1) TWO TRANSACTION HASHES ARE HARD-CODED CARVE-OUTS. `isChainIDException`
+        names mainnetChainIDExceptionHash (block 53619115) and
+        sepoliaChainIDExceptionHash (block 12531083) and recovers those two
+        transactions against the TRANSACTION's chain ID instead of the signer's,
+        because they were accepted with the wrong chain ID before a validation fix.
+        Sender recovery is therefore not a pure function of the envelope: two specific
+        hashes take a different code path. Any independent implementation replaying
+        Celo history without this table gets a different sender for those blocks.
+
+        (2) UNPROTECTED SIGNATURES ARE STILL RECOVERABLE on the 12-field celo-legacy
+        layout. `celoLegacyTxFuncs.sender` branches on tx.Protected() and, when
+        unprotected, recovers over `rlpHash(baseCeloLegacyTxSigningFields(tx))` — a
+        pre-EIP-155 digest with no chain ID in it, over Celo-only fields
+        (FeeCurrency, GatewayFeeRecipient, GatewayFee).
+
+        (3) TWO TYPE BYTES CAN NO LONGER AUTHORIZE ANYTHING. From cel2, the celo-legacy
+        LegacyTx shape and CeloDynamicFeeTxType 0x7c map to `deprecatedTxFuncs`, whose
+        sender returns ErrDeprecatedTxType. They remain decodable and remain in
+        history, but no signature over them is accepted going forward — a `removed`
+        authorization path rather than a removed encoding.
+
+        (4) The historical DynamicFee and AccessList paths are handled by the
+        celoLegacy fork rather than by the London/Berlin forks, because Celo enabled
+        them in Espresso, which has no op-geth analogue.
+
+        None of this reaches the curve: every live branch ends in `recoverPlain`, and
+        0x01 is untouched, so the scheme and its precompile stay paired.
+      src: "core/types/celo_transaction_signing.go:celoSigner, core/types/celo_transaction_signing_tx_funcs.go:dynamicTxSender, core/types/celo_transaction_signing_tx_funcs.go:isChainIDException, core/types/celo_transaction_signing_tx_funcs.go:mainnetChainIDExceptionHash, core/types/celo_transaction_signing_tx_funcs.go:celoLegacyTxFuncs, core/types/celo_transaction_signing_forks.go:deprecatedTxFuncs, core/types/celo_tx_legacy.go:celoTxRlpList"
 precompiles:
   "0x00000000000000000000000000000000000000fd":
     name: transfer (CELO token duality)

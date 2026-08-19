@@ -58,6 +58,25 @@ apart.
 Fork times: Shanghai/Canyon and Cancun/Ecotone both activated 2024-06-20, twenty
 minutes apart, alongside Haber.
 
+## Transaction authorization: same answer, different fork
+
+opBNB runs a *different* op-geth fork, so the authorization story is re-established from
+its own clone rather than assumed — and it comes out identical. `recoverPlain` is the
+only recovery routine, `londonSigner` short-circuits `DepositTxType` to the stored
+`From` exactly as upstream does, and the txpool rejects deposits so they can only arrive
+through the authenticated engine API. secp256k1 and the unsigned `0x7e` path are
+inherited from op-stack verbatim and are not restated in the row.
+
+Being stuck before Prague **narrows** this row rather than widening it: EIP-7702 is
+absent from the client, so not even delegated account code can sit behind a signature
+here.
+
+The one opBNB-specific fact on the axis is the BSC-inherited `blsSignatureVerify` at
+`0x66` — recorded as `authorizes: no` with a real precompile address. That is the
+ordinary pairing: BLS signatures can be *verified* by contracts and can never authorize
+a transaction. Same shape as P256VERIFY on mainnet, arrived at through a different
+heritage.
+
 ## Re-verify
 
 ```

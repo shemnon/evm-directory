@@ -64,6 +64,28 @@ tx_types:
   "0x7e": {name: DepositTx, status: added, spec: OP Stack, src: core/types/deposit_tx.go:27}
   note: "0x00-0x03 plus OP Stack's 0x7e. No 0x04."
 
+tx_authorization:
+  note: >-
+    No delta on the authorizing path. This client is a different fork (bnb-chain
+    op-geth v0.5.10) but reaches the same answer: `recoverPlain` is the only recovery
+    routine, londonSigner short-circuits DepositTxType to the stored From exactly as
+    upstream op-geth does, and the txpool rejects deposits so they can arrive only
+    through the authenticated engine API. So secp256k1 and the unsigned 0x7e path are
+    inherited from op-stack verbatim; neither is restated here. Being stuck before
+    Prague narrows this row rather than widening it — EIP-7702 is absent from the
+    client, so not even delegated account code can sit behind a signature on opBNB.
+    The one opBNB-specific fact on this axis is the BSC-inherited BLS verifier below.
+  schemes:
+    bls:
+      status: added
+      authorizes: no
+      precompile: "0x66"
+      note: >-
+        The ordinary pairing, recorded for completeness: blsSignatureVerify comes from
+        BSC at BSC's address and lets CONTRACTS check BLS signatures. A BLS key still
+        cannot authorize a transaction here — the signer never consults it. Same shape
+        as P256VERIFY on mainnet, arrived at by a different heritage.
+      src: "core/vm/contracts.go:blsSignatureVerify, core/types/transaction_signing.go:recoverPlain"
 precompiles:
   "0x66":
     name: blsSignatureVerify

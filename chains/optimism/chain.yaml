@@ -54,6 +54,14 @@ eips:
 non_eip_specs: []
 tx_types:
   note: inherits 0x00-0x04 and OP Stack's 0x7e; adds nothing
+tx_authorization:
+  note: >-
+    NO DELTA — nothing to state. This row shares op-stack's client and op-stack's
+    clone (client.shared_with), so it shares its signer chain byte for byte:
+    secp256k1 only, key_binding derived, one signer, and the unsigned 0x7e deposit
+    path. OP Mainnet neither adds a scheme nor removes one. The emptiness here is the
+    same demonstration this row exists to make elsewhere in the file, applied to the
+    axis where a chain is most likely to have quietly diverged.
 precompiles:
   note: >-
     Identical to op-stack, including all six modified precompiles. Zero additions.

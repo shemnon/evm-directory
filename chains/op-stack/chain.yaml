@@ -117,6 +117,19 @@ non_eip_specs:
      note: "same address as EIP-7951, different gas — see eips.7951"}
 
 tx_types:
+  "0x7d":
+    name: PostExecTx
+    status: unrecorded
+    note: >-
+      A SECOND UNSIGNED PATH, and it is not established whether it is reachable. The
+      type is fully implemented in the client — marshalling, receipt handling, and a
+      signer that returns the ZERO ADDRESS rather than recovering one, with sigHash()
+      panicking exactly as DepositTx's does — but the tree contains no producer and no
+      fork gate, so nothing here shows it activating on any OP Stack chain. Recorded
+      rather than omitted because an omitted entry would fall back to `inherited` and
+      silently assert mainnet equivalence for a type mainnet does not have.
+    src: "core/types/post_exec_tx.go:PostExecTxType"
+
   "0x7e":
     name: DepositTx
     status: added
@@ -133,6 +146,69 @@ tx_types:
     0x7e is the top of the legal typed-envelope range (0x00-0x7f), chosen to
     maximise distance from mainnet's allocations growing upward from 0x04.
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    For USER transactions there is NO delta from mainnet. op-geth's signer chain is
+    geth's, `recoverPlain` is the only recovery path in the tree, and the one OP
+    addition to it — NewIsthmusSigner — differs from geth's Prague signer solely by
+    REMOVING BlobTxType from the accepted set. It changes which envelopes may carry a
+    signature, never how a signature is checked or what an address means. The delta on
+    this axis is the deposit path below: transactions the protocol accepts as
+    authorized while carrying no signature at all.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/types/transaction_signing.go:recoverPlain, core/types/transaction_signing.go:NewIsthmusSigner"
+    unsigned:
+      status: added
+      authorizes: protocol
+      precompile: none
+      signers_per_tx: 0
+      severity: high
+      note: >-
+        NOT A SIGNATURE SCHEME. The entry exists because every other row on this axis
+        implies "an accepted transaction has a signer", and on the OP Stack that is
+        false. A 0x7e deposit has no v/r/s — rawSignatureValues returns 0,0,0 — and
+        cannot acquire one: sigHash PANICS with "deposit cannot be signed". The signer
+        short-circuits on the type byte before any cryptography and returns the
+        envelope's own `From` field verbatim, so the sender is READ OUT OF THE
+        TRANSACTION, not recovered from it. This is the one place where the row's
+        `key_binding: derived` does not hold, and `signers_per_tx: 0` is recorded on
+        this path for the same reason.
+
+        What authorizes it instead is construction by the derivation pipeline, and the
+        client says so in as many words: the txpool rejects every deposit with the
+        comment "No unauthenticated deposits allowed in the transaction pool ... as the
+        external engine-API user authenticates deposits." A deposit can therefore only
+        enter through the authenticated engine API, never the public mempool. For USER
+        deposits op-node scans L1 receipts for the portal's TransactionDeposited logs
+        (UserDeposits) and the portal sets from = msg.sender, aliased by
+        applyL1ToL2Alias when the L1 caller is a contract — so those are ultimately
+        backed by an L1 secp256k1 signature one layer down. But the pipeline also
+        SYNTHESIZES deposits with no L1 event behind them at all: the L1-attributes
+        transaction from 0xdead...0001, and the network-upgrade transactions from
+        0x4210000000000000000000000000000000000000 and from the ZERO ADDRESS. Nobody
+        holds a key for those senders. Those transactions are authorized by protocol
+        construction and by nothing else.
+
+        DELIBERATELY NOT the schema's "authorizes: protocol + precompile: none"
+        finding. That finding is about a chain accepting SIGNATURES its own contracts
+        cannot verify. Here there is no signature, so there is nothing a precompile
+        could have been paired with; `precompile: none` records an absence of subject
+        matter, not an unpaired verifier. The integrator hazard is the mirror image
+        and just as sharp: ecrecover over a 0x7e envelope returns garbage rather than
+        failing, because the fields it would read are zero.
+
+        A second unsigned path exists in the same tree: PostExecTxType 0x7D, whose
+        signer branch returns the ZERO ADDRESS rather than a stored From. Its sigHash
+        also panics. This client contains the type, its marshalling and its receipt
+        handling, but no producer and no fork gate, so whether 0x7D is reachable on any
+        live OP Stack chain is `unrecorded` here.
+      src: "core/types/deposit_tx.go:rawSignatureValues, core/types/deposit_tx.go:sigHash, core/types/transaction_signing.go:DepositTxType, core/types/post_exec_tx.go:PostExecTxType, core/txpool/validation.go:ValidateTransaction, optimism/op-node/rollup/derive/deposits.go:UserDeposits, optimism/op-node/rollup/derive/ecotone_upgrade_transactions.go:L1BlockDeployerAddress, optimism/op-node/rollup/derive/l1_block_info.go:L1InfoDepositerAddress, optimism/packages/contracts-bedrock/src/L1/OptimismPortal2.sol:depositTransaction, optimism/packages/contracts-bedrock/src/vendor/AddressAliasHelper.sol:applyL1ToL2Alias"
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsJovian (newest active set)
   "0x05":

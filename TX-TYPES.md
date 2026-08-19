@@ -7,7 +7,7 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 | Address | Ethereum | BNB | Polygon | Avax C | Avax subnet | Arbitrum | OP Stack | OP Mainnet | Base | World | opBNB | Tron | Celo | Hyperliquid (HyperEVM) | Kaia | Linea | Monad | Sei | zkSync Era |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `0x00` LegacyTx | = |  |  |  |  |  |  |  |  |  |  |  | ⚠️ | = | ⚠️ |  |  | = |  |
-| `0x01` AccessListTx | = |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded |  |  |  | = |  |
+| `0x01` AccessListTx | = |  |  |  |  |  |  |  |  |  |  |  |  | = |  |  |  | = |  |
 | `0x02` DynamicFeeTx | = |  |  |  |  |  |  |  |  |  |  |  |  | = |  |  |  | = |  |
 | `0x03` BlobTx | = |  |  | ➖ |  |  |  |  |  |  |  |  |  | unrecorded |  | ➖ | ➖ | ⊘ | ➖ |
 | `0x04` SetCodeTx | = |  |  | ➖ | ➖ |  |  |  |  |  | ➖ |  |  | unrecorded |  |  |  | = | ➖ |
@@ -46,6 +46,7 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 | `0x79` Eip8130Tx |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
 | `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |
 | `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |
+| `0x7d` PostExecTx |  |  |  |  |  |  | unrecorded | unrecorded† | unrecorded† | unrecorded† | unrecorded† |  | unrecorded† |  |  |  |  |  |  |
 | `0x7e` DepositTx |  |  |  |  |  |  | ➕ | ➕† | ➕† | ➕† | ➕ |  | ➕† |  |  |  |  |  |  |
 | `0x7f` StateSyncTx |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |

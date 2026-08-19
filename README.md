@@ -147,6 +147,23 @@ below EIP-2718's `0x7f` ceiling. Kaia does not even fit: its type is a **`uint16
 (`0x7801`–`0x7804`), and it re-wraps Ethereum transactions as `0x78 || ethType || rlp`,
 so the RPC looks standard while the consensus encoding is not.
 
+**A precompile that verifies a signature is not a signature that can sign.** Eleven
+rows carry P256VERIFY; on almost all of them a P-256 key cannot move a single wei. The
+precompile is a tool for *contracts*, not an authentication method for *senders*.
+[`tx_authorization`](SCHEMA.md) records the two separately, and the interesting cell is
+where they fail to line up.
+
+Three schemes **authorize transactions with no precompile able to verify them** — the
+chain accepts signatures its own contracts cannot check. Sei's **sr25519** (Schnorrkel
+over Ristretto255, a curve family the EVM there cannot compute) and its Cosmos
+**multisig**; and Kaia's **role-based keys**, which are unpaired for two of their three
+roles — `validateSender` hardcodes `RoleTransaction`, so a caller asking about a
+fee-payer authorization gets a confidently wrong answer without a revert.
+
+The inverse also exists, and Base is the sharpest case: EIP-8130 enshrines a *closed*
+set of authenticators in the client, so a P-256 or WebAuthn key really can authorize a
+transaction — the one row where P256VERIFY's presence and P-256's authority coincide.
+
 **Fork names lie in both directions.** BSC shipped Prague *seven weeks before mainnet*
 and Osaka five months after. Avalanche has P256VERIFY (an Osaka feature) without
 BLS12-381 (a Prague feature). OP Stack's precompile switch tests `IsOptimismJovian`

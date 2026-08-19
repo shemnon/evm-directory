@@ -236,6 +236,54 @@ def gen_matrix(chains):
     row("Blobs (4844)", lambda c, s: eip(c, s, 4844, "no"))
     row("Metering", lambda c, s: (c.get("fee_model") or {}).get("metering", "—"))
     L.append(legend())
+
+    # --- what can SIGN a transaction: an axis of its own -------------------
+    L.append("## Transaction authorization\n")
+    L.append("What can *authorize* a transaction — which is not what a precompile can "
+             "*verify*. A chain may carry P256VERIFY while a P-256 key cannot move a "
+             "single wei; see [SCHEMA.md](SCHEMA.md).\n")
+    L.append("`ᴬᶜ` = reachable only through account-abstraction code: the protocol runs "
+             "the account's own validator, which decides.\n")
+    L.append("| Chain | Key binding | Signers | Schemes that can authorize |")
+    L.append("|---|---|---|---|")
+    unpaired = []
+    for s in slugs:
+        c = chains[s]
+        ta = c.get("tx_authorization") or {}
+        if not ta:
+            L.append(f"| {name(c)} | *inherits upstream* | | |"); continue
+        auth = []
+        for n, v in (ta.get("schemes") or {}).items():
+            a = v.get("authorizes")
+            # `account_code` still authorizes — the account's own validator decides,
+            # rather than the client. Rendering only `protocol` made zkSync, where
+            # there is no protocol-level signature check at all, read as if NOTHING
+            # could authorize a transaction on it.
+            if a not in ("protocol", "account_code"): continue
+            pc = v.get("precompile")
+            suffix = " ᴬᶜ" if a == "account_code" else ""
+            if a == "protocol" and pc in (None, "none"):
+                auth.append(f"**{n}** ⚠️"); unpaired.append((name(c), n, v))
+            else:
+                auth.append(f"{n}{suffix}" + (f" (`{pc}`)" if pc not in (None, "none") else ""))
+        sig = str(ta.get("signers_per_tx", "—"))
+        if len(sig) > 24: sig = sig[:22] + "…"
+        L.append(f"| {name(c)} | `{ta.get('key_binding','—')}` | "
+                 f"{sig} | {', '.join(auth) or '—'} |")
+    L.append("")
+    L.append("### ⚠️ Authorizes a transaction, with no precompile to verify it\n")
+    L.append("The chain accepts transaction signatures its own contracts cannot check. "
+             "An on-chain multisig, verifier or recovery contract has no way to validate "
+             "what the protocol just accepted.\n")
+    real = [(cn, n, v) for cn, n, v in unpaired if n != "unsigned"]
+    for cn, n, v in real:
+        L.append(f"- **{cn} — `{n}`** — {' '.join(v.get('note','').split())[:300]}")
+    L.append("")
+    L.append("Entries named `unsigned` are excluded above: a protocol-constructed "
+             "transaction carries no signature at all, so `precompile: none` records an "
+             "absence of subject matter rather than an unpaired verifier "
+             f"({', '.join(cn for cn, n, _ in unpaired if n == 'unsigned')}).\n")
+
     L.append("## Per-chain gotchas\n")
     for s in slugs:
         c = chains[s]

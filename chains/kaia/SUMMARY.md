@@ -122,6 +122,42 @@ Kaia therefore has **two mutually exclusive** mechanisms for decoupling keys fro
 addresses on one chain — its own account-key system and EIP-7702 — and using the first
 disables the second.
 
+### The precompile closes the gap — for one of the three roles
+
+Kaia does what almost no chain does: it **exposes its own account-key scheme to
+bytecode**. The `validateSender` precompile at `0x…03ff` runs the *exact same*
+`ValidateAccountKey` the consensus path runs, weighted-multisig weight/threshold
+arithmetic included. So a contract *can* re-ask the question the protocol just answered.
+
+Except it can only ask it about one role. `validateSender` hardcodes
+`accountkey.RoleTransaction`, while `AccountKeyRoleBased.Validate` indexes its key list
+*by role*. The **`RoleFeePayer`** and **`RoleAccountUpdate`** keys authorize transactions
+at the protocol level and **no precompile on this chain can check either one** —
+`authorizes: protocol` with `precompile: none`, scoped to two of three roles.
+
+Two things sharpen it:
+
+- The precompile **does not revert on failure** — `Run` returns `0x01` or `0x00`. A
+  contract asking about a fee-payer authorization gets a *confidently wrong answer* with
+  no error: it silently checked the transaction key instead.
+- `getDefaultKey()` makes an unset role fall back to `RoleTransaction`, so whether the
+  gap bites depends on how many sub-keys the account actually registered — which a
+  contract also cannot see through `0x…03ff`.
+
+The `feePayer` precompile at `0x…03fe` does not help: it returns the fee payer's
+*address* and nothing about how that fee payer was authorized.
+
+For non-role-based accounts the pairing is clean, because
+`AccountKeyWeightedMultiSig.Validate` ignores the role argument entirely. Note also that
+`ECRECOVER` at `0x01` is useless for every key type except `AccountKeyLegacy` — it
+returns an **address**, which tells a contract nothing when address ≠ key. `0x…03ff` is
+the substitute, and it takes a caller-supplied 32-byte message with raw recovery ids
+(`v ∈ {0,1}`), not `ECRECOVER`'s `{27,28}`.
+
+The curve, throughout, is only ever secp256k1 — enforced structurally: a registered
+`AccountKey` pubkey not on `crypto.S256()` cannot even be deserialised
+(`errNotS256Curve`). Kaia replaced the *binding*, never the algorithm.
+
 ## Precompiles: a collision, resolved the opposite way to Tron
 
 Three custom precompiles at **`0x03fd` `0x03fe` `0x03ff`**:

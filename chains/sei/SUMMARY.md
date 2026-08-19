@@ -105,6 +105,50 @@ The reverse edge also bites: `CanAddressReceive` returns false for a cast addres
 EVM counterpart has already associated — the same 20 bytes are a valid bank recipient
 before association and an invalid one after.
 
+## The other headline: an sr25519 signature can move money the EVM watches
+
+`tx_authorization` was added to answer one question — *what can sign a transaction* —
+and Sei is the row where the answer is not "secp256k1".
+
+An Ethereum transaction on Sei is secp256k1 and nothing else: `PreprocessUnpacked`
+recovers from `(V, R, S)` and unconditionally stamps a `secp256k1.PubKey`. But that
+transaction is a `MsgEVMTransaction` riding inside a Cosmos SDK transaction, and every
+*other* Cosmos message — bank, staking, gov, wasm — takes the SDK ante chain instead.
+There, the accepted key set is decided by one switch,
+`DefaultSigVerificationGasConsumer`, which admits **secp256k1, sr25519, secp256r1**, and
+multisigs over them.
+
+A bank send authorized by an **sr25519** signature moves a balance the EVM reads
+directly: `GetBalance` resolves an EVM address to its Cosmos counterpart through
+`GetSeiAddressOrDefault`, which for an unassociated account is the same 20 bytes,
+byte-cast. And **nothing on this chain can verify an sr25519 signature** — not Sei's own
+`0x1001`–`0x1011` block, not the geth fork's `0x01`–`0x11`. Grep both; there is no hit.
+
+That is `authorizes: protocol` with `precompile: none`: the protocol authorizes a state
+change that no contract on the same chain can audit. An on-chain multisig or a recovery
+module on Sei cannot check the very signature that just moved the balance it is reading.
+
+**The ed25519 lead is refuted, and the refutation matters.** ed25519 *is* registered as
+an account pubkey type and has a working ZIP-215 verifier in the tree — and the same
+switch rejects it before verifying: `"ED25519 public keys are unsupported"`, with no
+config or governance parameter guarding it, and the multisig path recurses through the
+same function so it cannot be laundered in. The ed25519 that *is* live on Sei is the
+CometBFT **validator consensus key** (`ToTmProtoPublicKey` converts to it and refuses
+secp256k1 — exactly inverting the account rule). Conflating the two would have produced
+a false finding.
+
+The residue is a real hazard anyway: an ed25519 account still has a byte-cast `0x…`
+address with an EVM-visible balance it can **receive into and never spend from**.
+Association — `AssociateTx`, the `addr` precompile's `associate` / `associatePubKey`,
+and the implicit `EVMAddressDecorator` path — is secp256k1-only in all four routes
+(`btcec.ParsePubKey`, plus a `0x04`-prefix check), so no 25519-family account can ever
+escape its cast address.
+
+One more: **secp256r1 is a real transaction signer here**, admitted by the same switch —
+one of the few rows in this dataset where that is true. Nominally paired, but not
+portably: the verifier is at `0x1011`, not `0x0100`, and it is ABI-dispatched as
+`verify(bytes)` with per-byte gas rather than taking RIP-7212's raw 160-byte input.
+
 ## Other integrator-breaking findings
 
 - **The base fee is not burned.** `baseFee + tip` is credited in full to the fee

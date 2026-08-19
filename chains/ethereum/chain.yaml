@@ -128,7 +128,7 @@ tx_authorization:
       src: "core/types/transaction_signing.go:Sender"
     secp256r1:
       status: inherited
-      authorizes: no
+      authorizes: never
       precompile: "0x0100"
       note: >-
         P256VERIFY (EIP-7951) is a tool for CONTRACTS. A P-256 key cannot sign a

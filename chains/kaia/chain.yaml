@@ -334,6 +334,136 @@ non_evm_transactions:
     type number and is RLP-encoded. The divergence is in the SHAPE of the type
     space, not in transactions escaping it.
 
+tx_authorization:
+  key_binding: declared
+  signers_per_tx: 2
+  note: >-
+    The curve never changes — secp256k1 everywhere, enforced structurally: a
+    registered AccountKey pubkey that is not on crypto.S256() cannot even be
+    deserialised (errNotS256Curve). What Kaia replaced is not the algorithm but the
+    BINDING. On every Kaia-native type the sender is an explicit `From` field in the
+    transaction body; ValidateSender reads it, fetches that account's registered
+    AccountKey, and validates RECOVERED PUBLIC KEYS against it. No address is derived
+    from a signature except inside AccountKeyLegacy. transaction_signing.go:Sender
+    says so in its own comment: it returns tx.From() and "should not be called if tx
+    signature validation is required". Mainnet's ecrecover(sig) == from identity is
+    gone.
+
+    Two parties, two DIFFERENT digests. Every fee-delegated type carries TxSignatures
+    and FeePayerSignatures as separate lists. The sender signs sigHashKaia
+    (rlpHash of the body + chainId); the fee payer signs feePayerSigHash, which
+    commits to the fee payer's own address, so a fee-payer signature cannot be lifted
+    onto another transaction or another payer. Each list is validated against ITS OWN
+    account's AccountKey — ValidateFeePayer calls GetKey(feePayer) — so both parties
+    may independently be weighted multisigs. signers_per_tx counts those two parties;
+    the signature count per party is bounded only by MaxNumKeysForMultiSig (10).
+
+    THE FINDING IS NARROW BUT REAL. Kaia does expose its own AccountKey scheme to
+    bytecode: the validateSender precompile at 0x03ff runs the exact same
+    ValidateAccountKey the consensus path runs, weighted-multisig threshold arithmetic
+    included. That closes the usual gap. But it hardcodes accountkey.RoleTransaction.
+    A RoleBased account's Validate indexes its key list BY ROLE, so the RoleFeePayer
+    and RoleAccountUpdate keys authorize transactions at the protocol level and no
+    precompile on this chain can check either one — see the role_based scheme below.
+    That is `authorizes: protocol` with `precompile: none`, scoped to two of the three
+    roles. The feePayer precompile at 0x03fe does not help: it returns the fee payer's
+    address and nothing about how that fee payer was authorized.
+
+    Two AccountKey types authorize NOTHING and are recorded for completeness.
+    AccountKeyFail's Validate returns false unconditionally — an account frozen
+    forever, reachable in one TxTypeAccountUpdate. AccountKeyNil is legal only as a
+    placeholder inside a RoleBased update meaning "leave this role alone".
+
+    EIP-7702 is live and adds nothing to this axis: SetCodeAuthorization is stock
+    mainnet (prefix 0x05, ecrecover, secp256k1), and Kaia fences it off from the
+    AccountKey system entirely — applyAuthorization rejects a delegation whose
+    authority account carries any non-legacy AccountKey. The two account-abstraction
+    mechanisms on this chain are mutually exclusive per account rather than composed.
+  src: "blockchain/types/transaction.go:ValidateSender, blockchain/types/transaction.go:ValidateFeePayer, blockchain/types/accountkey/account_key.go:ValidateAccountKey, blockchain/types/accountkey/public_key.go:errNotS256Curve, blockchain/types/tx_internal_data.go:sigHashKaia, blockchain/types/tx_internal_data.go:feePayerSigHash, blockchain/types/tx_internal_data_fee_delegated_value_transfer.go:TxInternalDataFeeDelegatedValueTransfer, blockchain/types/tx_internal_data_ethereum_set_code.go:SetCodeAuthorization, blockchain/state_transition.go:applyAuthorization"
+  schemes:
+    secp256k1:
+      status: modified
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        AccountKeyLegacy, the default for any account that has never run
+        TxTypeAccountUpdate (statedb.GetKey returns it for a missing account). This is
+        the only key type where the address is the key hash, so it is also the only
+        one where mainnet's 0x01 ECRECOVER is a useful check — ECRECOVER returns an
+        ADDRESS, which tells a contract nothing when address != key. Modified rather
+        than inherited because it is one option among six, not the rule.
+      src: "blockchain/types/accountkey/account_key_legacy.go:AccountKeyLegacy, blockchain/state/statedb.go:GetKey"
+    secp256k1_accountkey_public:
+      status: added
+      authorizes: protocol
+      precompile: "0x00000000000000000000000000000000000003ff"
+      note: >-
+        One registered pubkey, compared by equality, address ignored. Not checkable
+        with ECRECOVER; validateSender is the substitute.
+      src: "blockchain/types/accountkey/account_key_public.go:AccountKeyPublic, blockchain/vm/contracts.go:validateSender"
+    secp256k1_weighted_multisig:
+      status: added
+      authorizes: protocol
+      precompile: "0x00000000000000000000000000000000000003ff"
+      note: >-
+        Up to 10 weighted keys with a threshold; post-Istanbul it also rejects any
+        signature from a key not registered on the account, and any duplicate. All
+        signatures are over ONE digest — RecoverPubkey loops the whole TxSignatures
+        list against a single sighash — so this counts as one party, not many. PAIRED:
+        0x03ff performs the identical weight/threshold computation, because
+        AccountKeyWeightedMultiSig.Validate ignores the role argument entirely, so the
+        precompile's hardcoded RoleTransaction is harmless here. Caveats for a caller:
+        0x03ff takes a caller-supplied 32-byte message rather than a transaction
+        sighash, uses raw recovery ids (v in {0,1}) unlike ECRECOVER's {27,28}, and
+        swallows failure as 0x00 instead of reverting.
+      src: "blockchain/types/accountkey/account_key_weighted_multi_sig.go:AccountKeyWeightedMultiSig, blockchain/types/tx_signatures.go:RecoverPubkey, blockchain/vm/contracts.go:validateSender"
+    secp256k1_role_based:
+      status: added
+      authorizes: protocol
+      precompile: none
+      severity: high
+      note: >-
+        UNPAIRED FOR TWO OF ITS THREE ROLES. A RoleBased key holds up to three
+        independent sub-keys — RoleTransaction, RoleAccountUpdate, RoleFeePayer — and
+        Validate selects by index on the role the protocol chose:
+        GetRoleTypeForValidation returns RoleAccountUpdate for the account-update
+        types and RoleTransaction otherwise, while ValidateFeePayer passes RoleFeePayer
+        outright. The validateSender precompile hardcodes RoleTransaction, so a
+        contract can ask "does this satisfy the transaction key" and CANNOT ask
+        "does this satisfy the fee-payer key" or "the account-update key" — the
+        protocol has just answered a question the chain gives bytecode no way to
+        re-ask. Sharpened by the fallback in getDefaultKey: a role left unset silently
+        resolves to RoleTransaction, so whether the gap bites depends on how many
+        sub-keys the account actually registered, which a contract also cannot see
+        through 0x03ff.
+      src: "blockchain/types/accountkey/account_key_role_based.go:AccountKeyRoleBased, blockchain/types/transaction.go:GetRoleTypeForValidation, blockchain/vm/contracts.go:validateSender"
+    accountkey_fail:
+      status: added
+      authorizes: never
+      precompile: none
+      note: >-
+        Not a signature scheme: Validate returns false for every input, so the account
+        can never authorize anything again. Recorded because it is a REACHABLE
+        terminal state of this axis, set by one ordinary transaction.
+      src: "blockchain/types/accountkey/account_key_fail.go:AccountKeyFail"
+    accountkey_nil:
+      status: added
+      authorizes: never
+      precompile: none
+      note: >-
+        A placeholder, legal only inside a RoleBased update to mean "do not change
+        this role". Validate logs and returns false.
+      src: "blockchain/types/accountkey/account_key_nil.go:AccountKeyNil"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY at the mainnet address through mainnet's own Osaka fork. A tool for
+        contracts only; a P-256 key cannot be a registered AccountKey pubkey at all,
+        because PublicKeySerializable refuses anything not on crypto.S256().
+      src: "blockchain/vm/contracts.go:PrecompiledContractsOsaka, blockchain/types/accountkey/public_key.go:errNotS256Curve"
+
 precompiles:
   # verified: blockchain/vm/contracts.go:PrecompiledContractsOsaka (newest active set)
   "0x00000000000000000000000000000000000003fd":

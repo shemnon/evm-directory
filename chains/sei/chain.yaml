@@ -274,6 +274,123 @@ non_evm_transactions:
       `includeSyntheticTxs` flag and present in others.
     src: "x/evm/types/constants.go:ShellEVMTxType, app/receipt.go:ShellEVMTxType, evmrpc/utils.go:ShellEVMTxType"
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    THE FINDING: sr25519 is `authorizes: protocol` with `precompile: none`. Sei has
+    two authorization surfaces, and only one of them is Ethereum's. An Ethereum
+    transaction is secp256k1, recovered and stamped as such with no alternative
+    branch. But the same transaction is a MsgEVMTransaction inside a Cosmos SDK
+    transaction, and every OTHER Cosmos message — bank, staking, gov, wasm — goes
+    through the SDK ante chain instead, where the accepted key set is decided by a
+    single switch in DefaultSigVerificationGasConsumer. That switch admits sr25519
+    and secp256r1 alongside secp256k1. A bank send authorized by an sr25519 signature
+    moves a balance the EVM reads directly: GetBalance resolves an EVM address to its
+    Cosmos counterpart through GetSeiAddressOrDefault, so for an unassociated account
+    the two are the same 20 bytes byte-cast. Nothing on this chain — not Sei's own
+    0x1001-0x1011 block, not the geth fork's 0x01-0x11 — can verify an sr25519
+    signature. A contract, a multisig, or a recovery module on Sei cannot check the
+    very signature that just moved the balance it is looking at.
+
+    THE STATED LEAD WAS ed25519, AND IT IS REFUTED. ed25519 is registered as an
+    account pubkey type and has a working ZIP-215 verifier in the tree, but the same
+    switch rejects it outright: "ED25519 public keys are unsupported", returned before
+    any verification, with no config or governance parameter guarding it. The
+    ConsumeMultisignatureVerificationGas recursion closes the multisig laundering
+    route. It is worth recording as `authorizes: no` rather than omitting, because
+    getting it wrong in the other direction is the easy mistake: CometBFT VALIDATOR
+    consensus keys are ed25519 (ToTmProtoPublicKey converts to them and refuses
+    secp256k1, exactly inverting the account rule), and those are consensus
+    signatures, not transaction authorization. The residue is a real hazard anyway —
+    an ed25519 account still has a byte-cast 0x address with an EVM-visible balance it
+    can receive into and can never spend from.
+
+    key_binding is `derived` on both surfaces, but by two different derivations: an
+    EVM sender is the keccak of a secp256k1 pubkey, a Cosmos signer is that key type's
+    own Address() (sha256-based for the 25519 families), and the two are bridged by a
+    byte-cast, not by a shared key. Association (AssociateTx, the addr precompile's
+    associate/associatePubKey, and the implicit EVMAddressDecorator path) is
+    secp256k1-only in all four routes — btcec.ParsePubKey and a 0x04-prefix check —
+    so an sr25519 or ed25519 account can never associate and is permanently confined
+    to its cast address.
+
+    signers_per_tx is 1. x/feegrant lets a granter pay without signing, and x/authz
+    lets a grantee's signature execute a granter's message, but neither adds a second
+    signature over the same transaction; both parties signed separately, through this
+    same gate. Sei explicitly blocks MsgEVMTransaction inside authz
+    (CheckAuthzContainsEvm) while leaving bank/staking/gov/wasm reachable.
+  src: "app/ante.go:NewAnteHandler, app/app.go:SigGasConsumer, sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, x/evm/state/balance.go:GetBalance, x/evm/keeper/address.go:GetSeiAddressOrDefault, x/evm/keeper/address.go:GetEVMAddressOrDefault, x/evm/ante/preprocess.go:EVMAddressDecorator, precompiles/addr/addr.go:associatePublicKey, utils/helpers/address.go:PubkeyToEVMAddress"
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The only scheme on the EVM surface. PreprocessUnpacked recovers from (V, R, S)
+        and unconditionally stamps a secp256k1.PubKey; there is no other branch. Also
+        accepted on the Cosmos surface. EIP-7702 is live from genesis (PragueTime 0)
+        and its authorization tuple is stock geth ecrecover, so it changes nothing
+        here.
+      src: "x/evm/ante/preprocess.go:PreprocessUnpacked, utils/helpers/address.go:RecoverPubkey, go-ethereum/core/types/tx_setcode.go:Authority"
+    sr25519:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        UNPAIRED. Schnorrkel over Ristretto255 — a different curve family from
+        anything the EVM can compute here. Accepted by the ante chain's key switch
+        (GetSr25519VerifyCost, then `return nil`) and verified by a real
+        curve25519-voi implementation, not a stub. There is no sr25519 verifier at any
+        address on this chain: grep over precompiles/ and the geth fork's core/vm
+        returns nothing. So the protocol will authorize a state change that no
+        contract on the same chain can audit. Two honest limits on this row: the code
+        path is open but whether any sr25519 account exists on pacific-1 is live state
+        and was not probed, and the EVM sees the EFFECT (a balance) rather than the
+        signature, so the gap bites an on-chain verifier rather than ordinary
+        execution.
+      src: "sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, sei-cosmos/crypto/keys/sr25519/pubkey.go:VerifySignature"
+    secp256r1:
+      status: added
+      authorizes: protocol
+      precompile: "0x0000000000000000000000000000000000001011"
+      note: >-
+        Also admitted by the same switch, so P-256 is a genuine transaction signer on
+        the Cosmos surface — one of the few rows in this dataset where that is true.
+        Nominally paired, but not portably: Sei's verifier is at 0x1011, not mainnet's
+        0x0100 (which is an empty account here, because the geth fork tops out at
+        Prague and never populates it), and it is ABI-dispatched as `verify(bytes)`
+        with per-byte gas rather than taking RIP-7212's raw 160-byte input. Code
+        written against 0x0100 finds nothing; code written against 0x1011 runs
+        nowhere else.
+      src: "precompiles/p256/p256.go:P256VerifyAddress, sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer"
+    ed25519:
+      status: removed
+      authorizes: never
+      precompile: none
+      note: >-
+        Registered as an account pubkey type with a working verifier, and REJECTED at
+        the gate regardless — the lead this axis was pointed at, refuted from source.
+        Recorded rather than omitted because the ed25519 that IS live on Sei is the
+        CometBFT validator consensus key, which is not transaction authorization, and
+        because an ed25519 account's cast address remains an EVM-visible one-way sink.
+      src: "sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, sei-cosmos/crypto/codec/tm.go:ToTmProtoPublicKey"
+    multisig:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        Cosmos LegacyAminoPubKey k-of-n over the schemes above. Recurses through
+        ConsumeMultisignatureVerificationGas, so it inherits the allowlist exactly and
+        cannot launder ed25519 in. Unpaired for the same reason sr25519 is, and
+        additionally because no precompile reproduces the threshold arithmetic —
+        contrast Kaia, which exposes exactly that at 0x03ff. The nearest thing Sei has
+        is the solo precompile at 0x100c, which decodes a whole Cosmos transaction
+        from EVM calldata and runs the SAME verification stack; it is not a scheme
+        verifier and is depth- and delegatecall-restricted, but it is the only bridge
+        of this kind in the dataset and it inherits the same ed25519 rejection.
+      src: "sei-cosmos/x/auth/ante/sigverify.go:ConsumeMultisignatureVerificationGas, precompiles/solo/solo.go:sigverify"
+
 precompiles:
   # verified: precompiles/setup.go:GetCustomPrecompiles — the live registration
   # path (app/app.go -> Keeper.SetCustomPrecompiles -> vm.NewEVM). Note that

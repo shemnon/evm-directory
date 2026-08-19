@@ -228,6 +228,72 @@ tx_types:
     and 0xff. The dispatch in TransactionRequest::rlp ends in
     `Some(_) => unreachable!("Unknown tx type")`, so the list is exhaustive.
 
+tx_authorization:
+  key_binding: account_code
+  signers_per_tx: 1
+  note: >-
+    NO PROTOCOL-LEVEL SIGNATURE CHECK EXISTS. The bootloader's accountValidateTx does
+    not verify anything cryptographic: it calls validateTransaction on the sender's
+    own account and accepts the transaction if that call returns the
+    ACCOUNT_VALIDATION_SUCCESS_MAGIC selector. Every L2 type — 0x00, 0x01, 0x02 and
+    0x71 alike — goes through that one path, so the account's code IS the
+    authentication rule. There is no EOA in the mainnet sense; an address above
+    MAX_SYSTEM_CONTRACT_ADDR with no deployed code is served the DefaultAccount
+    bytecode as a base system contract (BaseSystemContracts.default_aa), and it is
+    that CONTRACT, not the client, that does the ecrecover and asserts
+    `recoveredAddress == address(this)`. Mainnet's derived binding is therefore
+    reproduced as replaceable Solidity rather than enforced by consensus: deploy other
+    code at the address and the rule changes.
+
+    On 0x71 the sender is an explicit unsigned RLP field (from_bytes_unverified reads
+    `from` at position 11) and customSignature overrides v/r/s entirely, so nothing
+    outside the account contract constrains what the signature bytes mean. On 0x00 /
+    0x01 / 0x02 there is no explicit `from`, so the node fills it by secp256k1
+    recovery (recover_default_signer) — but that only SELECTS which account is asked;
+    the account still has to approve, and a custom account at the recovered address
+    may approve on any grounds it likes.
+
+    IS THIS SELF-LIMITING? Not by any protocol rule. An account validator is ordinary
+    bytecode, so the reachable scheme set is bounded by what fits in the gas budget,
+    not by the precompile set — a validator may implement a curve in bytecode with no
+    precompile at all. Two soft bounds were checked and neither closes the set: (1)
+    the sequencer's ValidationTracer, whose own doc comment says it exists "to prevent
+    DDoS attacks on the server", caps validation work with
+    TookTooManyComputationalGas against a NODE-CONFIGURED
+    validation_computational_gas_limit (300_000 in one shipped config, 10_000_000 in
+    another) — an admission policy, not a consensus rule, and one two nodes can
+    disagree on; (2) the precompile set decides only what is CHEAP. secp256k1 (0x01)
+    and secp256r1 (0x0100) are one call each; MODEXP's 32-byte operand cap (see
+    precompiles 0x05) forecloses the cheap RSA route; there is no ed25519 verifier at
+    any address. So the set below is what is practically reachable today, not a closed
+    enumeration, and this row cannot honestly claim one.
+
+    Not the unpaired finding: every scheme recorded here is `account_code`, so by
+    construction it is reachable only through code that a contract could also run.
+  src: "system-contracts/bootloader/bootloader.yul:accountValidateTx, system-contracts/bootloader/bootloader.yul:isEOA, system-contracts/contracts/ContractDeployer.sol:extendedAccountVersion, core/lib/contracts/src/lib.rs:default_aa, core/lib/types/src/transaction_request.rs:from_bytes_unverified, core/lib/types/src/transaction_request.rs:recover_default_signer, core/lib/types/src/transaction_request.rs:get_custom_signature, core/lib/multivm/src/tracers/validator/mod.rs:ValidationTracer, core/lib/vm_interface/src/types/tracer.rs:TookTooManyComputationalGas, core/lib/config/src/configs/chain.rs:validation_computational_gas_limit"
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: account_code
+      precompile: "0x01"
+      note: >-
+        The default and overwhelmingly common case, but supplied by DefaultAccount's
+        _isValidSignature (65-byte r/s/v, EIP-2 low-s, recovered address must equal
+        the account) rather than by the client. Note 0x01 is itself a deployed Yul
+        contract here, not native code — see precompiles.
+      src: "system-contracts/contracts/DefaultAccount.sol:_isValidSignature, system-contracts/bootloader/bootloader.yul:accountValidateTx"
+    secp256r1:
+      status: inherited
+      authorizes: account_code
+      precompile: "0x0100"
+      note: >-
+        The counter-example to this dataset's usual 0x0100 story. On almost every row
+        carrying P256VERIFY a P-256 key cannot move a wei; here an account contract
+        that calls 0x0100 from validateTransaction makes one a full transaction
+        signer. Still `account_code`, not `protocol` — the chain enshrines nothing and
+        the account has to opt in by deploying code that does this.
+      src: "system-contracts/contracts/precompiles/P256Verify.yul, system-contracts/contracts/interfaces/IAccount.sol:validateTransaction"
+
 precompiles:
   # EraVM has no precompiles in the mainnet sense. Everything below is a deployed
   # contract that internally issues the EraVM PrecompileCall instruction. Addresses

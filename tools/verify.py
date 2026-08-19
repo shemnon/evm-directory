@@ -247,6 +247,33 @@ def check_live(raw):
             for m in re.finditer(r"src_live: [\"']?([^\n\"']+)", raw)
             if "@" not in m.group(1)]
 
+AUTHORIZES = {"protocol", "account_code", "never"}
+KEY_BINDING = {"derived", "declared", "account_code"}
+
+def check_tx_auth(c):
+    """Validate the tx_authorization vocabulary. Exists because `authorizes: no` is a
+    TRAP: YAML 1.1 parses a bare `no` as the boolean False, so the value silently loads
+    as neither the string it looks like nor an error. The baseline row shipped with
+    exactly that bug. The legal value is `never`."""
+    out = []
+    ta = c.get("tx_authorization")
+    if not isinstance(ta, dict): return out
+    kb = ta.get("key_binding")
+    if kb is not None and kb not in KEY_BINDING:
+        out.append(f"BAD AUTH  key_binding {kb!r} not in {sorted(KEY_BINDING)}")
+    for name, v in (ta.get("schemes") or {}).items():
+        if not isinstance(v, dict): continue
+        a = v.get("authorizes")
+        if isinstance(a, bool):
+            out.append(f"BAD AUTH  {name}: authorizes is the BOOLEAN {a} — YAML 1.1 "
+                       f"read a bare yes/no. Write `never` (unquoted is fine).")
+        elif a is not None and a not in AUTHORIZES:
+            out.append(f"BAD AUTH  {name}: authorizes {a!r} not in {sorted(AUTHORIZES)}")
+        if "precompile" not in v:
+            out.append(f"BAD AUTH  {name}: no `precompile:` — state the paired "
+                       f"verifier's address or `none`; the pairing is the point")
+    return out
+
 def declared(c, section):
     return {int(k, 16): v for k, v in (c.get(section) or {}).items()
             if isinstance(k, str) and k.startswith("0x") and isinstance(v, dict)}
@@ -271,7 +298,7 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
-            for b in check_live(f.read_text()):
+            for b in check_live(f.read_text()) + check_tx_auth(c):
                 print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
@@ -359,7 +386,7 @@ def main():
         # OUTSIDE the clone, so they are checked for shape, not for existence.
         raw = f.read_text()
         bad, nsym, nline, nopath = check_citations(raw, roots(slug, c))
-        bad += check_live(raw)
+        bad += check_live(raw) + check_tx_auth(c)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):

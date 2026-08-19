@@ -104,6 +104,50 @@ London is active (`LondonBlock = 0` from Apricot Phase 3), so 1559-shaped fields
 exist, but the base-fee update rule is Avalanche's own ACP-176 target-gas-excess
 mechanism (`consensus/dummy/consensus.go:79`), not mainnet's.
 
+## Two authorization models, one chain
+
+The C-Chain is the only row in this cluster where *how a transaction is authorized*
+depends on which kind of transaction it is.
+
+**EVM transactions** are mainnet's: `TransactionToMessage` → libevm's `types.Sender`,
+secp256k1, one signer, address = hash of the recovered key.
+
+**Atomic transactions** — the import/export pair already recorded in
+`non_evm_transactions` — use the same *curve* and nothing else in common:
+
+| | EVM transaction | atomic transaction |
+|---|---|---|
+| signed payload | RLP, EIP-155/2718 envelope | Avalanche codec, unsigned-tx bytes |
+| digest | keccak256 | `hashing.ComputeHash256` |
+| signature block | one `(v, r, s)` | `Tx.Creds` — a **list of credentials**, one per input, each a list of signatures |
+| signers | 1 | one per input, and *m* per m-of-n threshold UTXO |
+| key binding | derived | derived on export, **declared** on import |
+
+On **export**, each `EVMInput` carries its own `Address` and needs exactly one signature,
+recovered against `utx.Bytes()` and matched with `pubKey.EthAddress()`. Five inputs owned
+by five accounts is one transaction with five independent signers — something the EVM
+envelope cannot express at all.
+
+On **import**, credentials are checked by `Fx.VerifyTransfer` against the source-chain
+UTXO's own `secp256k1fx` output owners: an **m-of-n threshold multisig declared on the X-
+or P-Chain**, not derived from any C-Chain address.
+
+### Not an unpaired scheme — stated so nobody has to re-derive it
+
+The scheme is still secp256k1 ECDSA and `0x01` still verifies secp256k1 ECDSA, so this is
+*not* the `authorizes: protocol` + `precompile: none` case. The catch is the digest: a
+contract wanting to check an atomic credential has to reconstruct Avalanche codec bytes
+and hash them with `ComputeHash256` (in avalanchego, outside the pinned clone) rather than
+keccak an RLP envelope.
+
+### Warp's BLS is consensus signing
+
+The aggregated BLS12-381 signature on a Warp message is verified by
+`Config.VerifyPredicate` — a **block predicate evaluated outside EVM execution**. The
+precompile at `0x0200…05` only reads the result. It authorizes a *message*, never a
+transaction, and it is not a general-purpose BLS verifier a contract can point at
+arbitrary signatures.
+
 ## Re-verify
 
 ```

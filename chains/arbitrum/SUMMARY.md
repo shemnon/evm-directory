@@ -122,6 +122,46 @@ charge (`arbos/l1pricing/`). Multi-dimensional gas constraints arrived in ArbOS 
 (single) and ArbOS 60 (multi) — a metering model with no mainnet analogue. Stylus
 execution is metered in ink, with activation gas charged from ArbOS 60.
 
+## Six of the seven transaction types are not signed at all
+
+Arbitrum has the most custom transaction types in the dataset and only **one** signature
+scheme. For `0x00`–`0x04`, `arbitrumSigner` falls through to go-ethereum's `Sender` and
+authorization is mainnet's exactly.
+
+For the other six, `arbitrumSigner.Sender` returns `inner.From` **verbatim** and
+`SignatureValues` returns `(0, 0, 0)`:
+
+| Type | Sender comes from |
+|---|---|
+| `0x64` `ArbitrumDepositTx` | L1 inbox message header `Poster` |
+| `0x65` `ArbitrumUnsignedTx` | L1 `poster` |
+| `0x66` `ArbitrumContractTx` | L1 `poster` |
+| `0x68` `ArbitrumRetryTx` | retryable's stored `From` |
+| `0x69` `ArbitrumSubmitRetryableTx` | L1 `poster` |
+| `0x6A` `ArbitrumInternalTx` | the constant `ArbosAddress` (`0xa4b05`) |
+
+The authorization is real, it just lives **one layer down**: the L1 transaction that
+produced the inbox message was authorized on Ethereum by Ethereum's own secp256k1. ArbOS
+enforces the separation from the other side too — `L2MessageKind_SignedTx` rejects any
+type `>= ArbitrumDepositTxType`, so the signed set and the protocol set never overlap.
+Same category as OP Stack's `0x7e`; the opposite of Monad, whose system transactions carry
+a real signature.
+
+A seventh case is different again: `ArbitrumLegacyTx` (`0x78`) carries an optional
+`Sender *common.Address` "only used in unsigned Txs", returned without recovery when set —
+the one place on this chain where `ecrecover(sig) != from` by construction, in pre-Nitro
+historical data.
+
+### `ArbBLS` at `0x67` is an empty stub
+
+It is described as "a registry of BLS public keys for accounts", and in the pinned tree
+the struct declares **nothing but its own `Address` field** — no methods, so there is no
+BLS verification reachable behind it either. Even fully implemented it would not authorize
+anything: nothing in `arbitrumSigner` or ArbOS consults such a registry when deciding who
+sent a transaction. Recorded as `authorizes: never` precisely because "chain has a BLS
+precompile" is the observation that gets misread as "chain accepts BLS-signed
+transactions".
+
 ## Re-verify
 
 ```

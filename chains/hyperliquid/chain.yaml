@@ -228,8 +228,15 @@ tx_types:
     src_live: "eth_getBlockByNumber with full txs, 60 blocks around 43436494 @ 43436288 -> 347 transactions of type 0x2, with accessList, maxFeePerGas and maxPriorityFeePerGas"
   "0x01":
     name: EIP-2930 access list
-    status: unrecorded
-    note: "not observed in a ~450-transaction sample; the decoder gives an identical error for all type bytes so presence could not be tested"
+    status: inherited
+    note: >-
+      RESOLVED by direct observation, replacing an earlier `unrecorded` that rested on
+      absence from a ~450-transaction sample. Absence from a sample is not absence from
+      the protocol, and this is the case in point: type 0x01 is sporadic — a 140-block
+      window sampled later contained none at all, while the window below contains six.
+      The decoder still cannot be interrogated (it returns an identical error for every
+      type byte), so a live sighting was the only way to settle it.
+    src_live: "eth_getBlockByNumber x120 @ 43575085 -> 6 txs of type 0x01, e.g. 0x8fee114da7f5ec59df54173322353e0e44514bcbf9aba71b291cf64131217b49 @ 43575036 (chainId 0x3e7, accessList present)"
   "0x03":
     name: EIP-4844 blob
     status: unrecorded
@@ -249,6 +256,64 @@ tx_types:
     transaction type, using ordinary transactions to two system contracts plus off-EVM
     interpretation of the logs they emit. Contrast Arbitrum 0x78, Base 0x79, OP 0x7e
     and Polygon 0x7f, all of which needed a type byte for far less.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    ESTABLISHED BY LOCAL RECOVERY, NOT BY ASKING THE NODE. There is no client to read,
+    so "secp256k1 authorizes transactions here" was tested the only way it can be from
+    outside: pull a live transaction's raw bytes with eth_getRawTransactionByHash,
+    recover the sender OFF-CHAIN with standard keccak256 + secp256k1 ECDSA, and compare
+    against the `from` the node reports. Both a legacy 0x00 transaction (EIP-155,
+    v = 0x7f1 = 2*999+35) and an EIP-1559 0x02 transaction recovered to exactly the
+    reported sender. That makes key_binding `derived` a measurement rather than an
+    assumption: the address is the hash of the recovered public key, and the digest
+    construction is mainnet's.
+
+    THIS PROBE IS UNAFFECTED BY THIS ROW'S BLOCK-PARAMETER CAVEAT. The caveat in
+    live_probe applies to STATE reads, which silently ignore the requested height.
+    Transaction bytes are immutable and returned by hash, so these two observations are
+    reproducible against any node that has the blocks — the only entries in this row of
+    which that is true.
+
+    WHAT COULD NOT BE ESTABLISHED, and is left `unrecorded` rather than guessed:
+    whether EIP-7702 delegation works (eips.7702 is itself unrecorded, so there is no
+    basis for an `account_code` reach); whether any protocol-constructed, unsigned
+    transaction exists at all — system_transactions in this row is `unrecorded` for the
+    Core-to-EVM direction, the bridge address at 0x2222 carries a nonce of ~1,000,000
+    that no ordinary contract could accumulate, and debug_ tracing is not exposed, so
+    whether HyperCore originates transactions without a signature is exactly the
+    question that cannot be answered from outside. The tx decoder returns the SAME error
+    for every type byte, so it cannot even be used to test which envelopes exist.
+
+    No alternative signature scheme was observed and none is claimed. Absence of
+    evidence is recorded as absence of evidence.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        ECRECOVER at 0x01 was separately confirmed to behave as mainnet (see
+        precompiles), so the scheme the protocol accepts and the scheme contracts can
+        verify are the same one — the ordinary, uninteresting pairing.
+      src_live: "eth_getRawTransactionByHash 0x2b49c740..1c93c @ 43575063 (type 0x02) -> off-chain ECDSA recovery gives 0x30270f0e5ce49c8aaf4e907f074440230babb7cd, identical to the reported from; eth_getRawTransactionByHash 0xc4ffb8e4..b3d56 @ 43574984 (type 0x00, v 0x7f1, chainId 999) -> 0x39fa5efb0881c504a313d1aad4dea1df32f66f36, identical to the reported from"
+    secp256r1:
+      status: removed
+      authorizes: never
+      precompile: none
+      note: >-
+        THE REVERSE PAIRING, AND THE WORSE HALF OF IT. On every other chain in this
+        dataset a P-256 key cannot authorize a transaction but a contract can at least
+        VERIFY one, at 0x0100. Here neither is true: 0x0100 is empty (see eips.7951 and
+        gotchas), so P-256 is unusable for authorization AND unverifiable on-chain.
+
+        `authorizes: never` is a negative claim and rests on negative evidence: no P-256
+        material appeared in any sampled transaction, no envelope carrying it was
+        observed, and the chain cannot check such a signature even if one were
+        presented. It is not a source-verified impossibility, because there is no source.
+      src_live: "eth_call 0x...0100 @ 43575623 <- 160-byte P256 vector generated and verified off-chain (sha256 digest, low-s) -> 0x (empty); Ethereum mainnet control at block 25787579, identical calldata -> 0x00..01 — independently reproduces the eips.7951 probe recorded at 43436288"
 
 precompiles:
   note: >-

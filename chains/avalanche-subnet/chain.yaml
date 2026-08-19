@@ -66,6 +66,64 @@ tx_types:
   "0x04": {name: SetCodeTx, status: removed, note: "EIP-7702 not adopted", src: "params/config_extra.go:SetEthUpgrades"}
   note: "0x00-0x03 from libevm; no subnet-specific envelope types"
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    A TEMPLATE ROW, and this is the axis where it is LESS variable than expected.
+    Nothing in subnet-evm's per-deployment configuration changes what can sign a
+    transaction: no genesis key selects a signature scheme, no optional precompile adds
+    one, and every deployment recovers senders through libevm's types.Sender exactly as
+    mainnet does. Compare Tron, where a node-config key really does swap the curve.
+
+    What IS per-deployment is WHO may transact, not WHAT may sign. If a deployment
+    enables TxAllowList (genesis key "txAllowListConfig"), state_transition rejects a
+    transaction whose already-recovered msg.From is not allowlisted, with
+    ErrSenderAddressNotAllowListed. That narrows the set of accepted senders; it does
+    not add or remove a signature scheme, and the transaction is still authorized by a
+    secp256k1 signature over the standard digest. It is recorded on the secp256k1 entry
+    rather than as a scheme of its own, because an allowlist is an authorization
+    RESTRICTION, not an authorization METHOD.
+
+    Unlike its sibling the C-Chain, subnet-evm has NO atomic import/export transactions
+    and therefore no UTXO credential path — there is no plugin/evm/atomic tree here.
+    Warp's BLS12-381 is present but is consensus signing; see that entry.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The 0x01-0x11 implementations come from ava-labs/libevm, outside this clone, so
+        the citation is subnet-evm's call site. A deployment with TxAllowList enabled
+        additionally requires the recovered sender to be allowlisted — a filter applied
+        AFTER recovery, in the same place a nonce or balance check happens.
+      src: "core/state_transition.go:TransactionToMessage, core/state_transition.go:ErrSenderAddressNotAllowListed"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY, present from Granite for every deployment (it is a fork feature, not
+        one of the opt-in 0x0200.. precompiles). A tool for contracts; a P-256 key
+        cannot authorize a transaction on any subnet-evm chain.
+      src: "params/hooks_libevm.go:P256VerifyAddress"
+    bls12_381:
+      status: added
+      authorizes: never
+      precompile: "0x0200000000000000000000000000000000000005"
+      availability: optional
+      activation_condition: genesis key "warpConfig"
+      note: >-
+        WARP IS CONSENSUS SIGNING. The aggregated BLS signature attests that a
+        source-L1's validator set signed a MESSAGE; it never authorizes a transaction on
+        the receiving chain, and a Warp message has no sender account, nonce or fee. As
+        on the C-Chain the verification happens in Config.VerifyPredicate, a block
+        predicate evaluated outside EVM execution, and the precompile only reads the
+        result — so this is not a general-purpose BLS verifier a contract can point at
+        arbitrary signatures.
+      src: "precompile/contracts/warp/config.go:VerifyPredicate, precompile/contracts/warp/module.go"
+
 precompiles:
   # verified: precompile/contracts/*/module.go — ALL OPT-IN via genesis config key
   "0x05":

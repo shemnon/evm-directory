@@ -120,6 +120,96 @@ tx_types:
     (different namespace, no actual conflict, but a genuine reading hazard).
   src: go-ethereum/core/types/transaction.go:48-54
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    SEVEN TRANSACTION TYPES, ONE SIGNATURE SCHEME, AND SIX TYPES THAT ARE NOT SIGNED AT
+    ALL. For the mainnet envelope types (0x00-0x04) arbitrumSigner falls through to
+    go-ethereum's Sender and nothing about authorization differs from mainnet:
+    secp256k1, one signer, address = hash of the recovered key.
+
+    key_binding is recorded as `derived` because that is what holds for every
+    transaction a user can sign. It is an imperfect fit for the six protocol types,
+    whose `From` is an explicit field that is returned VERBATIM with no key behind it —
+    closer to `declared` in shape, except that nothing is checked against a registered
+    key either. Those are modelled in the `unsigned` entry rather than by weakening
+    key_binding, because a reader asking "how does an Arbitrum address relate to its
+    key" should get mainnet's answer.
+
+    ArbBLS at 0x67 does NOT authorize transactions; see that entry, which also records
+    that it is an empty stub in the pinned tree.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        Types 0x00-0x04 only. arbitrumSigner.Sender handles the seven Arbitrum types and
+        delegates everything else to the embedded stock signer. Arbitrum-typed
+        transactions are explicitly rejected from the signed-transaction inbox path
+        (L2MessageKind_SignedTx refuses any type >= ArbitrumDepositTxType), so the
+        signed set and the protocol set do not overlap.
+      src: "go-ethereum/core/types/arbitrum_signer.go:arbitrumSigner, go-ethereum/core/types/transaction_signing.go:Sender, arbos/parse_l2.go:parseL2Message"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY, added to the precompile set from ArbOS 30 (not at Osaka — Arbitrum
+        gates forks on ArbOS version, see forks). Gas was 3450 before ArbOS 50 and
+        params.P256VerifyGas after. A tool for contracts; a P-256 key cannot authorize
+        an Arbitrum transaction.
+      src: "gethhook/geth-hook.go:PrecompiledContractsP256Verify, go-ethereum/core/vm/contracts.go:p256Verify"
+    bls12_381:
+      status: added
+      authorizes: never
+      precompile: "0x67"
+      note: >-
+        ArbBLS IS NOT AN AUTHORIZATION METHOD, and in the pinned tree it is barely a
+        precompile. Its description calls it "a registry of BLS public keys for
+        accounts", but the struct declares nothing except its own Address field — no
+        methods, so there is no reachable BLS verification behind it either. Registering
+        a BLS public key against an account would not authorize anything even if the
+        methods existed: nothing in arbitrumSigner or ArbOS consults such a registry
+        when deciding who sent a transaction. Recorded with `authorizes: never` explicitly,
+        because "chain has a BLS precompile" is exactly the observation that gets
+        misread as "chain accepts BLS-signed transactions".
+
+        The standard EIP-2537 curve-operation range 0x0b-0x11 is also present, via the
+        geth fork's Prague set (active from ArbOS 40); 0x67 is listed as the pairing
+        because it is the Arbitrum-specific address a reader would trip over.
+      src: "precompiles/ArbBLS.go:ArbBLS, go-ethereum/core/types/arbitrum_signer.go:ArbBLSAddress, go-ethereum/core/vm/contracts.go:PrecompiledContractsPrague"
+    unsigned:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        NOT A SIGNATURE SCHEME, and NOT the `authorizes: protocol` + `precompile: none`
+        finding — there is no signature here for any precompile to verify. Recorded as
+        an entry because six of Arbitrum's seven transaction types are authorized this
+        way and leaving them out would make the axis describe a minority of the
+        envelope.
+
+        For ArbitrumDepositTx (0x64), ArbitrumUnsignedTx (0x65), ArbitrumContractTx
+        (0x66), ArbitrumRetryTx (0x68) and ArbitrumSubmitRetryableTx (0x69),
+        arbitrumSigner.Sender returns inner.From directly and SignatureValues returns
+        (0,0,0). The `From` is set by ArbOS when it parses the L1 inbox message, from
+        the L1 poster address, so authorization is the L1 transaction that produced the
+        message — enforced on Ethereum, by Ethereum's own secp256k1, one layer down. For
+        ArbitrumInternalTx (0x6A) the sender is the constant ArbosAddress (0xa4b05) and
+        there is no external originator at all.
+
+        SAME CATEGORY AS OP STACK'S 0x7e DEPOSITS, opposite of Monad, whose system
+        transactions ARE signed by a real key.
+
+        A seventh case, ArbitrumLegacyTx (0x78), is different again: pre-Nitro classic
+        transactions carry an optional `Sender *common.Address` override used only for
+        unsigned ones, and when it is set the signer returns it without recovery. That
+        is a DECLARED sender in historical data, the only place on this chain where
+        ecrecover(sig) != from by construction.
+      src: "go-ethereum/core/types/arbitrum_signer.go:arbitrumSigner, arbos/parse_l2.go:parseUnsignedTx, arbos/parse_l2.go:parseEthDepositMessage, go-ethereum/core/types/arbitrum_legacy_tx.go:ArbitrumLegacyTxData"
+
 precompiles:
   # verified: go-ethereum/core/types/arbitrum_signer.go
   "0x64": {name: ArbSys, status: added, note: "core system precompile: L2->L1 messaging, block numbers",

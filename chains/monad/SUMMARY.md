@@ -220,6 +220,44 @@ while this row was in progress and closed the gap: the row now reports **42 symb
 confirmed**, machine-checked, with the same content. Nothing here was changed to make
 that pass.
 
+## System transactions are signed — with a real key
+
+Monad rewrites gas refunds, memory pricing, cold-access pricing and the fee market, and
+changes **nothing** about what can authorize a transaction: `recover_sender` RLP-encodes
+for signing and recovers a secp256k1 address, and the address is the hash of that key.
+
+The interesting part is the system transaction, which is on the *opposite* side of this
+axis from OP Stack's and Polygon's. `system_sender.hpp` says it outright:
+
+> This address is derived from a known key. Consensus will sign all system transactions
+> with this key.
+
+**The key is not special-cased; the recovered address is.** `recover_senders` runs over
+every transaction in the block uniformly, with no branch for system transactions — so a
+system transaction with a bad signature simply recovers to the wrong address and stops
+being one. Only afterwards does `dispatch_transaction` compare the recovered sender to
+`SYSTEM_SENDER` and route it to a separate executor, and only then does
+`static_validate_system_transaction` impose the rest of the shape: legacy type,
+destination exactly `0x1000`, `gas_limit` zero, both fee fields zero, empty authorization
+list.
+
+So the authority behind a Monad system transaction is **possession of one private key** —
+the same kind of secret that authorizes any other account, held by consensus.
+
+Monad closed the obvious consequence explicitly: `validate_transaction` rejects any
+transaction whose EIP-7702 authority list contains `SYSTEM_SENDER`
+(`MonadTransactionError::SystemTransactionSenderIsAuthority`). Without that rule a user
+could delegate code to the privileged sender's address. No mainnet analogue — mainnet has
+no privileged sender to protect.
+
+### The BLS that is not transaction authorization
+
+Monad's consensus runs on aggregated BLS signatures, and the staking precompile really
+does verify a BLS signature — in `precompile_add_validator`, over a fixed 165-byte
+message, as a proof of possession alongside a secp256k1 signature. That registers a
+*validator*. The `addValidator` call itself arrives inside an ordinary secp256k1-signed
+transaction, and no BLS key is ever consulted when deciding who sent one.
+
 ## Re-verify
 
 ```sh

@@ -95,6 +95,57 @@ tx_types:
       (0x80+ collides with RLP list prefixes), directly adjacent to OP Stack's 0x7e.
   note: "0x00-0x04 identical to mainnet, plus 0x7f."
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    UNCHANGED FROM MAINNET for every transaction a user can send. bor's types.Sender is
+    stock geth; PIP-88 repriced eleven precompiles and touched nothing in the signing
+    path. Bor block sealing and Heimdall checkpoint signatures are CONSENSUS signing —
+    they authorize blocks and L1 checkpoints, never a transfer from a Polygon account,
+    so they appear nowhere in this section.
+
+    The single divergence runs the other way: StateSyncTx (0x7f) carries no signature at
+    all. See the `unsigned` entry, and note that it is deliberately NOT the unpaired
+    scheme finding.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/types/transaction_signing.go:Sender"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY is in the live Chicago precompile set. A tool for contracts; a P-256
+        key cannot authorize a Polygon transaction.
+      src: "core/vm/contracts.go:p256Verify"
+    unsigned:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        NOT A SIGNATURE SCHEME. `precompile: none` here does NOT mean "the chain accepts
+        signatures its contracts cannot verify" — it means there is no signature at all
+        for a precompile to check. Recorded as a scheme entry because the alternative is
+        to leave a whole authorization path out of the axis.
+
+        StateSyncTx (0x7f) is built by the consensus engine inside Bor.Finalize from
+        Heimdall-bridged L1 events. rawSignatureValues returns (0,0,0) and
+        setSignatureValues panics outright, so the type cannot be signed even in
+        principle. Authorization is by protocol construction: only a block producer's
+        Finalize can emit one.
+
+        TWO SENDERS, AND THEY DISAGREE ON PURPOSE. eip2930Signer.Sender special-cases
+        StateSyncTxType and returns the ZERO ADDRESS so block explorers do not break,
+        while the EVM actually executes the state-sync call from
+        params.BorSystemAddress (0xffff...fffe) to the state-receiver contract. The
+        `from` visible over eth_getTransactionByHash is therefore not the `from` the EVM
+        used, and neither is backed by a key.
+      src: "core/types/tx_state_sync.go:setSignatureValues, core/types/transaction_signing.go:StateSyncTxType, consensus/bor/bor.go:Finalize, params/protocol_params.go:BorSystemAddress"
+
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsChicago (live set)
   "0x06": {name: BN256_ADD, status: modified, note: "PIP-88 gas x3.6 (540 vs 150)",

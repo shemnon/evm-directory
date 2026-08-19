@@ -257,6 +257,43 @@ Nine of the row's facts carry no provenance at all, and every one of them is
 `unrecorded` — which is the honest pairing. `verify.py` reports the row as
 `SKIP (documented)` with `src_live=52`, and the run stays green.
 
+## Who can authorize a transaction — measured, not assumed
+
+With no client to read, "secp256k1 authorizes transactions here" was tested the only way
+it can be from outside: pull a live transaction's raw bytes with
+`eth_getRawTransactionByHash`, recover the sender **off-chain** with standard keccak256 +
+secp256k1 ECDSA, and compare against the `from` the node reports.
+
+| Sampled tx | Type | Recovered off-chain | Matches reported `from` |
+|---|---|---|---|
+| `0xc4ffb8e4…b3d56` @ 43574984 | `0x00`, `v = 0x7f1` (EIP-155, chainId 999) | `0x39fa5efb…f66f36` | yes |
+| `0x2b49c740…1c93c` @ 43575063 | `0x02` | `0x30270f0e…abb7cd` | yes |
+
+So `key_binding: derived` is a **measurement** here, not an assumption, and the digest
+construction is mainnet's. This is also one of the few claims in this row that escapes the
+block-parameter caveat: the caveat applies to *state* reads, and transaction bytes are
+immutable and fetched by hash, so these two observations replay against any node holding
+the blocks.
+
+### The reverse pairing, and the worse half of it
+
+On every other chain here a P-256 key cannot authorize a transaction but a contract can at
+least *verify* one, at `0x0100`. Here neither is true. A 160-byte EIP-7951 vector generated
+and verified off-chain returns `0x00…01` on Ethereum mainnet and **empty** on HyperEVM.
+P-256 is unusable for authorization *and* unverifiable on-chain.
+
+### What is left `unrecorded`
+
+- **EIP-7702 delegation** — `eips.7702` is itself unrecorded, so there is no basis for an
+  `account_code` reach.
+- **Whether any unsigned, protocol-constructed transaction exists.** The bridge at
+  `0x2222` carries a nonce of ~1,000,000 that no ordinary contract could accumulate, no
+  matching transaction was found in the sampled blocks, and `debug_` tracing is not
+  exposed. The tx decoder returns the *same* error for every type byte, so it cannot even
+  be used to test which envelopes exist.
+
+No alternative signature scheme was observed and none is claimed.
+
 ## Re-verify
 
 There is no clone to grep. The doc-row analogue is the probe itself — these are the

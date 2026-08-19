@@ -284,6 +284,88 @@ tx_types:
     src: category/execution/ethereum/validate_transaction.cpp:TypeNotSupported
     note: "rejected with TransactionError::TypeNotSupported; eip_4844_active() is false at every revision"
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    BORING WHERE IT COUNTS, AND WORTH SAYING SO. Monad is an independent C++ EVM that
+    changes gas refunds, memory pricing, cold-access pricing and the fee market — and
+    changes NOTHING about what can sign a transaction. recover_sender RLP-encodes the
+    transaction for signing and recovers a secp256k1 address; the address is the hash of
+    the recovered key, exactly as on mainnet.
+
+    MONAD'S SYSTEM TRANSACTIONS ARE SIGNED, WHICH PUTS THEM ON THE OPPOSITE SIDE OF THIS
+    AXIS FROM OP STACK'S AND POLYGON'S. They have no distinct type byte (they are legacy
+    0x00), and consensus signs every one of them with a real secp256k1 key whose address
+    is the constant SYSTEM_SENDER, 0x6f49a8F621353f12378d0046E7d7e4b9B249DC9e — the
+    header comment says so outright: "This address is derived from a known key.
+    Consensus will sign all system transactions with this key."
+
+    THE KEY IS NOT SPECIAL-CASED; THE RECOVERED ADDRESS IS. recover_senders runs over
+    every transaction in the block uniformly, with no branch for system transactions, so
+    a system transaction with a bad signature recovers to the wrong address and simply
+    stops being a system transaction. Only afterwards does dispatch_transaction compare
+    the recovered sender to SYSTEM_SENDER and route it to a separate executor, and only
+    then does static_validate_system_transaction impose the rest of the shape: legacy
+    type, destination exactly the staking precompile at 0x1000, gas_limit zero, both fee
+    fields zero, empty authorization list. Practically, the authority of a Monad system
+    transaction is possession of one private key — the same kind of secret that
+    authorizes any other account, held by consensus.
+
+    A CONSEQUENCE MONAD CLOSED EXPLICITLY: validate_transaction rejects any transaction
+    whose EIP-7702 authority list contains SYSTEM_SENDER
+    (MonadTransactionError::SystemTransactionSenderIsAuthority). Without that rule a
+    user could delegate code to the system sender's address. No mainnet analogue,
+    because mainnet has no privileged sender address to protect.
+
+    The BLS12-381 verification inside the staking precompile is validator registration,
+    not transaction authorization; see that entry.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The 0x01 implementation is Monad's own C++ (ecrecover_execute), not a shared
+        library — equality of behaviour is a behavioural claim here, as everywhere in
+        this row. EIP-7702 delegation exists (recover_authority) and, as on mainnet,
+        changes nothing about this axis: delegated code runs only after a secp256k1
+        signature has already authorized the call.
+      src: "category/execution/ethereum/core/transaction.cpp:recover_sender, category/execution/ethereum/precompiles.cpp:ecrecover_execute, category/execution/monad/system_sender.hpp:SYSTEM_SENDER, category/execution/monad/dispatch_transaction.cpp:dispatch_transaction"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY, live from MONAD_FOUR — before Monad reached Osaka (see eips.7951).
+        A tool for contracts; a P-256 key cannot authorize a Monad transaction.
+      src: "category/execution/ethereum/precompiles.cpp:p256_verify_execute"
+    bls12_381:
+      status: inherited
+      authorizes: never
+      precompile: "0x0f"
+      note: >-
+        CONSENSUS KEY REGISTRATION, NOT TRANSACTION AUTHORIZATION — and the reason this
+        entry exists at all, because Monad's consensus really does run on aggregated BLS
+        signatures and that is precisely what must not be confused with signing a
+        transaction.
+
+        Where BLS is actually checked inside execution: the staking precompile at 0x1000
+        verifies a BLS signature (alongside a secp256k1 one) over a fixed 165-byte
+        message in precompile_add_validator, as a proof of possession, and derives a
+        validator identity from the BLS public key. The aggregation of those validators'
+        signatures happens in monad-bft, outside this clone. Neither can move value from
+        an account: the addValidator call itself arrives inside an ordinary
+        secp256k1-signed transaction, and no BLS key is consulted when deciding who sent
+        a transaction.
+
+        The pairing is given as 0x0f, the EIP-2537 pairing check, which is the primitive
+        a contract would build BLS signature verification from; the whole 0x0b-0x11 range
+        is present from PRAGUE. 0x1000 is a real signature check but not a general
+        verifier — the signature must arrive in addValidator's exact ABI layout and the
+        call registers a validator as a side effect.
+      src: "category/execution/ethereum/precompiles.cpp:bls12_pairing_check_execute, category/execution/monad/staking/staking_contract.cpp:precompile_add_validator, category/execution/monad/staking/util/bls.hpp"
+
 precompiles:
   "0x0000000000000000000000000000000000001000":
     name: StakingContract

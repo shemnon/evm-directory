@@ -72,6 +72,27 @@ tombstoned legacy trio; subnet-evm has the six stateful modules). Merging them w
 force every precompile row to carry a second "which one?" axis, exactly the overload
 the delta vocabulary is meant to avoid.
 
+## Configurable everywhere except in the signing path
+
+A `template` row invites the question "which of these is per-deployment?" — and on
+`tx_authorization` the answer is **none of it**. No genesis key selects a signature
+scheme, no opt-in precompile adds one, and every subnet-evm chain recovers senders
+through libevm's `types.Sender` exactly as mainnet does. Compare Tron, where a node-config
+key really does swap the curve out from under `ecrecover`.
+
+What *is* per-deployment is **who** may transact, not **what** may sign. With
+`txAllowListConfig` in genesis, `state_transition` rejects a transaction whose
+already-recovered `msg.From` is not allowlisted (`ErrSenderAddressNotAllowListed`). That
+is an authorization *restriction* applied after recovery, in the same place a nonce or
+balance check happens — not an authorization *method*.
+
+Two absences worth stating explicitly, because the sibling row has both:
+
+- **No atomic transactions.** There is no `plugin/evm/atomic` tree here, so none of the
+  C-Chain's UTXO-credential multi-signer model exists.
+- **Warp's BLS12-381 is consensus signing**, opt-in per deployment (`warpConfig`), and
+  verified in a block predicate outside EVM execution. It authorizes a *message*.
+
 ## Re-verify
 
 ```

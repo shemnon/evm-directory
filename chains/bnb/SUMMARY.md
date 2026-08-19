@@ -109,6 +109,28 @@ contract in bsc, which can't be upgraded"*.
 Parlia (Proof of Staked Authority), which inserts system transactions from the block
 coinbase to system contracts.
 
+## What can authorize a transaction: nothing new, and that is the finding
+
+`tx_authorization` on BSC is deliberately boring — secp256k1, one signer, address =
+hash of the recovered key, `types.Sender` unmodified from geth. It is recorded anyway
+because BSC handles **BLS in two places** and neither is what it looks like:
+
+- **Parlia fast-finality votes** (`core/types/vote.go:VoteAttestation`) are BLS12-381
+  signatures over block attestations. They finalise blocks. They cannot move a wei.
+- **`blsSignatureVerify` at `0x66`** is a verifier *for contracts* — the BLS analogue
+  of P256VERIFY at `0x0100`, and just as unable to authorize a sender.
+
+There is no BSC transaction envelope that accepts a BLS signature.
+
+### Parlia system transactions are signed — unlike OP's deposits
+
+`applyTransaction` builds an ordinary **legacy** transaction and the proposer signs it
+with its normal secp256k1 validator key. What is special-cased is the **recovered
+address**, not the signature: `IsSystemTransaction` accepts one only when the recovered
+sender equals `header.Coinbase`, the effective gas price is zero, and the destination is
+a system contract. BSC and Monad sit on this side of the line; OP Stack's `0x7e`
+deposits, which carry no signature at all, sit on the other.
+
 ## Re-verify
 
 ```

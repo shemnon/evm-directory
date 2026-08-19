@@ -105,6 +105,58 @@ tx_types:
     envelope types. The only chain in this dataset with zero tx-type divergence.
   src: core/types/transaction.go:48-52
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    UNCHANGED FROM MAINNET for anything a user can send. types.Sender is stock geth,
+    secp256k1 is the only scheme that authorizes a transaction, and the address is still
+    the hash of the recovered public key.
+
+    Two BSC features look like alternatives and are not. Parlia's fast-finality VOTES
+    are BLS12-381 signatures over block attestations aggregated into the header — that
+    is CONSENSUS signing and cannot move a wei out of an account. blsSignatureVerify at
+    0x66 is a verifier for CONTRACTS, in exactly the sense P256VERIFY is. Neither is a
+    way to authorize a BSC transaction.
+
+    Parlia's SYSTEM TRANSACTIONS deserve precision, because BSC is on the opposite side
+    of the line from OP Stack. They are NOT unsigned: applyTransaction builds an
+    ordinary legacy transaction and the block proposer signs it with its normal
+    secp256k1 validator key (signTxFn), so the sender is recovered by the same path as
+    any user transaction. What is special-cased is the RECOVERED ADDRESS, not the
+    signature — IsSystemTransaction accepts one only if the recovered sender equals
+    header.Coinbase, the effective gas price is zero, and the destination is a system
+    contract. Compare OP Stack's 0x7e deposits, which carry no signature at all.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/types/transaction_signing.go:Sender, consensus/parlia/parlia.go:IsSystemTransaction"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY with mainnet semantics and gas. A tool for contracts; a P-256 key
+        cannot authorize a BSC transaction at any fork level.
+      src: "core/vm/contracts.go:p256Verify"
+    bls12_381:
+      status: added
+      authorizes: never
+      precompile: "0x66"
+      note: >-
+        RECORDED SO IT IS NOT MISREAD. BSC handles BLS in two unrelated places and
+        neither authorizes a transaction. blsSignatureVerify at 0x66 (Luban) is a
+        contract-callable verifier, the BLS analogue of P256VERIFY. Parlia's
+        VoteAttestation carries BLS votes and vote addresses through the consensus
+        layer, where they finalize blocks — they are not transaction signatures and
+        cannot be used as such. There is no BSC transaction envelope that accepts a
+        BLS signature. (The standard EIP-2537 range 0x0b-0x11 is present too, from
+        Prague/Pascal; 0x66 is named as the pairing because it is the one that verifies
+        a BLS SIGNATURE rather than exposing curve operations.)
+      src: "core/vm/contracts.go:blsSignatureVerify, core/types/vote.go:VoteAttestation"
+
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsOsaka (LIVE set as of 2026-08-16)
   "0x64":

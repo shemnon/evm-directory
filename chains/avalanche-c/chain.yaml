@@ -144,6 +144,95 @@ non_evm_transactions:
     src: plugin/evm/atomic/export_tx.go:46
     fields: [NetworkID, BlockchainID, DestinationChain, Ins, ExportedOutputs]
 
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: "1 for EVM transactions; N for atomic transactions"
+  note: >-
+    TWO AUTHORIZATION MODELS ON ONE CHAIN, and only one of them is Ethereum's. EVM
+    transactions are stock: TransactionToMessage calls libevm's types.Sender, secp256k1,
+    one signer, address = hash of the recovered key.
+
+    The ATOMIC transactions already recorded in non_evm_transactions are authorized
+    completely differently. They are not RLP, carry no type byte, and are not signed
+    with an Ethereum digest. The signed payload is the Avalanche-codec serialization of
+    the UNSIGNED transaction, hashed by avalanchego's hashing.ComputeHash256 rather than
+    keccak256 over an EIP-155/EIP-2718 envelope, and the signature block is not a single
+    (v,r,s) but a LIST OF CREDENTIALS — Tx.Creds — one per input, each holding a list of
+    signatures. The count of signers is therefore a property of the transaction, not of
+    the chain: an export with five EVMInputs owned by five different accounts is one
+    transaction with five independent signers, and an import spending an m-of-n
+    threshold UTXO needs m signatures for that one input alone. This is the same curve
+    as an EVM transaction and a fundamentally different authorization envelope.
+
+    signers_per_tx is written as prose because a single integer would be false for one
+    of the two paths.
+
+    Warp's BLS12-381 is the trap in this row and is recorded as `authorizes: never`.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        EVM path. The 0x01-0x11 implementations come from ava-labs/libevm, outside this
+        clone, which is why the citation is coreth's call site rather than the recovery
+        code.
+      src: "core/state_transition.go:TransactionToMessage"
+    secp256k1_utxo_credential:
+      status: added
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The atomic import/export path. Same curve, different everything else.
+
+        EXPORT: one credential per EVMInput, each required to hold EXACTLY ONE signature
+        (errIncorrectNumSignatures otherwise), recovered against utx.Bytes() and checked
+        against that input's declared Address via pubKey.EthAddress(). Multiple distinct
+        accounts can be debited by one transaction, each authorizing only its own input.
+
+        IMPORT: one credential per imported UTXO, verified by Fx.VerifyTransfer against
+        the UTXO's own secp256k1fx output owners — an m-of-n threshold multisig defined
+        on the SOURCE chain (X or P). For those inputs the key binding is effectively
+        `declared`, not `derived`: the addresses and threshold that may spend are
+        written into the UTXO, not derived from any C-Chain account.
+
+        PRECOMPILE PAIRING, STATED CAREFULLY. This is NOT an `authorizes: protocol` +
+        `precompile: none` finding. The scheme is secp256k1 ECDSA, and 0x01 verifies
+        secp256k1 ECDSA, so a contract that reconstructs the digest can check these
+        signatures. The catch is the digest: it is a hash of Avalanche codec bytes
+        (hashing.ComputeHash256, in avalanchego and therefore outside this pinned
+        clone), not keccak256 of an RLP envelope, so the reconstruction is neither free
+        nor verified here. Recorded as 0x01 with that caveat rather than as `none`,
+        because claiming `none` would overstate what was established.
+      src: "plugin/evm/atomic/tx.go:Sign, plugin/evm/atomic/vm/tx_semantic_verifier.go:ExportTx, plugin/evm/atomic/vm/tx_semantic_verifier.go:ImportTx"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY, adopted at Granite out of Ethereum's fork order (see eips.7951). A
+        tool for contracts; a P-256 key cannot authorize either kind of C-Chain
+        transaction.
+      src: "params/hooks_libevm.go:P256VerifyAddress"
+    bls12_381:
+      status: added
+      authorizes: never
+      precompile: "0x0200000000000000000000000000000000000005"
+      note: >-
+        AVALANCHE WARP MESSAGING IS CONSENSUS SIGNING, NOT TRANSACTION AUTHORIZATION.
+        A Warp message carries an aggregated BLS signature from a source-subnet
+        validator set, and it authorizes a MESSAGE to be treated as verified — it never
+        authorizes a C-Chain transaction, pays no fee, and has no nonce or account.
+
+        The pairing is also indirect and worth stating: the aggregate signature is
+        verified by Config.VerifyPredicate, a BLOCK PREDICATE evaluated outside EVM
+        execution. The precompile at 0x0200..05 only READS the predicate result. So a
+        contract cannot hand this address an arbitrary BLS signature and get a verdict
+        the way it can with 0x01 — the address is listed as the pairing because it is
+        where Warp BLS verification is reachable at all, not because it is a
+        general-purpose BLS verifier.
+      src: "precompile/contracts/warp/config.go:VerifyPredicate, precompile/contracts/warp/module.go"
+
 precompiles:
   # verified: params/hooks_libevm.go:81-86 (PrecompiledContractsGranite = current)
   "0x05":

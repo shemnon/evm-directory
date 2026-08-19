@@ -76,6 +76,30 @@ No `OsakaBlock` is set for mainnet — yet the **Chicago** set enables EIP-7823/
 MODEXP and EIP-7951 P256VERIFY. Osaka-era precompile behaviour without the Osaka fork,
 the same out-of-order adoption as Avalanche's Granite.
 
+## The one transaction nobody signs, and its two disagreeing senders
+
+Signing on Polygon is stock geth — secp256k1, one signer, `derived` key binding, and
+PIP-88 touched none of it. Bor block sealing and Heimdall checkpoint signatures are
+*consensus* signing: they authorize blocks and L1 checkpoints, never a transfer from a
+Polygon account.
+
+`StateSyncTx` (`0x7f`) is the exception, and it is the opposite of an exotic signature
+scheme — it has **no signature at all**. `rawSignatureValues` returns `(0,0,0)` and
+`setSignatureValues` *panics*, so the type cannot be signed even in principle. It is
+built by the consensus engine inside `Bor.Finalize` from Heimdall-bridged L1 events.
+
+The trap is that it has **two senders and they are different on purpose**:
+
+| Where you look | `from` |
+|---|---|
+| `eth_getTransactionByHash` / explorers | `0x0000…0000` (zero address) |
+| the EVM that actually executed it | `params.BorSystemAddress` = `0xffff…fffe` |
+
+`eip2930Signer.Sender` special-cases the type and returns the zero address so downstream
+tooling does not break; execution and `debug_` tracing use the system address. Neither
+is backed by a key. Any reconciliation that trusts the RPC `from` for `0x7f` is
+attributing bridged L1 value to the zero address.
+
 ## Re-verify
 
 ```

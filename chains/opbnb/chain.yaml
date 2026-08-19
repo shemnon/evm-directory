@@ -78,7 +78,7 @@ tx_authorization:
   schemes:
     bls:
       status: added
-      authorizes: no
+      authorizes: never
       precompile: "0x66"
       note: >-
         The ordinary pairing, recorded for completeness: blsSignatureVerify comes from

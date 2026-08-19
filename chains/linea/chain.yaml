@@ -206,7 +206,7 @@ tx_authorization:
       src: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/core/Transaction.java:getSender, crypto/algorithms/src/main/java/org/hyperledger/besu/crypto/SignatureAlgorithmFactory.java:DEFAULT_EC_CURVE_NAME"
     secp256r1:
       status: inherited
-      authorizes: no
+      authorizes: never
       precompile: "0x0100"
       note: >-
         Recorded because the CLIENT differs, not because Linea does. Besu can replace

@@ -174,7 +174,11 @@ tx_authorization:
 |---|---|
 | `protocol` | the client itself validates a signature in this scheme to authorize a transaction. Mainnet's secp256k1. |
 | `account_code` | only reachable through account-abstraction code: the protocol runs the account's own validator, which decides. zkSync's `customSignature`. |
-| `no` | the chain can *verify* this scheme but it can never authorize a transaction. The normal state of P-256 on a chain with P256VERIFY. |
+| `never` | the chain can *verify* this scheme but it can never authorize a transaction. The normal state of P-256 on a chain with P256VERIFY. |
+
+**The value is `never`, not `no`.** YAML 1.1 parses a bare `no` as the boolean `false`,
+so `authorizes: no` silently loads as `False` and any consumer comparing against a
+string sees neither. `tools/verify.py` rejects the boolean form by name.
 
 ### `precompile:` — the paired verifier, or `none`
 
@@ -186,7 +190,7 @@ check — an on-chain verifier, a multisig, or an account-recovery contract cann
 validate the very signatures the protocol just accepted. Record it, and say so in the
 `note`.
 
-The reverse pairing — `authorizes: no` with a real precompile address — is ordinary and
+The reverse pairing — `authorizes: never` with a real precompile address — is ordinary and
 needs no comment beyond the address.
 
 ### `key_binding:` — how the address relates to the key

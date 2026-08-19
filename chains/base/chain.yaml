@@ -80,6 +80,108 @@ tx_types:
     Inherits 0x00-0x04 and OP Stack's 0x7e deposit, and adds 0x79. Base therefore
     carries TWO non-mainnet type bytes.
 
+tx_authorization:
+  key_binding: declared
+  signers_per_tx: 2
+  note: >-
+    EIP-8130 is the opposite design choice to zkSync's, and the contrast is the point.
+    zkSync makes the account's own code the authentication rule, so the scheme set is
+    open and unbounded. Base ENSHRINES a CLOSED set: `sender_auth` is
+    `authenticator(20) || authenticator_data`, and AuthenticatorDispatch routes that
+    20-byte selector through a hardcoded if-chain over four canonical values, falling
+    through to AuthError::NotCanonical for anything else. There is no path by which a
+    user-deployed contract validates a transaction signature. The crate says so in its
+    own README heading — "Enshrined, not a precompile" — and the four authenticators
+    are native Rust, not EVM calls: the deployed contracts at those addresses exist for
+    ERC-1271 use and the native code must stay byte-identical to them, but the
+    protocol never calls them.
+
+    So on Base a P-256 key really can move a wei, and `authorizes: protocol` is the
+    honest value: it is the CLIENT verifying the signature, not account code. That
+    makes Base the sharpest counter-example in the dataset to the usual P256VERIFY
+    story — eleven rows carry the precompile and it is a contract tool on almost all
+    of them; here the same curve is a first-class transaction signer.
+
+    NOT THE UNPAIRED FINDING. Every scheme here has a verifier a contract can reach:
+    secp256k1 at 0x01, P-256 at 0x0100, and the WebAuthn variant is P-256 ECDSA over a
+    SHA-256 message construction, reproducible from 0x0100 plus 0x02. Base even prices
+    the enshrined authenticators off those precompiles deliberately — Eip8130GasSchedule
+    pins 3,000 for k1 and 6,900 for P-256 to the ECRECOVER and EIP-7951 costs. A clean
+    negative.
+
+    KEY BINDING SPLITS BY PATH, and `declared` is recorded because 0x79 is what is new.
+    On 0x00-0x04 and 0x7e it is mainnet's `derived`. On 0x79 with `sender == None` it is
+    still derived — sender_auth is a bare 65-byte r||s||v and recover_eoa_sender's
+    result IS the sender. With `sender == Some(addr)` it is `declared`: the address is
+    an explicit unsigned field and the resolved actorId is checked against an
+    ActorConfig read out of the AccountConfiguration contract's storage, with scope
+    bits and an expiry. ecrecover(sig) != from on that path.
+
+    TWO PARTIES, TWO DIFFERENT DIGESTS, as on Kaia — arrived at independently. `payer`
+    is an optional second account that authorizes over payer_signature_hash, which
+    substitutes the RESOLVED sender into the digest and is domain-separated by its own
+    magic byte (0x7A), so a payer signature cannot be replayed under a different
+    sender. The payer's auth blob takes the same authenticator(20)||data form, so a
+    sponsor may itself be a P-256 or WebAuthn key. Absent a payer, the sender pays and
+    payer_auth is empty.
+
+    NOT LIVE ON MAINNET YET, and the source says why it might move. Cobalt gates 0x79,
+    and the canonical authenticator addresses are CREATE2 derivations of contract init
+    code the repo's own module docs mark "NOT final" and describe as the current Base
+    Sepolia deployment. Probed at block 50098345: ACCOUNT_CONFIG and all three
+    authenticator contracts return empty code on mainnet. So the P-256 schemes below
+    are `pending`, not `added` — a P-256 key cannot sign a Base mainnet transaction
+    today. Because the enshrined dispatch keys on those addresses, a re-pin before
+    Cobalt changes WHICH address means P-256; it will not change that P-256 authorizes.
+
+    A fifth selector, DELEGATE_AUTHENTICATOR, is deliberately NOT recorded as a scheme:
+    it verifies no signature of its own. It wraps one canonical non-delegate
+    authenticator at depth 1 exactly (nesting is NestedDelegate, an error) and surfaces
+    a delegated-account obligation. It changes WHOSE key counts, not WHAT a key is.
+  src: "crates/execution/eip8130/src/dispatch.rs:AuthenticatorDispatch, crates/execution/eip8130/src/dispatch.rs:NotCanonical, crates/common/consensus/src/transaction/eip8130/addresses.rs:CANONICAL_AUTHENTICATORS, crates/execution/eip8130/README.md, crates/execution/eip8130/src/verify.rs:verify_sender, crates/common/consensus/src/transaction/eip8130/signed.rs:recover_eoa_sender, crates/execution/eip8130/src/account_config.rs:ActorConfig, crates/common/consensus/src/transaction/eip8130/tx.rs:sender_signature_hash, crates/common/consensus/src/transaction/eip8130/tx.rs:payer_signature_hash, crates/execution/eip8130/src/verify.rs:ActorTxVerifier"
+  src_live: "eth_getCode @ 50098345 for ACCOUNT_CONFIG 0x2403408177dB7F8512a9593343a7C80371D8f2dF, P256_AUTHENTICATOR 0x28096E6f98996799A08fBbCFF0B7c0D512D1f503, WEBAUTHN_AUTHENTICATOR 0xD9B8d163a34FBaD781057F7B68889F0bbd70D7ed, DELEGATE_AUTHENTICATOR 0xb1f064A99919E4199b45F1b553b6ecb8d5d62a11, DEFAULT_ACCOUNT 0xaF0973bbebe12BDaE6B61c96019dc0DcA554b67c -> all 0x (no code)"
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        Unchanged on 0x00-0x04 and 0x7e, and the default on 0x79. Unique among the
+        four authenticators in having NO deployed contract: K1_AUTHENTICATOR is the
+        protocol-reserved sentinel address(1) and the protocol recovers from the blob
+        directly. EIP-7702 also remains available alongside 0x79, still secp256k1 for
+        both the tuple and the transaction, so Base carries two account-abstraction
+        mechanisms at once without either widening the curve set of the other.
+      src: "crates/common/consensus/src/transaction/eip8130/constants.rs:K1_AUTHENTICATOR, crates/common/consensus/src/transaction/tx_type.rs:OpTxType"
+    secp256r1:
+      status: pending
+      authorizes: protocol
+      precompile: "0x0100"
+      activation_condition: "Cobalt fork"
+      note: >-
+        Raw P-256. auth blob is r||s||x||y||pre_hash (129 bytes, the trailing byte
+        required and ignored), actorId is keccak256(x||y) — so the account is
+        identified by the KEY, and a P-256 key has no address of its own. Low-s
+        enforced to match OpenZeppelin's P256.verify. Paired with 0x0100, which Base
+        has at both the Jovian and Azul (Osaka-priced) pricings.
+      src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:P256_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:p256_verify, crates/common/precompiles/src/provider.rs:P256VERIFY"
+    secp256r1_webauthn:
+      status: pending
+      authorizes: protocol
+      precompile: "0x0100"
+      activation_condition: "Cobalt fork"
+      note: >-
+        The same curve under a WebAuthn envelope, so a passkey signs the transaction
+        directly. The client parses clientDataJSON, asserts the type member and the
+        base64url-encoded challenge at caller-supplied offsets, requires the
+        User-Present flag (requireUV false), checks backup-state consistency, then
+        P-256-verifies over sha256(authenticatorData || sha256(clientDataJSON)).
+        Recorded as its own scheme because the message construction — not the curve —
+        is what differs, and that construction has no precompile: a contract must
+        reassemble it from 0x02 and 0x0100 by hand. Not an unpaired scheme, since the
+        signature itself is checkable at 0x0100.
+      src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:WEBAUTHN_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:webauthn, crates/execution/eip8130/src/schedule.rs:Eip8130GasSchedule"
+
 precompiles:
   "0x8453000000000000000000000000000000000001":
     name: Activation

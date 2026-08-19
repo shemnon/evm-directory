@@ -64,6 +64,36 @@ The dark-mirror of this: EIP-7702 is absent, so the `0xef0100` delegation prefix
 tooling now uses to *detect* smart accounts finds nothing here — and concludes every
 account is an EOA, on the one chain where none is.
 
+**Is the scheme set self-limiting? No — and it was worth checking.** The bootloader's
+`accountValidateTx` verifies *nothing* cryptographic: it calls `validateTransaction` on
+the sender's account and accepts the transaction if that call returns the magic
+selector. There is no protocol-level signature check anywhere on the path, for `0x00`,
+`0x01`, `0x02` or `0x71` alike. Even the secp256k1 "EOA" rule is supplied by
+`DefaultAccount._isValidSignature` — replaceable Solidity, not consensus. On `0x71` the
+sender is an explicit unsigned RLP field and `customSignature` overrides `v/r/s`
+entirely; on the untyped paths the node's `recover_default_signer` only *selects* which
+account gets asked.
+
+An account validator is ordinary bytecode, so the reachable set is bounded by **gas, not
+by the precompile set** — a validator may implement a curve with no precompile behind it
+at all. Two soft bounds were checked and neither closes the set:
+
+1. The sequencer's `ValidationTracer` caps validation work
+   (`TookTooManyComputationalGas`) against a **node-configured**
+   `validation_computational_gas_limit` — 300,000 in one shipped config, 10,000,000 in
+   another. Its own doc comment says it exists *"to prevent DDoS attacks on the
+   server"*: an admission policy, not a consensus rule, and one two nodes can disagree
+   on.
+2. The precompile set decides only what is *cheap*. secp256k1 (`0x01`) and secp256r1
+   (`0x0100`) are one call each; MODEXP's 32-byte operand cap forecloses the cheap RSA
+   route; there is no ed25519 verifier at any address.
+
+So `tx_authorization.schemes` on this row lists what is *practically reachable today*,
+not a closed enumeration — and the row says so rather than implying otherwise. Worth
+noting in passing: because an account can call `0x0100` from `validateTransaction`,
+zkSync is one of the few rows where **a P-256 key can actually authorize a
+transaction**, against the usual pattern where `P256VERIFY` is a contract tool only.
+
 ### 4. `eth_getCode` and `EXTCODESIZE` disagree, on purpose
 
 `Constants.sol`, `CURRENT_MAX_PRECOMPILE_ADDRESS = 0xff`:

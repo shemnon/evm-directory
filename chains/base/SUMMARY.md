@@ -67,6 +67,50 @@ It has its own transaction type: **`0x79`** (`EIP8130_TX_TYPE_ID = 121`).
 Base also supports EIP-7702, so **two distinct account-abstraction mechanisms coexist**
 on the same chain, with two different transaction types.
 
+### …and it is a CLOSED set, which is the interesting part
+
+`sender_auth` is `authenticator(20) || authenticator_data`, and `AuthenticatorDispatch`
+routes that 20-byte selector through a hardcoded if-chain over **four** canonical
+values, falling through to `AuthError::NotCanonical` for anything else:
+
+| selector | scheme | verified by |
+|---|---|---|
+| `address(1)` (`K1_AUTHENTICATOR`) | secp256k1 | native `ecrecover` — no deployed contract exists |
+| `0x28096E…f503` | secp256r1, raw | native Rust |
+| `0xD9B8d1…D7ed` | secp256r1 under a WebAuthn envelope (a passkey) | native Rust |
+| `0xb1f064…2a11` | *not a scheme* — 1-hop delegation over one of the above | — |
+
+There is **no path by which a user-deployed contract validates a transaction
+signature.** That is the exact opposite of zkSync, where the account's own code *is* the
+authentication rule and the scheme set is open and unbounded. Base's is enshrined and
+finite.
+
+So **on Base a P-256 key can move a wei.** Eleven rows in this dataset carry
+`P256VERIFY` and on almost all of them the precompile is a tool for *contracts* and a
+P-256 key cannot sign anything; here the same curve is a first-class transaction signer,
+verified by the client. Base is the sharpest counter-example to that pattern. Base even
+prices the enshrined authenticators *off* those precompiles deliberately —
+`Eip8130GasSchedule` pins 3,000 for k1 and 6,900 for P-256 to the `ECRECOVER` and
+EIP-7951 costs.
+
+**Not the unpaired finding**, and that is a real result: every scheme here has a
+verifier a contract can reach (`0x01`, `0x0100`, and the WebAuthn construction
+reassembled from `0x0100` + `0x02`).
+
+**Two parties, two different digests** — the same shape Kaia arrived at independently.
+`payer` is an optional second account authorizing over `payer_signature_hash`, which
+substitutes the *resolved* sender into the digest and is domain-separated by its own
+magic byte (`0x7A`), so a payer signature cannot be replayed under a different sender.
+The payer's blob takes the same `authenticator(20) || data` form, so a **sponsor may
+itself be a passkey**.
+
+**Not live on mainnet yet.** Probed at block 50098345: `ACCOUNT_CONFIG` and all three
+authenticator contracts return empty code on Base mainnet, and the repo's own module
+docs mark those CREATE2 addresses *"NOT final"*, describing them as the current Base
+Sepolia deployment. The P-256 schemes are therefore recorded `pending`, not `added`. A
+re-pin before Cobalt changes *which address* means P-256; it will not change that P-256
+authorizes.
+
 ## Its own fork line
 
 Beyond the OP Stack sequence (Bedrock → Jovian), Base has **Azul, Beryl, Cobalt,

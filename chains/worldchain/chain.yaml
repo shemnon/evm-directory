@@ -155,19 +155,57 @@ tx_authorization:
       precompile: none
       spec: WIP-1001
       note: >-
-        DRAFT, not in this tree. The one genuine authorization proposal in the World
-        Chain spec series, and it is a change of KIND rather than of curve: WIP-1001
-        defines a 0x1D envelope executed with a WORLD_CHAIN_ACCOUNT_MANAGER-managed
-        account "framed as the sender", where an immutable EIP-1271 admin signer and a
-        ring of EIP-1271 session verifiers decide what a valid signature is. The spec
-        states the principle explicitly — no signer-specific authentication as a
-        native execution path — so if it ever ships this row's key_binding becomes
-        `account_code` for 0x1D and stays `derived` for every other type. Every
-        activation parameter is still TBD, including the EdDSA precompile address that
-        collides with P256VERIFY (see precompiles."0x0100"), so nothing here is
-        scheduled. Recorded as `pending` because the draft's own direction is the
-        thing a reader tracking this axis needs to know.
-      src: "specs/wips/wip-1001.md:WORLD_CHAIN_ACCOUNT_MANAGER, specs/wips/wip-1001.md:isValidSignatureForAdmin"
+        DRAFT (created 2026-03-27), 654 lines, every activation parameter TBD. The name
+        understates it: WIP-1001 reuses EIP-1271's INTERFACE while inverting its
+        semantics. Standard 1271 is a pure predicate over a hash, decided before
+        anything happens. Here authorization is TWO calls that STRADDLE EXECUTION.
+
+        Step 6 is the familiar one — isValidSignatureForVerifier over a signingHash. Step
+        12 is not: after the payload has ALREADY RUN tentatively (step 9), the protocol
+        hands the session verifier an ExecutionTraceContext and asks
+        evaluateSessionPolicy whether what just happened was allowed. If it answers
+        false, the tentative state is DISCARDED (step 13). A transaction can be fully
+        executed and then un-executed because a contract disliked the trace.
+
+        What the verifier sees is not a hash but a WorldChainExecutionTrace: every
+        Call/StaticCall/DelegateCall/Create/Create2 with depth, caller, target, value,
+        selector, input and output hashes, success and gasUsed, plus every log with
+        emitter, topics and callIndex. That is what "programmable" buys — spending
+        limits, MFA on high-value transfers, scoped agent delegation and subscriptions
+        are expressible as policy over observed behaviour, with no protocol branch per
+        scheme. The spec states the principle: no signer-specific authentication as a
+        native execution path.
+
+        Determinism is enforced, not trusted. Both calls run in restricted validation
+        frames policed by a runtime tracer derived from ERC-7562: 13 rules forbidding
+        block context, tx context, external account inspection, SSTORE/TLOAD/TSTORE,
+        logs, CALL/CREATE and SELFDESTRUCT, permitting STATICCALL only to allowlisted
+        precompiles and DELEGATECALL only to bytecode satisfying the same rules,
+        validated RECURSIVELY (WIP1001-VR-9). A verifier is therefore a pure function of
+        its own storage, its own code, its calldata, and the precompile allowlist.
+
+        THE CONSEQUENCE FOR THIS AXIS: "Adding a new precompile to the validation
+        allowlist is a hard-fork change." So although authentication is programmable,
+        the set of CRYPTOGRAPHY a verifier can reach is closed by the protocol and
+        widened only by hard fork. This is the direct opposite of zkSync Era, where the
+        equivalent question has no closed answer (see chains/zksync-era) — and a third
+        distinct answer from Base, which enshrines a closed authenticator set in the
+        client with no user code at all. Three designs, three different places to draw
+        the same boundary.
+
+        Two further protocol-level oddities if it ships. Validation gas is NOT deducted
+        from the envelope gasLimit and is charged instead against a per-block
+        BLOCK_VALIDATION_GAS_BUDGET, so block capacity gains a second dimension and a
+        0x1D transaction that does not fit is DEFERRED rather than failed. And the
+        failure classes give "failed" two meanings: a payload that REVERTS with an
+        accepted policy is committed as a revert, while a payload the policy REJECTS is
+        discarded — both after burning the nonce and charging a fee.
+
+        If it ships, this row's key_binding becomes `account_code` for 0x1D and stays
+        `derived` for every other type. Nothing is scheduled: every parameter above is
+        TBD, including EDDSA_PRECOMPILE, whose address WIP-1004 separately proposes to
+        put at 0x0100 where P256VERIFY already lives (see precompiles."0x0100").
+      src: "specs/wips/wip-1001.md:WORLD_CHAIN_ACCOUNT_MANAGER, specs/wips/wip-1001.md:evaluateSessionPolicy, specs/wips/wip-1001.md:WorldChainExecutionTrace, specs/wips/wip-1001.md:BLOCK_VALIDATION_GAS_BUDGET, specs/wips/wip-1001.md:EIP1271_VALIDATION_GAS_LIMIT"
 precompiles:
   "0x0100":
     name: "P256VERIFY (live); EdDSA proposed"

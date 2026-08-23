@@ -1,3 +1,5 @@
 chains/*/repos/
 .DS_Store
 tools/.venv/
+
+__pycache__/

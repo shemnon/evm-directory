@@ -4,74 +4,15 @@
 Ethereum Mainnet is the Schelling point: every row is a delta against it.
 Stack nodes (role: stack) are resolved into their descendants so aggregate
 tables show each chain's complete effective set, with origin marked.
+
+Loading, ordering and address canonicalisation live in `model.py`, shared with
+`site.py`, so the Markdown tables and the website cannot disagree about them.
 """
-import sys, pathlib, yaml
-
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-CHAINS = ROOT / "chains"
-# display order: baseline, then stack nodes before their descendants
-ORDER = ["ethereum", "bnb", "polygon", "avalanche-c", "avalanche-subnet", "arbitrum",
-         "op-stack", "optimism", "base", "worldchain", "opbnb", "tron"]
-
-SHORT = {"ethereum": "Ethereum", "bnb": "BNB", "polygon": "Polygon",
-         "avalanche-c": "Avax C", "avalanche-subnet": "Avax subnet", "arbitrum": "Arbitrum",
-         "op-stack": "OP Stack", "optimism": "OP Mainnet", "base": "Base",
-         "worldchain": "World", "opbnb": "opBNB", "tron": "Tron"}
-
-MARK = {"added": "➕", "removed": "➖", "modified": "⚠️", "inherited": "=",
-        "pending": "◌", "tombstoned": "⊘"}
-
-def load():
-    out = {}
-    for d in sorted(CHAINS.iterdir()):
-        f = d / "chain.yaml"
-        if f.exists():
-            out[d.name] = yaml.safe_load(f.read_text())
-    return out
-
-def name(c):   return c["chain"]["name"]
-def documented(c): return c["chain"].get("evidence") == "documented"
-def client(c, field, dflt="—"):
-    """Documented rows carry no client — there is no public one to pin."""
-    return (c.get("client") or {}).get(field, dflt)
-def is_stack(c): return c["chain"].get("role") == "stack"
-
-def order(chains):
-    return [s for s in ORDER if s in chains] + [s for s in chains if s not in ORDER]
-
-def canon(a):
-    """One address, one row. Rows write the same address in different widths —
-    `0x0100` and `0x0000...0100` are both P256VERIFY — and keying on the raw string
-    split them into two rows, so Sei's absence never lined up with the address it was
-    absent from. Normalise to minimal even-length hex, which preserves the existing
-    short form for precompiles and the full 40-digit form for predeploys."""
-    try: h = f"{int(a, 16):x}"
-    except Exception: return a
-    return "0x" + h.rjust(2, "0").rjust(len(h) + len(h) % 2, "0")
-
-def addr_rows(chains, section):
-    """Collect address->{slug: entry} across chains, resolving stack inheritance."""
-    table, origin = {}, {}
-    for slug in order(chains):
-        c = chains[slug]
-        up = c["lineage"].get("upstream")
-        # inherit from a stack ancestor first, then let own entries override
-        if up in chains and is_stack(chains[up]):
-            for k, v in (chains[up].get(section) or {}).items():
-                if not str(k).startswith("0x"): continue
-                k = canon(k)
-                table.setdefault(k, {})[slug] = v
-                origin.setdefault((k, slug), up)
-        for k, v in (c.get(section) or {}).items():
-            if not str(k).startswith("0x"): continue
-            k = canon(k)
-            table.setdefault(k, {})[slug] = v
-            origin[(k, slug)] = slug
-    return table, origin
-
-def sortkey(a):
-    try: return (0, int(a, 16))
-    except Exception: return (1, 0)
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented,
+                   client, is_stack, order, canon, addr_rows, sortkey,
+                   entry_label, eip_status, tx_auth)
 
 def cell(entry, this_slug, org):
     if entry is None: return ""
@@ -107,7 +48,7 @@ def gen_precompiles(chains):
          "mainnet-standard behaviour).", "", header(chains, slugs)]
     for a in sorted(tab, key=sortkey):
         row = [cell(tab[a].get(s), s, org.get((a, s))) for s in slugs]
-        nm = next((e.get("name", "") for e in tab[a].values() if e.get("name")), "")
+        nm = entry_label(tab[a].values())
         L.append(f"| `{a}` {nm} | " + " | ".join(row) + " |")
     L.append("\n## Precompiles that cannot be enumerated\n")
     any_dyn = False
@@ -127,7 +68,9 @@ def gen_precompiles(chains):
         c = chains[s]
         for sec in ("precompiles", "system_contracts"):
             for a, e in (c.get(sec) or {}).items():
-                if isinstance(e, dict) and e.get("severity") == "high":
+                # address keys only — `mutable_bytecode` sits in the same mapping and
+                # is emitted by name below, so iterating everything listed it twice
+                if isinstance(e, dict) and str(a).startswith("0x") and e.get("severity") == "high":
                     L.append(f"- **{name(c)} `{a}`** — {' '.join(e.get('note','').split())}")
         for e in (c.get("header_fields") or {}).get("modified") or []:
             if isinstance(e, dict) and e.get("severity") == "high":
@@ -148,7 +91,7 @@ def gen_txtypes(chains):
          "RLP list prefixes.", "", header(chains, slugs)]
     for a in sorted(tab, key=sortkey):
         row = [cell(tab[a].get(s), s, org.get((a, s))) for s in slugs]
-        nm = next((e.get("name", "") for e in tab[a].values() if e.get("name")), "")
+        nm = entry_label(tab[a].values())
         L.append(f"| `{a}` {nm} | " + " | ".join(row) + " |")
     L.append(legend())
     L.append("\n## Transactions with no type byte\n")
@@ -220,16 +163,8 @@ def gen_matrix(chains):
                                              if str(k).startswith("0x")) or "0")
     row("Txs outside EIP-2718", lambda c, s: "yes" if c.get("non_evm_transactions") else "no")
     def eip(c, slug, num, neg):
-        """Resolve an EIP through stack ancestry. '?' means NOT RECORDED — never
-        silently render an unverified fact as a positive claim."""
-        e = (c.get("eips") or {}).get(num)
-        if e is None:
-            up = c["lineage"].get("upstream")
-            if up in chains and is_stack(chains[up]):
-                e = (chains[up].get("eips") or {}).get(num)
-            if e is None:
-                return "yes" if c["chain"]["role"] == "baseline" else "?"
-        st = e.get("status", "inherited")
+        """Resolution lives in model.eip_status, shared with the website."""
+        st, _ = eip_status(chains, slug, num)
         if st == "unrecorded": return "?"
         return "yes" if st == "inherited" else neg
     row("EIP-7702", lambda c, s: eip(c, s, 7702, "**no**"))
@@ -243,17 +178,22 @@ def gen_matrix(chains):
              "*verify*. A chain may carry P256VERIFY while a P-256 key cannot move a "
              "single wei; see [SCHEMA.md](SCHEMA.md).\n")
     L.append("`ᴬᶜ` = reachable only through account-abstraction code: the protocol runs "
-             "the account's own validator, which decides.\n")
+             "the account's own validator, which decides. `†` = inherited from a stack "
+             "ancestor — a chain descending from the OP Stack states only its own deltas, so "
+             "OP Mainnet declares nothing here at all.\n")
     L.append("| Chain | Key binding | Signers | Schemes that can authorize |")
     L.append("|---|---|---|---|")
     unpaired = []
     for s in slugs:
         c = chains[s]
-        ta = c.get("tx_authorization") or {}
-        if not ta:
+        # resolved through a stack ancestor: OP Mainnet declares nothing but a note
+        # saying it has no delta, and reading the raw row rendered it as if NO
+        # signature could authorize a transaction on it
+        fields, schemes, org = tx_auth(chains, s)
+        if not schemes:
             L.append(f"| {name(c)} | *inherits upstream* | | |"); continue
         auth = []
-        for n, v in (ta.get("schemes") or {}).items():
+        for n, v in schemes.items():
             a = v.get("authorizes")
             # `account_code` still authorizes — the account's own validator decides,
             # rather than the client. Rendering only `protocol` made zkSync, where
@@ -262,13 +202,16 @@ def gen_matrix(chains):
             if a not in ("protocol", "account_code"): continue
             pc = v.get("precompile")
             suffix = " ᴬᶜ" if a == "account_code" else ""
+            dag = "†" if org.get(n) not in (None, s) else ""
             if a == "protocol" and pc in (None, "none"):
-                auth.append(f"**{n}** ⚠️"); unpaired.append((name(c), n, v))
+                auth.append(f"**{n}**{dag} ⚠️")
+                if org.get(n) in (None, s): unpaired.append((name(c), n, v))
             else:
-                auth.append(f"{n}{suffix}" + (f" (`{pc}`)" if pc not in (None, "none") else ""))
-        sig = str(ta.get("signers_per_tx", "—"))
+                auth.append(f"{n}{suffix}{dag}" + (f" (`{pc}`)" if pc not in (None, "none") else ""))
+        sig = str(fields.get("signers_per_tx", "—"))
         if len(sig) > 24: sig = sig[:22] + "…"
-        L.append(f"| {name(c)} | `{ta.get('key_binding','—')}` | "
+        kd = "†" if org.get("key_binding") not in (None, s) else ""
+        L.append(f"| {name(c)} | `{fields.get('key_binding','—')}`{kd} | "
                  f"{sig} | {', '.join(auth) or '—'} |")
     L.append("")
     L.append("### ⚠️ Authorizes a transaction, with no precompile to verify it\n")

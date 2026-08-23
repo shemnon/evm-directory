@@ -8,6 +8,9 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
   └── Polygon PoS (v2.10.0, prague)
   └── Avalanche C-Chain (v0.16.0, cancun)
   └── Avalanche subnet-evm (L1s / Subnets) (v0.8.0, cancun)
+  └── Kaia (v2.2.2, osaka)
+  └── Sei (v6.6.1, prague)
+  └── Linea (releases/linea-besu-package/v2.1.1, osaka)
   └── Arbitrum One (v3.11.3, osaka)
   └── OP Stack (v1.101702.2, osaka) [stack, not a chain]
     └── OP Mainnet (v1.101702.2, osaka)
@@ -15,15 +18,12 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
     └── World Chain (v2.4.2, osaka)
     └── opBNB (v0.5.10, cancun)
     └── Celo (celo-v2.2.4, prague)
-  └── Kaia (v2.2.2, osaka)
-  └── Linea (releases/linea-besu-package/v2.1.1, osaka)
-  └── Sei (v6.6.1, prague)
 
 Tron — no upstream (role: independent)
 
-Hyperliquid (HyperEVM) — no upstream (role: independent)
-
 Monad — no upstream (role: independent)
+
+Hyperliquid (HyperEVM) — no upstream (role: independent)
 
 zkSync Era — no upstream (role: independent)
 ```
@@ -37,17 +37,17 @@ zkSync Era — no upstream (role: independent)
 | Polygon PoS | `prague` | A FOURTH mapping mechanism: Polygon gates Ethereum forks on BLOCK NUMBERS (ShanghaiBlock, CancunBlock, PragueBlock), not timestamps. Its own Bor forks are also block-numbered. |
 | Avalanche C-Chain | `cancun` | Only two Avalanche upgrades map onto Ethereum forks, and the mapping is an explicit assignment, not a coincidence: `c.ShanghaiTime = durango` and `c.CancunTime = etna`. There is NO PragueTim |
 | Avalanche subnet-evm (L1s / Subnets) | `cancun` | Same mapping as the C-Chain: ShanghaiTime = durango, CancunTime = etna, and NO PragueTime or OsakaTime. Cancun-equivalent. |
+| Kaia | `osaka` | Activation is by BLOCK NUMBER, not timestamp — a fifth incompatible activation mechanism alongside OP Stack's enforced timestamp equality, Avalanche's assigned timestamps, Arbitrum's ArbOS v |
+| Sei | `prague` | Sei has TWO independent upgrade axes and they do not line up. (1) Ethereum fork level, set by the CancunTime/PragueTime chain-config params, both defaulted to 0 — Sei was born Prague-equival |
+| Linea | `osaka` | Fork schedule read from upstream Besu's bundled linea-mainnet.json, cross-checked against Maru's beacon genesis (maru/app/src/main/resources/beacon-genesis-files/ linea-mainnet-genesis.json, |
 | Arbitrum One | `osaka` | A THIRD mapping mechanism, distinct from every other chain here. Arbitrum does not use fork timestamps at all: IsShanghai/IsCancun/IsPrague/IsOsaka each begin with "if c.IsArbitrum() { retur |
 | OP Stack | `osaka` | OP fork times are independent config fields, but CheckConfigForkOrder ENFORCES equality with their Ethereum counterparts — a config that violates this is rejected at startup. This makes the  |
 | OP Mainnet | `osaka` | Read from the superchain registry rather than the client, because OP Stack fork times are per-chain configuration, not client constants. |
 | Base | `osaka` | Base is ABSENT from the superchain-registry mainnet configs in this snapshot, unlike OP Mainnet and World Chain, so activation timestamps could not be read from there. Fork ORDER is verified |
 | World Chain | `osaka` | Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec (asserted at crates/chainspec/src/spec |
 | opBNB | `cancun` | THE DUAL-HERITAGE CASE. lineage.upstream is op-stack by code, but two of its precompiles come from BSC — blsSignatureVerify at 0x66 and cometBFTLightBlockValidate at 0x67, at BSC's addresses |
-| Tron | `cancun` | Tron versions its protocol as GreatVoyage releases with proposal-gated features, not as named hard forks mapped to Ethereum's. There is no fork-name mapping to record; feature activation is  |
 | Celo | `prague` | Two fork axes. Ethereum/OP forks come from the embedded superchain registry and are subject to op-geth's CheckConfigForkOrder equality rules (params/config.go:1745 enforces PragueTime == Ist |
-| Hyperliquid (HyperEVM) | `cancun` | No named fork schedule is published, no fork timestamps are exposed by the RPC, and with no client source there is no fork-condition table to read. Feature activation cannot be reconstructed |
-| Kaia | `osaka` | Activation is by BLOCK NUMBER, not timestamp — a fifth incompatible activation mechanism alongside OP Stack's enforced timestamp equality, Avalanche's assigned timestamps, Arbitrum's ArbOS v |
-| Linea | `osaka` | Fork schedule read from upstream Besu's bundled linea-mainnet.json, cross-checked against Maru's beacon genesis (maru/app/src/main/resources/beacon-genesis-files/ linea-mainnet-genesis.json, |
+| Tron | `cancun` | Tron versions its protocol as GreatVoyage releases with proposal-gated features, not as named hard forks mapped to Ethereum's. There is no fork-name mapping to record; feature activation is  |
 | Monad | `osaka` | Two independent fork ladders, and they are NOT aligned. The EVM revision ladder is `monad_revision` (MONAD_ZERO..MONAD_NEXT), gated on timestamp in the execution client. The consensus/params |
-| Sei | `prague` | Sei has TWO independent upgrade axes and they do not line up. (1) Ethereum fork level, set by the CancunTime/PragueTime chain-config params, both defaulted to 0 — Sei was born Prague-equival |
+| Hyperliquid (HyperEVM) | `cancun` | No named fork schedule is published, no fork timestamps are exposed by the RPC, and with no client source there is no fork-condition table to read. Feature activation cannot be reconstructed |
 | zkSync Era | `osaka` | Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account / EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no mainnet-equivalence claim to  |

@@ -64,6 +64,25 @@ being compared to mainnet, so it does not use the delta vocabulary above.
 
 Never overload one key with both a timestamp and a prose condition.
 
+## `divergence:` — what kind of difference `modified` means
+
+Optional, on `precompiles` and `system_contracts` entries whose `status` is `modified`.
+
+| divergence | meaning |
+|---|---|
+| *(omitted)* | the semantics differ: different result, different acceptance, different failure. The default. |
+| `gas` | **pricing only.** Identical inputs produce an identical result; only the cost differs. |
+
+Separated because they are not the same risk. A repriced precompile returns the right
+answer and costs more; a semantically modified one returns a different answer. Polygon
+reprices eleven precompiles under PIP-88 and changes none of their results, and marking
+those the same way as Tron's `0x03` — which does not compute RIPEMD160 — overstates them
+badly in any grid that shows one symbol per cell.
+
+Gas divergence is therefore not flagged in the aggregate grids; it is stated on the
+chain's own page. **Current live pricing is the reference**, not the pricing at any
+historical fork.
+
 ## `severity: high`
 
 Mark any divergence that fails **silently** — wrong results with no revert, no error,

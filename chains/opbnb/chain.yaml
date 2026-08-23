@@ -99,7 +99,7 @@ precompiles:
     status: added
     src: core/vm/contracts.go
     note: "BSC's precompile; also collides with Arbitrum's ArbBLS at 0x67"
-  "0x0100": {name: P256VERIFY, status: modified, note: "inherited from OP Stack Fjord (RIP-7212 gas)",
+  "0x0100": {name: P256VERIFY, status: modified, divergence: gas, note: "inherited from OP Stack Fjord (RIP-7212 gas)",
              src: "core/vm/contracts.go:PrecompiledContractsFjord, params/protocol_params.go:P256VerifyGas"}
   note: >-
     Two added addresses, both borrowed from BSC rather than invented — making 0x66

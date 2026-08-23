@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sei · EVM-intel</title>
+<meta name="description" content="A Cosmos-SDK application chain whose EVM is a maintained fork of go-ethereum (sei-protocol/go-ethereum). The INTERPRETER descends from geth by code, so opcode-level deltas are literal diffs.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label></div></details>
+</header>
+<main>
+<h1>Sei</h1>
+<p class="lede">A Cosmos-SDK application chain whose EVM is a maintained fork of go-ethereum (sei-protocol/go-ethereum). The INTERPRETER descends from geth by code, so opcode-level deltas are literal diffs.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>1329</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>prague</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>go-ethereum</td></tr><tr><td>Sync point</td><td>sei-protocol/go-ethereum v1.15.7-sei-17, a fork of upstream geth v1.15.7. The fork&#x27;s newest precompile/rule set is PRAGUE. There is no Osaka branch in the fork&#x27;s config or precompile switch, so Sei is one full fork generation behind mainnet and cannot reach Osaka semantics by configuration alone.</td></tr><tr><td>Consensus</td><td>CometBFT fork (sei-tendermint), Cosmos-SDK ABCI application · block time ~0.48s</td></tr><tr><td>Note</td><td><p>A Cosmos-SDK application chain whose EVM is a maintained fork of go-ethereum (sei-protocol/go-ethereum). The INTERPRETER descends from geth by code, so opcode-level deltas are literal diffs. Everything around it — transaction envelope, account model, fee market, block structure, address space — is Cosmos-SDK and shares no ancestry with Ethereum. <code>role: fork</code> describes the EVM only; read the rest of this file as a rewrite, not a rebase.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/sei-protocol/sei-chain">sei-chain</a> <code>v6.6.1</code></td></tr><tr><td>Pinned commit</td><td><code>43d1152e06ed9020d39e10da706451718b66c804</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Companion repos</td><td>https://github.com/sei-protocol/go-ethereum v1.15.7-sei-17</td></tr><tr><td>Client note</td><td><p>sei-chain holds the Cosmos modules, the custom precompiles and the whole transaction/fee/RPC layer. The EVM interpreter itself is a separate repo, pulled in by a <code>replace</code> directive in go.mod and cloned here as a companion.</p></td></tr><tr><td>Live probe</td><td><code>https://evm-rpc.sei-apis.com</code> · chain_id 1329 · observed at block <code>226969278</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 66 · <code>src_live:</code> 3 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">5</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-universal-address-broke">0x0100 across the dataset<a class="anchor" href="#f-universal-address-broke">#</a></h3><p>Eleven rows carry P256VERIFY at <code>0x0100</code>, reached through five unrelated forks: mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, and Kaia. Most diverge from mainnet in semantics, gas, or both. Presence at this address therefore indicates neither shared lineage nor a particular fork level.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/ethereum.html">Ethereum</a> · <a href="../chains/bnb.html">BNB</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/op-stack.html">OP Stack</a> · <a href="../chains/tron.html">Tron</a> · <a href="../chains/kaia.html">Kaia</a> · <a href="../chains/sei.html">Sei</a> · <a href="../chains/hyperliquid.html">Hyperliquid</a></p></div>
+<div class="finding"><h3 id="f-p256-silent-invalid">P-256 verification returns empty output on Hyperliquid and Sei<a class="anchor" href="#f-p256-silent-invalid">#</a></h3><p>On Hyperliquid, <code>0x0100</code> is an empty account. On Sei, <code>0x0100</code> is also empty even though the chain does implement P256VERIFY — at <code>0x1011</code>, ABI-dispatched as <code>verify(bytes)</code>, where a raw 160-byte call reverts. EIP-7951 signals an invalid signature by returning empty output, which is byte-identical to what a call to an absent precompile returns. Every P256 verification against <code>0x0100</code> on either chain therefore reports "invalid" with no revert and no error. Distinguishing the two cases requires a <strong>valid</strong> signature plus a mainnet control on identical calldata; calling the address and checking for output cannot separate them.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/hyperliquid.html">Hyperliquid</a> · <a href="../chains/sei.html">Sei</a></p></div>
+<div class="finding"><h3 id="f-verify-is-not-sign">Precompile verification and transaction authorization are independent<a class="anchor" href="#f-verify-is-not-sign">#</a></h3><p>Whether a precompile can verify a signature scheme and whether that scheme can authorize a transaction are separate properties. Eleven rows carry P256VERIFY; on almost all of them a P-256 key cannot authorize a transfer. The precompile is callable by contracts, not an authentication method for senders. <code>tx_authorization</code> records the two separately.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/base.html">Base</a> · <a href="../chains/sei.html">Sei</a> · <a href="../chains/kaia.html">Kaia</a> · <a href="../chains/zksync-era.html">zkSync</a></p></div>
+<div class="finding"><h3 id="f-unpaired-schemes">Schemes that authorize transactions with no precompile able to verify them<a class="anchor" href="#f-unpaired-schemes">#</a></h3><p>Three schemes have <code>authorizes: protocol</code> with <code>precompile: none</code>: the chain accepts transaction signatures that its own contracts cannot check, so an on-chain multisig, verifier or recovery contract cannot validate what the protocol accepted. Sei's <strong>sr25519</strong> (Schnorrkel over Ristretto255, a curve family that chain's EVM cannot compute) and its Cosmos <strong>multisig</strong>; and Kaia's <strong>role-based keys</strong>, which are unpaired for two of their three roles — <code>validateSender</code> hardcodes <code>RoleTransaction</code>, so a query about a fee-payer authorization returns an incorrect answer without reverting. The reverse pairing also occurs: Base's EIP-8130 enshrines a closed set of authenticators in the client, so a P-256 or WebAuthn key can authorize a transaction there.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/sei.html">Sei</a> · <a href="../chains/kaia.html">Kaia</a></p></div>
+<div class="finding"><h3 id="f-no-type-byte">Transactions outside the EIP-2718 envelope<a class="anchor" href="#f-no-type-byte">#</a></h3><p>Avalanche's atomic import and export transactions (UTXO, Avalanche codec) and all 43 of Tron's protobuf contract types carry no EIP-2718 type byte. Two chains with no shared ancestry required the same <code>non_evm_transactions</code> schema section. An indexer enumerating transactions through the EVM envelope does not see Avalanche's cross-chain value movement.</p><p class="tags"><a href="../axes/tx-types.html">Transaction types</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/tron.html">Tron</a> · <a href="../chains/sei.html">Sei</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">10</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000001004</code> addr (address association)</td><td><div class="wrap">The reconciliation point of the dual address space. getSeiAddr / getEvmAddr resolve one form to the other; associate / associatePubKey create the mapping. Both writers revert under STATICCALL. Before an account is associated, getSeiAddr and getEvmAddr do NOT return zero for it — the keeper&#x27;s ...OrDefault variants byte-cast the 20-byte address, so an unassociated account silently resolves to a DIFFERENT identity than the one it will have after association. See gotchas.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000001011</code> P256VERIFY (secp256r1)</td><td><div class="wrap">RIP-7212 semantics at a NON-STANDARD ADDRESS with a NON-STANDARD CALLING CONVENTION. It is not raw-input: the 160-byte (hash, r, s, x, y) payload must be ABI-encoded as the argument of `verify(bytes)` (selector 0x8e760afe) and the result comes back as ABI-encoded `bytes`. Sending the bare 160 bytes REVERTS. Gas is 300 per input byte of the ABI-encoded call, not a flat 3450 or 6900. DELEGATECALL is refused. A valid signature returns 32 bytes of 0x..01 inside the ABI wrapper; an invalid one returns EMPTY with no error, the same silent-failure shape as EIP-7951. Note the address gap: 0x100d-0x1010 are unallocated, so this is not contiguous with the module block.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000100</code> P256VERIFY</td><td><div class="wrap">THE COUNTEREXAMPLE. Every other row in this dataset that has a secp256r1 verifier puts it at 0x0100. Sei has one and does not. 0x0100 here is an empty account: EXTCODESIZE 0, a call succeeds and returns empty output. Because EIP-7951 signals &quot;invalid signature&quot; by returning empty output, every P256 verification against 0x0100 on Sei reports invalid forever, silently — identical to the Hyperliquid finding, arrived at by a completely different route (Hyperliquid never implemented it; Sei implemented it somewhere else).</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-1559</td><td><div class="wrap">Two independent divergences. (a) The base fee is NOT BURNED — the full baseFee + tip is credited to the fee-collector address as the coinbase reward, with an explicit comment saying so. Every supply model that assumes 1559 burn is wrong on Sei. (b) The base fee update rule is not 1559&#x27;s: it moves toward a governance TargetGasUsedPerBlock (default 250k gas) by at most +1.89% / -0.39% per block, scaled by how far the block was from target, and is then clamped between governance MinimumFeePerGas and MaximumFeePerGas. The exponential 1/8-denominator 1559 formula is not used, so fee prediction ported from mainnet mis-tracks.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-4399</td><td><div class="wrap">PREVRANDAO returns keccak256(binary-marshalled block timestamp). It is a pure function of the block time and is therefore fully predictable by anyone, including the proposer, before the block is produced. Any contract ported from mainnet that treats PREVRANDAO as an unpredictable beacon value is exploitable here, with no error and no observable difference from a real randomness source.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-7951</td><td><div class="wrap">P256VERIFY IS NOT AT 0x0100 ON SEI. The fork&#x27;s precompile switch tops out at PrecompiledContractsPrague, which contains 0x01-0x11 and nothing else, and custom precompiles are only installed at addresses the built-in map does NOT already hold. Sei&#x27;s secp256r1 verifier lives at 0x1011 with a different calling convention entirely. 0x0100 is an ordinary empty account: a call succeeds and returns empty output, which EIP-7951 defines as &quot;invalid signature&quot;. Verified live with a KNOWN-VALID signature.</div></td></tr><tr><td><span class="pill">header_fields</span></td><td>header <code>stateRoot</code></td><td><div class="wrap">populated with the Tendermint APP HASH, which commits to the entire Cosmos multistore, not to an Ethereum state trie. It is not a Merkle-Patricia root and cannot be used for any Ethereum state proof. Same JSON key, same shape, unrelated meaning.</div></td></tr><tr><td><span class="pill">header_fields</span></td><td>header <code>mixHash</code></td><td><div class="wrap">always the zero hash; NOT the PREVRANDAO value the EVM actually saw, which is keccak256(timestamp)</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>0x44</code> PREVRANDAO</td><td><div class="wrap">keccak256(block timestamp) — deterministic and predictable, not a randomness beacon. BlockContext.Difficulty is separately pinned to 0, so the pre-merge DIFFICULTY reading of the same opcode is also degenerate.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>0x40</code> BLOCKHASH</td><td><div class="wrap">returns Tendermint block hashes, and the ZERO HASH for any height outside the staking module&#x27;s historical-info retention window — which is an operator/governance parameter, not mainnet&#x27;s fixed 256 blocks. A contract that treats a zero BLOCKHASH as &quot;block does not exist&quot; is wrong here.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>Sei has TWO independent upgrade axes and they do not line up. (1) Ethereum fork level, set by the CancunTime/PragueTime chain-config params, both defaulted to 0 — Sei was born Prague-equivalent and has never run a named Ethereum hard fork on mainnet. (2) Sei's own versioned software upgrades ("v6.0.0", "v6.4.0", ...), which are governance-scheduled Cosmos upgrade handlers and are what actually gates precompile behaviour: each custom precompile carries a per-upgrade version map and the active version is chosen by the height at which that named upgrade completed (x/evm/keeper/keeper.go:GetCustomPrecompilesVersions). "Which fork is Sei on" therefore has no single answer, and the Ethereum-fork answer is not the one that determines precompile semantics.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>prague</code></td><td><span class="pill">active</span></td><td>genesis (PragueTime = 0)</td><td>prague</td><td><div class="wrap">x/evm/types/config.go:PragueTime is a package var defaulting to 0</div></td></tr><tr><td><code>osaka</code></td><td><span class="pill">pending</span></td><td>—</td><td>osaka</td><td><div class="wrap">no OsakaTime field exists in Sei&#x27;s ChainConfig; not schedulable without a client release</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> x/evm/types/config.go:EthereumConfig</p>
+<h2 id="eips">EIP deltas <span class="pill">11</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">Two independent divergences. (a) The base fee is NOT BURNED — the full baseFee + tip is credited to the fee-collector address as the coinbase reward, with an explicit comment saying so. Every supply model that assumes 1559 burn is wrong on Sei. (b) The base fee update rule is not 1559&#x27;s: it moves toward a governance TargetGasUsedPerBlock (default 250k gas) by at most +1.89% / -0.39% per block, scaled by how far the block was from target, and is then clamped between governance MinimumFeePerGas and MaximumFeePerGas. The exponential 1/8-denominator 1559 formula is not used, so fee prediction ported from mainnet mis-tracks.<p class="src"><b>src</b> core/state_transition.go:BalanceIncreaseRewardTransactionFee, x/evm/keeper/fee.go:AdjustDynamicBaseFeePerGas, x/evm/types/params.go:DefaultTargetGasUsedPerBlock</p></div></td></tr><tr id="eips-2200"><td><a href="https://eips.ethereum.org/EIPS/eip-2200">EIP-2200</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">Sei&#x27;s geth fork adds a ChainConfig field SeiSstoreSetGasEIP2200 that OVERRIDES the cost of an SSTORE from clean-zero to non-zero, in both the EIP-2200 and the EIP-2929 (operations_acl) gas paths, including the refund calculation. It is a chain parameter, not a constant. The default is 20000 — identical to mainnet&#x27;s SstoreSetGasEIP2200 — so the shipped value is believed to match mainnet, but the MECHANISM to reprice the single most expensive storage opcode by governance exists and mainnet has no analogue. Whether pacific-1 currently runs the default is not established from source; it is a live chain-config value.<p class="src"><b>src</b> params/config.go:SeiSstoreSetGasEIP2200, core/vm/operations_acl.go:SeiSstoreSetGasEIP2200, x/evm/types/params.go:DefaultSeiSstoreSetGasEIP2200</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">core.ProcessParentBlockHash is likewise gated on EthBlockTestConfig.Enabled. The history-storage contract is never populated. BLOCKHASH is served instead by GetHashFn, which returns Tendermint block hashes and falls back to the zero hash once the staking module&#x27;s historical-info window has been pruned — a different and operator-configurable depth from mainnet&#x27;s 256.<p class="src"><b>src</b> x/evm/keeper/abci.go:BeginBlock, x/evm/keeper/keeper.go:GetHashFn</p></div></td></tr><tr id="eips-4399"><td><a href="https://eips.ethereum.org/EIPS/eip-4399">EIP-4399</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">PREVRANDAO returns keccak256(binary-marshalled block timestamp). It is a pure function of the block time and is therefore fully predictable by anyone, including the proposer, before the block is produced. Any contract ported from mainnet that treats PREVRANDAO as an unpredictable beacon value is exploitable here, with no error and no observable difference from a real randomness source.<p class="src"><b>src</b> x/evm/keeper/keeper.go:GetVMBlockContext</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No beacon chain. core.ProcessBeaconBlockRoot is called only when EthReplayConfig.Enabled — a replay/test mode, not the live chain — so the beacon-roots ring buffer is never written on Sei mainnet. Reads of the 4788 contract return zero forever.<p class="src"><b>src</b> x/evm/keeper/abci.go:BeginBlock</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BlobTx (type 0x03) is registered in the codec and listed in AllowedTxTypes from Cancun on, then rejected outright by the basic ante decorator with ErrUnsupportedTxType. The KZG precompile at 0x0a exists (inherited from the Prague map) but there is no blob market, no sidecar validation — the validation code is commented out in-tree — and BLOBBASEFEE is pinned to 1. See tx_types.&quot;0x03&quot; (tombstoned).<p class="src"><b>src</b> x/evm/ante/basic.go:ErrUnsupportedTxType, x/evm/keeper/keeper.go:GetVMBlockContext</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">SetCodeTx (0x04) is in AllowedTxTypes at the Prague signer version and the Prague signer is used, so 7702 delegations work as on mainnet.<p class="src"><b>src</b> x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">MODEXP upper bounds are an Osaka feature; fork stops at Prague<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsPrague</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">MODEXP repricing is an Osaka feature; fork stops at Prague. MODEXP is cheaper on Sei than mainnet Osaka.<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsPrague</p></div></td></tr><tr id="eips-7928"><td><a href="https://eips.ethereum.org/EIPS/eip-7928">EIP-7928</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No block access lists. There is no Ethereum header on Sei to carry the hash, and the fork&#x27;s ChainConfig has no field past Verkle to gate it on.<p class="src"><b>src</b> x/evm/types/config.go:EthereumConfig, params/config.go:SeiSstoreSetGasEIP2200</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-removed" title="removed — silent divergence">➖</span></td><td></td><td><div class="wrap">P256VERIFY IS NOT AT 0x0100 ON SEI. The fork&#x27;s precompile switch tops out at PrecompiledContractsPrague, which contains 0x01-0x11 and nothing else, and custom precompiles are only installed at addresses the built-in map does NOT already hold. Sei&#x27;s secp256r1 verifier lives at 0x1011 with a different calling convention entirely. 0x0100 is an ordinary empty account: a call succeeds and returns empty output, which EIP-7951 defines as &quot;invalid signature&quot;. Verified live with a KNOWN-VALID signature.<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsPrague, core/vm/evm.go:NewEVM · <b>live</b> eth_call @ 226969278 to 0x0..0100 with a valid 160-byte RIP-7212 vector (wycheproof CallP256Verify) -&gt; 0x (empty); the same vector to 0x0..1011 ABI-wrapped returns 0x..01</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">5</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>Sei adds NO new EIP-2718 type bytes, and that is misleading on its own. An Ethereum transaction on Sei is not a top-level object: it is packed into a protobuf <code>MsgEVMTransaction</code> inside a Cosmos SDK transaction, which is what consensus actually orders and what the Tendermint block contains. The Ethereum envelope survives inside <code>MsgEVMTransaction.data</code> as a protobuf-encoded TxData, not as RLP. Anything reading Sei blocks at the consensus layer sees Cosmos transactions; the Ethereum view is reconstructed by evmrpc. See non_evm_transactions.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x00"><td><code>0x00</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>LegacyTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr><tr id="tx-types-0x01"><td><code>0x01</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>AccessListTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr><tr id="tx-types-0x02"><td><code>0x02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>DynamicFeeTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-tombstoned" title="tombstoned">⊘</span></td><td>BlobTx</td><td><div class="wrap"><div>Decodable and explicitly permitted by AllowedTxTypes from Cancun on, then unconditionally rejected by the ante chain with ErrUnsupportedTxType. The type byte is consumed: a blob tx is not &quot;unknown&quot;, it is known and refused. Fails differently from an unallocated type byte, which is what makes this tombstoned rather than removed.</div><p class="src"><b>src</b> x/evm/ante/basic.go:ErrUnsupportedTxType, x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>SetCodeTx</td><td><div class="wrap"><div>EIP-7702, live at the Prague signer version</div><p class="src"><b>src</b> x/evm/ante/preprocess.go:AllowedTxTypes</p></div></td></tr></tbody></table></div>
+<h2 id="non-evm-transactions">Transactions outside EIP-2718<a class="anchor" href="#non-evm-transactions">#</a></h2>
+<div class="note"><p>Two distinct populations with no EIP-2718 type byte. (1) Sei's own EVM-module Cosmos messages, which change EVM-visible state without ever being an Ethereum transaction. (2) A synthetic receipt kind emitted for ordinary Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a third population, not enumerated here — it is standard Cosmos SDK and its EVM-visible effects are reachable through the 0x1001-0x100c precompiles.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code>evm/MsgEVMTransaction</code></td><td>MsgEVMTransaction</td></tr><tr><td><code>evm/MsgEVMTransaction (AssociateTx)</code></td><td>AssociateTx</td></tr><tr><td><code>evm/MsgAssociateContractAddress</code></td><td>MsgAssociateContractAddress</td></tr><tr><td><code>evm/MsgRegisterPointer</code></td><td>MsgRegisterPointer</td></tr><tr><td><code>evm/MsgSend</code></td><td>MsgSend</td></tr><tr><td><code>evm/MsgClaim</code></td><td>MsgClaim</td></tr><tr><td><code>evm/MsgClaimSpecific</code></td><td>MsgClaimSpecific</td></tr><tr><td><code>0xffffffff</code></td><td>shell EVM receipt (ShellEVMTxType)</td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>THE FINDING: sr25519 is <code>authorizes: protocol</code> with <code>precompile: none</code>. Sei has two authorization surfaces, and only one of them is Ethereum's. An Ethereum transaction is secp256k1, recovered and stamped as such with no alternative branch. But the same transaction is a MsgEVMTransaction inside a Cosmos SDK transaction, and every OTHER Cosmos message — bank, staking, gov, wasm — goes through the SDK ante chain instead, where the accepted key set is decided by a single switch in DefaultSigVerificationGasConsumer. That switch admits sr25519 and secp256r1 alongside secp256k1. A bank send authorized by an sr25519 signature moves a balance the EVM reads directly: GetBalance resolves an EVM address to its Cosmos counterpart through GetSeiAddressOrDefault, so for an unassociated account the two are the same 20 bytes byte-cast. Nothing on this chain — not Sei's own 0x1001-0x1011 block, not the geth fork's 0x01-0x11 — can verify an sr25519 signature. A contract, a multisig, or a recovery module on Sei cannot check the very signature that just moved the balance it is looking at. THE STATED LEAD WAS ed25519, AND IT IS REFUTED. ed25519 is registered as an account pubkey type and has a working ZIP-215 verifier in the tree, but the same switch rejects it outright: "ED25519 public keys are unsupported", returned before any verification, with no config or governance parameter guarding it. The ConsumeMultisignatureVerificationGas recursion closes the multisig laundering route. It is worth recording as <code>authorizes: no</code> rather than omitting, because getting it wrong in the other direction is the easy mistake: CometBFT VALIDATOR consensus keys are ed25519 (ToTmProtoPublicKey converts to them and refuses secp256k1, exactly inverting the account rule), and those are consensus signatures, not transaction authorization. The residue is a real hazard anyway — an ed25519 account still has a byte-cast 0x address with an EVM-visible balance it can receive into and can never spend from. key_binding is <code>derived</code> on both surfaces, but by two different derivations: an EVM sender is the keccak of a secp256k1 pubkey, a Cosmos signer is that key type's own Address() (sha256-based for the 25519 families), and the two are bridged by a byte-cast, not by a shared key. Association (AssociateTx, the addr precompile's associate/associatePubKey, and the implicit EVMAddressDecorator path) is secp256k1-only in all four routes — btcec.ParsePubKey and a 0x04-prefix check — so an sr25519 or ed25519 account can never associate and is permanently confined to its cast address. signers_per_tx is 1. x/feegrant lets a granter pay without signing, and x/authz lets a grantee's signature execute a granter's message, but neither adds a second signature over the same transaction; both parties signed separately, through this same gate. Sei explicitly blocks MsgEVMTransaction inside authz (CheckAuthzContainsEvm) while leaving bank/staking/gov/wasm reachable.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap">The only scheme on the EVM surface. PreprocessUnpacked recovers from (V, R, S) and unconditionally stamps a secp256k1.PubKey; there is no other branch. Also accepted on the Cosmos surface. EIP-7702 is live from genesis (PragueTime 0) and its authorization tuple is stock geth ecrecover, so it changes nothing here.<p class="src"><b>src</b> x/evm/ante/preprocess.go:PreprocessUnpacked, utils/helpers/address.go:RecoverPubkey, go-ethereum/core/types/tx_setcode.go:Authority</p></div></td></tr><tr><td><code>sr25519</code></td><td><span class="pill">protocol</span></td><td><span class="s-removed" title="no precompile can verify what the protocol accepts">none ⚠️</span></td><td><div class="wrap">UNPAIRED. Schnorrkel over Ristretto255 — a different curve family from anything the EVM can compute here. Accepted by the ante chain&#x27;s key switch (GetSr25519VerifyCost, then `return nil`) and verified by a real curve25519-voi implementation, not a stub. There is no sr25519 verifier at any address on this chain: grep over precompiles/ and the geth fork&#x27;s core/vm returns nothing. So the protocol will authorize a state change that no contract on the same chain can audit. Two honest limits on this row: the code path is open but whether any sr25519 account exists on pacific-1 is live state and was not probed, and the EVM sees the EFFECT (a balance) rather than the signature, so the gap bites an on-chain verifier rather than ordinary execution.<p class="src"><b>src</b> sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, sei-cosmos/crypto/keys/sr25519/pubkey.go:VerifySignature</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">protocol</span></td><td><code>0x0000000000000000000000000000000000001011</code></td><td><div class="wrap">Also admitted by the same switch, so P-256 is a genuine transaction signer on the Cosmos surface — one of the few rows in this dataset where that is true. Nominally paired, but not portably: Sei&#x27;s verifier is at 0x1011, not mainnet&#x27;s 0x0100 (which is an empty account here, because the geth fork tops out at Prague and never populates it), and it is ABI-dispatched as `verify(bytes)` with per-byte gas rather than taking RIP-7212&#x27;s raw 160-byte input. Code written against 0x0100 finds nothing; code written against 0x1011 runs nowhere else.<p class="src"><b>src</b> precompiles/p256/p256.go:P256VerifyAddress, sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer</p></div></td></tr><tr><td><code>ed25519</code></td><td><span class="pill">never</span></td><td><span class="s-inherited">none</span></td><td><div class="wrap">Registered as an account pubkey type with a working verifier, and REJECTED at the gate regardless — the lead this axis was pointed at, refuted from source. Recorded rather than omitted because the ed25519 that IS live on Sei is the CometBFT validator consensus key, which is not transaction authorization, and because an ed25519 account&#x27;s cast address remains an EVM-visible one-way sink.<p class="src"><b>src</b> sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, sei-cosmos/crypto/codec/tm.go:ToTmProtoPublicKey</p></div></td></tr><tr><td><code>multisig</code></td><td><span class="pill">protocol</span></td><td><span class="s-removed" title="no precompile can verify what the protocol accepts">none ⚠️</span></td><td><div class="wrap">Cosmos LegacyAminoPubKey k-of-n over the schemes above. Recurses through ConsumeMultisignatureVerificationGas, so it inherits the allowlist exactly and cannot launder ed25519 in. Unpaired for the same reason sr25519 is, and additionally because no precompile reproduces the threshold arithmetic — contrast Kaia, which exposes exactly that at 0x03ff. The nearest thing Sei has is the solo precompile at 0x100c, which decodes a whole Cosmos transaction from EVM calldata and runs the SAME verification stack; it is not a scheme verifier and is depth- and delegatecall-restricted, but it is the only bridge of this kind in the dataset and it inherits the same ed25519 rejection.<p class="src"><b>src</b> sei-cosmos/x/auth/ante/sigverify.go:ConsumeMultisignatureVerificationGas, precompiles/solo/solo.go:sigverify</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">14</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>THIRTEEN custom addresses, all at 0x1001-0x100c plus 0x1011 — four orders of magnitude above every existing row's custom block (BSC/Arbitrum 0x64-0x69, Polygon/BSC 0x1000, Tron 0x1000001+). The dataset's "0x0100 is the one universal address" observation is broken here in the strongest possible way: Sei has the feature AND does not have it at that address. A second, category-level divergence: these are NOT raw-input precompiles. Every one dispatches on a 4-byte ABI method selector and ABI-encodes its result, i.e. they present as Solidity interfaces implemented in native Go. They are still precompiles by this schema's definition — native code, no bytecode in state, EXTCODESIZE 0 (verified live) — but no mainnet precompile behaves this way, and calling one with a raw payload reverts. Custom precompiles are installed ONLY at addresses the built-in map does not already occupy (core/vm/evm.go:NewEVM checks <code>if _, exists := ...; !exists</code>), so Sei can never shadow or modify a mainnet precompile — which is why every entry here is <code>added</code> or <code>removed</code> and none is <code>modified</code>. Each address additionally carries a per-upgrade version map keyed by Sei's own named software upgrades, so "the precompile at 0x1001" is a family of implementations selected by the height at which a governance upgrade completed, not one fixed contract.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-removed" title="removed — silent divergence">➖</span></td><td>P256VERIFY</td><td><div class="wrap"><div>THE COUNTEREXAMPLE. Every other row in this dataset that has a secp256r1 verifier puts it at 0x0100. Sei has one and does not. 0x0100 here is an empty account: EXTCODESIZE 0, a call succeeds and returns empty output. Because EIP-7951 signals &quot;invalid signature&quot; by returning empty output, every P256 verification against 0x0100 on Sei reports invalid forever, silently — identical to the Hyperliquid finding, arrived at by a completely different route (Hyperliquid never implemented it; Sei implemented it somewhere else).</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsPrague · <b>live</b> eth_getCode @ 226969278 0x0..0100 -&gt; 0x; eth_call with a valid RIP-7212 vector -&gt; 0x</p></div></td></tr><tr id="precompiles-0x1001"><td><code>0x1001</code></td><td><span class="s-added" title="added">➕</span></td><td>bank</td><td><div class="wrap"><div>send/balance/metadata over the Cosmos bank module; exposes non-EVM denominations to EVM callers</div><p class="src"><b>src</b> precompiles/bank/bank.go:BankAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1002"><td><code>0x1002</code></td><td><span class="s-added" title="added">➕</span></td><td>wasmd</td><td><div class="wrap"><div>instantiate/execute/query CosmWasm contracts from EVM bytecode. A CALL to this address can re-enter the EVM through a CosmWasm contract, which is how the synthetic 0xffffffff receipts arise.</div><p class="src"><b>src</b> precompiles/wasmd/wasmd.go:WasmdAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1003"><td><code>0x1003</code></td><td><span class="s-added" title="added">➕</span></td><td>json</td><td><div class="wrap"><div>JSON parsing helpers for CosmWasm responses</div><p class="src"><b>src</b> precompiles/json/json.go:JSONAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1004"><td><code>0x1004</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>addr (address association)</td><td><div class="wrap"><div>The reconciliation point of the dual address space. getSeiAddr / getEvmAddr resolve one form to the other; associate / associatePubKey create the mapping. Both writers revert under STATICCALL. Before an account is associated, getSeiAddr and getEvmAddr do NOT return zero for it — the keeper&#x27;s ...OrDefault variants byte-cast the 20-byte address, so an unassociated account silently resolves to a DIFFERENT identity than the one it will have after association. See gotchas.</div><p class="src"><b>src</b> precompiles/addr/addr.go:AddrAddress, x/evm/keeper/address.go:GetEVMAddressOrDefault</p></div></td></tr><tr id="precompiles-0x1005"><td><code>0x1005</code></td><td><span class="s-added" title="added">➕</span></td><td>staking</td><td><div class="wrap"><div>delegate/undelegate/redelegate against the Cosmos staking module from inside the EVM</div><p class="src"><b>src</b> precompiles/staking/staking.go:StakingAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1006"><td><code>0x1006</code></td><td><span class="s-added" title="added">➕</span></td><td>gov</td><td><div class="wrap"><div>vote and deposit on Cosmos governance proposals from inside the EVM</div><p class="src"><b>src</b> precompiles/gov/gov.go:GovAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1007"><td><code>0x1007</code></td><td><span class="s-added" title="added">➕</span></td><td>distribution</td><td><div class="wrap"><div></div><p class="src"><b>src</b> precompiles/distribution/distribution.go:DistrAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1008"><td><code>0x1008</code></td><td><span class="s-added" title="added">➕</span></td><td>oracle</td><td><div class="wrap"><div>reads the validator-voted price feed from Sei&#x27;s native oracle module</div><p class="src"><b>src</b> precompiles/oracle/oracle.go:OracleAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1009"><td><code>0x1009</code></td><td><span class="s-added" title="added">➕</span></td><td>ibc</td><td><div class="wrap"><div>initiates IBC transfers from EVM bytecode — cross-chain value movement with no Ethereum-side transaction</div><p class="src"><b>src</b> precompiles/ibc/ibc.go:IBCAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x100a"><td><code>0x100a</code></td><td><span class="s-added" title="added">➕</span></td><td>pointerview</td><td><div class="wrap"><div>look up the pointer contract for a native/CW asset</div><p class="src"><b>src</b> precompiles/pointerview/pointerview.go:PointerViewAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x100b"><td><code>0x100b</code></td><td><span class="s-added" title="added">➕</span></td><td>pointer</td><td><div class="wrap"><div>deploys ERC-20/721/1155 pointer contracts for native denoms and CW contracts</div><p class="src"><b>src</b> precompiles/pointer/pointer.go:PointerAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x100c"><td><code>0x100c</code></td><td><span class="s-added" title="added">➕</span></td><td>solo</td><td><div class="wrap"><div>claim / claimSpecific. Present in GetCustomPrecompiles (the live path) but absent from InitializePrecompiles (the ABI-harvest path) — the two lists in the same file disagree, which is why the live path is the one cited.</div><p class="src"><b>src</b> precompiles/solo/solo.go:SoloAddress, precompiles/setup.go:GetCustomPrecompiles</p></div></td></tr><tr id="precompiles-0x1011"><td><code>0x1011</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>P256VERIFY (secp256r1)</td><td><div class="wrap"><div>RIP-7212 semantics at a NON-STANDARD ADDRESS with a NON-STANDARD CALLING CONVENTION. It is not raw-input: the 160-byte (hash, r, s, x, y) payload must be ABI-encoded as the argument of `verify(bytes)` (selector 0x8e760afe) and the result comes back as ABI-encoded `bytes`. Sending the bare 160 bytes REVERTS. Gas is 300 per input byte of the ABI-encoded call, not a flat 3450 or 6900. DELEGATECALL is refused. A valid signature returns 32 bytes of 0x..01 inside the ABI wrapper; an invalid one returns EMPTY with no error, the same silent-failure shape as EIP-7951. Note the address gap: 0x100d-0x1010 are unallocated, so this is not contiguous with the module block.</div><p class="src"><b>src</b> precompiles/p256/p256.go:P256VerifyAddress, precompiles/p256/p256.go:GasCostPerByte · <b>live</b> eth_call @ 226969278 to 0x0..1011 data=0x8e760afe+abi(bytes) of a valid vector -&gt; 0x..0020 0020 ..0001; the same vector sent raw -&gt; execution reverted</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">0</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>None at fixed addresses. Sei has no predeploys. The nearest analogue is the ERC-20/721/1155 "pointer" contracts, which ARE real EVM bytecode installed by the chain rather than by a user deployment — but at addresses derived per asset at registration time, not at a fixed, enumerable address. They are therefore neither a predeploy set nor a dynamic_range predicate.</p></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="note"><p>Sei's protocol-driven state changes are Cosmos BeginBlock/EndBlock module logic, not EVM system calls. The two mainnet system calls Sei's client can perform — EIP-4788 beacon-root write and EIP-2935 parent-hash write — are both gated behind replay/blocktest modes and never run on mainnet.</p></div>
+<h2 id="opcodes">Opcodes <span class="pill">5</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>No opcode was added or removed. Only four files under core/ and params/ in the geth fork mention Sei at all, and none of them touches the jump table. Every divergence above is a value fed into an unmodified opcode — the class of difference that address- and opcode-enumeration both miss entirely.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Op</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="opcodes-0x44"><td><code>0x44</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>PREVRANDAO</td><td><div class="wrap">keccak256(block timestamp) — deterministic and predictable, not a randomness beacon. BlockContext.Difficulty is separately pinned to 0, so the pre-merge DIFFICULTY reading of the same opcode is also degenerate. <span class="pill s-removed">silent</span><p class="src"><b>src</b> x/evm/keeper/keeper.go:GetVMBlockContext</p></div></td></tr><tr id="opcodes-0x4a"><td><code>0x4a</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>BLOBBASEFEE</td><td><div class="wrap">hard-coded to 1 (utils.Big1) with a stale in-source comment claiming Cancun is not enabled; there is no blob market to price<p class="src"><b>src</b> x/evm/keeper/keeper.go:GetVMBlockContext</p></div></td></tr><tr id="opcodes-0x45"><td><code>0x45</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>GASLIMIT</td><td><div class="wrap">returns the Cosmos consensus-params Block.MaxGas, a governance value that can change between blocks without any Ethereum-visible fork<p class="src"><b>src</b> x/evm/keeper/keeper.go:GetVMBlockContext</p></div></td></tr><tr id="opcodes-0x40"><td><code>0x40</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>BLOCKHASH</td><td><div class="wrap">returns Tendermint block hashes, and the ZERO HASH for any height outside the staking module&#x27;s historical-info retention window — which is an operator/governance parameter, not mainnet&#x27;s fixed 256 blocks. A contract that treats a zero BLOCKHASH as &quot;block does not exist&quot; is wrong here. <span class="pill s-removed">silent</span><p class="src"><b>src</b> x/evm/keeper/keeper.go:GetHashFn</p></div></td></tr><tr id="opcodes-0x55"><td><code>0x55</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>SSTORE</td><td><div class="wrap">clean-zero-to-nonzero cost is the chain parameter SeiSstoreSetGasEIP2200, not the constant 20000 — see eips.2200<p class="src"><b>src</b> core/vm/operations_acl.go:SeiSstoreSetGasEIP2200</p></div></td></tr></tbody></table></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas (EVM), converted into Cosmos gas units for block accounting</code></td></tr><tr><td>Fee market</td><td>governance-parameterised dynamic base fee, NOT EIP-1559</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;base fee is not burned&#x27;, &#x27;severity&#x27;: &#x27;high&#x27;, &#x27;note&#x27;: &#x27;baseFee + tip is credited in full to the fee collector as the coinbase reward&#x27;, &#x27;src&#x27;: &#x27;core/state_transition.go:BalanceIncreaseRewardTransactionFee&#x27;}, {&#x27;name&#x27;: &#x27;base fee bounds&#x27;, &#x27;note&#x27;: &quot;the base fee is clamped between governance MinimumFeePerGas and MaximumFeePerGas every block, so it can neither fall to zero nor rise without limit — 1559&#x27;s unbounded geometric response does not exist&quot;, &#x27;src&#x27;: &#x27;x/evm/keeper/fee.go:AdjustDynamicBaseFeePerGas&#x27;}, {&#x27;name&#x27;: &#x27;dual gas meter&#x27;, &#x27;note&#x27;: &quot;an EVM transaction&#x27;s gas limit lives in the EVM payload, not in the Cosmos GasWanted field, so Sei runs a dedicated ante chain that sets an infinite gas meter, hands control to the EVM, then converts the EVM gas consumed back into Cosmos gas units against the block gas limit&quot;, &#x27;src&#x27;: &#x27;x/evm/keeper/msg_server.go:PrepareCtxForEVMTransaction&#x27;}, {&#x27;name&#x27;: &#x27;wei balances&#x27;, &#x27;note&#x27;: &#x27;the native denom usei has 6 decimals but the EVM presents 18; the bank keeper carries a separate sub-usei &quot;wei&quot; balance per account to make up the difference, so an account\&#x27;s EVM balance is (usei * 10^12 + wei)&#x27;, &#x27;src&#x27;: &#x27;utils/helpers/associate.go:MigrateBalance&#x27;}]</td></tr><tr><td>Note</td><td><p>Target gas per block defaults to 250000 with a block MaxGas set by Cosmos consensus params (12,500,000 observed live), so the base fee's "target" is a small fraction of capacity rather than 1559's half-full point.</p></td></tr></tbody></table></div>
+<h2 id="header-fields">Header fields <span class="pill">14</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>NOT A DELTA — THERE IS NO ETHEREUM HEADER. Sei's consensus block is a Tendermint block. The object returned by eth_getBlockByNumber is assembled field-by-field in evmrpc/block.go:EncodeTmBlock from Tendermint data plus constants, and is not hashed, signed or committed to by anything. The listing below is what that synthesis fabricates, because an integrator reading these fields has no way to tell them from consensus data.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-unclehashommers"><td><code>uncleHash / ommers</code></td><td><span class="s-removed" title="removed">➖</span></td><td>uncleHash / ommers</td><td><div class="wrap">BFT finality, no uncles; reported as the constant EmptyUncleHash</div></td></tr><tr id="header-fields-withdrawalsroot"><td><code>withdrawalsRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>withdrawalsRoot</td><td><div class="wrap">no beacon chain</div></td></tr><tr id="header-fields-parentbeaconblockroot"><td><code>parentBeaconBlockRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>parentBeaconBlockRoot</td><td><div class="wrap">no beacon chain</div></td></tr><tr id="header-fields-requestshash"><td><code>requestsHash</code></td><td><span class="s-removed" title="removed">➖</span></td><td>requestsHash</td><td><div class="wrap">no EL-triggered requests</div></td></tr><tr id="header-fields-blobgasused"><td><code>blobGasUsed</code></td><td><span class="s-removed" title="removed">➖</span></td><td>blobGasUsed</td><td><div class="wrap">no blob market; field is not emitted</div></td></tr><tr id="header-fields-excessblobgas"><td><code>excessBlobGas</code></td><td><span class="s-removed" title="removed">➖</span></td><td>excessBlobGas</td><td><div class="wrap">no blob market; field is not emitted</div></td></tr><tr id="header-fields-stateroot"><td><code>stateRoot</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>stateRoot</td><td><div class="wrap">populated with the Tendermint APP HASH, which commits to the entire Cosmos multistore, not to an Ethereum state trie. It is not a Merkle-Patricia root and cannot be used for any Ethereum state proof. Same JSON key, same shape, unrelated meaning. <span class="pill s-removed">silent</span><p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-difficulty"><td><code>difficulty</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>difficulty</td><td><div class="wrap">constant 0; totalDifficulty constant 0<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-extradata"><td><code>extraData</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>extraData</td><td><div class="wrap">always 0x — Tendermint consensus data is not exposed here<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-nonce"><td><code>nonce</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>nonce</td><td><div class="wrap">always zero<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-mixhash"><td><code>mixHash</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>mixHash</td><td><div class="wrap">always the zero hash; NOT the PREVRANDAO value the EVM actually saw, which is keccak256(timestamp) <span class="pill s-removed">silent</span><p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-sha3uncles"><td><code>sha3Uncles</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>sha3Uncles</td><td><div class="wrap">constant EmptyUncleHash<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-gaslimit"><td><code>gasLimit</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>gasLimit</td><td><div class="wrap">the Cosmos consensus-params Block.MaxGas, deliberately kept equal to what GASLIMIT returns<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr><tr id="header-fields-transactionsroot"><td><code>transactionsRoot</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>transactionsRoot</td><td><div class="wrap">computed over the EVM transactions the RPC layer chose to expose, not over the Tendermint block&#x27;s transaction set<p class="src"><b>src</b> evmrpc/block.go:EncodeTmBlock</p></div></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">1</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>RIP-7212</code></td><td>secp256r1 precompile</td><td><span class="pill">adopted</span></td><td><div class="wrap">implemented, but at 0x1011 and behind an ABI method selector rather than at 0x0100 with raw input — see precompiles<p class="src"><b>src</b> precompiles/p256/p256.go:P256VerifyAddress</p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">10</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>0x0100 IS EMPTY AND SEI HAS P256VERIFY. It is at 0x1011, behind an ABI method selector `verify(bytes)`, priced at 300 gas per input byte, and it refuses DELEGATECALL. A passkey/WebAuthn wallet ported to Sei that calls 0x0100 with the standard 160-byte payload gets empty output — which EIP-7951 defines as &quot;signature invalid&quot; — so it fails closed, silently, forever. Confirmed live with a known-valid signature at block 226969278.</li><li>EVERY SEI PRECOMPILE IS ABI-DISPATCHED. Raw-input calls revert. This is a category difference from every mainnet precompile and from every other row in this dataset: you cannot probe a Sei precompile by sending it bytes, and any generic precompile fuzzer or shim will see reverts rather than results.</li><li>ONE ACCOUNT, TWO ADDRESSES, AND THE EVM ONE CAN CHANGE. A Cosmos account that has never associated resolves to `common.BytesToAddress(seiAddress)` — a raw byte-cast of its bech32 payload, unrelated to its public key. After it associates, it resolves to the real secp256k1-derived EVM address. So msg.sender and tx.origin for the SAME Cosmos account differ before and after association. Native balances are migrated across at association time (MigrateBalance), but ERC-20 balances, allowances and any contract storage keyed by the old cast address are NOT — they are stranded at an address nobody controls. There is no event a contract can react to.</li><li>A BANK SEND TO A CAST ADDRESS CAN BE REJECTED. CanAddressReceive returns false for an address that is the byte-cast of an EVM address which has already been associated with a different sei address. The same 20 bytes are a valid recipient before association and an invalid one after.</li><li>PREVRANDAO IS keccak256(BLOCK TIMESTAMP). Predictable by anyone. Contracts ported from mainnet that use it for randomness are exploitable and give no outward sign of being broken.</li><li>THE BASE FEE IS NOT BURNED. It is paid to the fee collector. Sei&#x27;s fee market is also not EIP-1559: ±1.89%/-0.39% per block toward a 250k-gas target, clamped to a governance floor and ceiling.</li><li>BLOB TRANSACTIONS ARE ACCEPTED BY THE CODEC AND REJECTED BY THE ANTE HANDLER. Type 0x03 is listed in AllowedTxTypes and then unconditionally refused. The KZG precompile at 0x0a still works.</li><li>RECEIPTS WITH type = 0xffffffff EXIST. Cosmos and CosmWasm transactions that emit EVM-shaped logs get a synthetic receipt whose type is math.MaxUint32, outside the legal EIP-2718 range entirely. eth_getLogs returns their logs. An indexer storing receipt type in a uint8 corrupts them.</li><li>THE ETHEREUM BLOCK IS A FICTION AND stateRoot IS THE WORST FIELD IN IT. It carries the Tendermint app hash — a commitment to the whole Cosmos multistore — under the name and shape of an Ethereum state root. No Ethereum state proof against it can ever verify. mixHash is likewise the zero hash rather than the value PREVRANDAO returned.</li><li>ADDRESS ASSOCIATION IS ITSELF A FREE, NONCE-LESS, TYPE-LESS TRANSACTION. The AssociateTx carries only a signature; its nonce, gas, value and recipient accessors all panic. Nothing in the Ethereum tooling stack can build, sign, decode, simulate or price one.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Client:</strong> <code>sei-protocol/sei-chain</code> <code>v6.6.1</code> (<code>43d1152e</code>), Go
+<strong>Companion:</strong> <code>sei-protocol/go-ethereum</code> <code>v1.15.7-sei-17</code> (<code>929fc329</code>) — the EVM itself
+<strong>Chain ID:</strong> 1329 (<code>pacific-1</code>) · <strong>Baseline:</strong> Prague · <strong>Live probes:</strong> block <code>226969278</code></p>
+<p>Sei is a Cosmos-SDK chain whose EVM interpreter is a maintained fork of go-ethereum.
+The interpreter tracks upstream; nothing around it does. <code>role: fork</code> describes only
+the part of Sei that descends from geth by code.</p>
+<hr />
+<h2>The headline: <code>0x0100</code> is empty and Sei <em>has</em> P256VERIFY</h2>
+<p>The dataset's standing observation was that <code>0x0100</code> is the one address twelve of
+thirteen rows agree on, and that Hyperliquid — where it is empty — is the exception
+that makes it interesting. Sei is a stronger counterexample, because it is not a
+chain that skipped the feature.</p>
+<ul>
+<li>Sei's secp256r1 verifier is at <strong><code>0x…1011</code></strong>.</li>
+<li>The geth fork's precompile switch tops out at <code>PrecompiledContractsPrague</code>. There is
+  no Osaka branch, so <code>0x0100</code> is never populated by the built-in map.</li>
+<li>Custom precompiles are installed <strong>only where the built-in map is empty</strong>
+  (<code>core/vm/evm.go:NewEVM</code> tests <code>if _, exists := evm.precompiles[addr]; !exists</code>), so
+  Sei structurally cannot place anything at a mainnet address.</li>
+<li><code>0x0100</code> is therefore an ordinary empty account. Calling it succeeds and returns
+  empty output — which EIP-7951 defines as <em>invalid signature</em>.</li>
+</ul>
+<p>Verified live against a <em>known-valid</em> signature (the wycheproof <code>CallP256Verify</code>
+vector shipped in the Kaia repo's <code>p256Verify.json</code>), because the obvious probe cannot
+distinguish "invalid" from "absent":</p>
+<pre><code>eth_call 0x0000000000000000000000000000000000000100  -&gt;  0x
+eth_call 0x0000000000000000000000000000000000001011  -&gt;  0x…0020 0020 …0001
+</code></pre>
+<p>A passkey wallet ported to Sei fails closed, silently, forever — the second
+independent arrival at the Hyperliquid failure mode, by a completely different route.</p>
+<h2>Second-order: Sei's precompiles are ABI-dispatched</h2>
+<p>Not a placement difference — a <strong>category</strong> difference. Every one of the thirteen
+custom precompiles dispatches on a 4-byte Solidity method selector and ABI-encodes its
+result. <code>0x…1011</code> implements <code>verify(bytes)</code> (<code>0x8e760afe</code>), so the 160-byte RIP-7212
+payload must be wrapped in an ABI <code>bytes</code> argument. Sending the bare 160 bytes
+<strong>reverts</strong>. Gas is 300 per input byte, not a flat 3450 or 6900. <code>DELEGATECALL</code> is
+refused.</p>
+<p>They are still precompiles by SCHEMA.md's definition — native Go, no bytecode in
+state, <code>EXTCODESIZE</code> 0 (verified live) — but no mainnet precompile behaves this way,
+and no generic precompile prober will get a result out of one.</p>
+<h2>The address block: <code>0x1001</code>–<code>0x100c</code>, plus <code>0x1011</code></h2>
+<table>
+<thead>
+<tr>
+<th>addr</th>
+<th>name</th>
+<th>what it reaches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x…1001</code></td>
+<td>bank</td>
+<td>Cosmos bank module: non-EVM denominations</td>
+</tr>
+<tr>
+<td><code>0x…1002</code></td>
+<td>wasmd</td>
+<td>instantiate/execute/query CosmWasm — <strong>re-enters the EVM</strong></td>
+</tr>
+<tr>
+<td><code>0x…1003</code></td>
+<td>json</td>
+<td>JSON helpers for CosmWasm responses</td>
+</tr>
+<tr>
+<td><code>0x…1004</code></td>
+<td>addr</td>
+<td><strong>address association</strong>: <code>getSeiAddr</code> / <code>getEvmAddr</code> / <code>associate</code></td>
+</tr>
+<tr>
+<td><code>0x…1005</code></td>
+<td>staking</td>
+<td>delegate / undelegate / redelegate</td>
+</tr>
+<tr>
+<td><code>0x…1006</code></td>
+<td>gov</td>
+<td>vote and deposit on governance proposals</td>
+</tr>
+<tr>
+<td><code>0x…1007</code></td>
+<td>distribution</td>
+<td></td>
+</tr>
+<tr>
+<td><code>0x…1008</code></td>
+<td>oracle</td>
+<td>validator-voted price feed</td>
+</tr>
+<tr>
+<td><code>0x…1009</code></td>
+<td>ibc</td>
+<td>initiates IBC transfers from EVM bytecode</td>
+</tr>
+<tr>
+<td><code>0x…100a</code></td>
+<td>pointerview</td>
+<td></td>
+</tr>
+<tr>
+<td><code>0x…100b</code></td>
+<td>pointer</td>
+<td>deploys ERC-20/721/1155 pointer contracts</td>
+</tr>
+<tr>
+<td><code>0x…100c</code></td>
+<td>solo</td>
+<td><code>claim</code> / <code>claimSpecific</code></td>
+</tr>
+<tr>
+<td><code>0x…1011</code></td>
+<td>P256VERIFY</td>
+<td><strong>not contiguous</strong> — <code>0x100d</code>–<code>0x1010</code> are unallocated</td>
+</tr>
+</tbody>
+</table>
+<p>Four orders of magnitude above every existing row's custom block (BSC/Arbitrum
+<code>0x64</code>–<code>0x69</code>, Polygon/BSC <code>0x…1000</code>, Tron <code>0x1000001</code>+). The address table generalises,
+but only because it was already keyed on full 20-byte addresses.</p>
+<p>Two wiring traps found while establishing this:</p>
+<ul>
+<li><code>precompiles/setup.go</code> contains <strong>two disagreeing lists</strong>. <code>InitializePrecompiles</code>
+  (which mutates geth's global maps) omits <code>solo</code> and is only ever called with
+  <code>dryRun=true</code> to harvest ABIs. <code>GetCustomPrecompiles</code> is the live path
+  (<code>app/app.go</code> → <code>Keeper.SetCustomPrecompiles</code> → <code>vm.NewEVM</code>) and has all thirteen.
+  The row cites the live path.</li>
+<li>Each address carries a <strong>per-upgrade version map</strong> keyed by Sei's own named software
+  upgrades, selected by the height at which that governance upgrade completed
+  (<code>x/evm/keeper/keeper.go:GetCustomPrecompilesVersions</code>). "The precompile at <code>0x1001</code>"
+  is a family, not a contract.</li>
+</ul>
+<h2>The dual address space <em>does</em> change <code>CALLER</code> / <code>ORIGIN</code></h2>
+<p>Yes — and worse than expected.</p>
+<p>An unassociated Cosmos account's EVM address is <code>common.BytesToAddress(seiAddress)</code>:
+a <strong>raw byte-cast of its bech32 payload</strong>, unrelated to its public key
+(<code>x/evm/keeper/address.go:GetEVMAddressOrDefault</code>). After it associates, it resolves to
+the real secp256k1-derived address. So <code>msg.sender</code> and <code>tx.origin</code> for the <em>same</em>
+Cosmos account are <strong>two different addresses before and after association</strong>.</p>
+<p><code>utils/helpers/associate.go:MigrateBalance</code> moves native balances (and the sub-<code>usei</code>
+"wei" remainder) from the cast address to the sei address at association time. It does
+<strong>not</strong> move ERC-20 balances, allowances, or any contract storage keyed on the old cast
+address. Those are stranded at an address nobody controls, with no event a contract can
+react to.</p>
+<p>The reverse edge also bites: <code>CanAddressReceive</code> returns false for a cast address whose
+EVM counterpart has already associated — the same 20 bytes are a valid bank recipient
+before association and an invalid one after.</p>
+<h2>The other headline: an sr25519 signature can move money the EVM watches</h2>
+<p><code>tx_authorization</code> was added to answer one question — <em>what can sign a transaction</em> —
+and Sei is the row where the answer is not "secp256k1".</p>
+<p>An Ethereum transaction on Sei is secp256k1 and nothing else: <code>PreprocessUnpacked</code>
+recovers from <code>(V, R, S)</code> and unconditionally stamps a <code>secp256k1.PubKey</code>. But that
+transaction is a <code>MsgEVMTransaction</code> riding inside a Cosmos SDK transaction, and every
+<em>other</em> Cosmos message — bank, staking, gov, wasm — takes the SDK ante chain instead.
+There, the accepted key set is decided by one switch,
+<code>DefaultSigVerificationGasConsumer</code>, which admits <strong>secp256k1, sr25519, secp256r1</strong>, and
+multisigs over them.</p>
+<p>A bank send authorized by an <strong>sr25519</strong> signature moves a balance the EVM reads
+directly: <code>GetBalance</code> resolves an EVM address to its Cosmos counterpart through
+<code>GetSeiAddressOrDefault</code>, which for an unassociated account is the same 20 bytes,
+byte-cast. And <strong>nothing on this chain can verify an sr25519 signature</strong> — not Sei's own
+<code>0x1001</code>–<code>0x1011</code> block, not the geth fork's <code>0x01</code>–<code>0x11</code>. Grep both; there is no hit.</p>
+<p>That is <code>authorizes: protocol</code> with <code>precompile: none</code>: the protocol authorizes a state
+change that no contract on the same chain can audit. An on-chain multisig or a recovery
+module on Sei cannot check the very signature that just moved the balance it is reading.</p>
+<p><strong>The ed25519 lead is refuted, and the refutation matters.</strong> ed25519 <em>is</em> registered as
+an account pubkey type and has a working ZIP-215 verifier in the tree — and the same
+switch rejects it before verifying: <code>"ED25519 public keys are unsupported"</code>, with no
+config or governance parameter guarding it, and the multisig path recurses through the
+same function so it cannot be laundered in. The ed25519 that <em>is</em> live on Sei is the
+CometBFT <strong>validator consensus key</strong> (<code>ToTmProtoPublicKey</code> converts to it and refuses
+secp256k1 — exactly inverting the account rule). Conflating the two would have produced
+a false finding.</p>
+<p>The residue is a real hazard anyway: an ed25519 account still has a byte-cast <code>0x…</code>
+address with an EVM-visible balance it can <strong>receive into and never spend from</strong>.
+Association — <code>AssociateTx</code>, the <code>addr</code> precompile's <code>associate</code> / <code>associatePubKey</code>,
+and the implicit <code>EVMAddressDecorator</code> path — is secp256k1-only in all four routes
+(<code>btcec.ParsePubKey</code>, plus a <code>0x04</code>-prefix check), so no 25519-family account can ever
+escape its cast address.</p>
+<p>One more: <strong>secp256r1 is a real transaction signer here</strong>, admitted by the same switch —
+one of the few rows in this dataset where that is true. Nominally paired, but not
+portably: the verifier is at <code>0x1011</code>, not <code>0x0100</code>, and it is ABI-dispatched as
+<code>verify(bytes)</code> with per-byte gas rather than taking RIP-7212's raw 160-byte input.</p>
+<h2>Other integrator-breaking findings</h2>
+<ul>
+<li><strong>The base fee is not burned.</strong> <code>baseFee + tip</code> is credited in full to the fee
+  collector as the coinbase reward, with an in-source comment saying so
+  (<code>core/state_transition.go</code>). Sei's fee market is also not EIP-1559: ±1.89% / −0.39%
+  per block toward a 250k-gas target, clamped between governance floor and ceiling.</li>
+<li><strong><code>PREVRANDAO</code> is <code>keccak256(block timestamp)</code>.</strong> Fully predictable. Contracts using
+  it for randomness are exploitable and show no outward sign.</li>
+<li><strong>Receipts with <code>type: 0xffffffff</code> exist.</strong> Cosmos/CosmWasm transactions emitting
+  EVM-shaped logs get a synthetic receipt whose type is <code>math.MaxUint32</code> — outside the
+  legal EIP-2718 range by a factor of 2^25. <code>eth_getLogs</code> returns their logs.</li>
+<li><strong>Blob transactions are registered then refused.</strong> <code>0x03</code> is in <code>AllowedTxTypes</code> from
+  Cancun on and unconditionally rejected by the ante handler → recorded <code>tombstoned</code>.</li>
+<li><strong><code>AssociateTx</code> is a free, nonce-less, type-less state-changing transaction.</strong> Its
+  <code>TxType()</code>, <code>GetNonce()</code>, <code>GetGas()</code>, <code>GetValue()</code> and <code>GetTo()</code> all <em>panic</em>.</li>
+<li><strong>The Ethereum block is a fiction, and <code>stateRoot</code> is the worst field in it.</strong> It
+  carries the Tendermint app hash — a commitment to the whole Cosmos multistore — under
+  the name and shape of an Ethereum state root. No Ethereum state proof against it can
+  verify. <code>mixHash</code> is the zero hash, not the value <code>PREVRANDAO</code> returned.</li>
+<li><strong><code>SeiSstoreSetGasEIP2200</code></strong> is a <code>params.ChainConfig</code> field in the fork that
+  overrides the clean-zero→nonzero <code>SSTORE</code> cost in both the EIP-2200 and EIP-2929 gas
+  paths, refunds included. Default 20000 = mainnet. The mechanism has no mainnet
+  analogue; whether <code>pacific-1</code> runs the default is a live value, not a source fact.</li>
+</ul>
+<h2>Where the schema strained</h2>
+<ul>
+<li><strong><code>role</code>.</strong> Sei is a code fork of geth <em>in the interpreter only</em>. Everything else —
+  envelope, accounts, fees, blocks, addresses — is a rewrite. <code>fork</code> overstates
+  equivalence; <code>independent</code> would understate the literal shared code. Recorded as
+  <code>fork</code> with a <code>chain.note</code> saying which half it applies to. No new key proposed.</li>
+<li><strong><code>header_fields</code>.</strong> The section assumes a header exists to diff. Sei's consensus
+  block is a Tendermint block; the Ethereum header is <em>assembled at RPC time</em> and is
+  not hashed, signed or committed to. Recorded under <code>header_fields</code> anyway, with a
+  section <code>note</code> saying so, because an integrator reading those fields cannot tell.</li>
+<li><strong><code>system_contracts</code>.</strong> Sei's pointer contracts are real EVM bytecode installed by
+  the chain rather than by a user — but at addresses derived per asset at registration
+  time. Neither a predeploy set nor a <code>dynamic_range</code> predicate. Recorded as a note.</li>
+<li><strong>Two upgrade axes.</strong> <code>forks.timeline</code> models one sequence. Sei has two that do not
+  line up: Ethereum fork level (all at genesis) and Sei's own governance-scheduled
+  software upgrades (which are what actually gate precompile semantics). Recorded in
+  <code>forks.note</code>; the timeline shows only the Ethereum axis.</li>
+</ul>
+<h2>Deliberately not established</h2>
+<p>Nothing is marked <code>status: unrecorded</code> in this row, but these are <em>not</em> established and
+are called out rather than guessed:</p>
+<ul>
+<li><strong>Whether <code>pacific-1</code> currently runs the default <code>SeiSstoreSetGasEIP2200</code> (20000).</strong>
+  It is a live chain-config value; source gives only the default. Recorded as
+  <code>eips.2200: modified</code> with the uncertainty stated in the note, rather than as
+  <code>inherited</code> (which would assert equivalence) or <code>unrecorded</code> (which would hide that
+  the mechanism exists).</li>
+<li><strong>The exact <code>usei</code> ↔ EVM-gas conversion multiplier.</strong> Established that one exists
+  (<code>sdk.NewInfiniteGasMeterWithMultiplier</code>); the constant lives in <code>sei-cosmos</code>, a
+  vendored subtree, and is not pinned as a separate repo.</li>
+<li><strong>The full Cosmos-SDK message set.</strong> <code>non_evm_transactions</code> lists Sei's own
+  <code>x/evm</code> messages exhaustively. Standard bank/staking/gov/IBC/wasm messages are noted
+  as a population but not enumerated — they are stock Cosmos SDK, and their EVM-visible
+  effects are reachable through <code>0x1001</code>–<code>0x100c</code>.</li>
+<li><strong>Whether <code>includeSyntheticTxs</code> defaults on or off per RPC method.</strong> Established that
+  the flag exists and gates the <code>0xffffffff</code> receipts differently on different paths.</li>
+<li><strong>Precompile extractor.</strong> <code>verify.py</code> reports <code>! NO EXTRACTOR</code> for this row; the
+  address list is taken on trust from <code>precompiles/setup.go:GetCustomPrecompiles</code>.</li>
+</ul>
+<hr />
+<h2>Re-verify</h2>
+<pre><code class="language-bash"># 1. Re-fetch the pinned evidence (both repos)
+git clone --depth 1 --branch v6.6.1 \
+  https://github.com/sei-protocol/sei-chain chains/sei/repos/sei-chain
+git -C chains/sei/repos/sei-chain rev-parse HEAD   # 43d1152e06ed9020d39e10da706451718b66c804
+
+git clone --depth 1 --branch v1.15.7-sei-17 \
+  https://github.com/sei-protocol/go-ethereum chains/sei/repos/go-ethereum
+git -C chains/sei/repos/go-ethereum rev-parse HEAD # 929fc329f2a82d97c51a97233f394f8d66d9cfc5
+
+# 2. Re-check every citation in chain.yaml
+tools/.venv/bin/python tools/verify.py
+
+# 3. The thirteen custom precompile addresses (the live registration path)
+sed -n '/^func GetCustomPrecompiles/,/^}/p' chains/sei/repos/sei-chain/precompiles/setup.go
+
+# 4. Confirm the built-in map has no 0x0100 — the fork stops at Prague
+sed -n '/^var PrecompiledContractsPrague/,/^}/p' \
+  chains/sei/repos/go-ethereum/core/vm/contracts.go
+grep -n &quot;case rules.Is&quot; chains/sei/repos/go-ethereum/core/vm/contracts.go
+
+# 5. Confirm custom precompiles cannot shadow a built-in
+sed -n '/^func NewEVM/,/^}/p' chains/sei/repos/go-ethereum/core/vm/evm.go
+
+# 6. Base fee is credited, not burned
+grep -n &quot;burn the base fee&quot; -A 2 \
+  chains/sei/repos/go-ethereum/core/state_transition.go
+
+# 7. PREVRANDAO = keccak256(timestamp); BLOBBASEFEE = 1; GASLIMIT = consensus MaxGas
+sed -n '/^func (k \*Keeper) GetVMBlockContext/,/^}/p' \
+  chains/sei/repos/sei-chain/x/evm/keeper/keeper.go
+
+# 8. Dual address space: cast-vs-derived, and what migrates
+sed -n '/^func (k \*Keeper) GetEVMAddressOrDefault/,/^}/p;/^func (k \*Keeper) CanAddressReceive/,/^}/p' \
+  chains/sei/repos/sei-chain/x/evm/keeper/address.go
+sed -n '/^func (p AssociationHelper) MigrateBalance/,/^}/p' \
+  chains/sei/repos/sei-chain/utils/helpers/associate.go
+
+# 9. Blob txs: permitted by the type table, refused by the ante handler
+grep -n &quot;AllowedTxTypes&quot; -A 5 chains/sei/repos/sei-chain/x/evm/ante/preprocess.go
+grep -n &quot;ErrUnsupportedTxType&quot; chains/sei/repos/sei-chain/x/evm/ante/basic.go
+
+# 10. AssociateTx: every envelope accessor panics
+cat chains/sei/repos/sei-chain/x/evm/types/ethtx/associate_tx.go
+
+# 11. The 0xffffffff synthetic receipt type
+grep -n &quot;ShellEVMTxType&quot; chains/sei/repos/sei-chain/x/evm/types/constants.go \
+                          chains/sei/repos/sei-chain/app/receipt.go
+
+# 12. The RPC-synthesised &quot;Ethereum&quot; block
+sed -n '/^func EncodeTmBlock/,/^}/p' chains/sei/repos/sei-chain/evmrpc/block.go | tail -40
+</code></pre>
+<h3>Replay the live probes</h3>
+<p>Any archive node at block <code>226969278</code> (<code>0xd867abe</code>) or later. <code>V</code> is the wycheproof
+<code>CallP256Verify</code> vector shipped in
+<code>chains/kaia/repos/kaia/blockchain/vm/testdata/precompiles/p256Verify.json</code> (entry 0),
+which the Kaia row independently confirms is <strong>valid</strong>.</p>
+<pre><code class="language-bash">SEI=https://evm-rpc.sei-apis.com
+V=4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4da73bd4903f0ce3b639bbbf6e8e80d16931ff4bcf5993d58468e8fb19086e8cac36dbcd03009df8c59286b162af3bd7fcc0450c9aa81be5d10d312af6c66b1d604aebd3099c618202fcfe16ae7770b0c49ab5eadf74b754204a3bb6060e44eff37618b065f9832de4ca6ca971a7a1adc826d0f7c00181a5fb2ddf79ae00b4e10e
+
+# 0x0100 is an empty account, and a VALID signature there returns empty output
+curl -s -X POST $SEI -H 'content-type: application/json' -d \
+ '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getCode&quot;,&quot;params&quot;:[&quot;0x0000000000000000000000000000000000000100&quot;,&quot;0xd867abe&quot;]}'
+curl -s -X POST $SEI -H 'content-type: application/json' -d \
+ &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000100\&quot;,\&quot;data\&quot;:\&quot;0x$V\&quot;},\&quot;0xd867abe\&quot;]}&quot;
+# -&gt; &quot;0x&quot;  and  &quot;0x&quot;
+
+# 0x1011, ABI-wrapped as verify(bytes) — selector 8e760afe, offset 0x20, length 0xa0
+curl -s -X POST $SEI -H 'content-type: application/json' -d \
+ &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000001011\&quot;,\&quot;data\&quot;:\&quot;0x8e760afe00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000a0$V\&quot;},\&quot;0xd867abe\&quot;]}&quot;
+# -&gt; 0x...0020 ...0020 ...0001   (valid)
+
+# the same vector sent raw to 0x1011 reverts — the precompile is ABI-dispatched
+curl -s -X POST $SEI -H 'content-type: application/json' -d \
+ &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000001011\&quot;,\&quot;data\&quot;:\&quot;0x$V\&quot;},\&quot;0xd867abe\&quot;]}&quot;
+# -&gt; error: execution reverted
+</code></pre>
+<p>The <code>verify(bytes)</code> selector is derivable from the pinned source rather than assumed:</p>
+<pre><code class="language-bash">cd chains/sei/repos/sei-chain
+cat &gt; precompiles/p256/zz_sel_test.go &lt;&lt;'GOEOF'
+package p256
+
+import &quot;testing&quot;
+import pcommon &quot;github.com/sei-protocol/sei-chain/precompiles/common&quot;
+
+func TestZZSel(t *testing.T) {
+    a := pcommon.MustGetABI(f, &quot;abi.json&quot;)
+    for n, m := range a.Methods {
+        t.Logf(&quot;SELECTOR %s = %x&quot;, n, m.ID)
+    }
+}
+GOEOF
+go test ./precompiles/p256/ -run TestZZSel -v 2&gt;&amp;1 | grep SELECTOR   # verify = 8e760afe
+rm precompiles/p256/zz_sel_test.go
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh sei    # fetch the pinned evidence
+tools/verify.py sei   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/sei/chain.yaml</code> · <code>chains/sei/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="../assets/site.js"></script>
+</body></html>

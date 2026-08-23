@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · EVM-intel</title>
+<meta name="description" content="The schema the dataset is written in, and how this site is built.">
+<link rel="stylesheet" href="assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="index.html">EVM-intel</a></span>
+  <nav><a href="index.html">Overview</a><a href="chains/index.html">Chains</a><a href="axes/eips.html">EIP activation set</a><a href="axes/precompiles.html">Precompiles</a><a href="axes/tx-types.html">Transaction types</a><a href="axes/cryptography.html">Cryptography</a><a href="axes/opcodes.html">Opcodes</a><a href="axes/system-contracts.html">System contracts</a><a href="axes/fees-envelope.html">Fees &amp; envelope</a><a href="axes/lineage.html">Lineage</a><a href="silent-divergences.html">Silent divergences</a><a href="method.html" class="on">Reference</a></nav>
+  
+</header>
+<main>
+<h1>Reference</h1>
+<p class="lede">The schema the dataset is written in, and how this site is built.</p>
+<h2 id="schema">Schema<a class="anchor" href="#schema">#</a></h2>
+<div class="prose"><p>One file per chain. <strong>Ethereum Mainnet is the Schelling point</strong>: every other chain's
+entries are stated as a <em>delta against mainnet</em>, never re-described from scratch.</p>
+<h2>Three orthogonal axes</h2>
+<p>Earlier drafts collapsed these into one <code>status:</code> field and drifted immediately.
+They are separate because a single feature can vary along all three at once.</p>
+<h3>1. <code>status:</code> — how this differs from mainnet</h3>
+<p>Applies to entries in <code>precompiles</code>, <code>tx_types</code>, <code>opcodes</code>, <code>system_contracts</code>, <code>eips</code>.</p>
+<table>
+<thead>
+<tr>
+<th>status</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inherited</code></td>
+<td>identical to mainnet at the chain's <code>baseline_fork</code>. Often omitted — implied by the baseline.</td>
+</tr>
+<tr>
+<td><code>added</code></td>
+<td>exists here, does not exist on mainnet</td>
+</tr>
+<tr>
+<td><code>removed</code></td>
+<td>exists on mainnet at the baseline fork, absent here. <strong>Also covers "never adopted."</strong></td>
+</tr>
+<tr>
+<td><code>modified</code></td>
+<td>same address/number/name as mainnet, different semantics, gas, or encoding. <strong>Must carry a <code>note</code>.</strong></td>
+</tr>
+<tr>
+<td><code>tombstoned</code></td>
+<td>present but permanently non-functional — always reverts or errors. <strong>Not the same as <code>removed</code></strong>: calling a tombstoned address fails, while calling an absent one succeeds with empty output. The address is permanently consumed.</td>
+</tr>
+<tr>
+<td><code>pending</code></td>
+<td>specified or merged but not yet live on this chain</td>
+</tr>
+<tr>
+<td><code>unrecorded</code></td>
+<td><strong>deliberately not established.</strong> Renders as <code>?</code> in aggregate tables. Use this instead of omitting a fact: an omitted entry falls back to <code>inherited</code>, which would silently assert equivalence to mainnet that nobody verified.</td>
+</tr>
+</tbody>
+</table>
+<p><code>removed</code>, <code>modified</code> and <code>tombstoned</code> are the high-value rows — they are where
+integrations break. A chain that is honestly EVM-equivalent produces a nearly empty
+file, and that emptiness is itself the finding.</p>
+<p>There is no <code>absent</code>. It was a synonym for <code>removed</code> and is gone.</p>
+<h3>2. <code>availability:</code> — is it on for every deployment?</h3>
+<table>
+<thead>
+<tr>
+<th>availability</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(omitted)</em></td>
+<td>always present when the fork is active. The default.</td>
+</tr>
+<tr>
+<td><code>optional</code></td>
+<td>opt-in per deployment. Requires <code>activation_condition</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Needed because subnet-evm chains enable precompiles individually in genesis, so
+<code>status: added</code> alone would overstate what any given chain actually has.</p>
+<h3>3. <code>adoption:</code> — for the chain's own spec series</h3>
+<p>Applies <strong>only</strong> to <code>non_eip_specs</code> (ACPs, BEPs, TIPs, RIPs, WIPs). Never mixed with
+<code>status:</code>, because "is this spec accepted" and "how does this differ from mainnet"
+are unrelated questions.</p>
+<p><code>adopted</code> · <code>optional</code> · <code>draft</code> · <code>proposed</code> · <code>withdrawn</code></p>
+<h3><code>forks.timeline[].status:</code> — fork lifecycle</h3>
+<p>A fourth, narrower axis, valid only inside <code>forks.timeline</code>. A fork is not a feature
+being compared to mainnet, so it does not use the delta vocabulary above.</p>
+<p><code>active</code> (default, omitted) · <code>pending</code> (scheduled or declared, not yet live) ·
+<code>skipped</code> (deliberately declined — BSC's BPO forks)</p>
+<h2>Activation</h2>
+<ul>
+<li><code>activation_time:</code> — Unix timestamp. Only ever a number.</li>
+<li><code>activation_condition:</code> — free text for non-temporal activation
+  (<code>genesis key "feeManagerConfig"</code>, <code>SR governance proposal</code>).</li>
+<li><code>tombstoned_at:</code> — timestamp at which a live entry becomes <code>tombstoned</code>, for
+  scheduled deprecations that have not happened yet.</li>
+</ul>
+<p>Never overload one key with both a timestamp and a prose condition.</p>
+<h2><code>divergence:</code> — what kind of difference <code>modified</code> means</h2>
+<p>Optional, on <code>precompiles</code> and <code>system_contracts</code> entries whose <code>status</code> is <code>modified</code>.</p>
+<table>
+<thead>
+<tr>
+<th>divergence</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(omitted)</em></td>
+<td>the semantics differ: different result, different acceptance, different failure. The default.</td>
+</tr>
+<tr>
+<td><code>gas</code></td>
+<td><strong>pricing only.</strong> Identical inputs produce an identical result; only the cost differs.</td>
+</tr>
+</tbody>
+</table>
+<p>Separated because they are not the same risk. A repriced precompile returns the right
+answer and costs more; a semantically modified one returns a different answer. Polygon
+reprices eleven precompiles under PIP-88 and changes none of their results, and marking
+those the same way as Tron's <code>0x03</code> — which does not compute RIPEMD160 — overstates them
+badly in any grid that shows one symbol per cell.</p>
+<p>Gas divergence is therefore not flagged in the aggregate grids; it is stated on the
+chain's own page. <strong>Current live pricing is the reference</strong>, not the pricing at any
+historical fork.</p>
+<h2><code>severity: high</code></h2>
+<p>Mark any divergence that fails <strong>silently</strong> — wrong results with no revert, no error,
+and no signal to the caller. These are the findings most likely to cause losses and
+least likely to be caught in testing. Reserved for that class; not a general
+importance rating.</p>
+<h2>Evidence rule</h2>
+<p>Every non-obvious claim carries its <strong>provenance</strong>, in one of three keys. Which key a
+fact uses is part of the fact, not a footnote about it.</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>meaning</th>
+<th>reproduced by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src:</code></td>
+<td>a path and symbol inside the pinned clone, e.g. <code>core/vm/contracts.go:PrecompiledContractsOsaka</code>.</td>
+<td><code>tools/verify.py</code> re-extracts and diffs</td>
+</tr>
+<tr>
+<td><code>src_doc:</code></td>
+<td>a URL to the chain's own documentation. <strong>Weakest kind</strong> — docs describe intent, and lag or contradict what shipped.</td>
+<td>nothing; a human re-reads it</td>
+</tr>
+<tr>
+<td><code>src_live:</code></td>
+<td>an observation of the running network: an RPC method, the address or subject, and the <strong>block height it was observed at</strong>.</td>
+<td>replaying the same call against an archive node at that block</td>
+</tr>
+</tbody>
+</table>
+<p><code>src_live:</code> is <em>stronger</em> than <code>src_doc:</code> and answers a different question than <code>src:</code>.
+Source says what a client would do; a live probe says what the network actually did.
+For a chain with no public client it is the only primary evidence available, and for a
+chain with one it catches the gap between the pinned tag and what validators run.</p>
+<p><strong>A live claim must pin its block, exactly as a source claim pins its commit.</strong> An
+unpinned RPC result is not evidence — it is unreproducible <em>and</em> unverifiable, which is
+worse than a doc link. The endpoint is declared once per chain:</p>
+<pre><code class="language-yaml">live_probe:
+  endpoint: https://rpc.example.org
+  chain_id: 999
+  observed_at_block: 12345678      # the default height for this row's src_live entries
+</code></pre>
+<pre><code class="language-yaml">precompiles:
+  &quot;0x0000000000000000000000000000000000000800&quot;:
+    name: L1 read precompile
+    status: added
+    src_live: &quot;eth_call @ 12345678 -&gt; 0x0000...002a (32-byte position)&quot;
+    src_doc: https://example.org/docs/precompiles
+</code></pre>
+<p>Both keys may appear on one entry, and should when both exist: the doc states intent,
+the probe states behaviour, and a disagreement between them is itself a finding.</p>
+<p><code>tools/verify.py</code> enforces this rather than trusting it. For every <code>src:</code> it resolves
+each path — <strong>every path in a comma-separated citation, not just the first</strong> — against
+the row's clone and its companions, then checks the <code>:suffix</code>: a symbol must actually
+appear in that file, a line number must fall within it. Citing a real file is not
+enough. Three citations in this repo pointed at real files and still lied: a line
+number that had drifted onto a different constant, a path written relative to the wrong
+directory, and a sibling that was one directory up. A <code>src_live:</code> with no <code>@ &lt;block&gt;</code>
+is rejected outright.</p>
+<h3><code>evidence:</code> — the row's overall footing</h3>
+<p>Set on <code>chain:</code>. Defaults to <code>source</code>.</p>
+<table>
+<thead>
+<tr>
+<th>evidence</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td>a client repo is pinned; <code>src:</code> is the expected default for facts.</td>
+</tr>
+<tr>
+<td><code>documented</code></td>
+<td><strong>no public client exists.</strong> No <code>client.commit</code>, nothing to clone. Facts rest on <code>src_doc:</code> and <code>src_live:</code> only.</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>documented</code> row has no clone, so <code>clone.sh</code> skips it and <code>verify.py</code> reports it as
+<code>SKIP (documented)</code> rather than a failure — a permanently-red build is a build nobody
+reads, which would degrade verification for the rows that <em>can</em> be checked.</p>
+<h3>Mixing in the aggregate tables</h3>
+<p>The generated tables <strong>merge all three kinds without distinction.</strong> A cell in
+MATRIX.md may rest on source, docs, or a live probe, and does not say which.</p>
+<p>This is deliberate, and it is a bet: that a merged table is more useful than a
+correctly-hedged one, and that the hedge can be reinstated later. It is safe to make
+only because provenance is retained per-fact in <code>chain.yaml</code> — splitting the tables by
+evidence kind, or filtering the weakest kind out, stays a mechanical change over data
+already collected. Nothing has to be re-derived.</p>
+<p>The cost is that a reader cannot see the mix from the table. <code>verify.py</code> prints the
+per-chain tally so the ratio stays visible to anyone maintaining the dataset, and so a
+row quietly drifting toward doc-only evidence is noticeable before it is load-bearing.</p>
+<h2><code>tx_authorization:</code> — what can sign a transaction</h2>
+<p>An axis of its own, independent of <code>precompiles</code>. <strong>A precompile that verifies a
+signature scheme is not the same as that scheme being able to authorize a
+transaction</strong>, and the two come apart in both directions. Eleven rows carry
+P256VERIFY, and on almost all of them a P-256 key still cannot move a single wei —
+the precompile is a tool for <em>contracts</em>, not an authentication method for <em>senders</em>.</p>
+<pre><code class="language-yaml">tx_authorization:
+  key_binding: derived        # derived | declared | account_code
+  signers_per_tx: 1
+  note: &gt;-
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: &quot;0x01&quot;
+      src: ...
+</code></pre>
+<h3><code>authorizes:</code> — how far the scheme reaches</h3>
+<table>
+<thead>
+<tr>
+<th>value</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protocol</code></td>
+<td>the client itself validates a signature in this scheme to authorize a transaction. Mainnet's secp256k1.</td>
+</tr>
+<tr>
+<td><code>account_code</code></td>
+<td>only reachable through account-abstraction code: the protocol runs the account's own validator, which decides. zkSync's <code>customSignature</code>.</td>
+</tr>
+<tr>
+<td><code>never</code></td>
+<td>the chain can <em>verify</em> this scheme but it can never authorize a transaction. The normal state of P-256 on a chain with P256VERIFY.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The value is <code>never</code>, not <code>no</code>.</strong> YAML 1.1 parses a bare <code>no</code> as the boolean <code>false</code>,
+so <code>authorizes: no</code> silently loads as <code>False</code> and any consumer comparing against a
+string sees neither. <code>tools/verify.py</code> rejects the boolean form by name.</p>
+<h3><code>precompile:</code> — the paired verifier, or <code>none</code></h3>
+<p>The address of the precompile that verifies this same scheme, or <code>none</code>.</p>
+<p><strong><code>authorizes: protocol</code> together with <code>precompile: none</code> is the finding to look for.</strong>
+It means the chain accepts transaction signatures that its own contracts have no way to
+check — an on-chain verifier, a multisig, or an account-recovery contract cannot
+validate the very signatures the protocol just accepted. Record it, and say so in the
+<code>note</code>.</p>
+<p>The reverse pairing — <code>authorizes: never</code> with a real precompile address — is ordinary and
+needs no comment beyond the address.</p>
+<h3><code>key_binding:</code> — how the address relates to the key</h3>
+<table>
+<thead>
+<tr>
+<th>value</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>derived</code></td>
+<td>the address IS the hash of the public key; <code>ecrecover(sig) == from</code> is an identity. Mainnet.</td>
+</tr>
+<tr>
+<td><code>declared</code></td>
+<td>the sender is an explicit field, checked against a key registered on-chain. <code>ecrecover(sig) != from</code>. Kaia's <code>AccountKey</code>, Tron's permission system.</td>
+</tr>
+<tr>
+<td><code>account_code</code></td>
+<td>there is no protocol-level key at all; the account's code decides what a valid signature is. zkSync.</td>
+</tr>
+</tbody>
+</table>
+<p><code>signers_per_tx</code> is normally 1. Kaia's fee-delegated types carry two independent
+signers with two different digests, and each side may itself be a weighted multisig —
+so the field counts <em>parties</em>, not signatures, and the <code>note</code> carries the rest.</p>
+<h3>Config-switchable schemes</h3>
+<p>A scheme selected by node configuration rather than by consensus rules takes
+<code>availability: optional</code> with an <code>activation_condition</code>. These deserve suspicion: if
+two nodes disagree on the setting they disagree on who signed what, which is a
+consensus split rather than a graceful error.</p>
+<h2>Category boundaries (these get conflated constantly)</h2>
+<ul>
+<li><strong>precompile</strong> — native code at an address, no bytecode in state, no <code>EXTCODESIZE</code>.</li>
+<li><strong>system_contract</strong> — real EVM bytecode at a fixed address (predeploy, genesis
+  alloc, or client-installed). Has code, is <code>CALL</code>-able normally. Ethereum's
+  beacon-roots contract and OP's <code>0x42..</code> predeploys are these, <em>not</em> precompiles.</li>
+<li><strong>system_transaction</strong> — state changes driven by the protocol rather than a user
+  transaction (EIP-4788 beacon-root write, OP deposits, Parlia system calls).</li>
+<li><strong>non_evm_transactions</strong> — protocol transactions with <strong>no EIP-2718 type byte at
+  all</strong>: Avalanche's UTXO atomic txs, Tron's 43 protobuf contract types. They cannot
+  appear in <code>tx_types</code> because they have no type byte, and omitting them entirely
+  would hide all cross-chain value movement.</li>
+</ul>
+<p>Keeping these separate is the difference between a table you can act on and a list of
+addresses.</p>
+<h2><code>role</code></h2>
+<ul>
+<li><code>baseline</code> — Ethereum Mainnet only.</li>
+<li><code>fork</code> — descends from a mainnet client by code. Deltas are literal diffs.</li>
+<li><code>stack</code> — <strong>not a chain</strong>. A shared codebase several chains inherit from (OP Stack).
+  Holds its descendants' shared deltas exactly once. No <code>chain_id</code>.</li>
+<li><code>template</code> — <strong>not a chain</strong>. A codebase instantiated per deployment with
+  per-deployment configuration (subnet-evm). Differs from <code>stack</code> in that its
+  features are <code>optional</code> rather than inherited wholesale, so no descendant can be
+  fully described by pointing at it. No <code>chain_id</code>.</li>
+<li><code>independent</code> — reimplements EVM semantics without shared ancestry (Tron). Must set
+  <code>equivalence: behavioural</code> so the matrix can flag the weaker claim: deltas are
+  behavioural comparisons, not code diffs.</li>
+</ul>
+<p><code>stack</code> and <code>template</code> rows are not chains; this is derivable from <code>role</code>, so there is
+no separate <code>is_chain</code> field.</p>
+<h2>Non-enumerable precompiles</h2>
+<p>Base (from its Beryl upgrade) installs a <code>PrecompileLookup</code> that resolves precompiles
+<strong>by predicate over the address</strong> rather than from a fixed map. Roughly 2^72 addresses
+are precompiles. No address-keyed table can represent this.</p>
+<p>Such a chain records a <code>precompiles.dynamic_range</code> entry instead of address keys:</p>
+<pre><code class="language-yaml">precompiles:
+  dynamic_range:
+    name: B-20 token precompiles
+    status: added
+    pattern: &quot;byte[0] == 0xb2 AND bytes[1..10] == 0 AND byte[10] in {0x00, 0x01}&quot;
+    src: ...
+</code></pre>
+<p>The generator emits these in a dedicated section, and <code>verify.py</code> skips them — there
+is nothing to enumerate. Any consumer building a fixed precompile set must treat a
+<code>dynamic_range</code> as a membership test, not a list.</p>
+<h2>Lineage that is not a tree</h2>
+<p><code>lineage.upstream</code> assumes each chain has one parent. opBNB does not: its code is
+op-geth, but two precompiles and two fork names come from BSC. Such rows add
+<code>lineage.second_heritage: &lt;slug&gt;</code> — a documented escape hatch, so the fact is recorded
+rather than dropped to fit the model.</p>
+<p>Related caveat: inheritance resolves a descendant against the ancestor's <strong>current</strong>
+file, but a descendant pinned to an older client inherits the ancestor's <strong>past</strong>.
+opBNB's op-geth v0.5.10 stops at Fjord while the op-stack row pins a Jovian/Karst
+client, so opBNB has none of OP Stack's later changes. Record this in
+<code>lineage.sync_point</code>; the generated tables do not yet model it.</p>
+<h2>Evidence that lives in another row</h2>
+<ul>
+<li><code>client.shared_with: &lt;slug&gt;</code> — this row has no clone; its evidence is another row's
+  (OP Mainnet shares op-stack's op-geth). <code>clone.sh</code> and <code>verify.py</code> follow it.</li>
+<li><code>client.companion_repos[]</code> — additional pinned repos supplying facts the main client
+  does not contain (OP Stack's predeploy definitions and per-chain fork schedules).</li>
+</ul>
+<h2>Stack nodes and inheritance</h2>
+<p>A chain whose <code>lineage.upstream</code> names a <code>stack</code> row states <strong>only its own deltas</strong>.
+The OP Stack <code>0x7e</code> deposit type and <code>0x42..</code> predeploys live in <code>chains/op-stack/</code>;
+World Chain's file contains only what World Chain itself adds.</p>
+<p>The generator resolves the chain (<code>ethereum → op-stack → worldchain</code>) so aggregate
+tables show every chain's complete effective set. Inherited rows are marked with
+their origin, so a reader can tell "World Chain has <code>0x7e</code>" from "World Chain
+<em>invented</em> <code>0x7e</code>" — a distinction the raw address list destroys.</p>
+<p>Inheritance is override-by-key: a descendant re-declaring an address or type byte its
+ancestor already declared <strong>replaces</strong> it and must carry a <code>note</code> explaining why.</p>
+<h2>Top-level keys</h2>
+<pre><code class="language-yaml">schema_version: 2
+chain:        # name, slug, chain_id, role, live, evidence
+lineage:      # upstream, ancestry, fork_of, sync_point
+client:       # reference client: repo, version tag, pinned commit, language
+              # omitted entirely when chain.evidence is `documented`
+live_probe:   # endpoint, chain_id, observed_at_block — pins src_live claims
+consensus:    # engine, finality, block time
+baseline_fork: osaka      # the mainnet fork this chain claims equivalence to
+forks:        # src, note, timeline[] with activation_time / mainnet_equivalent
+eips:         # EIP number -&gt; {status, note, src}. Mainnet-relative. THE core table.
+non_eip_specs: # chain's own spec series, keyed by adoption:
+tx_types:     # type byte -&gt; {name, status, spec, src}
+tx_authorization:  # what can SIGN a tx — independent of precompiles
+non_evm_transactions:  # protocol txs with no type byte
+precompiles:  # address -&gt; {name, status, availability, spec, src}
+system_contracts:
+system_transactions:
+opcodes:      # {added: [], removed: [], modified: []}
+fee_model:    # metering, fee_market, extra_components
+header_fields: # {added: [], removed: [], modified: []} vs mainnet
+gotchas:      # free text: what surprises integrators
+</code></pre></div>
+<h2 id="rebuild">Building this site<a class="anchor" href="#rebuild">#</a></h2>
+<div class="prose"><p>The site's structure is specified in <a href="prompts/website/"><code>prompts/website/</code></a>; this file
+covers only how the build runs.</p>
+<p><code>website/</code> is <strong>generated output</strong>. Nothing in it is hand-edited; every file there is a
+function of the dataset plus <code>tools/site.py</code>. Edit the data, re-run the build.</p>
+<pre><code>tools/site.py                    # incremental — rebuild only what changed
+tools/site.py --all              # rebuild every page
+tools/site.py --check            # exit 1 if website/ is stale, write nothing
+tools/site.py --list             # every page, and the inputs it reads
+tools/site.py base               # just chains/base.html
+tools/site.py axes/precompiles.html
+tools/site.py chains/            # every chain page
+tools/site.py --clean            # delete website/ and rebuild from scratch
+</code></pre>
+<p>Open it with any static server, or straight off disk — every link and asset path is
+relative, so <code>file://</code>, GitHub Pages at a subpath, and <code>python3 -m http.server</code> all work
+unchanged.</p>
+<pre><code>python3 -m http.server -d website 8000     # then http://localhost:8000
+</code></pre>
+<h2>Inputs</h2>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Feeds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chains/&lt;slug&gt;/chain.yaml</code></td>
+<td>that chain's page, and every axis page</td>
+</tr>
+<tr>
+<td><code>chains/&lt;slug&gt;/SUMMARY.md</code></td>
+<td>the "Full write-up" section of that chain's page</td>
+</tr>
+<tr>
+<td><code>findings.yaml</code></td>
+<td>the home page, the axis pages, and every chain a finding names</td>
+</tr>
+<tr>
+<td><code>SCHEMA.md</code></td>
+<td><code>method.html</code></td>
+</tr>
+<tr>
+<td><code>SITE.md</code></td>
+<td><code>method.html</code> (this file)</td>
+</tr>
+<tr>
+<td><code>tools/assets/site.css</code>, <code>site.js</code></td>
+<td>copied to <code>website/assets/</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>findings.yaml</code> is the one <strong>content</strong> file in the pipeline — the place where a human
+says what the dataset means. Everything else on the site is derived. A finding is
+written once and surfaces in three places: the home page, its <code>axis:</code> page, and the page
+of every chain in its <code>chains:</code> list.</p>
+<h2>Regenerating after a change</h2>
+<p>The build is dependency-tracked, so the honest answer to "what do I re-run" is almost
+always just <code>tools/site.py</code>. It hashes every page's declared inputs into
+<code>website/.manifest.json</code> and rebuilds only the pages whose inputs actually moved.</p>
+<table>
+<thead>
+<tr>
+<th>You changed</th>
+<th>Run</th>
+<th>What rebuilds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one <code>chains/&lt;slug&gt;/chain.yaml</code></td>
+<td><code>tools/site.py</code></td>
+<td>13 pages: that chain page, all 8 axis pages, home, both indexes, <code>method.html</code> — <strong>not</strong> the other 18 chain pages</td>
+</tr>
+<tr>
+<td>one <code>chains/&lt;slug&gt;/SUMMARY.md</code></td>
+<td><code>tools/site.py</code></td>
+<td>that chain page only</td>
+</tr>
+<tr>
+<td><code>chains/op-stack/chain.yaml</code></td>
+<td><code>tools/site.py</code></td>
+<td>the above, <strong>plus its five descendants</strong> (Base, Celo, opBNB, OP Mainnet, World Chain), since they inherit its entries</td>
+</tr>
+<tr>
+<td><code>findings.yaml</code></td>
+<td><code>tools/site.py</code></td>
+<td>home, axis pages, and every chain page</td>
+</tr>
+<tr>
+<td><code>SCHEMA.md</code> or <code>SITE.md</code></td>
+<td><code>tools/site.py</code></td>
+<td><code>method.html</code> only</td>
+</tr>
+<tr>
+<td><code>tools/site.py</code>, <code>model.py</code>, or an asset</td>
+<td><code>tools/site.py</code></td>
+<td><strong>everything</strong> — the HTML is a function of the code too</td>
+</tr>
+</tbody>
+</table>
+<p><code>findings.yaml</code> is an input to <em>every</em> chain page, not only the ones currently named in
+a finding. Narrowing it to the named chains would be more precise and would be wrong:
+adding a finding that names a chain for the first time has to rebuild that chain's page,
+and a dependency set that only lists today's matches cannot know that. The build errs
+toward rebuilding.</p>
+<p>To force a page regardless of whether its inputs moved, name it:
+<code>tools/site.py base</code>, <code>tools/site.py axes/cryptography.html</code>, <code>tools/site.py chains/</code>.</p>
+<p><code>tools/site.py --list</code> prints the full dependency table if you want to check what a
+given page actually reads.</p>
+<h2>Full regeneration</h2>
+<pre><code>tools/.venv/bin/python tools/generate.py    # the four top-level Markdown tables
+tools/.venv/bin/python tools/site.py --all  # the website
+</code></pre>
+<p><code>generate.py</code> and <code>site.py</code> read the dataset through the same <code>tools/model.py</code> — the
+same ordering, the same address canonicalisation, the same stack-inheritance and
+EIP-resolution rules — so the Markdown tables and the website cannot drift apart on
+what a row says.</p>
+<h2>The manifest</h2>
+<p><code>website/.manifest.json</code> records, per page, the content hash of every input it read,
+plus a hash of the renderer itself. It holds content hashes and no timestamps, so it is
+byte-identical for the same inputs on any machine — which is why it is <strong>committed</strong>
+rather than ignored. Without it in the tree, <code>--check</code> on a fresh clone would report
+every page stale and be useless as a CI gate.</p>
+<p>Because the hashes are over content, <code>touch</code> does nothing: only a real edit triggers a
+rebuild.</p>
+<h2>Keeping it honest in CI</h2>
+<pre><code>tools/verify.py                 # re-extract facts from source, diff against chain.yaml
+tools/site.py --check           # fail if website/ does not match the dataset
+</code></pre>
+<p><code>--check</code> writes nothing and exits non-zero with the list of pages that would change,
+so a commit that edits <code>chain.yaml</code> without rebuilding the site is caught rather than
+silently shipping a stale page.</p>
+<h2>Dependencies</h2>
+<p>Python 3 with <code>pyyaml</code> and <code>markdown</code>:</p>
+<pre><code>python3 -m venv tools/.venv
+tools/.venv/bin/pip install pyyaml markdown
+</code></pre>
+<p>No Node, no bundler, no external network at build or view time. The pages embed no
+webfonts, scripts or images from other hosts, so they render identically offline.</p></div>
+<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2><div class="finding"><h3 id="f-schema-meets-new-axes">Axes the schema does not model<a class="anchor" href="#f-schema-meets-new-axes">#</a></h3><p>Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and omits a second virtual machine. Base's precompiles are not enumerable. opBNB has two parents. Each is recorded explicitly rather than reduced to a zero the schema can hold.</p><p class="tags"><a href="chains/arbitrum.html">Arbitrum</a> · <a href="chains/base.html">Base</a> · <a href="chains/opbnb.html">opBNB</a></p></div>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="assets/site.js"></script>
+</body></html>

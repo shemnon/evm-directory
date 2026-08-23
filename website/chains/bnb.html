@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BNB Smart Chain · EVM-intel</title>
+<meta name="description" content="">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label></div></details>
+</header>
+<main>
+<h1>BNB Smart Chain</h1>
+
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>56</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>osaka</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>go-ethereum</td></tr><tr><td>Sync point</td><td>Full-repo geth fork, closely rebased. Tracks mainnet through OSAKA and has the Amsterdam/BPO scaffolding present. The most mainnet-faithful chain in this dataset at the EVM layer.</td></tr><tr><td>Consensus</td><td>Parlia (Proof of Staked Authority) · block time 450ms</td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/bnb-chain/bsc">bsc</a> <code>v1.7.8</code></td></tr><tr><td>Pinned commit</td><td><code>cdb7548b5baacfdae92f9f63437d6456411665f3</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Fact provenance</td><td><code>src:</code> 41 · <code>src_live:</code> 0 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">5</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-address-collisions">Address collisions at 0x64–0x69 and 0x…1000<a class="anchor" href="#f-address-collisions">#</a></h3><p>Arbitrum's ArbSys, ArbInfo, ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy <code>0x64</code>–<code>0x69</code>, the same six addresses BSC uses for its cross-chain and consensus precompiles. The two sets share no code and serve unrelated functions. opBNB occupies <code>0x66</code> and <code>0x67</code> as well, making those two three-way. Polygon and BSC both place a contract named <code>ValidatorContract</code> at <code>0x…1000</code>, with different code and different ABIs. A single global address-keyed map is therefore incorrect for at least one major chain whichever way it is populated.</p><p class="tags"><a href="../axes/precompiles.html">Precompiles</a> · <a href="../chains/arbitrum.html">Arbitrum</a> · <a href="../chains/bnb.html">BNB</a> · <a href="../chains/opbnb.html">opBNB</a> · <a href="../chains/polygon.html">Polygon</a></p></div>
+<div class="finding"><h3 id="f-universal-address-broke">0x0100 across the dataset<a class="anchor" href="#f-universal-address-broke">#</a></h3><p>Eleven rows carry P256VERIFY at <code>0x0100</code>, reached through five unrelated forks: mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, and Kaia. Most diverge from mainnet in semantics, gas, or both. Presence at this address therefore indicates neither shared lineage nor a particular fork level.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/ethereum.html">Ethereum</a> · <a href="../chains/bnb.html">BNB</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/op-stack.html">OP Stack</a> · <a href="../chains/tron.html">Tron</a> · <a href="../chains/kaia.html">Kaia</a> · <a href="../chains/sei.html">Sei</a> · <a href="../chains/hyperliquid.html">Hyperliquid</a></p></div>
+<div class="finding"><h3 id="f-fork-names-lie">Fork names and EIP sets diverge in both directions<a class="anchor" href="#f-fork-names-lie">#</a></h3><p>BSC activated Prague seven weeks before mainnet and Osaka five months after. Avalanche has P256VERIFY (an Osaka feature) without BLS12-381 (a Prague feature). OP Stack's precompile switch tests <code>IsOptimismJovian</code> before <code>IsOsaka</code>, so activating Osaka does not restore mainnet semantics. Fork names are recorded as claims; the <code>eips:</code> map is the measurement.</p><p class="tags"><a href="../axes/eips.html">EIP activation set</a> · <a href="../chains/bnb.html">BNB</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/op-stack.html">OP Stack</a></p></div>
+<div class="finding"><h3 id="f-placement-vs-fidelity">Opcode placement and semantic fidelity vary independently<a class="anchor" href="#f-placement-vs-fidelity">#</a></h3><p>Tron, the most divergent chain here, placed its 16 custom opcodes at <code>0xd0</code>–<code>0xdf</code>, a range mainnet has never allocated. The same chain placed <code>batchValidateSign</code> on BLAKE2F's <code>0x09</code> and made <code>0x03</code> return a value that is not RIPEMD160. BSC, the most mainnet-faithful EVM here, placed its custom precompiles at <code>0x64</code>–<code>0x69</code>, leaving <code>0x12</code>–<code>0x63</code> as headroom before mainnet reaches them.</p><p class="tags"><a href="../axes/opcodes.html">Opcodes</a> · <a href="../chains/tron.html">Tron</a> · <a href="../chains/bnb.html">BNB</a></p></div>
+<div class="finding"><h3 id="f-tombstoned-addresses">Tombstoned precompile addresses<a class="anchor" href="#f-tombstoned-addresses">#</a></h3><p>Avalanche's native-asset trio and BSC's <code>0x64</code> and <code>0x65</code> (at Pasteur) are kept alive as always-reverting stubs rather than removed. The addresses are permanently consumed. Two chains adopted this pattern independently. A tombstoned address fails differently from an absent one, which returns success with empty output.</p><p class="tags"><a href="../axes/precompiles.html">Precompiles</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/bnb.html">BNB</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">1</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">system_contracts</span></td><td>mutable bytecode</td><td><div class="wrap">BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode. Twenty per-fork bytecode directories exist (bruno, euler, gibbs, moran, planck, plato, luban, kepler, feynman, haber_fix, bohr, pascal, lorentz, maxwell, fermi, pasteur, ...). Unique in this dataset: on every other chain, code at an address changes only by transaction. Here the client swaps it, so the same address can have completely different behaviour across a fork with no on-chain transaction to observe.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>BSC bundles each Ethereum fork with a same-timestamp BSC fork. Two timing facts matter more than the names.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>shanghai + kepler</code></td><td><span class="pill">active</span></td><td>2024-01-23</td><td>shanghai</td><td><div class="wrap"></div></td></tr><tr><td><code>cancun + haber</code></td><td><span class="pill">active</span></td><td>2024-06-20</td><td>cancun</td><td><div class="wrap"></div></td></tr><tr><td><code>prague + pascal</code></td><td><span class="pill">active</span></td><td>2025-03-20</td><td>prague</td><td><div class="wrap">2025-03-20 — SEVEN WEEKS BEFORE mainnet&#x27;s Prague (1746612311, 2025-05-07)</div></td></tr><tr><td><code>lorentz</code></td><td><span class="pill">active</span></td><td>2025-04-29</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>maxwell</code></td><td><span class="pill">active</span></td><td>2025-06-30</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>fermi</code></td><td><span class="pill">active</span></td><td>2026-01-14</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>osaka + mendel</code></td><td><span class="pill">active</span></td><td>2026-04-28</td><td>osaka</td><td><div class="wrap">2026-04-28 — nearly five months AFTER mainnet&#x27;s Osaka (2025-12-03)</div></td></tr><tr><td><code>pasteur</code></td><td><span class="pill">pending</span></td><td>2026-08-25</td><td>—</td><td><div class="wrap">not yet live; observed pre-activation on 2026-08-16. Will tombstone 0x64 and 0x65.</div></td></tr><tr><td><code>bpo1</code></td><td><span class="pill">skipped</span></td><td>—</td><td>—</td><td><div class="wrap">explicitly &#x27;will be skipped in BSC&#x27;</div></td></tr><tr><td><code>bpo2</code></td><td><span class="pill">skipped</span></td><td>—</td><td>—</td><td><div class="wrap">explicitly &#x27;will be skipped in BSC&#x27;</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> params/config.go:BSCChainConfig</p>
+<h2 id="eips">EIP deltas <span class="pill">11</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-2537"><td><a href="https://eips.ethereum.org/EIPS/eip-2537">EIP-2537</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">BLS12-381 0x0b-0x11 fully present (Prague/Pascal)<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">The ONLY Ethereum system contract BSC keeps. Notably its bytecode is installed by the client at the Prague transition via statedb.SetCode (core/systemcontracts/upgrade.go:1117-1120), and the code comment calls it &quot;a special system contract in bsc, which can&#x27;t be upgraded&quot;.<p class="src"><b>src</b> core/systemcontracts/upgrade.go:TryUpdateBuildInSystemContract</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No beacon roots. ActiveSystemContracts takes an early-return IsInBSC() branch that omits BEACON_ROOTS_ADDRESS entirely — BSC has no beacon chain.<p class="src"><b>src</b> params/config.go:1917-1923</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">blob market present; Cancun/Prague/Osaka blob schedules configured<p class="src"><b>src</b> params/config.go:BSCChainConfig.BlobScheduleConfig</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no DEPOSIT_CONTRACT_ADDRESS in the IsInBSC branch<p class="src"><b>src</b> params/config.go:ActiveSystemContracts</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no WITHDRAWAL_REQUEST_PREDEPLOY in the IsInBSC branch<p class="src"><b>src</b> params/config.go:ActiveSystemContracts</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no CONSOLIDATION_REQUEST_PREDEPLOY in the IsInBSC branch<p class="src"><b>src</b> params/config.go:ActiveSystemContracts</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">tx type 0x04 present — the only non-mainnet chain here with EIP-7702<p class="src"><b>src</b> core/types/transaction.go:SetCodeTxType</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">bigModExp{eip7823: true} matches mainnet Osaka exactly<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">bigModExp{eip7883: true} matches mainnet Osaka exactly<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">p256Verify{eip7951: true} — mainnet gas, unlike OP Stack<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr></tbody></table></div>
+<div class="note"><p>BSC's Prague adoption is a clean split: it takes the EVM-facing half (BLS12-381, EIP-7702, EIP-2935) and drops the entire beacon/staking half (4788, 6110, 7002, 7251), which is meaningless without a beacon chain. This is the clearest example in the dataset of why fork names must not be trusted over EIP sets.</p></div>
+<h2 id="tx-types">Transaction types <span class="pill">0</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>0x00-0x04, IDENTICAL to mainnet including EIP-7702 SetCodeTx. No BSC-specific envelope types. The only chain in this dataset with zero tx-type divergence.</p></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>UNCHANGED FROM MAINNET for anything a user can send. types.Sender is stock geth, secp256k1 is the only scheme that authorizes a transaction, and the address is still the hash of the recovered public key. Two BSC features look like alternatives and are not. Parlia's fast-finality VOTES are BLS12-381 signatures over block attestations aggregated into the header — that is CONSENSUS signing and cannot move a wei out of an account. blsSignatureVerify at 0x66 is a verifier for CONTRACTS, in exactly the sense P256VERIFY is. Neither is a way to authorize a BSC transaction. Parlia's SYSTEM TRANSACTIONS deserve precision, because BSC is on the opposite side of the line from OP Stack. They are NOT unsigned: applyTransaction builds an ordinary legacy transaction and the block proposer signs it with its normal secp256k1 validator key (signTxFn), so the sender is recovered by the same path as any user transaction. What is special-cased is the RECOVERED ADDRESS, not the signature — IsSystemTransaction accepts one only if the recovered sender equals header.Coinbase, the effective gas price is zero, and the destination is a system contract. Compare OP Stack's 0x7e deposits, which carry no signature at all.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> core/types/transaction_signing.go:Sender, consensus/parlia/parlia.go:IsSystemTransaction</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY with mainnet semantics and gas. A tool for contracts; a P-256 key cannot authorize a BSC transaction at any fork level.<p class="src"><b>src</b> core/vm/contracts.go:p256Verify</p></div></td></tr><tr><td><code>bls12_381</code></td><td><span class="pill">never</span></td><td><code>0x66</code></td><td><div class="wrap">RECORDED SO IT IS NOT MISREAD. BSC handles BLS in two unrelated places and neither authorizes a transaction. blsSignatureVerify at 0x66 (Luban) is a contract-callable verifier, the BLS analogue of P256VERIFY. Parlia&#x27;s VoteAttestation carries BLS votes and vote addresses through the consensus layer, where they finalize blocks — they are not transaction signatures and cannot be used as such. There is no BSC transaction envelope that accepts a BLS signature. (The standard EIP-2537 range 0x0b-0x11 is present too, from Prague/Pascal; 0x66 is named as the pairing because it is the one that verifies a BLS SIGNATURE rather than exposing curve operations.)<p class="src"><b>src</b> core/vm/contracts.go:blsSignatureVerify, core/types/vote.go:VoteAttestation</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">7</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>ADDRESS PLACEMENT RISK. BSC's custom precompiles occupy 0x64-0x69 (decimal 100-105), which sits BETWEEN mainnet's occupied 0x01-0x11 and 0x0100. Mainnet allocates upward from 0x11, leaving only 0x12-0x63 of headroom before collision. Every other chain in this dataset placed customs at 0x0100.., 0x0200.. or higher. BSC is the one on a collision course, and two of these addresses are being tombstoned rather than freed — permanently consumed.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x64"><td><code>0x64</code></td><td><span class="s-added" title="added">➕⏳</span></td><td>tmHeaderValidate</td><td><div class="wrap"><div>Tendermint header validation for the BNB Beacon Chain bridge. LIVE today. Will become tmHeaderValidateDeprecated at Pasteur (2026-08-25), after which it returns errors.New(&quot;deprecated&quot;) — tombstoned, not removed.</div><p class="src"><b>src</b> core/vm/contracts.go:343, core/vm/contracts_lightclient.go:139-147</p></div></td></tr><tr id="precompiles-0x65"><td><code>0x65</code></td><td><span class="s-added" title="added">➕⏳</span></td><td>iavlMerkleProofValidate</td><td><div class="wrap"><div>IAVL merkle proof validation. Currently the Plato variant; has been revised four times (base, Moran, Planck, Plato). Also tombstoned at Pasteur.</div><p class="src"><b>src</b> core/vm/contracts.go:344</p></div></td></tr><tr id="precompiles-0x66"><td><code>0x66</code></td><td><span class="s-added" title="added">➕</span></td><td>blsSignatureVerify</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:345</p></div></td></tr><tr id="precompiles-0x67"><td><code>0x67</code></td><td><span class="s-added" title="added">➕</span></td><td>cometBFTLightBlockValidate</td><td><div class="wrap"><div>currently the Hertz variant; Pasteur introduces another</div><p class="src"><b>src</b> core/vm/contracts.go:346</p></div></td></tr><tr id="precompiles-0x68"><td><code>0x68</code></td><td><span class="s-added" title="added">➕</span></td><td>verifyDoubleSignEvidence</td><td><div class="wrap"><div>consensus slashing evidence verification exposed to the EVM</div><p class="src"><b>src</b> core/vm/contracts.go:347</p></div></td></tr><tr id="precompiles-0x69"><td><code>0x69</code></td><td><span class="s-added" title="added">➕</span></td><td>secp256k1SignatureRecover</td><td><div class="wrap"><div>distinct from ECRECOVER at 0x01</div><p class="src"><b>src</b> core/vm/contracts.go:348</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>P256VERIFY</td><td><div class="wrap"><div>mainnet semantics and gas</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka, params/protocol_params.go:P256VerifyGas</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">17</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x1000"><td><code>0x1000</code></td><td><span class="s-added" title="added">➕</span></td><td>ValidatorContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:ValidatorContract</p></div></td></tr><tr id="system-contracts-0x1001"><td><code>0x1001</code></td><td><span class="s-added" title="added">➕</span></td><td>SlashContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:SlashContract</p></div></td></tr><tr id="system-contracts-0x1002"><td><code>0x1002</code></td><td><span class="s-added" title="added">➕</span></td><td>SystemRewardContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:SystemRewardContract</p></div></td></tr><tr id="system-contracts-0x1003"><td><code>0x1003</code></td><td><span class="s-added" title="added">➕</span></td><td>LightClientContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:LightClientContract</p></div></td></tr><tr id="system-contracts-0x1004"><td><code>0x1004</code></td><td><span class="s-added" title="added">➕</span></td><td>TokenHubContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:TokenHubContract</p></div></td></tr><tr id="system-contracts-0x1005"><td><code>0x1005</code></td><td><span class="s-added" title="added">➕</span></td><td>RelayerIncentivizeContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:RelayerIncentivizeContract</p></div></td></tr><tr id="system-contracts-0x1006"><td><code>0x1006</code></td><td><span class="s-added" title="added">➕</span></td><td>RelayerHubContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:RelayerHubContract</p></div></td></tr><tr id="system-contracts-0x1007"><td><code>0x1007</code></td><td><span class="s-added" title="added">➕</span></td><td>GovHubContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:GovHubContract</p></div></td></tr><tr id="system-contracts-0x1008"><td><code>0x1008</code></td><td><span class="s-added" title="added">➕</span></td><td>TokenManagerContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:TokenManagerContract</p></div></td></tr><tr id="system-contracts-0x2000"><td><code>0x2000</code></td><td><span class="s-added" title="added">➕</span></td><td>CrossChainContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:CrossChainContract</p></div></td></tr><tr id="system-contracts-0x2001"><td><code>0x2001</code></td><td><span class="s-added" title="added">➕</span></td><td>StakingContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:StakingContract</p></div></td></tr><tr id="system-contracts-0x2002"><td><code>0x2002</code></td><td><span class="s-added" title="added">➕</span></td><td>StakeHubContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:StakeHubContract</p></div></td></tr><tr id="system-contracts-0x2003"><td><code>0x2003</code></td><td><span class="s-added" title="added">➕</span></td><td>StakeCreditContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:StakeCreditContract</p></div></td></tr><tr id="system-contracts-0x2004"><td><code>0x2004</code></td><td><span class="s-added" title="added">➕</span></td><td>GovernorContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:GovernorContract</p></div></td></tr><tr id="system-contracts-0x2005"><td><code>0x2005</code></td><td><span class="s-added" title="added">➕</span></td><td>GovTokenContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:GovTokenContract</p></div></td></tr><tr id="system-contracts-0x2006"><td><code>0x2006</code></td><td><span class="s-added" title="added">➕</span></td><td>TimelockContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:TimelockContract</p></div></td></tr><tr id="system-contracts-0x3000"><td><code>0x3000</code></td><td><span class="s-added" title="added">➕</span></td><td>TokenRecoverPortalContract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/systemcontracts/const.go:TokenRecoverPortalContract</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="note"><p>Parlia inserts system transactions from the block coinbase to system contracts (consensus/parlia/parlia.go:1357,1945). isToSystemContract gates them.</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>EIP-1559 (London active at block 31302048)</td></tr><tr><td>Extra components</td><td>[]</td></tr><tr><td>Note</td><td><p>blob market present (Cancun/Prague/Osaka blob schedules configured); BPO forks skipped</p></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">1</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>BEP-comprehensive</code></td><td>BSC BEP series</td><td><span class="pill">adopted</span></td><td><div class="wrap">fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs</div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">6</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>BSC shipped Prague SEVEN WEEKS BEFORE Ethereum mainnet (2025-03-20 vs 2025-05-07) and Osaka nearly five months AFTER (2026-04-28 vs 2025-12-03). &quot;Behind mainnet&quot; is not a stable property of a chain — it flips fork to fork.</li><li>BSC took Prague&#x27;s EVM half (BLS12-381, EIP-7702, EIP-2935) and dropped its beacon half (4788, 6110, 7002, 7251) via an explicit IsInBSC() early return. A fork-name-only survey would record &quot;Prague&quot; and be wrong about four EIPs.</li><li>Custom precompiles at 0x64-0x69 leave only 0x12-0x63 of headroom before mainnet grows into them. This is the placement risk flagged from the Ethereum baseline, realised.</li><li>System contract bytecode is REPLACED BY THE CLIENT at fork boundaries (statedb.SetCode). Code at a fixed address can change with no transaction in any block. Indexers reconstructing contract history from transactions will miss it.</li><li>0x64 and 0x65 become always-erroring at Pasteur (activation_time 1787625000 = 2026-08-25) — the same tombstoning pattern as Avalanche&#x27;s native-asset precompiles.</li><li>Only chain here with EIP-7702 besides mainnet, and the only one with zero transaction-type divergence.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Chain ID 56 · role: <code>fork</code> · upstream: go-ethereum · baseline: Osaka</strong></p>
+<p>Reference: <a href="https://github.com/bnb-chain/bsc">bnb-chain/bsc <code>v1.7.8</code></a> @ <code>cdb7548b</code>.</p>
+<h2>Fork timing goes both directions</h2>
+<table>
+<thead>
+<tr>
+<th>Fork</th>
+<th>BSC</th>
+<th>Mainnet</th>
+<th>Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prague (BSC: Pascal)</td>
+<td>2025-03-20</td>
+<td>2025-05-07</td>
+<td><strong>7 weeks EARLY</strong></td>
+</tr>
+<tr>
+<td>Osaka (BSC: Mendel)</td>
+<td>2026-04-28</td>
+<td>2025-12-03</td>
+<td>~5 months late</td>
+</tr>
+</tbody>
+</table>
+<p>BSC shipped Prague <strong>before Ethereum did</strong>. "Behind mainnet" is not a stable property
+of a chain — it flips fork to fork, which is a good reason for the matrix to carry
+activation timestamps rather than a "current fork" label.</p>
+<p><code>BPO1Time</code> and <code>BPO2Time</code> are <code>nil</code> with the comment <em>"will be skipped in BSC"</em> — the
+blob-parameter forks are explicitly declined.</p>
+<p><strong>Pasteur activates 2026-08-25 and was not yet live when this row was recorded (2026-08-16).</strong> All
+precompile facts below are read from <code>PrecompiledContractsOsaka</code>, the currently
+active set, not from the newer Pasteur map in the same file.</p>
+<h2>Prague, split cleanly down the middle</h2>
+<p>This is the sharpest demonstration in the dataset of why fork names can't be trusted.
+<code>ActiveSystemContracts</code> (<code>params/config.go:1917-1923</code>) has an early-return branch:</p>
+<pre><code class="language-go">if c.IsInBSC() {
+    if fork &gt;= forks.Prague {
+        active[&quot;HISTORY_STORAGE_ADDRESS&quot;] = HistoryStorageAddress
+    }
+    return active          // &lt;-- everything below is skipped
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Prague EIP</th>
+<th>BSC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2537 BLS12-381</td>
+<td>✅ present at <code>0x0b</code>–<code>0x11</code></td>
+</tr>
+<tr>
+<td>7702 SetCode</td>
+<td>✅ tx type <code>0x04</code> present</td>
+</tr>
+<tr>
+<td>2935 History storage</td>
+<td>✅ the one system contract kept</td>
+</tr>
+<tr>
+<td>4788 Beacon roots</td>
+<td>❌ dropped</td>
+</tr>
+<tr>
+<td>6110 Deposits</td>
+<td>❌ dropped</td>
+</tr>
+<tr>
+<td>7002 Withdrawals</td>
+<td>❌ dropped</td>
+</tr>
+<tr>
+<td>7251 Consolidations</td>
+<td>❌ dropped</td>
+</tr>
+</tbody>
+</table>
+<p>BSC takes Prague's EVM-facing half and drops the entire beacon/staking half, which is
+meaningless without a beacon chain. A survey recording "BSC: Prague" would be wrong
+about four EIPs.</p>
+<h2>The most mainnet-faithful EVM here</h2>
+<p>Everything at <code>0x01</code>–<code>0x11</code> and <code>0x0100</code> matches mainnet Osaka <em>exactly</em>, down to the
+feature flags:</p>
+<ul>
+<li><code>bigModExp{eip2565: true, eip7823: true, eip7883: true}</code> — identical to mainnet</li>
+<li><code>p256Verify{eip7951: true}</code> — mainnet gas, unlike OP Stack's 3450</li>
+<li>Transaction types <code>0x00</code>–<code>0x04</code>, including EIP-7702 — <strong>zero tx-type divergence</strong>,
+  the only chain here that can say that</li>
+</ul>
+<p>BSC and mainnet are the only two chains in this dataset with EIP-7702.</p>
+<h2>Six custom precompiles — in the wrong place</h2>
+<table>
+<thead>
+<tr>
+<th>Addr</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x64</code></td>
+<td>tmHeaderValidate</td>
+<td>BNB Beacon Chain bridge. <strong>Tombstoned at Pasteur</strong></td>
+</tr>
+<tr>
+<td><code>0x65</code></td>
+<td>iavlMerkleProofValidate</td>
+<td>revised 4× (base/Moran/Planck/Plato). <strong>Tombstoned at Pasteur</strong></td>
+</tr>
+<tr>
+<td><code>0x66</code></td>
+<td>blsSignatureVerify</td>
+<td></td>
+</tr>
+<tr>
+<td><code>0x67</code></td>
+<td>cometBFTLightBlockValidate</td>
+<td>currently the Hertz variant</td>
+</tr>
+<tr>
+<td><code>0x68</code></td>
+<td>verifyDoubleSignEvidence</td>
+<td>consensus slashing evidence, exposed to the EVM</td>
+</tr>
+<tr>
+<td><code>0x69</code></td>
+<td>secp256k1SignatureRecover</td>
+<td>distinct from <code>ECRECOVER</code> at <code>0x01</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>0x64</code>–<code>0x69</code> is decimal 100–105, sitting <strong>between</strong> mainnet's occupied <code>0x01</code>–<code>0x11</code>
+and <code>0x0100</code>. Mainnet allocates upward from <code>0x11</code>, leaving only <code>0x12</code>–<code>0x63</code> of
+headroom before collision.</p>
+<p>This is the placement risk predicted from the Ethereum baseline, actually realised.
+Every other chain surveyed put customs at <code>0x0100…</code>, <code>0x0200…</code> or higher; BSC is the
+one exception. And because <code>0x64</code>/<code>0x65</code> are being <strong>tombstoned rather than freed</strong> at
+Pasteur — <code>tmHeaderValidateDeprecated.Run</code> returns <code>errors.New("deprecated")</code> — those
+addresses are permanently consumed. Same pattern as Avalanche's native-asset trio,
+independently arrived at.</p>
+<h2>Client-rewritten system contract bytecode</h2>
+<p>BSC has <strong>17 system contracts</strong> at <code>0x…1000</code>–<code>1008</code>, <code>0x…2000</code>–<code>2006</code>, <code>0x…3000</code>
+(validator set, slashing, cross-chain, staking, governance, timelock).</p>
+<p>The mechanism is the interesting part. <code>TryUpdateBuildInSystemContract</code>
+(<code>core/systemcontracts/upgrade.go:1111-1127</code>) calls <strong><code>statedb.SetCode</code></strong> at fork
+boundaries, and the repo carries twenty per-fork bytecode directories (<code>bruno</code>,
+<code>euler</code>, <code>gibbs</code>, <code>moran</code>, <code>planck</code>, <code>plato</code>, <code>luban</code>, <code>kepler</code>, <code>feynman</code>,
+<code>haber_fix</code>, <code>bohr</code>, <code>pascal</code>, <code>lorentz</code>, <code>maxwell</code>, <code>fermi</code>, <code>pasteur</code>, …).</p>
+<p><strong>Code at a fixed address changes with no transaction in any block.</strong> On every other
+chain in this dataset, bytecode at an address changes only by transaction. Any
+indexer reconstructing contract history from transaction traces will silently miss
+every one of these upgrades. Even EIP-2935's history contract is installed this way
+(<code>upgrade.go:1117-1120</code>), with the code comment noting it is <em>"a special system
+contract in bsc, which can't be upgraded"</em>.</p>
+<h2>Block time</h2>
+<p>450 ms, arrived at by successive halving: 3000 ms default → 1500 ms (Lorentz) →
+750 ms (Maxwell) → 450 ms (Fermi) (<code>consensus/parlia/parlia.go:61-64</code>). Consensus is
+Parlia (Proof of Staked Authority), which inserts system transactions from the block
+coinbase to system contracts.</p>
+<h2>What can authorize a transaction: nothing new, and that is the finding</h2>
+<p><code>tx_authorization</code> on BSC is deliberately boring — secp256k1, one signer, address =
+hash of the recovered key, <code>types.Sender</code> unmodified from geth. It is recorded anyway
+because BSC handles <strong>BLS in two places</strong> and neither is what it looks like:</p>
+<ul>
+<li><strong>Parlia fast-finality votes</strong> (<code>core/types/vote.go:VoteAttestation</code>) are BLS12-381
+  signatures over block attestations. They finalise blocks. They cannot move a wei.</li>
+<li><strong><code>blsSignatureVerify</code> at <code>0x66</code></strong> is a verifier <em>for contracts</em> — the BLS analogue
+  of P256VERIFY at <code>0x0100</code>, and just as unable to authorize a sender.</li>
+</ul>
+<p>There is no BSC transaction envelope that accepts a BLS signature.</p>
+<h3>Parlia system transactions are signed — unlike OP's deposits</h3>
+<p><code>applyTransaction</code> builds an ordinary <strong>legacy</strong> transaction and the proposer signs it
+with its normal secp256k1 validator key. What is special-cased is the <strong>recovered
+address</strong>, not the signature: <code>IsSystemTransaction</code> accepts one only when the recovered
+sender equals <code>header.Coinbase</code>, the effective gas price is zero, and the destination is
+a system contract. BSC and Monad sit on this side of the line; OP Stack's <code>0x7e</code>
+deposits, which carry no signature at all, sit on the other.</p>
+<h2>Re-verify</h2>
+<pre><code>git clone --depth 1 --branch v1.7.8 https://github.com/bnb-chain/bsc
+sed -n '324,352p' core/vm/contracts.go               # LIVE Osaka set incl. 0x64-0x69
+sed -n '/BSCChainConfig = /,/^  }/p' params/config.go  # fork timestamps
+sed -n '1910,1935p' params/config.go                 # IsInBSC system contract split
+sed -n '1,25p' core/systemcontracts/const.go         # 17 system contracts
+sed -n '1111,1130p' core/systemcontracts/upgrade.go  # statedb.SetCode at forks
+sed -n '139,150p' core/vm/contracts_lightclient.go   # deprecated =&gt; error
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh bnb    # fetch the pinned evidence
+tools/verify.py bnb   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/bnb/chain.yaml</code> · <code>chains/bnb/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="../assets/site.js"></script>
+</body></html>

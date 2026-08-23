@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ethereum Mainnet · EVM-intel</title>
+<meta name="description" content="All other rows in this dataset are expressed relative to this file. ethereum/execution-specs is the normative spec; go-ethereum is used here as the verification surface because the spec repo has no released mainnet-fork branch (default branch is…">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label></div></details>
+</header>
+<main>
+<h1>Ethereum Mainnet</h1>
+<p class="lede">All other rows in this dataset are expressed relative to this file. ethereum/execution-specs is the normative spec; go-ethereum is used here as the verification surface because the spec repo has no released mainnet-fork branch (default branch is…</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>1</code></td></tr><tr><td>Role</td><td><span class="pill">baseline</span></td></tr><tr><td>Baseline fork</td><td><code>osaka</code></td></tr><tr><td>Consensus</td><td>proof-of-stake (gasper) · block time 12s</td></tr><tr><td>Lineage note</td><td><p>All other rows in this dataset are expressed relative to this file. ethereum/execution-specs is the normative spec; go-ethereum is used here as the verification surface because the spec repo has no released mainnet-fork branch (default branch is forks/amsterdam, i.e. unshipped).</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/ethereum/go-ethereum">go-ethereum</a> <code>v1.17.5</code></td></tr><tr><td>Pinned commit</td><td><code>9621c6ad10934a01b5514886fb6fbd87640b6c05</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Client note</td><td><p>reference-by-consensus, not by fiat; cross-check against execution-specs</p></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 50 · <code>src_live:</code> 0 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-universal-address-broke">0x0100 across the dataset<a class="anchor" href="#f-universal-address-broke">#</a></h3><p>Eleven rows carry P256VERIFY at <code>0x0100</code>, reached through five unrelated forks: mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, and Kaia. Most diverge from mainnet in semantics, gas, or both. Presence at this address therefore indicates neither shared lineage nor a particular fork level.</p><p class="tags"><a href="../axes/cryptography.html">Cryptography</a> · <a href="../chains/ethereum.html">Ethereum</a> · <a href="../chains/bnb.html">BNB</a> · <a href="../chains/avalanche-c.html">Avax C</a> · <a href="../chains/op-stack.html">OP Stack</a> · <a href="../chains/tron.html">Tron</a> · <a href="../chains/kaia.html">Kaia</a> · <a href="../chains/sei.html">Sei</a> · <a href="../chains/hyperliquid.html">Hyperliquid</a></p></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>shanghai</code></td><td><span class="pill">active</span></td><td>2023-04-12</td><td>self</td><td><div class="wrap"></div></td></tr><tr><td><code>cancun</code></td><td><span class="pill">active</span></td><td>2024-03-13</td><td>self</td><td><div class="wrap"></div></td></tr><tr><td><code>prague</code></td><td><span class="pill">active</span></td><td>2025-05-07</td><td>self</td><td><div class="wrap"></div></td></tr><tr><td><code>osaka</code></td><td><span class="pill">active</span></td><td>2025-12-03</td><td>self</td><td><div class="wrap"></div></td></tr><tr><td><code>bpo1</code></td><td><span class="pill">active</span></td><td>2025-12-09</td><td>self</td><td><div class="wrap">blob-parameter-only fork; target 10 / max 15</div></td></tr><tr><td><code>bpo2</code></td><td><span class="pill">active</span></td><td>2026-01-07</td><td>self</td><td><div class="wrap">blob-parameter-only fork; target 14 / max 21 — current live blob schedule</div></td></tr><tr><td><code>bogota</code></td><td><span class="pill">pending</span></td><td>—</td><td>—</td><td><div class="wrap">next named fork in geth&#x27;s ordering (amsterdam -&gt; bogota -&gt; ubt per params/config.go:465-467). Not scheduled. BPO3/BPO4 blob configs exist in params but are not on the mainnet schedule.</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> params/config.go:MainnetChainConfig</p>
+<h2 id="eips">EIP deltas <span class="pill">14</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-155"><td><a href="https://eips.ethereum.org/EIPS/eip-155">EIP-155</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>replay protection / chain id</td><td><div class="wrap"><p class="src"><b>src</b> core/types/transaction_signing.go:NewEIP155Signer</p></div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>fee market</td><td><div class="wrap">commonly disabled or altered downstream (ETC removes it entirely)<p class="src"><b>src</b> consensus/misc/eip1559/eip1559.go:CalcBaseFee</p></div></td></tr><tr id="eips-2537"><td><a href="https://eips.ethereum.org/EIPS/eip-2537">EIP-2537</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12-381 precompiles</td><td><div class="wrap"><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsPrague</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>historical block hashes in state</td><td><div class="wrap"><p class="src"><b>src</b> core/state_processor.go:ProcessParentBlockHash</p></div></td></tr><tr id="eips-3607"><td><a href="https://eips.ethereum.org/EIPS/eip-3607">EIP-3607</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>reject txs from senders with code</td><td><div class="wrap"><p class="src"><b>src</b> core/state_transition.go:preCheck</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>beacon block root in EVM</td><td><div class="wrap"><p class="src"><b>src</b> core/state_processor.go:ProcessBeaconBlockRoot</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>shard blob transactions</td><td><div class="wrap">frequent absence downstream — no blob market on most non-L1s<p class="src"><b>src</b> core/types/tx_blob.go:BlobTx</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>supply validator deposits on chain</td><td><div class="wrap"><p class="src"><b>src</b> core/state_processor.go:ParseDepositLogs</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>execution-layer triggerable exits</td><td><div class="wrap"><p class="src"><b>src</b> core/state_processor.go:ProcessWithdrawalQueue</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>increase MAX_EFFECTIVE_BALANCE</td><td><div class="wrap"><p class="src"><b>src</b> core/state_processor.go:ProcessConsolidationQueue</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>set EOA account code</td><td><div class="wrap"><p class="src"><b>src</b> core/types/tx_setcode.go:SetCodeTx</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>modexp upper bounds</td><td><div class="wrap"><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>modexp gas cost increase</td><td><div class="wrap"><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsOsaka</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-inherited" title="inherited">=</span></td><td>secp256r1 (P256VERIFY) precompile</td><td><div class="wrap">shipped on L2s as RIP-7212 years before mainnet — expect downstream chains to have it at the SAME address 0x0100 but under an earlier fork name<p class="src"><b>src</b> core/vm/contracts.go:p256Verify</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">5</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>0x00 is the untyped RLP legacy envelope. Typed envelopes are 0x00-0x7f; 0x80-0xff are reserved to avoid RLP ambiguity, which is why OP Stack's deposit type sits at 0x7e — the top of the legal range, chosen to minimise collision risk with future mainnet types.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x00"><td><code>0x00</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>LegacyTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/types/transaction.go:LegacyTxType</p></div></td></tr><tr id="tx-types-0x01"><td><code>0x01</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>AccessListTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/types/transaction.go:AccessListTxType</p></div></td></tr><tr id="tx-types-0x02"><td><code>0x02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>DynamicFeeTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/types/transaction.go:DynamicFeeTxType</p></div></td></tr><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BlobTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/types/transaction.go:BlobTxType</p></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>SetCodeTx</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/types/transaction.go:SetCodeTxType</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>The baseline. secp256k1 is the ONLY scheme that can authorize a transaction, and the address is the hash of the recovered public key, so ecrecover(sig) == from is an identity rather than a check. EIP-7702 does not change this: the SetCode authorization and the transaction are both still secp256k1: delegated code may verify anything it likes, but only after a secp256k1 signature has already authorized the call.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> core/types/transaction_signing.go:Sender</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY (EIP-7951) is a tool for CONTRACTS. A P-256 key cannot sign a transaction at any fork level. The distinction this whole axis exists to make.<p class="src"><b>src</b> core/vm/contracts.go:p256Verify</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">18</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>Contiguous 0x01-0x11, then a deliberate jump to 0x0100. That gap is the convention forks exploit: nearly every chain in this dataset places its custom precompiles far away from the mainnet range to stay collision-free as mainnet grows. Chains that did NOT do this are worth flagging.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x01"><td><code>0x01</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>ECRECOVER</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:ecrecover</p></div></td></tr><tr id="precompiles-0x02"><td><code>0x02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>SHA256</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:sha256hash</p></div></td></tr><tr id="precompiles-0x03"><td><code>0x03</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>RIPEMD160</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:ripemd160hash</p></div></td></tr><tr id="precompiles-0x04"><td><code>0x04</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>IDENTITY</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:dataCopy</p></div></td></tr><tr id="precompiles-0x05"><td><code>0x05</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>MODEXP</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bigModExp</p></div></td></tr><tr id="precompiles-0x06"><td><code>0x06</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BN256_ADD</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bn256AddIstanbul</p></div></td></tr><tr id="precompiles-0x07"><td><code>0x07</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BN256_SCALAR_MUL</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bn256ScalarMulIstanbul</p></div></td></tr><tr id="precompiles-0x08"><td><code>0x08</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BN256_PAIRING</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bn256PairingIstanbul</p></div></td></tr><tr id="precompiles-0x09"><td><code>0x09</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLAKE2F</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:blake2F</p></div></td></tr><tr id="precompiles-0x0a"><td><code>0x0a</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>KZG_POINT_EVALUATION</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:kzgPointEvaluation</p></div></td></tr><tr id="precompiles-0x0b"><td><code>0x0b</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_G1ADD</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381G1Add</p></div></td></tr><tr id="precompiles-0x0c"><td><code>0x0c</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_G1MSM</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381G1MultiExp</p></div></td></tr><tr id="precompiles-0x0d"><td><code>0x0d</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_G2ADD</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381G2Add</p></div></td></tr><tr id="precompiles-0x0e"><td><code>0x0e</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_G2MSM</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381G2MultiExp</p></div></td></tr><tr id="precompiles-0x0f"><td><code>0x0f</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_PAIRING</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381Pairing</p></div></td></tr><tr id="precompiles-0x10"><td><code>0x10</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_MAP_FP_TO_G1</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381MapG1</p></div></td></tr><tr id="precompiles-0x11"><td><code>0x11</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BLS12_MAP_FP2_TO_G2</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:bls12381MapG2</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>P256VERIFY</td><td><div class="wrap"><div></div><p class="src"><b>src</b> core/vm/contracts.go:p256Verify</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">5</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x219ab540356cbb839cbe05303d7705fa"><td><code>0x219ab540356cbb839cbe05303d7705fa</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>Beacon deposit contract</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/config.go:MainnetChainConfig.DepositContractAddress</p></div></td></tr><tr id="system-contracts-0x0961ef480eb55e80d19ad83579a64c007002"><td><code>0x0961ef480eb55e80d19ad83579a64c007002</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>Withdrawal request queue</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:WithdrawalQueueAddress</p></div></td></tr><tr id="system-contracts-0xbbddc7ce488642fb579f8b00f3a590007251"><td><code>0xbbddc7ce488642fb579f8b00f3a590007251</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>Consolidation request queue</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:ConsolidationQueueAddress</p></div></td></tr><tr id="system-contracts-0xf90827f1c53a10cb7a02335b175320002935"><td><code>0xf90827f1c53a10cb7a02335b175320002935</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>Historical block hashes</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:HistoryStorageAddress</p></div></td></tr><tr id="system-contracts-0x0f3df6d732807ef1319fb7b8bb8522d0beac02"><td><code>0x0f3df6d732807ef1319fb7b8bb8522d0beac02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>Beacon roots</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:BeaconRootsAddress</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="note"><p>EIP-4788 SYSTEM_ADDRESS. Not a tx type — an implicit pre-block call. Chains that add protocol-driven state changes (OP deposits, Avalanche atomic ops) belong in this category, not in tx_types, unless they define an actual type byte.</p></div>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>baseline — the full Osaka jump table is the reference set. <code>baseline_set</code> below enumerates it so other rows can be rendered against the complete instruction set rather than only against each other's deltas: without it, a grid of opcodes has no way to distinguish "this chain has ADD, unremarkably" from "nobody recorded anything about ADD here".</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>EIP-1559 (base fee burned + priority tip)</td></tr><tr><td>Blob fee market</td><td>EIP-4844 independent 1559-style market, target 14 / max 21 (BPO2)</td></tr><tr><td>Extra components</td><td>[]</td></tr><tr><td>Gas limit</td><td>validator-adjustable, ~1/1024 per block</td></tr></tbody></table></div>
+<h2 id="header-fields">Header fields <span class="pill">0</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>baseline — Osaka header is the reference shape</p></div>
+<h2 id="gotchas">Gotchas <span class="pill">3</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>P256VERIFY at 0x0100 landed on mainnet only at Osaka (Dec 2025) but has been on OP-Stack chains as RIP-7212 since well before. A contract that feature-detects it will behave differently across chains that are otherwise &quot;Prague-equivalent&quot;.</li><li>&quot;Prague-equivalent&quot; is ambiguous downstream: EIP-7702 and EIP-2537 shipped in the same fork, and forks frequently adopt one without the other. Always record the EIP set, never just the fork name. This is the reason the eips: map exists.</li><li>BPO forks change only blob target/max. A chain claiming &quot;Osaka-equivalent&quot; may still have a completely different blob schedule, or no blob market at all.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Chain ID 1 · role: <code>baseline</code> · live fork: Osaka (+BPO1, +BPO2)</strong></p>
+<p>Reference client: <a href="https://github.com/ethereum/go-ethereum">go-ethereum <code>v1.17.5</code></a>
+@ <code>9621c6ad</code>. All facts below were read out of that pinned tree, not from docs.</p>
+<h2>Why geth and not execution-specs</h2>
+<p><code>ethereum/execution-specs</code> is the normative spec and is the more honest citation,
+but its default branch is <code>forks/amsterdam</code> — an <strong>unshipped</strong> fork — and its only
+release tags are test-fixture bundles (<code>tests-zkevm@v0.8.0</code>, etc.). There is no
+"latest mainnet spec" tag to pin. geth is used as the verification surface because
+it is pinnable to a released version whose mainnet config is unambiguous. Where the
+two could disagree, the spec wins; nothing here is close enough to that line to matter.</p>
+<h2>Live fork state (verified, not assumed)</h2>
+<p><code>params/config.go:MainnetChainConfig</code> gives activation timestamps:</p>
+<table>
+<thead>
+<tr>
+<th>Fork</th>
+<th>Activated</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shanghai</td>
+<td>2023-04-12</td>
+<td></td>
+</tr>
+<tr>
+<td>Cancun</td>
+<td>2024-03-13</td>
+<td></td>
+</tr>
+<tr>
+<td>Prague</td>
+<td>2025-05-07</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Osaka</strong></td>
+<td><strong>2025-12-03</strong></td>
+<td>current named fork</td>
+</tr>
+<tr>
+<td>BPO1</td>
+<td>2025-12-09</td>
+<td>blobs target 10 / max 15</td>
+</tr>
+<tr>
+<td>BPO2</td>
+<td>2026-01-06</td>
+<td>blobs target 14 / max 21 — <strong>current</strong></td>
+</tr>
+<tr>
+<td>Bogota</td>
+<td><code>nil</code></td>
+<td>not scheduled</td>
+</tr>
+</tbody>
+</table>
+<p>Fork ordering in geth is <code>amsterdam → bogota → ubt</code>, but <code>AmsterdamTime</code> is unset on
+mainnet and <code>BogotaTime</code> is <code>nil</code>. <code>BPO3</code>/<code>BPO4</code> blob configs exist in <code>params</code> and are
+<strong>not</strong> on the mainnet schedule — a live-config trap for anyone reading the constants
+rather than the schedule.</p>
+<h2>The five counts</h2>
+<ul>
+<li><strong>5 transaction types</strong> — <code>0x00</code>–<code>0x04</code>, ending at EIP-7702 SetCode.</li>
+<li><strong>18 precompiles</strong> — <code>0x01</code>–<code>0x11</code> contiguous, then <code>0x0100</code>.</li>
+<li><strong>5 system contracts</strong> — real bytecode, not precompiles.</li>
+<li><strong>0 custom opcodes</strong> — by definition.</li>
+<li><strong>1 metering unit</strong> — gas.</li>
+</ul>
+<h2>Findings that shape the rest of the dataset</h2>
+<p><strong>1. P256VERIFY arrived at mainnet last, not first.</strong> <code>0x0100</code> (EIP-7951) went live
+with Osaka in Dec 2025, but OP-Stack chains have shipped the identical precompile as
+RIP-7212 at the identical address for much longer. So <code>0x0100</code> present on a chain
+proves nothing about its fork level, and a contract that feature-detects secp256r1
+support gets different answers on chains that are otherwise equivalent. Any chain
+in this dataset with <code>0x0100</code> needs its <em>fork attribution</em> recorded, not just the address.</p>
+<p><strong>2. The <code>0x11 → 0x0100</code> gap is load-bearing.</strong> Mainnet's own jump from <code>0x11</code> to
+<code>0x0100</code> established the convention that custom precompiles live far from the
+mainnet range. Most forks follow it (Avalanche at <code>0x02..</code>, BSC at <code>0x64+</code>). Chains
+that placed custom precompiles <em>inside or adjacent to</em> <code>0x01–0x11</code> are on a
+collision course with future mainnet EIPs — that is a finding worth flagging loudly
+per chain, not a stylistic note.</p>
+<p><strong>3. "Prague-equivalent" is not a fact.</strong> Prague bundled EIP-7702, EIP-2537,
+EIP-2935, EIP-6110, EIP-7002 and EIP-7251. Downstream chains routinely adopt a
+subset. This is precisely why <code>chain.yaml</code> carries an <code>eips:</code> map and why fork names
+alone are recorded as <em>claims</em>, not measurements. Recording only "Prague" would
+lose the actual differences this project exists to capture.</p>
+<p><strong>4. Type byte <code>0x7e</code> is not arbitrary.</strong> Typed envelopes are legal in <code>0x00–0x7f</code>
+(<code>0x80+</code> collides with RLP list prefixes). OP Stack put deposits at <code>0x7e</code> — the top
+of the legal range — to maximise distance from future mainnet allocations that grow
+upward from <code>0x04</code>. Expect other forks to have been less careful.</p>
+<h2>Open question</h2>
+<p>geth defines <code>UBTTime</code> after Bogota (<code>params/config.go:467</code>, <code>IsUBT</code> described in
+comments as "the Verkle fork"). Whether Bogota and Amsterdam/Glamsterdam are the same
+upgrade under two names is not resolvable from this tree. Irrelevant to mainnet-today
+facts; flagged so it isn't silently guessed at later.</p>
+<h2>Re-verify</h2>
+<pre><code>git clone --depth 1 --branch v1.17.5 https://github.com/ethereum/go-ethereum
+grep -n 'TxType' core/types/transaction.go              # tx types
+sed -n '/PrecompiledContractsOsaka = /,/^}/p' core/vm/contracts.go   # precompiles
+sed -n '/MainnetChainConfig = /,/^  }/p' params/config.go            # forks
+grep -n 'Address = common.HexToAddress' params/protocol_params.go   # system contracts
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh ethereum    # fetch the pinned evidence
+tools/verify.py ethereum   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/ethereum/chain.yaml</code> · <code>chains/ethereum/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="../assets/site.js"></script>
+</body></html>

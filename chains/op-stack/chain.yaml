@@ -240,6 +240,7 @@ precompiles:
     note: "input capped at 156672 bytes / 408 pairs; mainnet uncapped"
     src: params/protocol_params.go:197
   "0x0100":
+    divergence: gas
     name: P256VERIFY
     status: modified
     note: "3450 gas vs mainnet's 6900; present since Fjord, long before mainnet Osaka"

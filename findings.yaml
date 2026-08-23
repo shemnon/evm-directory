@@ -1,0 +1,253 @@
+# Notes — the interpretive layer over chains/*/chain.yaml.
+#
+# This file is CONTENT, not derived data: it is the one place in the pipeline where a
+# human states what a set of rows adds up to. `tools/site.py` renders each note on its
+# axis page and on the page of every chain it names, and indexes them all on the home
+# page, so a note is written once and reachable from everywhere it applies.
+#
+# Keep these descriptive. State what the data shows, cite the rows, and stop; the
+# reader is looking something up, not being persuaded.
+#
+#   id      stable anchor — do not rename once published, it is a URL
+#   axis    which axis page carries it: precompiles | tx-types | cryptography |
+#           eips | opcodes | system-contracts | fees-envelope | lineage | method
+#   chains  slugs this note is about; they carry it on their chain page
+#   rank    listing order on the home-page index
+
+- id: address-collisions
+  title: Address collisions at 0x64–0x69 and 0x…1000
+  axis: precompiles
+  rank: 1
+  chains: [arbitrum, bnb, opbnb, polygon]
+  body: >-
+    Arbitrum's ArbSys, ArbInfo, ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest
+    occupy `0x64`–`0x69`, the same six addresses BSC uses for its cross-chain and
+    consensus precompiles. The two sets share no code and serve unrelated functions.
+    opBNB occupies `0x66` and `0x67` as well, making those two three-way. Polygon and
+    BSC both place a contract named `ValidatorContract` at `0x…1000`, with different
+    code and different ABIs. A single global address-keyed map is therefore incorrect
+    for at least one major chain whichever way it is populated.
+
+- id: type-byte-frontiers
+  title: Type-byte allocation from both ends of the range
+  axis: tx-types
+  rank: 2
+  chains: [arbitrum, base, op-stack, polygon, celo, kaia, zksync-era]
+  body: >-
+    EIP-2718 permits `0x00`–`0x7f`. Mainnet allocates upward from `0x00`; other chains
+    allocate downward from the ceiling — zkSync `0x71`, Arbitrum and Kaia both `0x78`,
+    Base `0x79`, Celo `0x7b` and `0x7c`, the OP family `0x7d` and `0x7e`, Polygon
+    `0x7f`. There is no registry between the two frontiers. Current occupancy is
+    computed from the data on the
+    [transaction types axis](axes/tx-types.html#frontier). Kaia's type numbers do not
+    fit in a byte at all: they are `uint16` (`0x7801`–`0x7804`), and Ethereum
+    transactions are re-wrapped as `0x78 || ethType || rlp`, so the RPC representation
+    is standard while the consensus encoding is not.
+
+- id: non-enumerable-precompiles
+  title: Base resolves precompiles by predicate rather than from a map
+  axis: precompiles
+  rank: 3
+  chains: [base]
+  body: >-
+    From the Beryl upgrade, Base installs a `PrecompileLookup` that tests an address
+    against a pattern instead of looking it up in a fixed table. Every `0xb2`-prefixed
+    address matching the B-20 predicate is a precompile — roughly 2^72 addresses per
+    variant. No address-keyed table can represent this, so the schema records the
+    predicate and the site renders it separately from the grid. Tools that build a
+    fixed precompile set treat these as ordinary accounts, with no error raised.
+
+- id: enumeration-not-enough
+  title: OP Stack has zero custom precompile addresses and six divergent precompiles
+  axis: precompiles
+  rank: 4
+  chains: [op-stack]
+  body: >-
+    The divergences are input caps on BN256 and BLS12-381 — a fault-proof constraint
+    expressed in consensus rules — and P256VERIFY at half mainnet's gas. A comparison
+    that diffs address lists finds no difference here.
+
+- id: four-flavours
+  title: Four forms of same-address divergence
+  axis: precompiles
+  rank: 5
+  chains: [op-stack, avalanche-c, polygon, tron]
+  body: >-
+    A precompile at a mainnet address can diverge without the address set changing.
+    OP Stack **caps input size**, so an oversized call reverts. Avalanche **omits** the
+    feature. Polygon **reprices**: identical result, up to 22× the gas. Tron
+    **replaces**: `0x03` returns a value that is not RIPEMD160. Each requires a
+    different test to detect.
+
+- id: proof-constraints-leak
+  title: Proof-system limits expressed as consensus rules
+  axis: precompiles
+  rank: 6
+  chains: [op-stack, linea, zksync-era]
+  body: >-
+    Three chains constrain precompiles for proving reasons, by three different
+    mechanisms. OP Stack caps precompile *input size*, and an oversized call reverts.
+    Linea budgets prover *work per block* — `RIPEMD_BLOCKS=0`, `BLAKE_ROUNDS=0` — so
+    those precompiles execute under `eth_call` but no transaction reaching them can be
+    included in a block. zkSync caps modexp *operand width* at 32 bytes, 32× tighter
+    than EIP-7823, which rules out 2048-bit RSA; the source attributes this to circuit
+    limitations directly. Detecting one of the three does not detect the others.
+
+- id: universal-address-broke
+  title: 0x0100 across the dataset
+  axis: cryptography
+  rank: 7
+  chains: [ethereum, bnb, avalanche-c, op-stack, tron, kaia, sei, hyperliquid]
+  body: >-
+    Eleven rows carry P256VERIFY at `0x0100`, reached through five unrelated forks:
+    mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, and Kaia. Most
+    diverge from mainnet in semantics, gas, or both. Presence at this address therefore
+    indicates neither shared lineage nor a particular fork level.
+
+- id: p256-silent-invalid
+  title: P-256 verification returns empty output on Hyperliquid and Sei
+  axis: cryptography
+  rank: 8
+  chains: [hyperliquid, sei]
+  body: >-
+    On Hyperliquid, `0x0100` is an empty account. On Sei, `0x0100` is also empty even
+    though the chain does implement P256VERIFY — at `0x1011`, ABI-dispatched as
+    `verify(bytes)`, where a raw 160-byte call reverts. EIP-7951 signals an invalid
+    signature by returning empty output, which is byte-identical to what a call to an
+    absent precompile returns. Every P256 verification against `0x0100` on either chain
+    therefore reports "invalid" with no revert and no error. Distinguishing the two
+    cases requires a **valid** signature plus a mainnet control on identical calldata;
+    calling the address and checking for output cannot separate them.
+
+- id: verify-is-not-sign
+  title: Precompile verification and transaction authorization are independent
+  axis: cryptography
+  rank: 9
+  chains: [base, sei, kaia, zksync-era]
+  body: >-
+    Whether a precompile can verify a signature scheme and whether that scheme can
+    authorize a transaction are separate properties. Eleven rows carry P256VERIFY; on
+    almost all of them a P-256 key cannot authorize a transfer. The precompile is
+    callable by contracts, not an authentication method for senders. `tx_authorization`
+    records the two separately.
+
+- id: unpaired-schemes
+  title: Schemes that authorize transactions with no precompile able to verify them
+  axis: cryptography
+  rank: 10
+  chains: [sei, kaia]
+  body: >-
+    Three schemes have `authorizes: protocol` with `precompile: none`: the chain
+    accepts transaction signatures that its own contracts cannot check, so an on-chain
+    multisig, verifier or recovery contract cannot validate what the protocol accepted.
+    Sei's **sr25519** (Schnorrkel over Ristretto255, a curve family that chain's EVM
+    cannot compute) and its Cosmos **multisig**; and Kaia's **role-based keys**, which
+    are unpaired for two of their three roles — `validateSender` hardcodes
+    `RoleTransaction`, so a query about a fee-payer authorization returns an incorrect
+    answer without reverting. The reverse pairing also occurs: Base's EIP-8130
+    enshrines a closed set of authenticators in the client, so a P-256 or WebAuthn key
+    can authorize a transaction there.
+
+- id: no-post-quantum
+  title: No post-quantum scheme in the dataset
+  axis: cryptography
+  rank: 11
+  chains: []
+  body: >-
+    Across all nineteen rows the signature schemes are secp256k1, secp256r1 (P-256),
+    BLS12-381, BN254, ed25519, sr25519 and SM2 — all discrete-log-based. No row carries
+    ML-DSA, SLH-DSA, Falcon or any other lattice- or hash-based scheme, as a
+    transaction signer, as a precompile, or as `status: pending`. Recorded explicitly
+    because an empty column is otherwise indistinguishable from an unfinished survey.
+
+- id: op-stack-constrains-little
+  title: Variation among OP Stack descendants
+  axis: lineage
+  rank: 12
+  chains: [optimism, base, opbnb, celo, worldchain]
+  body: >-
+    OP Mainnet's delta file is empty. Base, on the same stack and client version,
+    reimplements the EVM layer in Rust and adds five fixed precompiles, a dynamic
+    precompile range, native account abstraction (EIP-8130) with its own type byte
+    `0x79`, and four chain-specific forks. opBNB carries BSC's precompiles and is
+    pinned three fork generations back. Celo adds type `0x7b` (CIP-64, gas paid in an
+    ERC-20), which accounts for 61% of transactions in the blocks sampled. Resolving
+    `ethereum → op-stack → X` does not determine X's type-byte set.
+
+- id: fork-names-lie
+  title: Fork names and EIP sets diverge in both directions
+  axis: eips
+  rank: 13
+  chains: [bnb, avalanche-c, op-stack]
+  body: >-
+    BSC activated Prague seven weeks before mainnet and Osaka five months after.
+    Avalanche has P256VERIFY (an Osaka feature) without BLS12-381 (a Prague feature).
+    OP Stack's precompile switch tests `IsOptimismJovian` before `IsOsaka`, so
+    activating Osaka does not restore mainnet semantics. Fork names are recorded as
+    claims; the `eips:` map is the measurement.
+
+- id: four-activation-mechanisms
+  title: Four fork-activation mechanisms
+  axis: eips
+  rank: 14
+  chains: [op-stack, avalanche-c, arbitrum, polygon]
+  body: >-
+    OP Stack enforces timestamp equality at startup. Avalanche assigns timestamps.
+    Arbitrum gates on ArbOS version and ignores timestamps. Polygon uses block numbers.
+    Reading a fork timestamp is not a general method across this dataset.
+
+- id: no-type-byte
+  title: Transactions outside the EIP-2718 envelope
+  axis: tx-types
+  rank: 15
+  chains: [avalanche-c, tron, sei]
+  body: >-
+    Avalanche's atomic import and export transactions (UTXO, Avalanche codec) and all
+    43 of Tron's protobuf contract types carry no EIP-2718 type byte. Two chains with
+    no shared ancestry required the same `non_evm_transactions` schema section. An
+    indexer enumerating transactions through the EVM envelope does not see Avalanche's
+    cross-chain value movement.
+
+- id: placement-vs-fidelity
+  title: Opcode placement and semantic fidelity vary independently
+  axis: opcodes
+  rank: 16
+  chains: [tron, bnb]
+  body: >-
+    Tron, the most divergent chain here, placed its 16 custom opcodes at `0xd0`–`0xdf`,
+    a range mainnet has never allocated. The same chain placed `batchValidateSign` on
+    BLAKE2F's `0x09` and made `0x03` return a value that is not RIPEMD160. BSC, the
+    most mainnet-faithful EVM here, placed its custom precompiles at `0x64`–`0x69`,
+    leaving `0x12`–`0x63` as headroom before mainnet reaches them.
+
+- id: tombstoned-addresses
+  title: Tombstoned precompile addresses
+  axis: precompiles
+  rank: 17
+  chains: [avalanche-c, bnb]
+  body: >-
+    Avalanche's native-asset trio and BSC's `0x64` and `0x65` (at Pasteur) are kept
+    alive as always-reverting stubs rather than removed. The addresses are permanently
+    consumed. Two chains adopted this pattern independently. A tombstoned address fails
+    differently from an absent one, which returns success with empty output.
+
+- id: fields-outlive-features
+  title: Header fields reused after the feature behind them
+  axis: fees-envelope
+  rank: 18
+  chains: [op-stack, avalanche-c]
+  body: >-
+    OP Stack repurposed `blobGasUsed` to carry the DA footprint. Avalanche pins the
+    same field to zero and rejects any other value. One field name, one JSON key, three
+    meanings across the dataset.
+
+- id: schema-meets-new-axes
+  title: Axes the schema does not model
+  axis: method
+  rank: 19
+  chains: [arbitrum, base, opbnb]
+  body: >-
+    Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is
+    accurate and omits a second virtual machine. Base's precompiles are not enumerable.
+    opBNB has two parents. Each is recorded explicitly rather than reduced to a zero
+    the schema can hold.

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avalanche subnet-evm (L1s / Subnets) · EVM-intel</title>
+<meta name="description" content="Sibling of coreth, not a descendant. Both consume ava-labs/libevm and share the RulesExtra hook architecture, the Durango/Etna fork mapping and the 0x0200.. address range — but their precompile sets differ, so they are separate rows.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label></div></details>
+</header>
+<main>
+<h1>Avalanche subnet-evm (L1s / Subnets)</h1>
+<p class="lede">Sibling of coreth, not a descendant. Both consume ava-labs/libevm and share the RulesExtra hook architecture, the Durango/Etna fork mapping and the 0x0200.. address range — but their precompile sets differ, so they are separate rows.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><span class="s-inherited">—  not a chain</span></td></tr><tr><td>Role</td><td><span class="pill">template</span></td></tr><tr><td>Baseline fork</td><td><code>cancun</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>go-ethereum (via libevm)</td></tr><tr><td>Consensus</td><td>Snowman++ (per-L1 validator set) · block time configurable</td></tr><tr><td>Note</td><td><p>Not a single chain — a CHAIN TEMPLATE. Every Avalanche L1/Subnet instantiates it with its own chain ID and its own genesis config. Crucially, its custom precompiles are OPT-IN per deployment, so no two subnet-evm chains necessarily share an EVM. Facts here describe what a subnet-evm chain MAY enable, not what any given one does.</p></td></tr><tr><td>Lineage note</td><td><p>Sibling of coreth, not a descendant. Both consume ava-labs/libevm and share the RulesExtra hook architecture, the Durango/Etna fork mapping and the 0x0200.. address range — but their precompile sets differ, so they are separate rows.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/ava-labs/subnet-evm">subnet-evm</a> <code>v0.8.0</code></td></tr><tr><td>Pinned commit</td><td><code>44b20d219471a0e08bd163b7466e3d8620ff45f2</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Fact provenance</td><td><code>src:</code> 25 · <code>src_live:</code> 0 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>Same mapping as the C-Chain: ShanghaiTime = durango, CancunTime = etna, and NO PragueTime or OsakaTime. Cancun-equivalent.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>subnet_evm</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap">template genesis fork</div></td></tr><tr><td><code>durango</code></td><td><span class="pill">active</span></td><td>—</td><td>shanghai</td><td><div class="wrap"></div></td></tr><tr><td><code>etna</code></td><td><span class="pill">active</span></td><td>—</td><td>cancun</td><td><div class="wrap"></div></td></tr><tr><td><code>fortuna</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>granite</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap">added P256VERIFY at 0x0100</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> params/extras/network_upgrades.go, params/config_extra.go:75-82</p>
+<h2 id="eips">EIP deltas <span class="pill">4</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-2537"><td><a href="https://eips.ethereum.org/EIPS/eip-2537">EIP-2537</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no Prague — BLS12-381 0x0b-0x11 unavailable<p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no blob market on subnets<p class="src"><b>src</b> plugin/evm/wrapped_block.go:errBlobsNotEnabled</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no Prague — tx type 0x04 does not exist<p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">P256VERIFY at 0x0100 via Granite, not Osaka — same out-of-order adoption as the C-Chain<p class="src"><b>src</b> params/hooks_libevm.go:35,68-70</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">1</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>0x00-0x03 from libevm; no subnet-specific envelope types</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-removed" title="removed">➖</span></td><td>SetCodeTx</td><td><div class="wrap"><div>EIP-7702 not adopted</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>A TEMPLATE ROW, and this is the axis where it is LESS variable than expected. Nothing in subnet-evm's per-deployment configuration changes what can sign a transaction: no genesis key selects a signature scheme, no optional precompile adds one, and every deployment recovers senders through libevm's types.Sender exactly as mainnet does. Compare Tron, where a node-config key really does swap the curve. What IS per-deployment is WHO may transact, not WHAT may sign. If a deployment enables TxAllowList (genesis key "txAllowListConfig"), state_transition rejects a transaction whose already-recovered msg.From is not allowlisted, with ErrSenderAddressNotAllowListed. That narrows the set of accepted senders; it does not add or remove a signature scheme, and the transaction is still authorized by a secp256k1 signature over the standard digest. It is recorded on the secp256k1 entry rather than as a scheme of its own, because an allowlist is an authorization RESTRICTION, not an authorization METHOD. Unlike its sibling the C-Chain, subnet-evm has NO atomic import/export transactions and therefore no UTXO credential path — there is no plugin/evm/atomic tree here. Warp's BLS12-381 is present but is consensus signing; see that entry.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap">The 0x01-0x11 implementations come from ava-labs/libevm, outside this clone, so the citation is subnet-evm&#x27;s call site. A deployment with TxAllowList enabled additionally requires the recovered sender to be allowlisted — a filter applied AFTER recovery, in the same place a nonce or balance check happens.<p class="src"><b>src</b> core/state_transition.go:TransactionToMessage, core/state_transition.go:ErrSenderAddressNotAllowListed</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY, present from Granite for every deployment (it is a fork feature, not one of the opt-in 0x0200.. precompiles). A tool for contracts; a P-256 key cannot authorize a transaction on any subnet-evm chain.<p class="src"><b>src</b> params/hooks_libevm.go:P256VerifyAddress</p></div></td></tr><tr><td><code>bls12_381</code></td><td><span class="pill">never</span></td><td><code>0x0200000000000000000000000000000000000005</code></td><td><div class="wrap">WARP IS CONSENSUS SIGNING. The aggregated BLS signature attests that a source-L1&#x27;s validator set signed a MESSAGE; it never authorizes a transaction on the receiving chain, and a Warp message has no sender account, nonce or fee. As on the C-Chain the verification happens in Config.VerifyPredicate, a block predicate evaluated outside EVM execution, and the precompile only reads the result — so this is not a general-purpose BLS verifier a contract can point at arbitrary signatures.<p class="src"><b>src</b> precompile/contracts/warp/config.go:VerifyPredicate, precompile/contracts/warp/module.go</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">15</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>Contiguous 0x0200..00-05. The C-Chain's tombstoned 0x0100..00-02 native-asset precompiles do NOT exist here — subnet-evm never carried that legacy, so it has a cleaner map than its sibling despite being the more configurable of the two.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x05"><td><code>0x05</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>MODEXP</td><td><div class="wrap"><div>Cancun-level (eip2565 only) — no EIP-7823 bounds, no EIP-7883 repricing, because Osaka was never adopted</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0b"><td><code>0x0b</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1ADD</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0c"><td><code>0x0c</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1MSM</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0d"><td><code>0x0d</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G2ADD</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0e"><td><code>0x0e</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G2MSM</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0f"><td><code>0x0f</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_PAIRING</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x10"><td><code>0x10</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_MAP_FP_TO_G1</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x11"><td><code>0x11</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_MAP_FP2_TO_G2</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>P256VERIFY</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/hooks_libevm.go:68-70</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000000"><td><code>0x0200000000000000000000000000000000000000</code></td><td><span class="s-added" title="added">➕◐</span></td><td>ContractDeployerAllowList</td><td><div class="wrap"><div>Gates CREATE/CREATE2 on an on-chain allowlist keyed by tx.ORIGIN (not msg.sender). Unauthorised deploys fail with gas set to 0.</div><p class="src"><b>src</b> precompile/contracts/deployerallowlist/module.go:22</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000001"><td><code>0x0200000000000000000000000000000000000001</code></td><td><span class="s-added" title="added">➕◐</span></td><td>ContractNativeMinter</td><td><div class="wrap"><div>Allowlisted callers mint native coin directly via stateDB.AddBalance (contract.go:125). Native token supply is mutable by permissioned accounts — no mainnet analogue at all.</div><p class="src"><b>src</b> precompile/contracts/nativeminter/module.go:24</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000002"><td><code>0x0200000000000000000000000000000000000002</code></td><td><span class="s-added" title="added">➕◐</span></td><td>TxAllowList</td><td><div class="wrap"><div>gates transaction submission on msg.From, enforced in core/state_transition.go:361</div><p class="src"><b>src</b> precompile/contracts/txallowlist/module.go:22</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000003"><td><code>0x0200000000000000000000000000000000000003</code></td><td><span class="s-added" title="added">➕◐</span></td><td>FeeManager</td><td><div class="wrap"><div>allowlisted callers rewrite the chain&#x27;s fee config at runtime</div><p class="src"><b>src</b> precompile/contracts/feemanager/module.go:22</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000004"><td><code>0x0200000000000000000000000000000000000004</code></td><td><span class="s-added" title="added">➕◐</span></td><td>RewardManager</td><td><div class="wrap"><div>redirects or burns block fee rewards</div><p class="src"><b>src</b> precompile/contracts/rewardmanager/module.go:22</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000005"><td><code>0x0200000000000000000000000000000000000005</code></td><td><span class="s-added" title="added">➕◐</span></td><td>Warp Messenger</td><td><div class="wrap"><div>same address as the C-Chain&#x27;s warp precompile</div><p class="src"><b>src</b> precompile/contracts/warp/module.go:23</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">0</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>none — no Ethereum system contracts (no Prague, no beacon chain)</p></div>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>No opcode changes, but see gotchas: allowlist hooks alter when CREATE and transaction execution SUCCEED, which is a state-transition change reached through hooks rather than the jump table.</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>ACP-176 style dynamic fee, plus optional runtime reconfiguration</td></tr><tr><td>Note</td><td><p>With FeeManager enabled the fee schedule itself is mutable by allowlisted accounts mid-chain — the fee model is not a fixed property of the chain.</p></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">1</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>Avalanche Warp Messaging</code></td><td>cross-L1 messaging</td><td><span class="pill">optional</span></td><td><div class="wrap"><p class="src"><b>src</b> precompile/contracts/warp/module.go:23</p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">5</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>subnet-evm is a TEMPLATE, not a chain. Its precompiles are opt-in per deployment via genesis config keys, so two subnet-evm chains can present entirely different EVMs. &quot;Runs subnet-evm&quot; tells you almost nothing about a chain&#x27;s actual surface — the genesis config is the real specification.</li><li>The EVM can be PERMISSIONED. ContractDeployerAllowList gates CREATE on tx.origin; TxAllowList gates transaction execution on the sender. Neither has a mainnet analogue, and both change whether an operation succeeds rather than what it costs.</li><li>Deployer permission keys on tx.ORIGIN, not msg.sender — a factory contract&#x27;s ability to deploy depends on who initiated the transaction, not who called it.</li><li>ContractNativeMinter lets allowlisted accounts mint native coin arbitrarily. Along with OP Stack&#x27;s depositTx Mint field, this is one of two mechanisms in the dataset that increase native supply outside block rewards.</li><li>Like the C-Chain: no Prague, no EIP-7702, no BLS12-381 — but P256VERIFY at 0x0100 via Granite.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>No fixed chain ID · role: <code>fork</code> · sibling of coreth · baseline: Cancun</strong></p>
+<p>Reference: <a href="https://github.com/ava-labs/subnet-evm">ava-labs/subnet-evm <code>v0.8.0</code></a> @ <code>44b20d21</code>.</p>
+<h2>The central caveat</h2>
+<p>subnet-evm is instantiated per Avalanche L1/Subnet, and <strong>its custom precompiles are
+opt-in through genesis config keys</strong>. Two chains running subnet-evm can present
+entirely different EVMs. "Runs subnet-evm" therefore tells you very little — the
+genesis config is the actual specification.</p>
+<p>This is a category the matrix has to represent honestly: every precompile below is
+<code>status: added, activation: opt-in</code>, never simply "present."</p>
+<h2>The EVM can be permissioned</h2>
+<p>This is subnet-evm's sharpest divergence from every other chain in the dataset, and
+it isn't a precompile or an opcode — it's a pair of hooks that change whether
+operations <strong>succeed</strong>:</p>
+<ul>
+<li><strong><code>CanCreateContract</code></strong> (<code>params/hooks_libevm.go:44-56</code>) — with
+  <code>ContractDeployerAllowList</code> enabled, <code>CREATE</code>/<code>CREATE2</code> fail for unauthorised
+  callers, gas zeroed. Permission is keyed on <strong><code>tx.origin</code></strong>, not <code>msg.sender</code>, so
+  a factory contract's ability to deploy depends on who <em>initiated</em> the transaction.</li>
+<li><strong><code>TxAllowList</code></strong> (<code>core/state_transition.go:361</code>) — gates transaction execution
+  on the sender.</li>
+</ul>
+<p>Mainnet has no concept of either. Both live outside the jump table and outside the
+precompile map, which is why an audit that diffs only opcodes and precompile
+addresses would miss them entirely — the same lesson OP Stack taught from a
+different direction.</p>
+<h2>Six stateful precompiles, contiguous at <code>0x0200…</code></h2>
+<table>
+<thead>
+<tr>
+<th>Address</th>
+<th>Name</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x0200…0000</code></td>
+<td>ContractDeployerAllowList</td>
+<td>gates <code>CREATE</code> on <code>tx.origin</code></td>
+</tr>
+<tr>
+<td><code>0x0200…0001</code></td>
+<td>ContractNativeMinter</td>
+<td><strong>mints native coin</strong> via <code>stateDB.AddBalance</code></td>
+</tr>
+<tr>
+<td><code>0x0200…0002</code></td>
+<td>TxAllowList</td>
+<td>gates tx execution on sender</td>
+</tr>
+<tr>
+<td><code>0x0200…0003</code></td>
+<td>FeeManager</td>
+<td>rewrites the fee config at runtime</td>
+</tr>
+<tr>
+<td><code>0x0200…0004</code></td>
+<td>RewardManager</td>
+<td>redirects or burns fee rewards</td>
+</tr>
+<tr>
+<td><code>0x0200…0005</code></td>
+<td>Warp Messenger</td>
+<td>cross-L1 messaging (same address as C-Chain)</td>
+</tr>
+</tbody>
+</table>
+<p><code>ContractNativeMinter</code> (<code>contract.go:125</code>) lets allowlisted accounts mint native coin
+arbitrarily. Together with OP Stack's <code>DepositTx.Mint</code>, that's two of the six rows in
+this dataset where native supply moves outside block rewards — worth a dedicated
+column in the matrix.</p>
+<p><code>FeeManager</code> means the <strong>fee model is not a fixed property of the chain</strong>: allowlisted
+accounts rewrite the fee schedule mid-flight. <code>chain.yaml</code>'s <code>fee_model</code> section
+describes a default, not an invariant.</p>
+<h2>Cleaner than its sibling</h2>
+<p>subnet-evm has <strong>no</strong> <code>0x0100…0000-02</code> native-asset precompiles. It never carried
+that legacy, so it avoids the three tombstoned always-reverting addresses the C-Chain
+is stuck with — the more configurable of the two siblings has the tidier address map.</p>
+<p>Otherwise the two match: same libevm base, same <code>RulesExtra</code> hook architecture, same
+<code>ShanghaiTime = durango</code> / <code>CancunTime = etna</code> mapping, same absent Prague and Osaka,
+and the same P256VERIFY at <code>0x0100</code> delivered by <strong>Granite</strong> rather than Osaka.</p>
+<p>So: no EIP-7702, no tx type <code>0x04</code>, no BLS12-381 at <code>0x0b</code>–<code>0x11</code>.</p>
+<h2>Why this is a separate row from the C-Chain</h2>
+<p>They are siblings, not parent and child. Shared base, shared fork mapping, shared
+<code>0x0200…</code> range — but disjoint precompile sets in both directions (C-Chain has the
+tombstoned legacy trio; subnet-evm has the six stateful modules). Merging them would
+force every precompile row to carry a second "which one?" axis, exactly the overload
+the delta vocabulary is meant to avoid.</p>
+<h2>Configurable everywhere except in the signing path</h2>
+<p>A <code>template</code> row invites the question "which of these is per-deployment?" — and on
+<code>tx_authorization</code> the answer is <strong>none of it</strong>. No genesis key selects a signature
+scheme, no opt-in precompile adds one, and every subnet-evm chain recovers senders
+through libevm's <code>types.Sender</code> exactly as mainnet does. Compare Tron, where a node-config
+key really does swap the curve out from under <code>ecrecover</code>.</p>
+<p>What <em>is</em> per-deployment is <strong>who</strong> may transact, not <strong>what</strong> may sign. With
+<code>txAllowListConfig</code> in genesis, <code>state_transition</code> rejects a transaction whose
+already-recovered <code>msg.From</code> is not allowlisted (<code>ErrSenderAddressNotAllowListed</code>). That
+is an authorization <em>restriction</em> applied after recovery, in the same place a nonce or
+balance check happens — not an authorization <em>method</em>.</p>
+<p>Two absences worth stating explicitly, because the sibling row has both:</p>
+<ul>
+<li><strong>No atomic transactions.</strong> There is no <code>plugin/evm/atomic</code> tree here, so none of the
+  C-Chain's UTXO-credential multi-signer model exists.</li>
+<li><strong>Warp's BLS12-381 is consensus signing</strong>, opt-in per deployment (<code>warpConfig</code>), and
+  verified in a block predicate outside EVM execution. It authorizes a <em>message</em>.</li>
+</ul>
+<h2>Re-verify</h2>
+<pre><code>git clone --depth 1 --branch v0.8.0 https://github.com/ava-labs/subnet-evm
+grep -rn &quot;ContractAddress = common.HexToAddress&quot; precompile/contracts/*/module.go
+sed -n '44,62p' params/hooks_libevm.go               # CanCreateContract allowlist
+sed -n '358,366p' core/state_transition.go           # TxAllowList
+sed -n '120,128p' precompile/contracts/nativeminter/contract.go   # native mint
+sed -n '73,84p' params/config_extra.go               # Shanghai=Durango, Cancun=Etna
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh avalanche-subnet    # fetch the pinned evidence
+tools/verify.py avalanche-subnet   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/avalanche-subnet/chain.yaml</code> · <code>chains/avalanche-subnet/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="../assets/site.js"></script>
+</body></html>

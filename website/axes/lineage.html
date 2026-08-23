@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lineage · EVM-intel</title>
+<meta name="description" content="Code ancestry and fork ancestry, tracked separately.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html" class="on">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label></div></details>
+</header>
+<main class="wide">
+<h1>Lineage</h1>
+<p class="lede">Code ancestry and fork ancestry, tracked separately.</p>
+<h2 id="code">Code lineage<a class="anchor" href="#code">#</a></h2>
+<p class="lede">Which codebase each client is a fork of. Says nothing about which consensus rules the chain follows.</p>
+<pre><code>ethereum — go-ethereum (the reference implementation)
+
+go-ethereum
+  └── <a href="../chains/bnb.html">BNB Smart Chain</a> (bsc, go)
+  └── <a href="../chains/polygon.html">Polygon PoS</a> (bor, go)
+  └── <a href="../chains/avalanche-c.html">Avalanche C-Chain</a> (coreth, go)
+  └── <a href="../chains/avalanche-subnet.html">Avalanche subnet-evm (L1s / Subnets)</a> (subnet-evm, go)
+  └── <a href="../chains/kaia.html">Kaia</a> (kaia, go)
+  └── <a href="../chains/sei.html">Sei</a> (sei-chain, go)
+  └── <a href="../chains/arbitrum.html">Arbitrum One</a> (nitro, go + rust)
+  └── <a href="../chains/op-stack.html">OP Stack</a> (op-geth, go)
+      └── <a href="../chains/optimism.html">OP Mainnet</a> (op-geth)
+      └── <a href="../chains/opbnb.html">opBNB</a> (op-geth (BNB Chain fork))
+      └── <a href="../chains/celo.html">Celo</a> (op-geth (Celo fork))
+
+hyperledger-besu
+  └── <a href="../chains/linea.html">Linea</a> (lineth-monorepo (Linea Besu package + plugins + tracer), kotlin/java)
+
+reth
+  └── <a href="../chains/base.html">Base</a> (base (base-reth-node), rust)
+  └── <a href="../chains/worldchain.html">World Chain</a> (world-chain (builder), rust)
+
+no shared client lineage
+  └── <a href="../chains/tron.html">Tron</a> (java-tron, java)
+  └── <a href="../chains/monad.html">Monad</a> (monad (execution), c++)
+  └── <a href="../chains/zksync-era.html">zkSync Era</a> (zksync-era, rust)
+
+<a href="../chains/hyperliquid.html">Hyperliquid (HyperEVM)</a> — no public client</code></pre>
+<h2 id="forks">Fork lineage<a class="anchor" href="#forks">#</a></h2>
+<p class="lede">Each chain placed under the most recent mainnet fork it has merged, most recent first. Says nothing about whose code it runs.</p>
+<pre><code>osaka
+  └── <a href="../chains/bnb.html">BNB Smart Chain</a> (2026-08-25)
+  └── <a href="../chains/optimism.html">OP Mainnet</a> (2026-07-08)
+  └── <a href="../chains/worldchain.html">World Chain</a> (2026-05-01)
+  └── <a href="../chains/monad.html">Monad</a> (2026-03-19)
+  └── <a href="../chains/ethereum.html">Ethereum Mainnet</a> (2026-01-07)
+  └── <a href="../chains/linea.html">Linea</a> (2025-12-03)
+  └── <a href="../chains/kaia.html">Kaia</a> (not timestamp-gated)
+  └── <a href="../chains/arbitrum.html">Arbitrum One</a> (not timestamp-gated)
+  └── <a href="../chains/op-stack.html">OP Stack</a> (not timestamp-gated)
+  └── <a href="../chains/base.html">Base</a> (not timestamp-gated)
+  └── <a href="../chains/zksync-era.html">zkSync Era</a> (not timestamp-gated)
+
+prague
+  └── <a href="../chains/celo.html">Celo</a> (2026-03-31)
+  └── <a href="../chains/polygon.html">Polygon PoS</a> (not timestamp-gated)
+  └── <a href="../chains/sei.html">Sei</a> (not timestamp-gated)
+
+cancun
+  └── <a href="../chains/opbnb.html">opBNB</a> (2024-06-20)
+  └── <a href="../chains/avalanche-c.html">Avalanche C-Chain</a> (not timestamp-gated)
+  └── <a href="../chains/avalanche-subnet.html">Avalanche subnet-evm (L1s / Subnets)</a> (not timestamp-gated)
+  └── <a href="../chains/tron.html">Tron</a> (not timestamp-gated)
+  └── <a href="../chains/hyperliquid.html">Hyperliquid (HyperEVM)</a> (not timestamp-gated)</code></pre>
+<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2><div class="finding"><h3 id="f-op-stack-constrains-little">Variation among OP Stack descendants<a class="anchor" href="#f-op-stack-constrains-little">#</a></h3><p>OP Mainnet's delta file is empty. Base, on the same stack and client version, reimplements the EVM layer in Rust and adds five fixed precompiles, a dynamic precompile range, native account abstraction (EIP-8130) with its own type byte <code>0x79</code>, and four chain-specific forks. opBNB carries BSC's precompiles and is pinned three fork generations back. Celo adds type <code>0x7b</code> (CIP-64, gas paid in an ERC-20), which accounts for 61% of transactions in the blocks sampled. Resolving <code>ethereum → op-stack → X</code> does not determine X's type-byte set.</p><p class="tags"><a href="../chains/optimism.html">OP Mainnet</a> · <a href="../chains/base.html">Base</a> · <a href="../chains/opbnb.html">opBNB</a> · <a href="../chains/celo.html">Celo</a> · <a href="../chains/worldchain.html">World</a></p></div>
+<h2 id="not-a-tree">Where lineage is not a tree<a class="anchor" href="#not-a-tree">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Chain</th><th>Second heritage</th><th>Sync point</th></tr></thead><tbody><tr><td><a href="../chains/bnb.html">BNB Smart Chain</a></td><td>—</td><td><div class="wrap">Full-repo geth fork, closely rebased. Tracks mainnet through OSAKA and has the Amsterdam/BPO scaffolding present. The most mainnet-faithful chain in this dataset at the EVM layer.</div></td></tr><tr><td><a href="../chains/polygon.html">Polygon PoS</a></td><td>—</td><td><div class="wrap">Full geth fork. Tracks mainnet through PRAGUE (PragueBlock 73440256); no OsakaBlock is set for mainnet, yet the Chicago precompile set pulls in several Osaka-era precompile changes out of band.</div></td></tr><tr><td><a href="../chains/avalanche-c.html">Avalanche C-Chain</a></td><td>—</td><td><div class="wrap">libevm v1.13.15-0.20251016142715. EVM behaviour tracks geth through CANCUN only — see forks.</div></td></tr><tr><td><a href="../chains/kaia.html">Kaia</a></td><td>—</td><td><div class="wrap">Kaia has kept pace with mainnet fork-for-fork and is CURRENT: Prague at block 190670000 and Osaka at block 213333000, both already past on mainnet (observed at 224632605). Unusually for this dataset the EVM layer is not behind — the divergence is entirely structural, not generational.</div></td></tr><tr><td><a href="../chains/sei.html">Sei</a></td><td>—</td><td><div class="wrap">sei-protocol/go-ethereum v1.15.7-sei-17, a fork of upstream geth v1.15.7. The fork&#x27;s newest precompile/rule set is PRAGUE. There is no Osaka branch in the fork&#x27;s config or precompile switch, so Sei is one full fork generation behind mainnet and cannot reach Osaka semantics by configuration alone.</div></td></tr><tr><td><a href="../chains/linea.html">Linea</a></td><td>—</td><td><div class="wrap">Besu @ 6580da84 (gradle/libs.versions.toml `besuCommit`). Upstream Besu ships Linea mainnet as a BUILT-IN network, so the genesis and fork schedule are in the client itself, not in a Linea-owned file.</div></td></tr><tr><td><a href="../chains/arbitrum.html">Arbitrum One</a></td><td>—</td><td><div class="wrap">nitro pins OffchainLabs/go-ethereum as a git submodule; EVM facts come from there, ArbOS facts from nitro itself. The geth fork carries mainnet precompile sets through Osaka, but which set is ACTIVE is gated on ArbOS version, not timestamps — see forks.</div></td></tr><tr><td><a href="../chains/op-stack.html">OP Stack</a></td><td>—</td><td><div class="wrap">op-geth v1.101702.2 tracks go-ethereum through Osaka. Header struct is identical to geth v1.17.5 except that op-geth lacks EIP-7928 BlockAccessListHash (an unshipped Amsterdam field) and repurposes BlobGasUsed. Rebase, not divergence.</div></td></tr><tr><td><a href="../chains/base.html">Base</a></td><td>—</td><td><div class="wrap">OP Stack sequence through Jovian, then Base-specific upgrades</div></td></tr><tr><td><a href="../chains/worldchain.html">World Chain</a></td><td>—</td><td><div class="wrap">Follows the OP Stack upgrade sequence through Karst, then diverges to its own schedule (crates/chainspec/src/hardfork.rs). Currently defaulted to Jovian.</div></td></tr><tr><td><a href="../chains/opbnb.html">opBNB</a></td><td><a href="../chains/bnb.html">BNB</a></td><td><div class="wrap">STALE relative to its upstream. This client is op-geth v0.5.10, whose newest OP branch is IsOptimismFjord; the op-stack row pins v1.101702.2 (Jovian/Karst). opBNB therefore has NONE of OP Stack&#x27;s Granite, Isthmus or Jovian changes.</div></td></tr><tr><td><a href="../chains/celo.html">Celo</a></td><td></td><td><div class="wrap">celo-v2.2.4 is a rebase of op-geth onto go-ethereum v1.16.9 (version/version.go: Major 1, Minor 16, Patch 9), against op-stack&#x27;s pinned op-geth v1.101702.2 (geth v1.17.5). The OP fork ladder in this tree stops at JOVIAN: params/config.go declares JovianTime and IsOptimismJovian and has no Karst field, and the embedded superchain-registry schema (superchain/types.go HardForkConfiguration) likewise has no karst_time. Celo therefore has NONE of OP Stack&#x27;s post-Jovian changes, and cannot express them without a client upgrade. The registry&#x27;s mainnet entry sets no osaka_time, so Celo&#x27;s EVM is at PRAGUE (isthmus_time = 1752073200) while the op-stack row&#x27;s baseline is Osaka — a descendant inheriting its ancestor&#x27;s past, exactly as SCHEMA.md warns.</div></td></tr></tbody></table></div>
+</main>
+<footer>Generated 2026-08-22</footer>
+<script src="../assets/site.js"></script>
+</body></html>

@@ -1,0 +1,431 @@
+{
+ "pages": {
+  "axes/cryptography.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/eips.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/fees-envelope.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/lineage.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/opcodes.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/precompiles.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/system-contracts.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "axes/tx-types.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/arbitrum.html": {
+   "inputs": {
+    "chains/arbitrum/SUMMARY.md": "75d61ed4ffe895f2",
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/avalanche-c.html": {
+   "inputs": {
+    "chains/avalanche-c/SUMMARY.md": "c1d168453b4b7cad",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/avalanche-subnet.html": {
+   "inputs": {
+    "chains/avalanche-subnet/SUMMARY.md": "0983833f0bc10bd6",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/base.html": {
+   "inputs": {
+    "chains/base/SUMMARY.md": "71d2005c078e546a",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/bnb.html": {
+   "inputs": {
+    "chains/bnb/SUMMARY.md": "af2c6a18ce419787",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/celo.html": {
+   "inputs": {
+    "chains/celo/SUMMARY.md": "c1377358a9efaf64",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/ethereum.html": {
+   "inputs": {
+    "chains/ethereum/SUMMARY.md": "360b1be0a992e1d3",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/hyperliquid.html": {
+   "inputs": {
+    "chains/hyperliquid/SUMMARY.md": "fdf441aa00f0f6c3",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/index.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773"
+   }
+  },
+  "chains/kaia.html": {
+   "inputs": {
+    "chains/kaia/SUMMARY.md": "8c24682328dadeb5",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/linea.html": {
+   "inputs": {
+    "chains/linea/SUMMARY.md": "a3223b056054f72e",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/monad.html": {
+   "inputs": {
+    "chains/monad/SUMMARY.md": "ff25bb5f79650c15",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/op-stack.html": {
+   "inputs": {
+    "chains/op-stack/SUMMARY.md": "1f677651275c66d7",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/opbnb.html": {
+   "inputs": {
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/SUMMARY.md": "6d823a28b0a31835",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/optimism.html": {
+   "inputs": {
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/optimism/SUMMARY.md": "6da1f717756a4630",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/polygon.html": {
+   "inputs": {
+    "chains/polygon/SUMMARY.md": "a3da02a4f25ecde0",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/sei.html": {
+   "inputs": {
+    "chains/sei/SUMMARY.md": "3d19aaebf40e3c51",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/tron.html": {
+   "inputs": {
+    "chains/tron/SUMMARY.md": "9aaf9baf5c315675",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/worldchain.html": {
+   "inputs": {
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/worldchain/SUMMARY.md": "a770ed9cb2f1c324",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "chains/zksync-era.html": {
+   "inputs": {
+    "chains/zksync-era/SUMMARY.md": "b7f2a0b2b27a3346",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "index.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "method.html": {
+   "inputs": {
+    "SCHEMA.md": "ac188c0faa87737e",
+    "SITE.md": "217ef459186e81d1",
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773",
+    "findings.yaml": "c917b4ff4df949d9"
+   }
+  },
+  "silent-divergences.html": {
+   "inputs": {
+    "chains/arbitrum/chain.yaml": "18c9f4692449a2df",
+    "chains/avalanche-c/chain.yaml": "5ce955a96e9a8ab2",
+    "chains/avalanche-subnet/chain.yaml": "ce671a5d54202fd4",
+    "chains/base/chain.yaml": "b4933e3583c535f5",
+    "chains/bnb/chain.yaml": "d1145431943cbf60",
+    "chains/celo/chain.yaml": "65be3f97dd44a587",
+    "chains/ethereum/chain.yaml": "f1cdca48f6689613",
+    "chains/hyperliquid/chain.yaml": "b920835b1a81020e",
+    "chains/kaia/chain.yaml": "0d78f13f11ff0c96",
+    "chains/linea/chain.yaml": "da961035fcea4ae5",
+    "chains/monad/chain.yaml": "5923dad82bba6711",
+    "chains/op-stack/chain.yaml": "a081e40d726d9aa6",
+    "chains/opbnb/chain.yaml": "c2a04ed2aab9bb71",
+    "chains/optimism/chain.yaml": "ceab67b658458fd8",
+    "chains/polygon/chain.yaml": "8168d50486848589",
+    "chains/sei/chain.yaml": "e62d2a5a6355b6a3",
+    "chains/tron/chain.yaml": "bba9a9b30deebe7f",
+    "chains/worldchain/chain.yaml": "f3c70234239c20a7",
+    "chains/zksync-era/chain.yaml": "73913545ff49d773"
+   }
+  }
+ },
+ "renderer": "3a2c10fe85dec595"
+}

@@ -141,11 +141,19 @@ the **dominant type**, 61% of transactions in the blocks sampled, not an edge ca
 receipts carry a fifth consensus field inside `receiptsRoot`. Resolving
 `ethereum → op-stack → X` therefore does **not** give you X's type-byte set.
 
-The type-byte space is also nearly full. `0x78` Arbitrum *and* Kaia, `0x79` Base,
-`0x7b`/`0x7c` Celo, `0x7e` the OP family, `0x7f` Polygon — only `0x7a` and `0x7d` remain
-below EIP-2718's `0x7f` ceiling. Kaia does not even fit: its type is a **`uint16`**
+The type-byte space is also nearly full. `0x71` zkSync, `0x78` Arbitrum *and* Kaia,
+`0x79` Base, `0x7b`/`0x7c` Celo, `0x7d`/`0x7e` the OP family, `0x7f` Polygon — of the
+sixteen bytes below EIP-2718's `0x7f` ceiling, only `0x7a` and the `0x72`–`0x77` run are
+untouched. `0x7c` is *vacated* rather than free: Celo deprecated it, and old transactions
+still carry it. `0x7d` is neither — OP Stack's `PostExecTx` is fully implemented in the
+client with no producer and no fork gate, so whether it is reachable is recorded as
+`unrecorded` rather than guessed. Kaia does not even fit: its type is a **`uint16`**
 (`0x7801`–`0x7804`), and it re-wraps Ethereum transactions as `0x78 || ethType || rlp`,
 so the RPC looks standard while the consensus encoding is not.
+
+The live counts are computed from the data on the site's
+[transaction types axis](website/axes/tx-types.html), rather than restated in prose
+that goes stale — this paragraph did.
 
 **A precompile that verifies a signature is not a signature that can sign.** Eleven
 rows carry P256VERIFY; on almost all of them a P-256 key cannot move a single wei. The
@@ -191,6 +199,29 @@ differently from an empty account, which returns success.
 carry the DA footprint; Avalanche pins the same field to zero and rejects anything
 else. Same field, same JSON key, three meanings across the dataset.
 
+## Website
+
+A browsable static site is generated into [`website/`](website/) — one page per chain,
+plus an axis page for each of the eight axes, an index of every silent divergence, and
+the method. Nothing in it is hand-edited.
+
+```
+tools/site.py            # incremental — rebuild only what changed
+tools/site.py --all      # rebuild every page
+tools/site.py base       # just one chain page
+tools/site.py --check    # fail if website/ is stale (for CI)
+python3 -m http.server -d website 8000
+```
+
+Findings live in [`findings.yaml`](findings.yaml), the one content file in the pipeline:
+a finding is written once and surfaces on the home page, on its axis page, and on the
+page of every chain it names. See [SITE.md](SITE.md) for the full build model.
+
+The site's *structure* has its own source: [`prompts/website/`](prompts/website/)
+specifies the information architecture, the grid semantics, the data-model contract and
+the acceptance checks. Changing how the site behaves means changing that spec in the same
+commit.
+
 ## Layout
 
 ```
@@ -198,7 +229,11 @@ chains/<slug>/
   chain.yaml     structured facts — feeds the generated tables
   SUMMARY.md     findings, caveats, and re-verification commands
   repos/         pinned shallow clones (gitignored; evidence, not content)
+findings.yaml       the narrative layer: what the dataset means
+website/            generated static site (see SITE.md)
+tools/model.py      the shared data model both generators read
 tools/generate.py   regenerates the four top-level tables
+tools/site.py       regenerates website/
 ```
 
 ## Tooling
@@ -207,7 +242,12 @@ tools/generate.py   regenerates the four top-level tables
 tools/clone.sh      re-fetch the pinned evidence (gitignored) from chain.yaml
 tools/verify.py     re-extract facts from source, diff against chain.yaml
 tools/generate.py   regenerate the four top-level tables
+tools/site.py       regenerate website/ (incremental; see SITE.md)
 ```
+
+`generate.py` and `site.py` both read the dataset through `tools/model.py` — the same
+ordering, address canonicalisation, stack-inheritance and EIP-resolution rules — so the
+Markdown tables and the website cannot drift apart on what a row says.
 
 `verify.py` is what keeps the "from source, not docs" claim honest. Facts reach
 `chain.yaml` by a human reading a file once; the verifier re-reads the source and

@@ -1,0 +1,761 @@
+schema_version: 2
+
+chain:
+  name: IOTA EVM
+  slug: iota-evm
+  chain_id: 8822
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: "packages/evm/jsonrpc/service.go:ChainId"
+  chain_id_src_live: "eth_chainId @ 12793600 -> 0x2276 (8822); net_version -> 8822; eth_call CHAINID @ 12793600 -> 0x2276; GET /v1/chain -> evmChainId 8822"
+  note: >-
+    IOTA EVM is not a chain in the sense every other row in this dataset is. It is the
+    `evm` CORE CONTRACT of a single IOTA Smart Contracts (ISC) chain, and that ISC chain
+    is a Move OBJECT on the IOTA L1 (`getChainID()` returns the 32-byte object id
+    0x0dc44856...409d, not a chain number). Ethereum blocks, receipts, balances and the
+    tx pool are all synthesised by that contract for the benefit of Ethereum tooling;
+    the real unit of execution is an ISC *request*, the real unit of state is the ISC
+    chain state, and the real gas meter is ISC gas. The EVM interpreter itself is
+    genuine go-ethereum v1.15.5 (forked, one patch), so opcode semantics are honest —
+    but almost everything wrapped around the interpreter is ISC's, and that is where
+    this row's findings are. ShimmerEVM (chain id 1073) is a DIFFERENT ISC chain on a
+    different network and is not covered here.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  note: >-
+    Code lineage is narrow and precise: wasp imports go-ethereum v1.15.5 and redirects
+    it, via a single `replace` directive in go.mod, to `iotaledger/go-ethereum`
+    v1.15.5-wasp1, whose entire history above upstream is ONE squashed commit titled
+    "changes for ISC wasp". That fork is the EVM: interpreter, jump table, precompile
+    table, `params.ChainConfig`, `core.ApplyMessage`. Everything above it — blocks,
+    state, ordering, fees, finality — is wasp's own ISC machinery and shares no code
+    with any Ethereum client. So the usual reading of `role: fork` is inverted here:
+    the *interpreter* is inherited and the *chain* is not.
+  sync_point: >-
+    STOPS AT CANCUN, AND ONLY PARTLY. `emulator.getConfig` builds a `params.ChainConfig`
+    by hand with all pre-merge forks at block 0 plus `ShanghaiTime: 0` and
+    `CancunTime: 0`, and nothing later. There is no PragueTime, no OsakaTime, no
+    fork schedule of any kind, and no genesis file — the config is a Go literal keyed
+    only on the EVM chain id. A newer go-ethereum in go.mod would therefore change
+    nothing about the active fork.
+
+client:
+  name: wasp
+  repo: https://github.com/iotaledger/wasp
+  version: v2.0.3
+  commit: 059538bb0428de48577c83dbbd94dd412d00352f
+  language: go
+  note: >-
+    The pinned tag is confirmed to be what the network runs: the public node answers
+    `GET https://api.evm.iotaledger.net/v1/node/version` with `{"version":"2.0.3"}`.
+    That is a stronger client-identification than most rows get. `web3_clientVersion`
+    over JSON-RPC is unhelpful — it returns the constant string `wasp/evmproxy`.
+  companion_repos:
+  - {name: go-ethereum, repo: "https://github.com/iotaledger/go-ethereum",
+     version: v1.15.5-wasp1, commit: 30f95dc4161e7ea893f93e00f4ffce15585fbcea, language: go,
+     provides: "the EVM itself: interpreter, jump table, precompile set, params.ChainConfig, core.ApplyMessage, and the ISC-only `vm.Config.MagicContracts` native-dispatch hook that upstream geth does not have"}
+
+live_probe:
+  endpoint: https://json-rpc.evm.iotaledger.net
+  chain_id: 8822
+  observed_at_block: 12793600      # 0xc33700, timestamp 1787844123 = 2026-08-27 15:22:03 UTC
+
+consensus:
+  engine: >-
+    ISC committee consensus. Per round the committee runs an Asynchronous Common Subset
+    (ACS) over per-node batch proposals; a request enters the batch only if F+1 nodes
+    proposed it. The agreed set is then ORDERED by a threshold-BLS common coin, the
+    single VM run executes that order deterministically on every node, and the resulting
+    state commitment is packed into an IOTA L1 programmable transaction which the
+    committee threshold-signs (DSS Schnorr) and posts. There is no leader, no block
+    proposer, and no fee-priority ordering.
+  finality: >-
+    An ISC block is final when the IOTA L1 transaction carrying its anchor is confirmed
+    by the L1 (a Move/Sui-derived, post-Rebased IOTA). The JSON-RPC does NOT wait for
+    that: it serves `ActiveOrCommittedState`, defined in source as "the state the chain
+    build next TX on, can be ahead of ConfirmedState" (sic).
+  block_time: >-
+    on demand; one ISC block per consensus round, floor 500 ms (`ConsensusDelay`
+    default). No fixed cadence and no empty-block production when idle.
+  src: "packages/chain/cons/cons.go:uponVMInputsReceived, packages/chain/cons/bp/aggregated_batch_proposals.go:OrderedRequests, packages/chain/node.go:LatestState"
+  src_live: "GET /v1/chain @ 12793600 -> isActive true, chainID 0x0dc448563a2c54778215b3d655b0d9f8f69f06cf80a4fc9eada72e96a49e409d"
+  src_doc: https://docs.iota.org/developer/iota-evm/explanations/consensus
+  note: >-
+    See `gotchas.ordering_and_execution` for the full (a)-(d) answer. The short form:
+    ordering commits before execution but in the SAME round, execution is a single
+    sequential deterministic VM run (no parallelism, no optimism), an ordered-but-invalid
+    request is ERASED with no receipt of any kind, and every receipt a client can see is
+    pre-L1-confirmation with no field that says so.
+
+baseline_fork: cancun
+
+forks:
+  src: "packages/vm/core/evm/emulator/emulator.go:getConfig"
+  note: >-
+    There is no fork schedule. `getConfig(chainID)` returns a hand-built
+    params.ChainConfig with every pre-merge fork at block 0, `ShanghaiTime: 0`,
+    `CancunTime: 0` and nothing after. No activation timestamps exist, so no fork can
+    be scheduled without a wasp release and a chain migration. The function then
+    asserts `if !c.IsShanghai(...) { panic("ChainConfig should report EVM version as
+    Shanghai") }` — a stale guard that contradicts the CancunTime it just set; Cancun
+    is in fact active, confirmed live (TLOAD/TSTORE, MCOPY, KZG at 0x0a).
+  timeline:
+  - {name: genesis (all pre-merge forks + Shanghai + Cancun), activation_time: 0,
+     mainnet_equivalent: cancun}
+
+eips:
+  155:
+    status: inherited
+    note: >-
+      EIP-155 replay protection is the ONLY transaction format this chain understands.
+      `evmutil.Signer` returns `types.NewEIP155Signer(chainID)` everywhere — mempool,
+      execution and RPC — so a homestead-style unprotected transaction is also rejected.
+    src: "packages/evm/evmutil/signer.go:Signer"
+  1559:
+    status: removed
+    severity: high
+    note: >-
+      There is no fee market of any kind. `NewEVMEmulator` sets `vm.Config.NoBaseFee:
+      true` with the comment "gas fee is set by ISC"; `applyMessage` overwrites
+      `msg.GasPrice`, `msg.GasFeeCap` and `msg.GasTipCap` with ZERO and sets
+      `blockContext.BaseFee` to zero before every execution. The header carries no
+      `baseFeePerGas` field at all, `eth_feeHistory` and `eth_maxPriorityFeePerGas` do
+      not exist on the node, and type-0x02 transactions cannot be submitted. The price
+      is a governance constant (`FeePolicy.GasPerToken`), not an auction. Marked
+      severity high because BASEFEE and GASPRICE both return 0 inside the EVM while the
+      receipt reports a non-zero `effectiveGasPrice` — see `opcodes.modified`.
+    src: "packages/vm/core/evm/emulator/emulator.go:NoBaseFee, packages/vm/gas/feepolicy.go:DefaultGasPriceFullDecimals"
+    src_live: "eth_getBlockByNumber @ 12793600 -> no baseFeePerGas key; eth_feeHistory -> -32601 does not exist; eth_maxPriorityFeePerGas -> -32601 does not exist"
+  2718:
+    status: removed
+    severity: high
+    note: >-
+      The typed-transaction envelope is not implemented at the ingress. `EthService.
+      SendRawTransaction` decodes with `rlp.DecodeBytes(txBytes, tx)` instead of
+      `tx.UnmarshalBinary`, so any EIP-2718 payload is read as a one-byte RLP string and
+      rejected with "typed transaction too short" before its contents are even parsed.
+      Even if it decoded, `types.NewEIP155Signer` cannot recover a sender from a typed
+      transaction. Consequence: 2930, 1559, 4844 and 7702 transactions are ALL
+      unsubmittable, and every transaction on the chain is type 0x00.
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction"
+    src_live: "eth_sendRawTransaction @ 12793600 with well-formed type-0x01/0x02/0x04 payloads -> -32000 'typed transaction too short' for all three; the same payload as legacy reaches RLP field validation"
+  2930:
+    status: removed
+    note: "access-list transactions cannot be submitted (EIP-2718 removed). The 2929 gas schedule itself is present."
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction"
+  3198:
+    status: modified
+    severity: high
+    note: "BASEFEE is a live opcode and always pushes 0; blockContext.BaseFee is zeroed on every message."
+    src: "packages/vm/core/evm/emulator/emulator.go:applyMessage"
+    src_live: "eth_call BASEFEE @ 12793600 -> 0x00..00"
+  3651:
+    status: inherited
+    note: "warm COINBASE, but COINBASE is the zero address here — see opcodes.modified."
+  3855: {status: inherited, note: "PUSH0 active (Shanghai at time 0)."}
+  3860: {status: inherited}
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO always pushes 0. The pending header has no `MixDigest`, so
+      `NewEVMBlockContext` derives `Random = &common.Hash{}`. ISC does have real
+      committee randomness — a threshold-BLS common coin, reachable as
+      `ISCSandbox.getEntropy()` on the magic contract — but it never reaches the EVM's
+      own opcode. A contract seeding randomness from `block.prevrandao` gets a constant.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:GetPendingHeader"
+    src_live: "eth_call PREVRANDAO @ 12793600 -> 0x00..00; eth_call to 0x1074..00 getEntropy() @ 12793600 -> 0x3e4abae4...ddaf"
+  4788:
+    status: removed
+    note: "no beacon chain, no beacon-roots contract, no parentBeaconBlockRoot header field."
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 12793600 -> 0x"
+  4844:
+    status: modified
+    note: >-
+      Split outcome. The Cancun OPCODES are enabled (`CancunTime: 0`) and the KZG
+      point-evaluation precompile at 0x0a is live, but blob transactions cannot be
+      submitted (EIP-2718 removed) and no blob header fields exist. BLOBHASH returns 0.
+      BLOBBASEFEE is worse than absent — see EIP-7516.
+    src: "packages/vm/core/evm/emulator/emulator.go:CancunTime"
+    src_live: "eth_call to 0x0a with 1 byte @ 12793600 -> -32000 'invalid input length' (precompile present); eth_call BLOBHASH(0) @ 12793600 -> 0x00..00"
+  4895:
+    status: removed
+    note: "no withdrawals, no withdrawalsRoot header field; the EVM has no consensus layer above it."
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+  5656: {status: inherited, note: "MCOPY works.", src_live: "eth_call MCOPY @ 12793600 -> executes, returns 0x..01"}
+  6780: {status: inherited, note: "SelfDestruct6780 restricts destruction to the creating transaction.", src: "packages/vm/core/evm/emulator/statedb.go:SelfDestruct6780"}
+  1153: {status: inherited, note: "TSTORE/TLOAD backed by an in-memory transient store reset in StateDB.Prepare.", src: "packages/vm/core/evm/emulator/transient_storage.go:newTransientStorage", src_live: "eth_call TSTORE 0x42 then TLOAD @ 12793600 -> 0x..42"}
+  7516:
+    status: modified
+    severity: high
+    note: >-
+      BLOBBASEFEE is ENABLED by the Cancun rules but the block context never sets
+      `BlobBaseFee`, so executing opcode 0x4A dereferences a nil pointer inside the
+      interpreter. In `eth_call` this surfaces as a JSON-RPC error; in a transaction the
+      panic is caught by `applyMessage` and becomes a `status: 0` receipt whose revert
+      reason is the Go runtime message. A contract compiled for Cancun that reads
+      `block.blobbasefee` is simply un-executable here.
+    src: "packages/vm/core/evm/emulator/emulator.go:applyMessage"
+    src_live: "eth_call BLOBBASEFEE @ 12793600 -> -32000 'runtime error: invalid memory address or nil pointer dereference'"
+  2935:
+    status: removed
+    note: "no history-storage contract; the address holds no code."
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 12793600 -> 0x"
+  2537: {status: removed, note: "Prague not scheduled; 0x0b-0x11 hold no precompiles.", src_live: "eth_call 0x0b @ 12793600 -> 0x (empty, address absent)"}
+  7702: {status: removed, note: "type 0x04 cannot be decoded (EIP-2718 removed); no delegation designator handling.", src: "packages/evm/jsonrpc/service.go:SendRawTransaction"}
+  7623: {status: removed, note: "Prague not scheduled; calldata floor pricing absent."}
+  7691: {status: removed}
+  7840: {status: removed}
+  7951: {status: removed, note: "P256VERIFY absent. NOTE: a probe of 0x0100 returns empty output, which on this chain means 'no code at that address', NOT EIP-7951 invalid-signature semantics — the two are indistinguishable by output alone, so the claim rests on the pinned ChainConfig stopping at Cancun.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  7883: {status: removed}
+  7825: {status: removed}
+  7594: {status: removed}
+  7907: {status: removed}
+  1186:
+    status: removed
+    severity: high
+    note: >-
+      `eth_getProof` is not implemented and could not be: there is no Merkle-Patricia
+      trie over EVM state. EVM state lives in the ISC key-value state, which is
+      committed by ISC's own trie; the Ethereum `stateRoot` is left at zero forever.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+    src_live: "eth_getProof @ 12793600 -> -32601 does not exist"
+
+tx_types:
+  "0x00":
+    name: LegacyTx (EIP-155 protected only)
+    status: modified
+    note: >-
+      The only transaction type that exists here. Every transaction in every block
+      sampled reports `type: 0x0`. Two constraints ride on it: the signer is
+      `types.NewEIP155Signer`, so an unprotected pre-155 transaction is also rejected;
+      and `gasPrice` must be >= the chain's fixed governance price or the transaction is
+      refused at ingress and, if it somehow reached consensus, skipped there too.
+    src: "packages/evm/evmutil/signer.go:Signer, packages/evm/evmutil/gasprice.go:CheckGasPrice"
+    src_live: "eth_getBlockByNumber @ 12793600 with full txs -> every entry has v=0x450f/0x4510 (EIP-155, chainId 8822) and receipts report type 0x0"
+  "0x01":
+    status: removed
+    spec: EIP-2930
+    note: >-
+      Undecodable at ingress, because the EIP-2718 envelope is never decoded.
+      `EthService.SendRawTransaction` calls `rlp.DecodeBytes(txBytes, tx)` instead of
+      `tx.UnmarshalBinary`, so the leading type byte is read as a one-byte RLP string and
+      the payload is rejected with "typed transaction too short". Past the decoder it
+      would still fail: `evmutil.Signer` is `types.NewEIP155Signer`, which cannot recover
+      a sender from any typed transaction.
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction, packages/evm/evmutil/signer.go:Signer"
+    src_live: "eth_sendRawTransaction @ 12793600 with a well-formed type-0x01 payload (0x01f868822276808502540be4008252089411111111... , 8822/nonce 0/21000 gas) -> -32000 'typed transaction too short'"
+  "0x02":
+    status: removed
+    spec: EIP-1559
+    note: >-
+      Undecodable at ingress, because the EIP-2718 envelope is never decoded.
+      `EthService.SendRawTransaction` calls `rlp.DecodeBytes(txBytes, tx)` instead of
+      `tx.UnmarshalBinary`, so the leading type byte is read as a one-byte RLP string and
+      the payload is rejected with "typed transaction too short". Past the decoder it
+      would still fail: `evmutil.Signer` is `types.NewEIP155Signer`, which cannot recover
+      a sender from any typed transaction. There is no base fee to bid against in any
+      case; see eips.1559.
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction, packages/evm/evmutil/signer.go:Signer"
+    src_live: "eth_sendRawTransaction @ 12793600 with a well-formed type-0x02 payload (0x02f86d82227680843b9aca008502540be4008252089411111111... ) -> -32000 'typed transaction too short'"
+  "0x03":
+    status: removed
+    spec: EIP-4844
+    note: >-
+      Undecodable at ingress, because the EIP-2718 envelope is never decoded.
+      `EthService.SendRawTransaction` calls `rlp.DecodeBytes(txBytes, tx)` instead of
+      `tx.UnmarshalBinary`, so the leading type byte is read as a one-byte RLP string and
+      the payload is rejected with "typed transaction too short". Past the decoder it
+      would still fail: `evmutil.Signer` is `types.NewEIP155Signer`, which cannot recover
+      a sender from any typed transaction. There is no blob market, no blob header fields
+      and no blob gas accounting. NOTE ON EVIDENCE: unlike 0x01, 0x02 and 0x04, a
+      type-0x03 payload was NOT submitted to the live network, so this entry carries no
+      src_live. It rests on the source cause above, which is type-agnostic — the decoder
+      rejects the envelope before reading the type byte's value — plus the three sibling
+      types that were probed and all failed identically.
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction, packages/evm/evmutil/signer.go:Signer"
+  "0x04":
+    status: removed
+    spec: EIP-7702
+    note: >-
+      Undecodable at ingress, because the EIP-2718 envelope is never decoded.
+      `EthService.SendRawTransaction` calls `rlp.DecodeBytes(txBytes, tx)` instead of
+      `tx.UnmarshalBinary`, so the leading type byte is read as a one-byte RLP string and
+      the payload is rejected with "typed transaction too short". Past the decoder it
+      would still fail: `evmutil.Signer` is `types.NewEIP155Signer`, which cannot recover
+      a sender from any typed transaction. No delegation designator is ever installed or
+      honoured.
+    src: "packages/evm/jsonrpc/service.go:SendRawTransaction, packages/evm/evmutil/signer.go:Signer"
+    src_live: "eth_sendRawTransaction @ 12793600 with a well-formed type-0x04 payload (0x04f86e82227680843b9aca008502540be4008252089411111111... , empty authorization_list) -> -32000 'typed transaction too short'"
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Ethereum-side authorization is ordinary and narrow: one secp256k1 signature over an
+    EIP-155 legacy digest. What is NOT ordinary is that this is only one of two ways to
+    move an EVM-visible balance. Every Ethereum address is an ISC "agent" of kind
+    EthereumAddressAgentID, and the SAME balance can also be moved by an ISC request
+    signed with an Ed25519 IOTA L1 key belonging to a different agent (an on-ledger
+    deposit, or an off-ledger request signed by an L1 keypair). Those requests are
+    authorized entirely outside the EVM's signature scheme and leave no EVM transaction
+    behind — see `system_transactions`.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: "EIP-155 legacy envelope only; typed envelopes are unreachable."
+      src: "packages/evm/evmutil/signer.go:Signer"
+    ed25519:
+      status: added
+      authorizes: never
+      precompile: none
+      note: >-
+        ISC's own request signature scheme (`cryptolib`), used by on-ledger and
+        non-EVM off-ledger requests. It cannot authorize an EVM transaction — but a
+        request it authorizes can change `eth_getBalance` for an Ethereum address. The
+        EVM has no precompile to verify it, so an on-chain contract cannot check the
+        signatures that moved its own balance.
+      src: "packages/chain/mempool/mempool.go:VerifySignature"
+
+non_evm_transactions:
+  entries:
+  - name: ISC on-ledger request
+    description: An IOTA L1 (Move) transaction that deposits assets and a request payload into the
+      ISC chain's object. Ordered by the L1 first, then picked up by the committee. It can credit
+      base tokens to an Ethereum address, changing `eth_getBalance` with no EVM transaction, no receipt
+      and no log.
+    src: packages/vm/vmimpl/runreq.go:consumeRequest
+  - name: ISC off-ledger request (non-EVM)
+    description: A request submitted straight to a node's API and signed with an IOTA keypair, targeting
+      any ISC core contract (`accounts`, `governance`, `blocklog`, `root`). It has NO L1 ordering
+      guarantee whatsoever — it exists only in node mempools until a committee round picks it up.
+      `eth_sendRawTransaction` produces one of these too, wrapped as an EVMOffLedgerTxRequest.
+    src: packages/chain/mempool/offledger_pool.go:OffLedgerPool
+  - name: ISC anchor transaction (state commitment)
+    description: The threshold-Schnorr-signed IOTA L1 programmable transaction the committee posts
+      once per ISC block to advance the chain's anchor object. This is the only thing that makes
+      an EVM block final, and it is invisible to every Ethereum RPC method.
+    src: packages/chain/cons/cons.go:uponTXInputsReady
+precompiles:
+  "0x0000000000000000000000000000000000000001": {name: ECRECOVER, status: inherited}
+  "0x0000000000000000000000000000000000000002": {name: SHA256, status: inherited, src_live: "eth_call @ 12793600 with empty input -> e3b0c442...b855"}
+  "0x0000000000000000000000000000000000000003": {name: RIPEMD160, status: inherited}
+  "0x0000000000000000000000000000000000000004": {name: IDENTITY, status: inherited, src_live: "eth_call @ 12793600 with 0xdeadbeef -> 0xdeadbeef"}
+  "0x0000000000000000000000000000000000000005": {name: MODEXP, status: inherited, note: "Cancun (EIP-2565) pricing; no EIP-7883 repricing and no EIP-7823 bounds"}
+  "0x0000000000000000000000000000000000000006": {name: BN256ADD, status: inherited}
+  "0x0000000000000000000000000000000000000007": {name: BN256SCALARMUL, status: inherited}
+  "0x0000000000000000000000000000000000000008": {name: BN256PAIRING, status: inherited}
+  "0x0000000000000000000000000000000000000009": {name: BLAKE2F, status: inherited}
+  "0x000000000000000000000000000000000000000a": {name: KZG point evaluation, status: inherited, src_live: "eth_call @ 12793600 with 1 byte -> -32000 'invalid input length'"}
+  "0x000000000000000000000000000000000000000b": {name: BLS12-381 G1ADD, status: removed, spec: EIP-2537, note: "Prague not scheduled", src_live: "eth_call @ 12793600 -> 0x (address absent)"}
+  "0x000000000000000000000000000000000000000c": {name: BLS12-381 G1MSM, status: removed, spec: EIP-2537}
+  "0x000000000000000000000000000000000000000d": {name: BLS12-381 G2ADD, status: removed, spec: EIP-2537}
+  "0x000000000000000000000000000000000000000e": {name: BLS12-381 G2MSM, status: removed, spec: EIP-2537}
+  "0x000000000000000000000000000000000000000f": {name: BLS12-381 PAIRING, status: removed, spec: EIP-2537}
+  "0x0000000000000000000000000000000000000010": {name: BLS12-381 MAP_FP_TO_G1, status: removed, spec: EIP-2537}
+  "0x0000000000000000000000000000000000000011": {name: BLS12-381 MAP_FP2_TO_G2, status: removed, spec: EIP-2537}
+  "0x0000000000000000000000000000000000000100": {name: P256VERIFY, status: removed, spec: EIP-7951, note: "absent; see eips.7951 for why the empty-output probe is not evidence on its own"}
+
+system_contracts:
+  "0x1074000000000000000000000000000000000000":
+    name: ISC magic contract (ISCSandbox / ISCAccounts / ISCUtil / ISCPrivileged)
+    status: added
+    note: >-
+      THE CLASSIFICATION IS THE FINDING, and it is neither of this schema's two
+      categories cleanly. The address holds seven bytes of real state code —
+      `0x600180808053f3` — placed in the EVM genesis alloc with the source comment
+      "Dummy code, because some contracts check the code size before calling the
+      contract. The EVM code itself will never get executed." `EXTCODESIZE` returns 7
+      and `eth_getCode` returns those bytes, which is why it is filed here rather than
+      under `precompiles`. But the bytes are a decoy: wasp's go-ethereum fork adds a
+      `vm.Config.MagicContracts` map that is consulted in CALL, CALLCODE, DELEGATECALL
+      and STATICCALL BEFORE the precompile table and before any code lookup, so the
+      dispatch is native Go, exactly like a precompile. Two further consequences: the
+      handler returns `remainingGas` unchanged, so calling it costs ZERO EVM gas while
+      burning real ISC gas (see `fee_model`); and because it is reachable by
+      DELEGATECALL, ISC sandbox calls can be made in a caller's own storage context.
+    src: "packages/vm/core/evm/evmimpl/impl.go:SetInitialState, packages/vm/core/evm/evmimpl/iscmagic.go:newMagicContract, core/vm/evm.go:MagicContracts"
+    src_doc: https://docs.iota.org/developer/iota-evm/references/magic-contract/introduction
+    src_live: "eth_getCode 0x1074000000000000000000000000000000000000 @ 12793600 -> 0x600180808053f3 (7 bytes); eth_call EXTCODESIZE @ 12793600 -> 7; eth_call getChainID() @ 12793600 -> 0x0dc44856...409d; getBaseTokenInfo() -> decimals 9, 'IOTA'"
+  dynamic_range:
+    name: ERC20Coin wrappers for IOTA L1 coin types
+    status: added
+    pattern: "bytes[0..1] == 0x1074 AND byte[2] == 0x02 AND bytes[3..19] == keccak256(coinType)[0..16]"
+    note: >-
+      Registering an IOTA L1 coin type deploys a real ERC20 contract at an address
+      DERIVED FROM THE COIN TYPE STRING, not from a deployer nonce or a CREATE2 salt:
+      `0x1074` prefix, a one-byte kind tag, then the first 17 bytes of
+      keccak256(coinType). These carry genuine `ERC20Coin` runtime bytecode (unlike the
+      magic contract) and are ordinary EVM contracts once installed. The same prefix
+      also reserves tags 0x01, 0x03 and 0x04 for deprecated base-token and NFT wrappers.
+      No address-keyed table can enumerate the set.
+    src: "packages/vm/core/evm/iscmagic/address.go:ERC20CoinAddress, packages/vm/core/evm/evmimpl/impl.go:registerERC20Coin"
+    src_live: "eth_call to 0x1074..00 ERC20CoinAddress(0x00..02::iota::IOTA) @ 12793600 -> 0x107402967f041f3b1d87754735e0d272d554c266, matching the derivation; eth_getCode there @ 12793600 -> 0x, so the derivation is live but no wrapper is registered for the base coin on mainnet"
+  "0x000f3df6d732807ef1319fb7b8bb8522d0beac02": {name: beacon roots, status: removed, spec: EIP-4788, src_live: "eth_getCode @ 12793600 -> 0x"}
+  "0x0000f90827f1c53a10cb7a02335b175320002935": {name: history storage, status: removed, spec: EIP-2935, src_live: "eth_getCode @ 12793600 -> 0x"}
+
+system_transactions:
+  - name: ISC balance mutation with no EVM transaction
+    description: >-
+      `eth_getBalance` does not read EVM state. `StateDB.GetBalance` forwards to the ISC
+      `accounts` core contract via the sandbox, and `AddBalance`/`SubBalance` write
+      there too. So any ISC request that credits or debits an Ethereum-address agent —
+      an L1 deposit, a withdrawal, a governance payout, another contract's
+      `transferToL1` — changes an EVM balance with no transaction, no receipt, no log
+      and no trace. This is the same shape as Injective's batch auction, reached by a
+      different route: here the ledger is simply not the EVM's.
+    src: "packages/vm/core/evm/emulator/statedb.go:GetBalance, packages/vm/core/evm/evmimpl/internal.go:GetBaseTokensBalance"
+    src_doc: https://docs.iota.org/developer/iota-evm/explanations/how-accounts-work
+  - name: per-ISC-block EVM block minting
+    description: >-
+      `vmContext.extractBlock` calls `evmimpl.MintBlock` unconditionally at the end of
+      every ISC block, so an EVM block is produced for ISC activity that contains no EVM
+      transactions at all. EVM block number is identical to the ISC block index.
+    src: "packages/vm/vmimpl/vmcontext.go:extractBlock, packages/evm/jsonrpc/evmchain.go:iscBlockIndexByEVMBlockNumber"
+  - name: gas-fee payout to the chain admin
+    description: >-
+      Fees are neither burned nor paid to a block producer. `FeePolicy.FeeFromGasBurned`
+      splits the fee between the validator fee target and the chain admin by
+      `ValidatorFeeShare`, and the live value of that field is 0 — so 100% of all EVM
+      gas fees on IOTA EVM accrue to a single ISC agent, the chain admin.
+    src: "packages/vm/gas/feepolicy.go:FeeFromGasBurned"
+    src_live: "GET /v1/chain @ 12793600 -> validatorFeeShare 0, chainAdmin 0x8779ca52589fd6f4ca1776b63b200a7b8f9fd71f2c4d386a987dfdb24569fc5e"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0x40"
+    name: BLOCKHASH
+    severity: high
+    note: >-
+      BLOCKHASH IS BROKEN FOR EVERY BLOCK IT IS SUPPOSED TO ANSWER FOR, and it fails by
+      panicking rather than by returning zero. Two distinct panics cover the whole
+      256-block window. For `n == number-1` geth's `GetHashFn` short-circuits to
+      `header.ParentHash` and then calls `StateDB.Witness()`, which wasp implements as
+      `panic("should not be called")`. For every other in-window `n` the lookup reaches
+      `chainContext.GetHeader`, which is `panic("not implemented")`. Only OUT-OF-window
+      numbers behave — they return zero without touching either. Compounding it, the
+      pending header used for execution never sets `ParentHash` at all, so even the
+      short-circuit would have returned the zero hash rather than the real parent. In an
+      `eth_call` this is a JSON-RPC error; in a transaction `applyMessage` catches the
+      panic and turns it into a `status: 0` receipt whose revert reason is the Go panic
+      string. Any contract using BLOCKHASH for randomness, checkpointing or L1
+      attestation cannot run on this chain.
+    src: "packages/vm/core/evm/emulator/statedb.go:Witness, packages/vm/core/evm/emulator/emulator.go:GetHeader, packages/vm/core/evm/emulator/blockchaindb.go:GetPendingHeader"
+    src_live: "eth_call BLOCKHASH(number-1) @ 12793600 -> -32000 'should not be called'; BLOCKHASH(number-2) and BLOCKHASH(number-256) -> -32000 'not implemented'; BLOCKHASH(number-257) -> 0x00..00"
+  - op: "0x3a"
+    name: GASPRICE
+    severity: high
+    note: >-
+      Always pushes 0. `applyMessage` sets `msg.GasPrice`, `msg.GasFeeCap` and
+      `msg.GasTipCap` to zero before every execution because "gas fee is set by ISC",
+      and the tx context is built from that zeroed message. Meanwhile the receipt
+      reports the real `effectiveGasPrice` (10 gwei at the pinned block), so on-chain
+      and off-chain observers of the same transaction disagree. Any contract that
+      reimburses callers as `tx.gasprice * gasUsed`, meters relayer cost, or bounds a
+      gas price computes zero — silently, with no revert.
+    src: "packages/vm/core/evm/emulator/emulator.go:applyMessage"
+    src_live: "eth_call GASPRICE @ 12793600 -> 0x00..00, while eth_gasPrice -> 0x2540be400 and the receipt for 0x0b0a51dd... reports effectiveGasPrice 0x2cb417800"
+  - op: "0x41"
+    name: COINBASE
+    severity: high
+    note: >-
+      Always the zero address. Blocks are not produced by an identifiable proposer, the
+      minted header leaves `Coinbase` unset, and `NewEVMBlockContext` is called with a
+      nil author. Value paid to `block.coinbase` is credited to the ISC agent for
+      address 0x0 and is unrecoverable; the real fee recipient (the chain admin) is an
+      ISC agent id with no Ethereum address at all.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+    src_live: "eth_call COINBASE @ 12793600 -> 0x00..00; every sampled block header reports miner 0x00..00"
+  - op: "0x44"
+    name: PREVRANDAO / DIFFICULTY
+    severity: high
+    note: "always 0; see eips.4399. Real randomness exists but only through the magic contract."
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:GetPendingHeader"
+    src_live: "eth_call PREVRANDAO @ 12793600 -> 0x00..00"
+  - op: "0x48"
+    name: BASEFEE
+    severity: high
+    note: "always 0; see eips.1559 and eips.3198."
+    src: "packages/vm/core/evm/emulator/emulator.go:applyMessage"
+    src_live: "eth_call BASEFEE @ 12793600 -> 0x00..00"
+  - op: "0x4a"
+    name: BLOBBASEFEE
+    severity: high
+    note: "enabled by the Cancun rules but backed by a nil pointer; executing it aborts. See eips.7516."
+    src: "packages/vm/core/evm/emulator/emulator.go:applyMessage"
+    src_live: "eth_call BLOBBASEFEE @ 12793600 -> -32000 'runtime error: invalid memory address or nil pointer dereference'"
+  - op: "0x45"
+    name: GASLIMIT
+    note: >-
+      Returns the ISC block gas limit converted into EVM units
+      (`MaxGasPerBlock * B/A`), 1,000,000,000 at the pinned block. It is a governance
+      parameter, not a miner-adjusted target, and no EIP-1559 elasticity applies to it.
+      A single transaction is separately capped at `MaxGasPerRequest` = 50,000,000, and
+      a larger `gas` field is SILENTLY TRUNCATED to that cap rather than rejected.
+    src: "packages/vm/gas/evm.go:EVMBlockGasLimit, packages/vm/core/evm/emulator/emulator.go:CallGasLimit"
+    src_live: "eth_call GASLIMIT @ 12793600 -> 0x3b9aca00; GET /v1/chain -> maxGasPerBlock 1000000000, maxGasPerRequest 50000000"
+  - op: "0x31"
+    name: BALANCE / SELFBALANCE (0x47) / CALL value transfer
+    note: >-
+      Semantically ordinary, but the ledger underneath is not the EVM's. Balances are
+      read and written through the ISC `accounts` core contract, in 9-decimal base-token
+      units plus a per-account 18-decimal `weiRemainder`, not from EVM state. Wei-level
+      precision is preserved on L2 (unlike chains that truncate dust), but no balance is
+      provable from `stateRoot`, and a balance can change with no EVM transaction.
+    src: "packages/vm/core/evm/emulator/statedb.go:GetBalance, packages/vm/core/accounts/basetokens.go:getBaseTokens"
+
+fee_model:
+  metering: >-
+    TWO METERS, and the receipt reports the larger. The EVM meters normally; then
+    `applyTransaction` converts the EVM gas used into ISC gas
+    (`EVMGasToISC = ceil(evmGas * A/B)`) and burns it against the ISC request budget.
+    Separately, every ISC sandbox operation the transaction triggers — magic-contract
+    calls, state writes at 55 ISC gas/byte, event bytes — burns ISC gas that the EVM
+    never saw, because the magic contract returns `remainingGas` unchanged. Finally the
+    receipt's `gasUsed` is AMENDED UPWARD to `ISCGasBudgetToEVM(total ISC gas burned)`
+    whenever that exceeds the EVM's own figure. So `gasUsed` is
+    `max(evm_gas, isc_gas_burned * B/A)`, not the EVM's gas, and a transaction can be
+    charged for work no EVM trace explains. At the pinned block `EVMGasRatio` is 1:1,
+    which makes the two units numerically equal and the divergence invisible — the ratio
+    is chain governance state and can be changed by the chain admin without any fork.
+  fee_market: >-
+    none. A single governance-set price, `GasPerToken` (live value A=1, B=10 -> 10
+    base-token units per gas unit, i.e. exactly 10 gwei at 9 base-token decimals). A
+    transaction whose `gasPrice` is below it is refused at RPC ingress AND skipped at
+    consensus; a transaction whose `gasPrice` is above it pays the higher price it
+    offered. There is no base fee, no burn, no priority auction and no
+    `eth_feeHistory`. Ordering is randomized, so bidding higher buys mempool
+    proposal priority, never position in the block.
+  extra_components:
+  - name: nonce on failure
+    severity: high
+    src: "packages/vm/core/evm/evmimpl/internal.go:saveExecutedTx, packages/vm/vmimpl/skipreq.go:earlyCheckReasonToSkip, packages/vm/vmexceptions/exceptions.go:SkipRequestErrors"
+    description: >-
+      NONCE ON FAILURE: SPLIT BY WHICH OF THE TWO REJECTION LAYERS CAUGHT IT, and
+      the split falls on the same line as the receipt.
+
+      LAYER 1 — ISC request level, before the EVM runs. `earlyCheckReasonToSkip`
+      (bad signature, wrong nonce, gas price below the governance minimum) and
+      the `SkipRequestErrors` set (ISC block gas exhausted, L1 transaction size
+      exceeded, sender cannot cover the minimum fee) make `runRequests` log
+      "request skipped (ignored) by the VM" and `continue` WITHOUT incrementing
+      the request index. The EVM never runs, so the nonce is NEVER TOUCHED and
+      nothing is charged — and the transaction is ERASED: no EVM receipt, no
+      blocklog receipt, no transaction index, `eth_getTransactionReceipt` null
+      forever. NONCE PRESERVED, NO RECEIPT. Two mitigations soften it: the RPC
+      re-checks nonce and balance at ingress, and a skipped off-ledger request
+      stays in the pool and is retried until its nonce becomes valid or its
+      24-hour TTL expires — except a nonce that is too LOW, which is dropped.
+
+      LAYER 2 — EVM level, once the request runs. REVERT, out-of-gas, or the ISC
+      gas-budget overrun that rewrites an already-successful receipt to
+      `status: 0`. State is rolled back, logs are stripped, gas is charged — and
+      `saveExecutedTx` then reaches past the rollback to put the nonce back:
+      `if receipt.Status != types.ReceiptStatusSuccessful { emulator.IncNonce(...) }`,
+      under the comment "make sure the nonce is incremented if the state was
+      rolled back by the VM". NONCE BURNED, RECEIPT PRESENT with `status: 0`.
+
+      So the two are consistent here in the way Sei's are and Artela's are not: a
+      receipt means the nonce was spent, no receipt means it was not. What is
+      unusual is that the nonce increment is an EXPLICIT, out-of-band write —
+      because the VM's rollback would otherwise have undone it, the one place in
+      this dataset where the nonce had to be re-applied by hand after a revert.
+  - name: minimum fee per request
+    description: >-
+      Every request is charged at least 10,000 ISC gas (`BurnCodeMinimumGasPerRequest1P`,
+      `minGasPerRequest` in governance), floored AFTER the EVM receipt is built. Below
+      ~10,000 gas of EVM work the receipt's `gasUsed` under-reports what was charged.
+  - name: fee destination
+    description: >-
+      Split by `ValidatorFeeShare` between the round's randomly-selected validator fee
+      destination and the chain admin. Live value 0: everything goes to the chain admin.
+      Nothing is ever burned.
+  - name: ISC gas budget derived from the EVM gas limit
+    description: >-
+      The request's ISC gas budget is `EVMGasToISC(tx.gas)`, further clamped into
+      [`minGasPerRequest`, `maxGasPerRequest`] and then reduced to what the sender's L2
+      balance can actually afford. A transaction is therefore executed under a budget
+      that may be SMALLER than the `gas` it declared, with no EVM-visible signal.
+  src: "packages/vm/core/evm/evmimpl/impl.go:applyTransaction, packages/vm/gas/evm.go:EVMGasToISC, packages/vm/gas/feepolicy.go:FeePolicy, packages/vm/vmimpl/runreq.go:calculateAffordableGasBudget"
+  src_live: "GET /v1/chain @ 12793600 -> evmGasRatio {a:1,b:1}, gasPerToken {a:1,b:10}, validatorFeeShare 0, minGasPerRequest 10000, maxGasPerRequest 50000000; eth_gasPrice -> 0x2540be400 (10 gwei)"
+
+header_fields:
+  added: []
+  removed:
+  - {name: baseFeePerGas, note: "no fee market; the key is absent from eth_getBlockByNumber output entirely"}
+  - {name: withdrawalsRoot, note: "no consensus layer, no withdrawals"}
+  - {name: blobGasUsed, note: "blob transactions cannot be submitted"}
+  - {name: excessBlobGas}
+  - {name: parentBeaconBlockRoot, note: "no beacon chain"}
+  - {name: requestsHash, note: "Prague not scheduled"}
+  modified:
+  - name: stateRoot
+    severity: high
+    note: >-
+      PERMANENTLY ZERO, in every block including genesis. The minted header type stores
+      only {Hash, GasLimit, GasUsed, Time, TxHash, ReceiptHash, Bloom} — there is no
+      `Root` field to store. EVM state is committed by ISC's own trie over the chain
+      state, which the Ethereum header does not reference. Consequences: `eth_getProof`
+      does not exist, no light client or state proof over IOTA EVM is possible, and any
+      tool that treats a zero `stateRoot` as "empty state" or compares state roots
+      across blocks is wrong on both counts.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+    src_live: "eth_getBlockByNumber @ 12793600 and at 0x0, 0x1, 0xc33701-0xc33705 -> stateRoot 0x00..00 in all"
+  - name: transactionsRoot / receiptsRoot
+    severity: high
+    note: >-
+      COMMIT TO NOTHING. `makeHeader` computes them with `types.DeriveSha(txs,
+      &fakeHasher{})`, and `fakeHasher.Hash()` returns `common.Hash{}` unconditionally.
+      So a block with transactions carries the ZERO root, and a block without them
+      carries the real `types.EmptyRootHash` — the inverse of the mainnet signal, and
+      confirmed live at both ends (block 1 is empty and shows 0x56e81f17..., block
+      12793600 has nine transactions and shows 0x00..00). Because the block hash is
+      `Header.Hash()` over those fields, THE BLOCK HASH DOES NOT COMMIT TO THE BLOCK'S
+      TRANSACTIONS OR RECEIPTS: it is a function of parent hash, number, time, gas used
+      and bloom only. Receipt inclusion proofs are impossible, and any bridge or indexer
+      that verifies a receipt against `receiptsRoot` is verifying nothing.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:fakeHasher"
+    src_live: "eth_getBlockByNumber @ 12793600 -> transactionsRoot and receiptsRoot both 0x00..00 with 9 transactions; @ 0x1 (empty) -> both 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+  - name: miner
+    note: "always 0x00..00; see opcodes COINBASE."
+  - name: difficulty / totalDifficulty / nonce / mixHash / extraData
+    note: >-
+      All constant: difficulty and totalDifficulty 0, nonce 0x00..00, mixHash 0x00..00,
+      extraData `0x` (empty). `sha3Uncles` is the standard empty-uncle constant and
+      `uncles` is always empty.
+    src_live: "eth_getBlockByNumber @ 12793600"
+  - name: timestamp
+    note: >-
+      One-second resolution, taken from the ISC batch's aggregated time — a
+      per-round order statistic (the (|proposals|-F)-th lowest node clock, roughly the
+      66th percentile) over committee members' wall clocks, not a proposer's choice.
+      It is monotonically non-decreasing across blocks but the interval is irregular:
+      4 s, 5 s, 24 s, 60 s, 25 s across five consecutive blocks at the pinned height.
+      Two adjacent blocks can carry the SAME second.
+    src: "packages/chain/cons/bp/batch_proposal_set.go:aggregatedTime"
+    src_live: "eth_getBlockByNumber 0xc33700..0xc33705 @ 12793600 -> 1787844123, 1787844127, 1787844132, 1787844156, 1787844216, 1787844241"
+
+gotchas:
+  ordering_and_execution: >-
+    (a) WHAT ORDERS TRANSACTIONS. Nothing that resembles a block builder. An
+    `eth_sendRawTransaction` becomes an ISC OFF-LEDGER REQUEST, held in per-node
+    mempools with NO L1 ordering guarantee of any kind — it never touches the IOTA L1
+    until the block that contains it is committed. Each committee node proposes a batch
+    (off-ledger requests in gas-price order, respecting nonce continuity, capped at 500;
+    on-ledger requests, which the IOTA L1 ordered first, capped at 100). An Asynchronous
+    Common Subset (ACS) decides the SET: a request is in iff at least F+1 nodes proposed
+    it. The ORDER is then derived, not proposed — `AggregatedBatchProposals.
+    OrderedRequests` sorts by `blake2b(requestID, requestHash, randomness)` where
+    `randomness` is a threshold-BLS common coin the committee produces in the same
+    round, then makes a second pass swapping same-sender off-ledger requests so their
+    nonces increase. On-ledger and off-ledger requests are interleaved in that one
+    pseudorandom order. So ordering does commit before execution, but only just: it is
+    computed and executed inside a single consensus round, and gas price buys mempool
+    proposal priority, never a position in the block. [src]
+    (b) EXECUTION SHAPE. Single-threaded, deterministic, one pass. Every node runs the
+    identical `vm.VMTask` over the identical ordered list; there is no parallelism, no
+    optimistic execution, no conflict detection and therefore no re-run or abort. The
+    VM output — the ISC state commitment — is packed into an IOTA L1 programmable
+    transaction which the committee threshold-signs (DSS Schnorr), so execution and
+    ordering are agreed in the same round rather than in separate ones. Two
+    implementations could only disagree by being non-deterministic. [src]
+    (c) ORDERED BUT INVALID — THE CENTRAL QUESTION, AND THERE ARE TWO ANSWERS BECAUSE
+    THERE ARE TWO REJECTION LAYERS.
+    LAYER 1, ISC request level, before the EVM runs: `earlyCheckReasonToSkip` verifies
+    the request signature, then checks the nonce — for an Ethereum sender it reads the
+    EVM nonce directly — and then checks the gas price against the governance minimum.
+    Any failure returns an error, and `runRequests` logs "request skipped (ignored) by
+    the VM" and `continue`s WITHOUT incrementing the request index. Three further
+    conditions reach the same fate as panics from inside execution
+    (`vmexceptions.SkipRequestErrors`, documented in source as "causes skipping the
+    request. Never appear in the receipt of the request"): the ISC block gas limit being
+    exhausted, the maximum L1 transaction size being exceeded, and the sender not having
+    enough L2 funds for the minimum fee. In every one of these cases the transaction is
+    ERASED: no EVM receipt, no blocklog receipt, no transaction index, no log, no trace.
+    `eth_getTransactionReceipt` returns null forever, and the transaction is
+    indistinguishable from one that was never submitted. This is the same observable
+    outcome as Conflux's `Skipped` state, reached for an entirely different reason — not
+    a third receipt status but the absence of any receipt at all. Two mitigations
+    partially hide it in practice: the RPC re-checks the nonce and the sender's balance
+    at ingress and rejects synchronously, so the common cases fail before the mempool;
+    and a skipped off-ledger request is NOT marked processed, so it stays in the pool
+    and is retried at later heights until its nonce becomes valid or its 24-hour TTL
+    expires. A nonce that is too LOW, however, is dropped from the pool outright.
+    LAYER 2, EVM level, once the request runs: ordinary. An out-of-gas or REVERT
+    produces a receipt with `status: 0`, gas charged, logs stripped
+    (`receipt.Logs` is emptied and the bloom recomputed), state rolled back, and the
+    nonce incremented explicitly by `saveExecutedTx` even though the state was reverted.
+    An ISC-level error raised by a magic-contract call — an invalid allowance,
+    insufficient funds for an allowance, an unresolvable core-contract call — is caught
+    by `applyMessage` and re-encoded as a standard `Error(string)` revert, so it reaches
+    the client as an ordinary Solidity revert reason carrying ISC prose.
+    RUNNING OUT OF *ISC* GAS: this is the one case where the EVM would have completed
+    and does not. `applyTransaction` burns the ISC equivalent of the EVM gas AFTER
+    `emu.SendTransaction` returns; if that burn exceeds the request's ISC budget it
+    panics, `burnGasErr` is set, and the already-successful receipt is rewritten to
+    `status: 0` with its logs removed. The EVM's own gas meter never saw the limit. The
+    same budget can also be smaller than the `gas` the user declared, because
+    `calculateAffordableGasBudget` clamps it to what the sender's L2 balance can pay —
+    so a transaction can fail for insufficient budget while `eth_estimateGas` and the
+    declared `gas` field both looked fine. [src]
+    (d) PRECONFIRMATION AND MUTABILITY. Yes, and there is no field that says so. The
+    JSON-RPC serves `LatestState(ActiveOrCommittedState)`, and `ActiveState` is defined
+    in wasp's own source as "the state the chain build next TX on, can be ahead of
+    ConfirmedState" (sic), where `ConfirmedState` is "the state confirmed on L1". So
+    `eth_blockNumber`, `eth_getBalance` and `eth_getTransactionReceipt` routinely answer
+    from ISC blocks whose committing IOTA L1 transaction has not been confirmed, and by
+    default the node will pipeline an unbounded number of such blocks
+    (`PipeliningLimit: -1`). Unlike MegaETH there is no sentinel: the receipt looks
+    completely ordinary, with a real block hash and number. And the block tags cannot
+    help, because `parseBlockNumber` maps EVERY negative tag to latest — `finalized`,
+    `safe` and `pending` all return the same head block as `latest`, verified live. A
+    bridge polling `finalized` on IOTA EVM is polling the unconfirmed tip. [src, src_live]
+  layering: >-
+    The whole row rests on one fact: IOTA EVM is a contract, not a chain. It is the
+    `evm` core contract of one ISC chain, which is itself a Move object on the
+    post-Rebased IOTA L1 — confirmed live, since `getBaseTokenInfo()` returns the coin
+    type `0x0000...0002::iota::IOTA`, Move notation, and `getChainID()` returns a
+    32-byte object id rather than a number. Everything an Ethereum client asks about is
+    synthesised for its benefit: blocks are minted one per ISC block by
+    `BlockchainDB.MintBlock`, whose own doc comment calls it "a fake blockchain (more
+    like a list of blocks), intended for satisfying EVM tools that depend on the concept
+    of a block".
+  chain_id_is_a_uint16: >-
+    The EVM chain id is stored and returned as a `uint16` throughout wasp
+    (`BlockchainDB.GetChainID`, `EthService.ChainId`, `emulator.Init`). No ISC chain can
+    carry an EVM chain id above 65535. 8822 fits; a chain id in the modern registered
+    range could not be represented at all.
+  historical_calls_use_a_current_clock: >-
+    `eth_call` against a historical block resolves the ISC state at that block index
+    correctly, but the pending header it executes against takes its timestamp from
+    `sandbox.Timestamp()` — the CURRENT chain time — and its number from that block + 1.
+    Probed at block 0x1, `TIMESTAMP` returned the wall clock of the probe while `NUMBER`
+    returned 2. Any historical simulation of a time-dependent contract is wrong.
+  blocks_can_be_pruned: >-
+    `BlockchainDB.prune` deletes the header, transactions and receipts of block
+    `n - blockKeepAmount` on every mint, and the wasp default is 10,000 blocks — about a
+    day. IOTA EVM mainnet is configured to keep everything (block 1 is still
+    retrievable), but this is chain governance state, not a protocol guarantee, and on
+    any other ISC chain `eth_getTransactionReceipt` for an old transaction returns null
+    because the data was deleted.
+  receipt_logs_are_stripped_on_failure: >-
+    A failed transaction's receipt has its `Logs` array emptied and its bloom
+    recomputed, in the VM and again defensively in `RPCMarshalReceipt`. On mainnet a
+    reverted transaction also emits no logs, so this matches — but it means a partial
+    trace showing events before a revert can never be reconciled against the receipt.
+  no_pending_state: >-
+    There is no pending block and no pending transaction view. `eth_pendingTransactions`,
+    `eth_newPendingTransactionFilter`, `eth_getProof`, `eth_feeHistory` and
+    `eth_maxPriorityFeePerGas` are all absent, and the `pending` tag silently returns
+    `latest`. A submitted transaction is invisible to every RPC method until the block
+    containing it is produced.
+  src: "packages/chain/cons/bp/aggregated_batch_proposals.go:OrderedRequests, packages/chain/mempool/mempool.go:refsToPropose, packages/vm/vmimpl/skipreq.go:earlyCheckReasonToSkip, packages/vm/vmexceptions/exceptions.go:SkipRequestErrors, packages/vm/vmimpl/runtask.go:runRequests, packages/vm/core/evm/evmimpl/impl.go:applyTransaction, packages/chain/node.go:LatestState, packages/evm/jsonrpc/types.go:parseBlockNumber"
+  src_live: "eth_getBlockByNumber for tags finalized/safe/pending @ 12793600 -> all return the same head block as latest; eth_call TIMESTAMP at block 0x1 @ 12793600 -> current wall-clock, not block 1's timestamp"

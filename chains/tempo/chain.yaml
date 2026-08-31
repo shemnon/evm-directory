@@ -1,0 +1,758 @@
+schema_version: 2
+
+chain:
+  name: Tempo
+  slug: tempo
+  chain_id: 4217
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: crates/hardfork/src/constants.rs:MAINNET_CHAIN_ID
+  note: >-
+    THE FIRST ROW IN THIS DATASET FOR A CHAIN WITH NO NATIVE TOKEN AT ALL. Not
+    "gas is paid in an ERC-20 while a native asset still exists" (Celo, Mantle,
+    Gnosis) — Tempo has no native asset. Every account's native balance is
+    permanently zero, `value` must be zero on every transaction and every inner
+    call, and gas is paid in a TIP-20 stablecoin precompile whose token has SIX
+    decimals while the header `baseFeePerGas` is denominated in an eighteen-
+    decimal unit that is not any token. The consequences are recorded in
+    `fee_model`, `gotchas` and `opcodes` below and are the point of this row.
+    Mainnet chain name is "Presto"; the public testnet is "Moderato" (42431).
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: reth
+  note: >-
+    NOT A SOURCE FORK — an SDK consumer. `Cargo.toml` pins every `reth-*` crate
+    to `https://github.com/paradigmxyz/reth` rev
+    `10aa6a512ba7c4f5f01ff489b1f513da0745821f` as a git dependency and builds a
+    node on top of it; `crates/revm` wraps revm's handler rather than editing
+    it. Descent is therefore by dependency, not by diff, which is why the deltas
+    below are stated as *overrides* (a replaced `Handler`, a replaced
+    instruction table entry, a replaced precompile lookup) rather than as
+    patches. Stripe/Paradigm; the repo is Apache-2.0/MIT.
+  sync_point: >-
+    The pinned reth rev supplies the Ethereum baseline, and Tempo's own
+    `From<TempoHardfork> for SpecId` maps EVERY Tempo hardfork — Genesis through
+    T11 — to `SpecId::OSAKA`. There is no Tempo fork that is "at Prague"; the
+    Ethereum revision is a constant and only Tempo's own T-forks move.
+
+client:
+  name: tempo (reth-based execution + Simplex consensus)
+  repo: https://github.com/tempoxyz/tempo
+  version: v1.13.1
+  commit: 11b2eec62345a9a045d977255a5d93f66114e9e3
+  language: rust
+  built_on: reth (git rev 10aa6a512ba7c4f5f01ff489b1f513da0745821f) / revm
+  note: >-
+    The public mainnet RPC reports `tempo/v1.13.1-6d9d0d5/x86_64-unknown-linux-gnu`,
+    i.e. the pinned tag is the tag the network is actually running — the usual
+    gap between "the tag we read" and "what validators run" is closed here.
+    `crates/precompiles`, `crates/revm`, `crates/evm` and `crates/primitives`
+    hold essentially all of the divergence; `crates/consensus` holds Simplex.
+
+live_probe:
+  endpoint: https://rpc.tempo.xyz
+  chain_id: 4217
+  observed_at_block: 36217459      # 0x228a273, `finalized` at probe time
+  observed_at: 2026-08-25
+  chain_id_src_live: "eth_chainId @ 36217459 -> 0x1079 (4217); net_version -> 4217; web3_clientVersion -> tempo/v1.13.1-6d9d0d5/x86_64-unknown-linux-gnu"
+  block_scan_range: 36217459-36217516
+  caveat: >-
+    The public endpoint rate-limits: a 100-block scan was truncated at 58 blocks.
+    The tx-type census below therefore covers 36217459-36217516 only.
+
+consensus:
+  engine: Simplex BFT (Commonware), Ed25519 validator keys
+  finality: single-slot deterministic (BFT), sub-second
+  block_time: ~200ms
+  note: >-
+    Header carries a `consensusContext` object (epoch, view, parentView,
+    Ed25519 proposer key) and a millisecond timestamp component, both absent on
+    mainnet. There is no beacon chain: `parentBeaconBlockRoot` is present in the
+    header but is always zero and no code lives at the EIP-4788 address.
+    Withdrawals are rejected outright by the block executor.
+  src: crates/primitives/src/header.rs:TempoConsensusContext
+  src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> consensusContext {epoch: 1676, view: 15860, parentView: 15859, proposer: 0x89dbf7ef...}; timestampMillis 0x1a031fcc99d; parentBeaconBlockRoot 0x00..00"
+
+baseline_fork: osaka
+baseline_note: >-
+  Derived from source, not from a blog post: `impl From<TempoHardfork> for
+  SpecId` returns `SpecId::OSAKA` unconditionally, and `tempo_precompiles()`
+  builds on `EthPrecompiles::new(spec)` with the Osaka set once T1C is active
+  (Prague before it). T1C activated 2026-03-12, so mainnet has been at the Osaka
+  precompile set since then. Every delta below is stated against Osaka.
+  src: crates/hardfork/src/lib.rs:SpecId, crates/precompiles/src/lib.rs:tempo_precompiles
+
+forks:
+  src: crates/hardfork/src/lib.rs:TempoHardfork
+  activation_src: crates/hardfork/src/constants.rs:MAINNET_T10_TIMESTAMP
+  note: >-
+    Tempo's fork axis is entirely its own — T0..T11, activation timestamps
+    hardcoded per chain id in `crates/hardfork/src/constants.rs` (mainnet 4217,
+    moderato 42431) rather than read from a genesis file at runtime. There is no
+    Ethereum-fork axis to schedule: the EVM revision is pinned to Osaka for all
+    of them. Roughly one fork every two to three weeks — twelve mainnet forks in
+    the six months since genesis.
+  timeline:
+  - {name: T0, activation_time: 0, mainnet_equivalent: osaka,
+     note: "genesis; base fee 10^10 attodollars, fixed",
+     src: "crates/hardfork/src/constants.rs:MAINNET_T0_TIMESTAMP"}
+  - {name: T1, activation_time: 1770908400, mainnet_equivalent: osaka,
+     note: "TIP-1000 state-creation gas (SSTORE 0->x becomes 250,000 gas); TIP-1010 30M general gas limit; base fee 2x10^10 attodollars",
+     src: "crates/hardfork/src/constants.rs:MAINNET_T1_TIMESTAMP"}
+  - {name: T1A, activation_time: 1770908400, mainnet_equivalent: osaka,
+     note: "per-tx gas cap raised from EIP-7825's 16,777,216 to 30,000,000",
+     src: "crates/hardfork/src/lib.rs:tx_gas_limit_cap"}
+  - {name: T1B, activation_time: 1771858800, mainnet_equivalent: osaka,
+     src: "crates/hardfork/src/constants.rs:MAINNET_T1B_TIMESTAMP"}
+  - {name: T1C, activation_time: 1773327600, mainnet_equivalent: osaka,
+     note: "SWITCHES THE BUILT-IN PRECOMPILE SET FROM PRAGUE TO OSAKA and REMOVES opcode 0x4F — see opcodes.removed",
+     src: "crates/precompiles/src/lib.rs:is_t1c"}
+  - {name: T2, activation_time: 1774965600, mainnet_equivalent: osaka,
+     note: "ValidatorConfigV2 precompile; self-sponsored fee payer rejected",
+     src: "crates/hardfork/src/constants.rs:MAINNET_T2_TIMESTAMP"}
+  - {name: T3, activation_time: 1777298400, mainnet_equivalent: osaka,
+     note: "AddressRegistry + SignatureVerifier precompiles; access-key (keychain) transactions",
+     src: "crates/contracts/src/precompiles/mod.rs:ADDRESS_REGISTRY_ADDRESS"}
+  - {name: T4, activation_time: 1779112800, mainnet_equivalent: osaka,
+     note: "TIP-1046 bug-fix bundle; shared (subblock) gas limit drops to 0. NOT the TIP-1016 gas split — that is coded but gated off, see non_eip_specs.",
+     src: "crates/hardfork/src/lib.rs:shared_gas_limit"}
+  - {name: T5, activation_time: 1781013600, mainnet_equivalent: osaka,
+     note: "TIP20ChannelReserve precompile (payment channels); TIP-1045 payment-lane classification becomes a CONSENSUS rule (is_payment_v2)",
+     src: "crates/evm/src/block.rs:is_payment"}
+  - {name: T6, activation_time: 1782223200, mainnet_equivalent: osaka,
+     note: "ReceivePolicyGuard precompile",
+     src: "crates/contracts/src/precompiles/mod.rs:RECEIVE_POLICY_GUARD_ADDRESS"}
+  - {name: T7, activation_time: 1783605600, mainnet_equivalent: osaka,
+     note: "TIP-1060 storage credits: SSTORE gets a Tempo instruction and clearing refunds go to zero",
+     src: "crates/revm/src/instructions.rs:is_t7"}
+  - {name: T8, activation_time: 1785420000, mainnet_equivalent: osaka,
+     note: "CurrentCommittee precompile, written by a per-block system call",
+     src: "crates/evm/src/block.rs:apply_current_committee_system_call"}
+  - {name: T9, activation_time: 1786024800, mainnet_equivalent: osaka,
+     src: "crates/hardfork/src/constants.rs:MAINNET_T9_TIMESTAMP"}
+  - {name: T10, activation_time: 1787320800, mainnet_equivalent: osaka,
+     note: "CURRENT MAINNET FORK at the probe block. TIP-1091 zones: ZoneFactory/ZonePortal/ZoneVerifier/ZoneMessenger installed at a fork boundary.",
+     src: "crates/evm/src/block.rs:deploy_zone_factory_at_boundary"}
+  - {name: T11, status: pending, mainnet_equivalent: osaka,
+     note: "declared in the enum with NO mainnet activation timestamp (`Self::T11 => None`). Raises the expiring-nonce replay set to 3,000,000 entries and the max expiry window to 300s.",
+     src: "crates/hardfork/src/lib.rs:expiring_nonce_set_capacity"}
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      Same update formula, different everything else. TIP-1067 (T7+) runs
+      EIP-1559's integer formula against a FIXED 10,000,000 gas target with
+      `BaseFeeParams::new(8, 1)` — elasticity 1, not 2, so the usual
+      target-halving is suppressed — and then CLAMPS the result into
+      [600,000,000, 12,000,000,000]. The base fee can never leave that band, and
+      the unit is attodollars, not wei. Observed base fee sat exactly on the
+      floor.
+    src: crates/hardfork/src/constants.rs:tempo_t7_next_block_base_fee
+    src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> baseFeePerGas 0x23c34600 = 600,000,000 == TEMPO_T7_BASE_FEE_FLOOR; eth_feeHistory 4 blocks from 0x228a273 -> all five entries 0x23c34600"
+  4844:
+    status: removed
+    note: >-
+      No blob transaction type exists. `TempoTxEnvelope` has no 0x03 variant and
+      `TryFrom<TxType> for TempoTxType` returns
+      `UnsupportedTransactionType::new(TxType::Eip4844)` explicitly. The header
+      still carries `blobGasUsed`/`excessBlobGas` (both zero) and
+      `eth_feeHistory` still reports a `baseFeePerBlobGas` of 1 — vestigial
+      fields on a chain that cannot accept a blob.
+    src: crates/primitives/src/transaction/envelope.rs:UnsupportedTransactionType
+    src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_feeHistory @ 36217459 -> baseFeePerBlobGas [0x1 x5]"
+  4788:
+    status: tombstoned
+    note: >-
+      The header field survives and is always zero, and the beacon-roots address
+      holds NO code, so the ring-buffer write is a no-op and any contract reading
+      a parent beacon root gets empty output rather than a revert. There is no
+      beacon chain to root. Recorded as tombstoned rather than removed because
+      the header field is still consensus-encoded.
+    src: crates/primitives/src/header.rs:parent_beacon_block_root
+    src_live: "eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) @ 36217459 -> 0x; header parentBeaconBlockRoot 0x00..00"
+  2935:
+    status: inherited
+    note: "The history-storage contract IS deployed and holds the standard runtime — the one Prague system contract Tempo keeps."
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 36217459 -> 0x3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f3560014303... (standard EIP-2935 runtime)"
+  4895:
+    status: removed
+    note: >-
+      Withdrawals are not merely empty, they are REJECTED: the block executor
+      errors with "withdrawals are not permitted" if the list is non-empty. The
+      header still carries the empty-list `withdrawalsRoot`. There is no native
+      asset to withdraw.
+    src: crates/evm/src/block.rs:apply_pre_execution_changes
+    src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> withdrawals [], withdrawalsRoot 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421 (empty trie)"
+  7002:
+    status: removed
+    note: "No withdrawal-request predeploy; `requestsHash` is the empty-list hash."
+    src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 36217459 -> 0x; header requestsHash 0xe3b0c442...7852b855"
+  7251:
+    status: removed
+    note: "No consolidation-request predeploy."
+    src_live: "eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 36217459 -> 0x"
+  6110:
+    status: removed
+    note: "No deposit contract; validator set comes from the ValidatorConfig precompiles, not from an L1 deposit log."
+    src: crates/contracts/src/precompiles/mod.rs:VALIDATOR_CONFIG_V2_ADDRESS
+  7702:
+    status: modified
+    note: >-
+      The stock 0x04 type is accepted unchanged. Tempo ALSO carries a second,
+      parallel delegation mechanism inside its own 0x76 type:
+      `tempo_authorization_list` (JSON `aaAuthorizationList`), a 7702-shaped
+      authorization list whose entries are signed with TEMPO signatures — so a
+      P-256 or WebAuthn key can install a delegation, which stock 7702 cannot do.
+      The two lists are separate fields with separate validation.
+    src: crates/primitives/src/transaction/tempo_transaction.rs:tempo_authorization_list
+  7825:
+    status: modified
+    note: "Per-transaction gas cap raised from Osaka's 16,777,216 to 30,000,000 at T1A."
+    src: crates/hardfork/src/lib.rs:MAX_TX_GAS_LIMIT_OSAKA
+  2200:
+    status: modified
+    note: >-
+      SSTORE creation pricing is rewritten twice. TIP-1000 (T1+) charges 250,000
+      gas for a 0->nonzero SSTORE, 12.5x Osaka's 20,000. TIP-1060 (T7+) splits
+      that into a 5,000-gas residual charged by the gas function plus a
+      245,000-gas creditable portion settled by a Tempo SSTORE instruction
+      against a storage-credit balance. See `opcodes.modified`.
+    src: crates/revm/src/gas_params.rs:SSTORE_CREATE_COST
+  3529:
+    status: modified
+    note: >-
+      At T7 `sstore_clearing_slot_refund` is set to 0: clearing a slot yields no
+      gas refund at all. Its economic replacement is a TIP-1060 storage CREDIT
+      minted at the StorageCredits precompile, redeemable only against a future
+      slot creation by the same account — not a gas refund, not transferable to
+      the fee.
+    src: crates/revm/src/gas_params.rs:t7_gas_params
+  3860:
+    status: inherited
+    src: crates/revm/src/handler.rs:tx_initcode_cost
+  7951:
+    status: inherited
+    note: "P256VERIFY is present at 0x0100 as a native precompile (Osaka built-ins from T1C). Separately — and this is the interesting part — P-256 also authorizes transactions directly; see tx_authorization."
+    src_live: "eth_call(0x...0100, 160 zero bytes) @ 36217459 -> 0x (empty = invalid signature, EIP-7951 semantics, no revert); eth_getCode(0x...0100) @ 36217459 -> 0x"
+  7623:
+    status: unrecorded
+    note: "Calldata floor cost is computed for AA transactions via `tx_floor_cost_with_tokens`, but whether the T1/T4/T7 gas tables leave the floor rule itself at Osaka values was not established."
+  7702_delegation_prefix:
+    status: unrecorded
+    note: "Whether Tempo restricts what a 0x04 delegation may point at (e.g. banning delegation to a precompile address) was not established."
+
+non_eip_specs:
+  adopted:
+  - {id: TIP-0001, name: "Tempo Transaction", note: "the 0x76 type. Status field in tips/tip-0001.md reads Mainnet.", src: "crates/primitives/src/transaction/tempo_transaction.rs:TempoTransaction"}
+  - {id: TIP-20, name: "enshrined stablecoin token standard", note: "ERC-20-shaped, implemented as a native precompile family rather than bytecode. Fixed 6 decimals.", src: "crates/precompiles/src/tip20/mod.rs:TIP20Token"}
+  - {id: TIP-403, name: "transfer policy registry", note: "per-token and per-account transfer policies enforced inside the TIP-20 precompile; policy id 0 rejects all, id 1 allows all", src: "crates/precompiles/src/tip403_registry/mod.rs:TIP403Registry"}
+  - {id: TIP-1000, name: "State Creation Cost Increase", src: "crates/revm/src/gas_params.rs:CONTRACT_CREATE_COST"}
+  - {id: TIP-1009, name: "Expiring Nonces", note: "nonce_key == 2^256-1 selects hash-based replay protection with a validity window instead of a sequential nonce", src: "crates/primitives/src/transaction/tempo_transaction.rs:TEMPO_EXPIRING_NONCE_KEY"}
+  - {id: TIP-1010, name: "Mainnet Gas Parameters", note: "defines the payment lane's gas budget: the general (non-payment) limit", src: "crates/hardfork/src/constants.rs:TEMPO_T1_GENERAL_GAS_LIMIT"}
+  - {id: TIP-1022, name: "Virtual Addresses for TIP-20 Deposit Forwarding", note: "addresses whose bytes [4:14] are 0xFD repeated decode to a (masterId, userTag) pair", src: "crates/primitives/src/address.rs:VIRTUAL_MAGIC"}
+  - {id: TIP-1031, name: "Embed consensus context in the block Header", src: "crates/primitives/src/header.rs:TempoConsensusContext"}
+  - {id: TIP-1045, name: "Payment Transaction Classification", note: "the consensus predicate for the payment lane — see fee_model", src: "crates/primitives/src/transaction/envelope.rs:is_payment_v2"}
+  - {id: TIP-1053, name: "Witnesses in Key Authorizations", src: "crates/primitives/src/transaction/key_authorization.rs:SignedKeyAuthorization"}
+  approved:
+  - {id: TIP-1067, name: "Dynamic Base Fee", note: "LIVE since T7 while its own status field still reads Approved", src: "crates/hardfork/src/constants.rs:TEMPO_T7_BASE_FEE_PARAMS"}
+  draft:
+  - {id: TIP-1060, name: "Storage Credits", note: "SHIPPED AT T7, 2026-07-09, and its spec still says Draft", src: "crates/revm/src/gas_credits.rs:STORAGE_CREDIT_VALUE"}
+  - {id: TIP-1070, name: "Current Committee State", note: "SHIPPED AT T8", src: "crates/evm/src/block.rs:apply_current_committee_system_call"}
+  - {id: TIP-1091, name: "Enshrined ZoneFactory", note: "SHIPPED AT T10", src: "crates/evm/src/block.rs:deploy_zone_factory_at_boundary"}
+  - {id: TIP-1092, name: "TIP-20 Policy IDs in TIP-403", src: "crates/precompiles/src/tip403_registry/mod.rs:policy_id"}
+  - {id: TIP-1093, name: "Extend Expiring Nonce Window to Five Minutes", note: "the T11 change; T11 has no mainnet activation timestamp", src: "crates/hardfork/src/lib.rs:expiring_nonce_max_expiry_secs"}
+  - {id: TIP-1016, name: "Exempt Storage Creation from Gas Limits", note: "status Backlog. Implemented as `amsterdam_gas_params` but gated behind `cfg.enable_amsterdam_eip8037`, which no production path sets — coded, not live.", src: "crates/revm/src/gas_params.rs:amsterdam_gas_params"}
+  withdrawn:
+  - {id: TIP-1059, name: "Discounted Pure Payment Transfers"}
+  - {id: TIP-1065, name: "Repurpose TIP-20 Balance slots into User State"}
+  note: >-
+    The TIP series lives inside the client repo at `tips/` — 47 numbered
+    specifications at this tag, in two tiers: low numbers (TIP-0001, TIP-20,
+    TIP-403) are transaction and token standards deliberately echoing ERC
+    numbering, the 1000-series are protocol changes. Each file carries its own
+    `status:` field with the ladder Draft | In Review | Ready for Consideration |
+    Approved | Scheduled | Testnet | Mainnet.
+
+    THAT STATUS FIELD LAGS THE CHAIN AND SHOULD NOT BE TRUSTED. TIP-1060
+    (Storage Credits) reads Draft and has been live on mainnet since T7 on
+    2026-07-09, where it replaced the SSTORE instruction and zeroed the clearing
+    refund. TIP-1070 reads Draft and shipped at T8. TIP-1091 reads Draft and
+    shipped at T10 three days before the probe. TIP-1067 reads Approved and has
+    been setting the base fee since T7. The `adoption:` values above are taken
+    from those status fields as written, because that is what the document says;
+    the `status:` of the corresponding facts elsewhere in this file is taken from
+    the source, because that is what the chain does. Where they disagree the
+    source is right. This is the SCHEMA.md warning about `src_doc:` — docs
+    describe intent and lag what shipped — showing up inside a chain's own
+    specification repository rather than on a website.
+
+tx_types:
+  "0x00": {name: Legacy, status: modified, note: "accepted, but `value` must be zero and the fee is charged in the default TIP-20 fee token — a legacy transaction on Tempo cannot move any asset by itself", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope"}
+  "0x01": {name: EIP-2930, status: modified, note: "same value/fee-token caveat as 0x00", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope"}
+  "0x02": {name: EIP-1559, status: modified, note: "same value/fee-token caveat. maxFeePerGas is in attodollars. Observed live: 3 of 7 transactions in the scanned range.", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> tx 0x265549d2... type 0x2, value 0x0, receipt feeToken 0x20c0...0000"}
+  "0x03": {name: EIP-4844 blob, status: removed, note: "no envelope variant; conversion from alloy's TxType::Eip4844 is an explicit error", src: "crates/primitives/src/transaction/envelope.rs:UnsupportedTransactionType"}
+  "0x04": {name: EIP-7702 set-code, status: modified, note: "accepted as-is; Tempo's own delegation list is a field of 0x76 instead", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope"}
+  "0x76":
+    name: TempoTransaction (TT)
+    status: added
+    spec: TIP-0001
+    note: >-
+      One type byte carrying seven distinct mechanisms that are separate EIPs
+      elsewhere, and one that has no mainnet counterpart: (1) `calls[]` — an
+      atomic batch, at most one CREATE and it must be first; (2) `feeToken` — an
+      explicit per-transaction fee-token choice; (3) `feePayerSignature` — a
+      SECOND protocol-validated signer over a different digest; (4)
+      `nonceKey`/`nonce` — a 2D nonce for parallel lanes, with `nonceKey ==
+      2^256-1` selecting hash-based expiring-nonce replay protection instead;
+      (5) `validAfter`/`validBefore` — a consensus-enforced validity window;
+      (6) `signature` — secp256k1, P-256, WebAuthn or a keychain wrapper around
+      any of those; (7) `keyAuthorization` — provision a new access key into the
+      AccountKeychain precompile in the same transaction that first uses it; and
+      (8) `aaAuthorizationList` — 7702-shaped delegations signed with Tempo
+      signature types. 4 of 7 transactions in the scanned range were 0x76, and
+      the sampled one was signed with WebAuthn.
+    src: crates/primitives/src/transaction/tempo_transaction.rs:TEMPO_TX_TYPE_ID
+    src_live: "eth_getBlockByNumber @ 36217459-36217516 -> 7 txs: {0x2: 3, 0x76: 4}; sampled 0x76 has feeToken 0x20c0...b9537d11c60e8b50, calls[2], nonceKey 0x0, signature {type: webAuthn, pubKeyX, pubKeyY, webauthnData}"
+
+tx_authorization:
+  key_binding: declared
+  signers_per_tx: 2
+  note: >-
+    THREE FINDINGS ON THIS AXIS, ALL PROTOCOL-LEVEL.
+
+    (1) P-256 AND WEBAUTHN AUTHORIZE TRANSACTIONS. Not through account-abstraction
+    code, not through a paymaster — the client itself verifies them. `SignatureType`
+    is {Secp256k1, P256, WebAuthn} and `TempoSignature::recover_signer` dispatches
+    on a leading type byte (0x01 P-256, 0x02 WebAuthn, 0x03/0x04 keychain). The
+    address is `keccak256(pubKeyX || pubKeyY)[12:]` — the same construction
+    secp256k1 uses, applied to a P-256 point, so `key_binding` for these is
+    `derived` in exactly mainnet's sense. This is the payoff the P256VERIFY rows
+    elsewhere in this dataset never deliver: eleven chains can VERIFY P-256 and on
+    almost all of them a P-256 key still cannot move anything. Here it can, and a
+    live block contains a WebAuthn-signed transaction to prove it. The webauthn
+    path validates authenticatorData flags (UP/UV) and the clientDataJSON
+    challenge, i.e. a raw browser passkey assertion is the transaction signature.
+
+    (2) THE FEE PAYER IS A SECOND PROTOCOL-VALIDATED SIGNER. `feePayerSignature`
+    is an optional secp256k1 signature over `fee_payer_signature_hash`, a
+    DIFFERENT digest: prefix byte 0x78, then the transaction body with the
+    SENDER'S ADDRESS substituted for the fee-payer field, and with `fee_token`
+    included. So a sponsor commits to who they are sponsoring and to which token
+    they will be billed in, and the signature cannot be lifted onto another
+    transaction or another payer. `validate_env` recovers it before execution and
+    rejects a self-sponsored transaction from T2 on. This is Kaia's fee-delegation
+    shape reached independently: two parties, two digests, one type byte. The
+    receipt exposes the outcome as a `feePayer` field. Unlike Kaia, each party is
+    a single key, not a weighted multisig — `signers_per_tx: 2` counts parties.
+
+    (3) `key_binding: declared` COMES FROM THE KEYCHAIN, NOT FROM THE CURVE.
+    A `KeychainSignature` carries an explicit `user_address` and signs
+    `keccak256(sigHash || user_address)`. The recovered address is the ACCESS KEY,
+    which is then looked up in the AccountKeychain precompile to see whether it may
+    act for `user_address` and within what spending limit; the transaction's sender
+    is `user_address`, not the recovered key. `ecrecover(sig) == from` is therefore
+    false for keychain transactions and true for the three direct schemes — the
+    field records the weaker of the two, as Kaia and Tron do. TIP-1045 goes one
+    step further: `keyAuthorization` lets a transaction PROVISION the access key it
+    is itself signed with, root-key-signed, in the same transaction.
+  src: crates/primitives/src/transaction/tt_signature.rs:derive_p256_address, crates/primitives/src/transaction/tt_signature.rs:KeychainSignature, crates/primitives/src/transaction/tempo_transaction.rs:fee_payer_signature_hash, crates/revm/src/handler.rs:SelfSponsoredFeePayer
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: "the only scheme accepted for a fee-payer signature — a sponsor cannot be a passkey"
+      src: crates/primitives/src/transaction/tempo_transaction.rs:SECP256K1_SIGNATURE_LENGTH
+    p256:
+      status: added
+      authorizes: protocol
+      precompile: "0x0100"
+      note: >-
+        129-byte encoding: r || s || pubKeyX || pubKeyY || preHash flag. Low-s is
+        enforced at the protocol level (`s <= n/2`, normalized against
+        `P256N_HALF`) — malleability is rejected, not silently accepted.
+      src: crates/primitives/src/transaction/tt_signature.rs:P256SignatureWithPreHash
+    webauthn:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        `authorizes: protocol` WITH `precompile: none` — the finding SCHEMA.md
+        names. The client validates a full WebAuthn assertion (authenticatorData
+        flags, clientDataJSON challenge binding, base64url) to authorize a
+        transaction, and no precompile on this chain performs that composite
+        check. A contract can call P256VERIFY on the inner ECDSA signature but
+        cannot reproduce the authenticator-data and challenge validation the
+        protocol just performed, so an on-chain recovery or multisig contract
+        cannot re-verify a signature its own chain accepted.
+      src: crates/primitives/src/transaction/tt_signature.rs:WebAuthnSignature
+    keychain:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        A wrapper, not a curve: any of the three primitive schemes signed by a key
+        registered in the AccountKeychain precompile at 0xAAAAAAAA00..00, acting for
+        a declared `user_address` under a spending limit. Two versions (0x03 legacy,
+        0x04 current) differ in the digest. No precompile validates the wrapper
+        itself.
+      src: crates/primitives/src/transaction/tt_signature.rs:SIGNATURE_TYPE_KEYCHAIN_V2
+    ed25519:
+      status: added
+      authorizes: never
+      precompile: none
+      note: "consensus only — validator identity and the block proposer field. Cannot sign a transaction."
+      src: crates/primitives/src/ed25519.rs:PublicKey
+
+non_evm_transactions:
+  note: >-
+    One protocol record with no EIP-2718 type byte: the validator-scoped bundle
+    that implements Tempo's payment-priority lane. It never appears in
+    `eth_getBlockByNumber`, so the lane is invisible to an envelope-based indexer.
+  entries:
+  - id: subblock
+    name: SubBlock (payment-priority lane)
+    note: >-
+      A `SubBlock` is a signed, validator-scoped bundle (version, parentHash,
+      feeRecipient, transactions) that a validator can commit into the block it
+      is not proposing — Tempo's payment-priority lane. It is NOT a transaction
+      type: it has no type byte and never appears in `eth_getBlockByNumber`; its
+      contents are ordinary 0x76 transactions whose `nonceKey` carries the
+      0x5b-prefixed partial validator key that binds them to that lane. The
+      header's `sharedGasLimit` is the budget for the subblock section — and it
+      is ZERO from T4 onward, so at the probe block the lane is allocated no gas.
+    src: crates/primitives/src/subblock.rs:SubBlock
+    src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> sharedGasLimit 0x0"
+
+precompiles:
+  dynamic_range:
+    name: TIP-20 token precompiles
+    status: added
+    pattern: "bytes[0..12] == 0x20C000000000000000000000 (2^64 addresses)"
+    note: >-
+      EVERY TIP-20 stablecoin IS A PRECOMPILE, resolved by address prefix through
+      a `set_precompile_lookup` predicate rather than from a map — the second such
+      chain in this dataset after Base's PrecompileLookup, and for a completely
+      different reason. A token created by the TIP20Factory gets an address in this
+      range and its ERC-20 surface is executed as native Rust, not as bytecode.
+      `pathUSD` at 0x20C0..0000 is the canonical one and the default fee token.
+    src: crates/precompiles/src/lib.rs:extend_tempo_precompiles, crates/primitives/src/address.rs:TIP20_TOKEN_PREFIX
+    src_live: "eth_call(0x20C0..0000, decimals()) @ 36217459 -> 6; symbol() -> \"pathUSD\"; totalSupply() -> 0x1c905b7da7dd (31,297,377,265,117 microdollars); eth_getCode -> 0xef"
+  "0x20C0000000000000000000000000000000000000":
+    name: pathUSD (TIP-20)
+    status: added
+    note: "the DEFAULT_FEE_TOKEN. 6 decimals. Charged to legacy/2930/1559 transactions, which carry no feeToken field."
+    src: crates/contracts/src/precompiles/mod.rs:DEFAULT_FEE_TOKEN
+    src_live: "eth_getTransactionReceipt(0x265549d2...) @ 36217459 -> feeToken 0x20c0000000000000000000000000000000000000 on a type-0x2 tx"
+  "0x20FC000000000000000000000000000000000000":
+    name: TIP20Factory
+    status: added
+    src: crates/contracts/src/precompiles/mod.rs:TIP20_FACTORY_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0x403C000000000000000000000000000000000000":
+    name: TIP403Registry (transfer policy registry)
+    status: added
+    note: "policy id 0 rejects all transfers, id 1 allows all; per-token bindings under TIP-1092. Compliance enforcement lives inside the token precompile, so a policy can block a transfer with no contract involved."
+    src: crates/contracts/src/precompiles/mod.rs:TIP403_REGISTRY_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0xfeec000000000000000000000000000000000000":
+    name: TipFeeManager
+    status: added
+    note: "holds the validator fee-token preference and the fee AMM used to convert the payer's token into it"
+    src: crates/contracts/src/precompiles/mod.rs:TIP_FEE_MANAGER_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0xdec0000000000000000000000000000000000000":
+    name: StablecoinDEX
+    status: added
+    note: "an enshrined stablecoin AMM. The sampled live 0x76 transaction calls it directly."
+    src: crates/contracts/src/precompiles/mod.rs:STABLECOIN_DEX_ADDRESS
+    src_live: "eth_getBlockByNumber @ 36217459 -> 0x76 tx calls[1].to == 0xdec0..0000; eth_getCode -> 0xef"
+  "0x4E4F4E4345000000000000000000000000000000":
+    name: NonceManager
+    status: added
+    note: "backs the 2D nonce. ASCII \"NONCE\" in the leading bytes."
+    src: crates/contracts/src/precompiles/mod.rs:NONCE_PRECOMPILE_ADDRESS
+  "0xCCCCCCCC00000000000000000000000000000000":
+    name: ValidatorConfig
+    status: added
+    src: crates/contracts/src/precompiles/mod.rs:VALIDATOR_CONFIG_ADDRESS
+  "0xCCCCCCCC00000000000000000000000000000001":
+    name: ValidatorConfigV2
+    status: added
+    activation_time: 1774965600
+    src: crates/contracts/src/precompiles/mod.rs:VALIDATOR_CONFIG_V2_ADDRESS
+  "0xAAAAAAAA00000000000000000000000000000000":
+    name: AccountKeychain
+    status: added
+    note: "the registry `key_binding: declared` rests on: which access keys may act for an account, of which signature type, under what spending limit"
+    src: crates/contracts/src/precompiles/mod.rs:ACCOUNT_KEYCHAIN_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0xFDC0000000000000000000000000000000000000":
+    name: AddressRegistry
+    status: added
+    activation_time: 1777298400
+    src: crates/contracts/src/precompiles/mod.rs:ADDRESS_REGISTRY_ADDRESS
+  "0x5165300000000000000000000000000000000000":
+    name: SignatureVerifier
+    status: added
+    activation_time: 1777298400
+    note: "exposes Tempo's own signature checking to contracts. Whether it covers the full WebAuthn composite check or only the inner ECDSA was NOT established — see the webauthn scheme note."
+    src: crates/contracts/src/precompiles/mod.rs:SIGNATURE_VERIFIER_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0xB10C000000000000000000000000000000000000":
+    name: ReceivePolicyGuard
+    status: added
+    activation_time: 1782223200
+    src: crates/contracts/src/precompiles/mod.rs:RECEIVE_POLICY_GUARD_ADDRESS
+  "0x1060000000000000000000000000000000000000":
+    name: StorageCredits
+    status: added
+    activation_time: 1783605600
+    note: "TIP-1060 credit balances. Address echoes the TIP number."
+    src: crates/contracts/src/precompiles/mod.rs:STORAGE_CREDITS_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0xC077E00000000000000000000000000000000000":
+    name: CurrentCommittee
+    status: added
+    activation_time: 1785420000
+    note: "written every block by a system call; exposes the active validator committee to the EVM"
+    src: crates/contracts/src/precompiles/mod.rs:CURRENT_COMMITTEE_ADDRESS
+    src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0x000000000000000000000000000000000000000a":
+    name: KZG point evaluation
+    status: inherited
+    note: >-
+      PRESENT AND FUNCTIONING despite blob transactions being removed — the Osaka
+      built-in set is installed wholesale, so the verifier for a transaction type
+      the chain cannot accept is still callable. A garbage input reverts with a
+      precompile error rather than returning empty, proving it is really there.
+    src_live: "eth_call(0x...0a, 192 zero bytes) @ 36217459 -> error 'EVM error: PrecompileError'"
+  note: >-
+    ALL TIP-20 AND SYSTEM PRECOMPILES CARRY ONE BYTE OF CODE, 0xEF. At each
+    activation fork boundary `deploy_precompile_at_boundary` writes
+    `Bytecode::new_legacy([0xef])` into the account if its code hash is empty.
+    So on Tempo `EXTCODESIZE(precompile) == 1` and `EXTCODEHASH(precompile) ==
+    keccak(0xef)`, where on mainnet both are the empty-account values — the exact
+    inverse of the usual "0x means native" heuristic, and the reason a
+    `eth_getCode` probe alone cannot classify an address here. 0xEF is the
+    EOF-reserved prefix, so the marker is not a deployable contract and cannot be
+    reached as bytecode. Mainnet's own precompiles (0x01..0x11, 0x0100) keep NO
+    code, so the two families are distinguishable by exactly this byte.
+  src: crates/evm/src/block.rs:deploy_precompile_at_boundary
+  src_live: "eth_getCode @ 36217459: 0x20C0..0000, 0x20FC.., 0x403C.., 0xfeec.., 0xdec0.., 0xAAAAAAAA.., 0x5165300.., 0x1060.., 0xC077E00.. all -> 0xef; 0x..01 and 0x..0100 -> 0x. EXTCODESIZE via eth_call state override: pathUSD -> 1, ecrecover(0x01) -> 0. EXTCODEHASH(pathUSD) -> 0x309b8896ee4c1ff7ec1966155373dee42663b6b40c3fedc70ba501684848d2a3"
+
+system_contracts:
+  "0x0000F90827F1C53a10cb7A02335B175320002935":
+    name: EIP-2935 history storage
+    status: inherited
+    src_live: "eth_getCode @ 36217459 -> standard 2935 runtime"
+  "0x5AD0000000000000000000000000000000000000":
+    name: ZonePortal address family (TIP-1091)
+    status: added
+    activation_time: 1787320800
+    note: "addresses with the 12-byte prefix 0x5AD0...00 decode to a nonzero zone id. Installed at the T10 boundary along with ZoneFactory/ZoneVerifier/ZoneMessenger. Not probed live."
+    src: crates/primitives/src/address.rs:ZONE_PORTAL_PREFIX
+  note: >-
+    Multicall3 (0xcA11bde05..), CreateX, Permit2 and a Safe deployer are shipped
+    as genesis ABIs in `crates/contracts/abi/`, i.e. ordinary bytecode, not
+    protocol. Not enumerated here.
+
+system_transactions:
+  - name: CurrentCommittee update
+    note: "a per-block system call writing the active validator committee into the CurrentCommittee precompile at 0xC077E00..00, from T8. No transaction is emitted and it does not appear in the block body."
+    activation_time: 1785420000
+    src: crates/evm/src/block.rs:apply_current_committee_system_call
+  - name: precompile marker deployment
+    note: "at each activation fork boundary the block executor writes one byte of code (0xEF) into newly-activated precompile accounts, and at T10 installs the full TIP-1091 zone state. A state change with no transaction."
+    src: crates/evm/src/block.rs:deploy_precompile_at_boundary
+
+opcodes:
+  added: []
+  removed:
+  - number: "0x4F"
+    name: MILLIS_TIMESTAMP
+    note: >-
+      ADDED AT GENESIS AND REMOVED AT T1C — the only opcode in this dataset that
+      a chain invented and then withdrew. It pushed `block.timestamp` in
+      MILLISECONDS for 2 gas. The instruction table installs it only while
+      `!spec.is_t1c()`, so from 2026-03-12 the opcode is undefined again and
+      contracts compiled against it fail with an invalid-opcode error. Mainnet
+      has never assigned 0x4F. Recorded under `removed` because that is its state
+      at the baseline; the note is the whole finding.
+    src: crates/revm/src/instructions.rs:MILLIS_TIMESTAMP
+  modified:
+  - number: "0x55"
+    name: SSTORE
+    note: >-
+      Repriced twice and then given a Tempo instruction. TIP-1000 (T1+): a
+      0->nonzero SSTORE costs 250,000 gas, 12.5x mainnet's 20,000. TIP-1060 (T7+):
+      the gas function charges only a 5,000-gas residual and the SSTORE opcode is
+      REPLACED in the instruction table by `gas_credits::sstore`, which mints and
+      spends storage credits at the StorageCredits precompile — a slot clear mints
+      a 245,000-gas credit instead of a refund, and a later creation by the same
+      account consumes it. `sstore_clearing_slot_refund` is 0.
+    src: crates/revm/src/instructions.rs:gas_credits, crates/revm/src/gas_params.rs:t7_gas_params
+  - number: "0xF0"
+    name: CREATE
+    note: >-
+      500,000 gas from T1 — 15.6x mainnet's 32,000 — under TIP-1000, on the
+      argument that contract creation is permanent state. Account creation is
+      250,000 (mainnet 25,000) and CODEDEPOSIT is 1,000 (mainnet 200 per byte,
+      i.e. Tempo makes it a flat fee). The TIP-1016 "regular vs state gas" split
+      that would decompose these is implemented in `amsterdam_gas_params` but is gated
+      behind `cfg.enable_amsterdam_eip8037`, which is set only in tests — so at
+      the probe block the T1 flat costs are what applies.
+    src: crates/revm/src/gas_params.rs:CONTRACT_CREATE_COST, crates/revm/src/gas_params.rs:tempo_gas_params_with_amsterdam
+  - number: "0x31"
+    name: BALANCE
+    note: "always returns 0 for every address — there is no native asset. Not disabled, just permanently zero. See gotchas: the RPC does NOT agree with the opcode."
+    src_live: "eth_call with state-override code 0x5f3531 5f5260205ff3 (BALANCE of calldata address) @ 36217459 -> 0x00..00"
+  - number: "0x47"
+    name: SELFBALANCE
+    note: "always returns 0. Same reason."
+    src_live: "eth_call with state-override code 0x475f5260205ff3 @ 36217459 -> 0x00..00"
+  - number: "0xF1"
+    name: CALL
+    note: >-
+      The value argument is structurally unusable: no account can ever hold a
+      nonzero native balance, so any CALL carrying value fails for insufficient
+      funds. For 0x76 transactions the check is earlier and harder — every entry
+      in `calls[]` is rejected at validation with `ValueTransferNotAllowedInAATx`
+      if `value != 0`, before execution begins.
+    src: crates/revm/src/handler.rs:ValueTransferNotAllowedInAATx
+
+fee_model:
+  metering: gas, priced in attodollars, settled in a 6-decimal TIP-20 token
+  fee_market: EIP-1559 formula, fixed 10M target, elasticity 1, hard-clamped
+  gas_token: "TIP-20 stablecoin precompile (default pathUSD, 0x20C0..0000); no native token exists"
+  burn: none
+  note: >-
+    THIS IS THE ROW'S CENTRAL FINDING, AND IT IS A UNIT PROBLEM, NOT A TOKEN
+    PROBLEM.
+
+    THE HEADER BASE FEE IS NOT DENOMINATED IN ANY TOKEN. `baseFeePerGas` is in
+    ATTODOLLARS — 10^-18 USD — an accounting unit with no asset behind it. The
+    settlement asset, a TIP-20, has SIX decimals (microdollars, 10^-6 USD). The
+    protocol therefore carries an explicit conversion constant,
+    `TEMPO_GAS_PRICE_SCALING_FACTOR = 10^12`, and charges
+    `ceil(gas_limit * gas_price / 10^12)` token units. Every tool that assumes
+    `baseFeePerGas` is wei of the chain's asset is off by exactly 10^12 here, and
+    the direction of the error is "fees look 10^12 times larger than they are".
+    The observed base fee, 600,000,000 attodollars, is 0.0000006 USD per gas: a
+    50,000-gas transfer costs 0.03 USD at the cap and 0.0003 USD at the floor.
+
+    THE FEE TOKEN IS CHOSEN PER TRANSACTION AND VALIDATED AGAINST ON-CHAIN STATE.
+    A 0x76 transaction may name any `feeToken`; the client checks (a) the TIP-20
+    address prefix and (b) that the token's `currency` STORAGE FIELD reads exactly
+    the three bytes "USD", rejecting with `FeeTokenNotUsdCurrency` otherwise. A
+    transaction's validity thus depends on a string stored in another account's
+    state — a consensus rule keyed to a specific ERC-20-like token's contents,
+    which is new to this dataset. Legacy/2930/1559 transactions have no feeToken
+    field and fall back to `DEFAULT_FEE_TOKEN` = pathUSD.
+
+    PAYER AND VALIDATOR NEED NOT AGREE ON THE TOKEN. The validator declares a
+    preferred fee token in TipFeeManager; if it differs from the payer's, the
+    protocol routes the fee through an enshrined AMM (`plan_fee_route` /
+    `execute_fee_swap`) inside fee collection, and a transaction can be rejected
+    for `InsufficientAmmLiquidity` — a liquidity failure as a transaction
+    validity error. Fees are collected pre-execution at the max and settled
+    post-execution.
+
+    THERE IS NO BURN. Nothing is burned because there is nothing to burn; the
+    base fee is credited through the fee manager, not destroyed.
+  extra_components:
+  - {name: attodollar/microdollar scaling, note: "10^12, applied at charge time and again in eth_estimateGas's affordability check", src: "crates/primitives/src/transaction/mod.rs:TEMPO_GAS_PRICE_SCALING_FACTOR"}
+  - {name: USD-currency fee-token rule, src: "crates/revm/src/common.rs:ensure_tip20_usd"}
+  - {name: fee AMM routing, src: "crates/precompiles/src/tip_fee_manager/amm.rs:execute_fee_swap"}
+  - {name: fee payer sponsorship, src: "crates/revm/src/tx.rs:fee_payer"}
+  - {name: payment lane gas budget, note: "payment-classified transactions draw on the full block gas limit; everything else is capped at the header's general gas limit. See header_fields.", src: "crates/evm/src/block.rs:is_payment"}
+  - {name: TIP-1067 clamped base fee, src: "crates/hardfork/src/constants.rs:tempo_t7_next_block_base_fee"}
+  src: crates/revm/src/fee_manager.rs:ProtocolFeeManager
+  src_live: "eth_gasPrice @ 36217459 -> 0x23c34600; eth_maxPriorityFeePerGas -> 0x0; eth_getTransactionReceipt(0x265549d2...) -> effectiveGasPrice 0x5f5e1000, feeToken 0x20c0..0000, feePayer == from"
+
+header_fields:
+  added:
+  - name: mainBlockGeneralGasLimit
+    note: >-
+      A SECOND, SMALLER GAS LIMIT IN THE SAME HEADER, AND THE PAYMENT LANE IS
+      THE GAP BETWEEN THEM. `gasLimit` is 500,000,000; this field is 30,000,000.
+      The block executor tracks `non_payment_gas_left` initialised to THIS value
+      and decrements it only for transactions that fail the payment predicate, so
+      a non-payment transaction is capped at 30M per block while payment traffic
+      may use the full 500M. Which side a transaction lands on is not a builder
+      heuristic — from T5 it is consensus: `is_payment_v2` requires that EVERY
+      call match an allow-list of (target, selector) pairs (TIP-20 transfer,
+      transferFrom, approve, mint, burn, their WithMemo variants, and the
+      TIP20ChannelReserve channel operations), with exact ABI-encoded calldata
+      length, an EMPTY access list, EMPTY 7702 and Tempo authorization lists, and
+      any key authorization under 1024 RLP bytes. Adding one access-list entry to
+      an otherwise identical transfer moves it out of the lane and into a budget
+      16x smaller. Pre-T5 the test was only "does it target a TIP-20 address".
+    src: crates/primitives/src/header.rs:general_gas_limit, crates/evm/src/block.rs:non_payment_gas_left, crates/primitives/src/transaction/envelope.rs:is_payment_v2
+    src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> mainBlockGeneralGasLimit 0x1c9c380 (30,000,000) vs gasLimit 0x1dcd6500 (500,000,000)"
+  - {name: sharedGasLimit, note: "budget for the subblock section; zero from T4", src: "crates/primitives/src/header.rs:shared_gas_limit", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> 0x0"}
+  - {name: timestampMillisPart, note: "sub-second part of the timestamp; the RPC also synthesises a `timestampMillis` convenience field. Block time is ~200ms, so a second-resolution timestamp would be ambiguous across five blocks.", src: "crates/primitives/src/header.rs:timestamp_millis", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> timestampMillisPart 0x195 (405ms), timestampMillis 0x1a031fcc99d"}
+  - {name: consensusContext, note: "epoch, view, parentView, Ed25519 proposer key. RLP-trailing, omitted for pre-fork blocks.", src: "crates/primitives/src/header.rs:TempoConsensusContext", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> {epoch: 1676, view: 15860, parentView: 15859, proposer: 0x89dbf7ef3c69bccb6ff5fb68cbebff5145cb4a42bc108b5be6453c901f9e6bc8}"}
+  removed: []
+  modified:
+  - {name: baseFeePerGas, note: "denominated in attodollars (10^-18 USD), not wei of any asset. See fee_model.", src: "crates/hardfork/src/constants.rs:TEMPO_T1_BASE_FEE"}
+  - {name: parentBeaconBlockRoot, note: "present but always zero; no beacon chain", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> 0x00..00"}
+  - {name: blobGasUsed / excessBlobGas, note: "present but always zero; blob transactions do not exist", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> 0x0 / 0x0"}
+  note: >-
+    Receipts also gain two fields not on mainnet: `feeToken` and `feePayer`. Both
+    appear on ORDINARY type-0x2 receipts, not only on 0x76 — which is how a
+    reader discovers that a legacy transaction here is also paying in a TIP-20.
+  receipts_src_live: "eth_getTransactionReceipt(0x265549d2d9e57364682a4b6cbf6364de4e721a0850ffb8cbf0c22d8eb2bf1d2f) @ 36217459 -> {feeToken: 0x20c0...0000, feePayer: 0x7a19d608...}"
+
+gotchas: >-
+  `eth_getBalance` RETURNS A FABRICATED NUMBER, AND IT DISAGREES WITH THE EVM.
+  Tempo's RPC overrides `EthState::balance` to return
+  `NATIVE_BALANCE_PLACEHOLDER` — the U256 whose decimal digits are "42" repeated
+  38 times — for EVERY address at EVERY block, ignoring both arguments. The
+  BALANCE and SELFBALANCE opcodes, meanwhile, correctly return 0. So the RPC and
+  the EVM give different answers about the same account in the same block, and
+  the RPC's is not a rounding error or a stale read: it is a constant chosen to
+  be obviously absurd. Anything that gates on native balance — a wallet's
+  "insufficient funds for gas" check, a bridge's sweep threshold, an indexer's
+  balance table, a monitoring alert — reads 4.2e75 and concludes the account is
+  unimaginably rich. This is `severity: high` in SCHEMA.md's exact sense: it
+  fails silently, with no error and no signal. The placeholder is deliberate and
+  documented in a doc comment ("because the native token balance is N/A on
+  Tempo"), which makes it a considered decision rather than a bug, but it does
+  not make it safe.
+
+  A TRANSACTION WITH NONZERO `value` IS REJECTED, NOT REVERTED. `validate_env`
+  returns `ValueTransferNotAllowed` before execution, so the transaction never
+  enters a block and there is no receipt to inspect — it fails at admission, the
+  way a bad nonce does. `eth_call` with a value field errors out the same way.
+  Inside a 0x76 batch each individual call is checked separately
+  (`ValueTransferNotAllowedInAATx`). Any code path that expresses "send the
+  chain's native asset" is unreachable, including the ordinary
+  `to`+`value` transfer that most tooling treats as the primitive operation.
+
+  `eth_getCode` AT A PRECOMPILE RETURNS `0xef`, NOT `0x`. Tempo writes a
+  one-byte marker into every one of its own precompile accounts at the fork that
+  activates them, so the standard "empty code means native" test inverts:
+  Tempo's precompiles look like contracts and the inherited Ethereum precompiles
+  (0x01..0x11, 0x0100) look empty. `EXTCODESIZE` reports 1.
+
+  A LEGACY TRANSACTION IS NOT A LEGACY TRANSACTION. Type 0x00/0x01/0x02 are
+  accepted, but they carry no fee-token field, so they are billed in pathUSD, and
+  their `value` must be zero. The familiar envelope is there; the familiar
+  semantics are not.
+
+  OPCODE 0x4F WAS VALID AND IS NOT. Contracts deployed before 2026-03-12 that
+  used MILLIS_TIMESTAMP still exist and now hit an undefined opcode.
+
+  THE KZG PRECOMPILE WORKS ON A CHAIN WITH NO BLOBS. 0x0a is present and
+  functional because the Osaka built-in set is installed wholesale, while type
+  0x03 is rejected at the envelope. Verifier without payload.
+
+  FEE FAILURE MODES THAT DO NOT EXIST ELSEWHERE: `FeeTokenNotUsdCurrency` (the
+  named token's on-chain `currency` string is not "USD"),
+  `InsufficientAmmLiquidity` (no pool depth to convert the payer's stablecoin
+  into the validator's), and `SelfSponsoredFeePayer` (sponsor == sender).

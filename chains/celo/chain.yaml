@@ -319,8 +319,8 @@ precompiles:
 
       PLACEMENT HAZARD: 0xfd is INSIDE mainnet's own allocation path. Mainnet has
       reserved 0x01-0x11 and grows upward; every other chain in this dataset that
-      added a precompile went to 0x0100 or far above (Tron 0x1000001+, Flare
-      0x1000...0002). Celo went to 0xfd, three addresses below 0x0100, which
+      added a precompile went to 0x0100 or far above (Tron 0x1000001+, Monad
+      0x1000, Sonic 0xd100ec...). Celo went to 0xfd, three addresses below 0x0100, which
       mainnet already occupies. It is the closest any chain here has parked a
       custom precompile to mainnet's frontier.
   note: >-

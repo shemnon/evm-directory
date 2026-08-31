@@ -310,15 +310,25 @@ fee_model:
   src: consensus/dummy/consensus.go:79
 
 header_fields:
-  added: []
+  added:
+    - {name: extDataHash, note: "commitment to the atomic (UTXO) transaction data — the header half of non_evm_transactions", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: extDataGasUsed, note: "gas attributed to atomic transactions, metered separately from gasUsed", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: blockGasCost, note: "ACP-176 block cost", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: timestampMilliseconds, note: "Granite; sub-second block times, so the second-resolution timestamp is no longer the full story", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
   removed: []
   modified:
     - {name: blobGasUsed,   note: "must be 0", src: "plugin/evm/wrapped_block.go:480-483"}
     - {name: excessBlobGas, note: "must be 0", src: "plugin/evm/wrapped_block.go:484-487"}
     - {name: parentBeaconRoot, note: "must be the empty hash — no beacon chain", src: "plugin/evm/wrapped_block.go:478-479"}
   note: >-
-    Cancun's header shape is adopted for compatibility, then every Cancun-specific
-    field is constrained to a constant. Structurally conformant, semantically empty.
+    Two things at once. Cancun's header shape is adopted for compatibility, then
+    every Cancun-specific field is constrained to a constant — structurally
+    conformant, semantically empty. AND coreth RLP-appends five fields of its own
+    (HeaderExtra), so they are inside the block hash: an Ethereum header decoder
+    does not round-trip an Avalanche header. This row recorded `added: []` until the
+    `flare` row — a different client, the same coreth — observed all five live and
+    contradicted it. Corrected against this row's own pinned clone.
 
 gotchas:
   - >-

@@ -35,7 +35,7 @@ baseline_fork: prague
 forks:
   src: params/config.go (mainnet block starts at line 409)
   note: >-
-    A FOURTH mapping mechanism: Polygon gates Ethereum forks on BLOCK NUMBERS
+    BLOCK NUMBERS, NOT TIMESTAMPS: Polygon gates Ethereum forks on block numbers
     (ShanghaiBlock, CancunBlock, PragueBlock), not timestamps. Its own Bor forks are
     also block-numbered.
   timeline:

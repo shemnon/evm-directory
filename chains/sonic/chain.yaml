@@ -1,0 +1,924 @@
+schema_version: 2
+
+chain:
+  name: Sonic
+  slug: sonic
+  chain_id: 146
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    `fork` is the closest available role and it is wrong in two directions at once.
+    It OVERSTATES the distance in the obvious place: Sonic does not carry an aged
+    Opera fork of go-ethereum. It DEPENDS on go-ethereum as a Go module, at
+    `v1.17.1` / 1.17.2-dev, behind a `replace` onto a thin patch fork whose entire
+    EVM-layer delta is six flags and one map on `vm.Config`. The tree tracks
+    upstream geth; the drift the backlog predicted is not there.
+
+    It UNDERSTATES the distance in a place an address diff never looks: the
+    bytecode interpreter that executes every Sonic transaction is NOT geth's
+    `core/vm`. It is Tosca's SFVM/LFVM — a separate Go EVM implementation, wired in
+    through `vm.Config.Interpreter`. Geth's interpreter is retained and used ONLY
+    for tracing (`InterpreterForTracing`), so the traced execution of a transaction
+    and its consensus execution run on two different EVMs. Base (`role: fork`,
+    reth in Rust) is the precedent for calling that a fork rather than
+    `independent`; the argument is in SUMMARY.md.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    go.mod requires `github.com/ethereum/go-ethereum v1.17.1` and `replace`s it with
+    `github.com/0xsoniclabs/go-ethereum` @ e9dfccd4 (2026-05-07), whose
+    version/version.go reads 1.17.2-stable. The dataset's Ethereum row pins geth
+    v1.17.5 — Sonic is four patch releases behind upstream, not four years.
+  note: >-
+    The consensus half is the Fantom inheritance: `Fantom-foundation/lachesis-base`
+    is still a direct dependency, the package holding the fork flags and the network
+    rules is still called `opera`, and several EVM-layer flags in the geth fork are
+    commented "Fantom modification" / "unlike Ethereum, in Opera". So the lineage is
+    genuinely two-stranded — geth for execution, Fantom Opera/Lachesis for consensus
+    and for the fee and validity quirks the execution layer had to keep. Sonic is not
+    a `second_heritage` case in the opBNB sense: nothing here is inherited from
+    another row in this dataset.
+
+client:
+  name: sonic
+  repo: https://github.com/0xsoniclabs/sonic
+  version: v2.2.1
+  commit: 83c8c38b7779c1bac7377ad0df592a65cde7894d
+  language: go
+  note: >-
+    The pinned tag is what mainnet is actually running: `web3_clientVersion` returns
+    `Sonic/v2.2.1-83c8c38b-1785918132/linux-amd64/go1.26.6`, and `83c8c38b` is the
+    first eight bytes of this commit. Three companions are pinned because the facts
+    below do not live in this repo: the EVM interpreter is in tosca, the state
+    database is in carmen, and the entire state transition, precompile set, signer
+    and RLP header are in the geth fork.
+  companion_repos:
+  - {name: go-ethereum, repo: "https://github.com/0xsoniclabs/go-ethereum",
+     commit: e9dfccd41dbeaafc8489794ca8e01906929f24ab, language: go,
+     provides: "state transition, precompiles, tx types, signer, RLP header — a patch fork of upstream geth 1.17.2-dev"}
+  - {name: tosca, repo: "https://github.com/0xsoniclabs/tosca",
+     commit: 3f4119284c421a1840b5716ce19d6eaf67e56103, language: go,
+     provides: "LFVM and SFVM — the bytecode interpreters that execute every Sonic transaction. BSL-1.1 licensed, not open source."}
+  - {name: carmen, repo: "https://github.com/0xsoniclabs/carmen",
+     commit: 2d892af38ce4a293b0b19105a405ceffded5b903, language: go,
+     provides: "the state database (S5 MPT). Uses EthereumLikeHashing, so state roots stay mainnet-shaped."}
+
+live_probe:
+  endpoint: https://rpc.soniclabs.com
+  chain_id: 146
+  observed_at_block: 78050451      # 0x4a6f493, `finalized` at the time of probing
+
+consensus:
+  engine: Lachesis aBFT (leaderless DAG of validator `events`, Atropos ordering)
+  finality: aBFT, no reorg after an event is confirmed
+  block_time: "sub-second; emitter interval 600 ms by default, block duration carried in extraData"
+  src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
+  note: >-
+    NO UNCLES, and no possibility of them: blocks are derived from a confirmed DAG
+    ordering rather than mined, so `sha3Uncles` is the constant EmptyUncleHash and
+    `eth_getUncleCountByBlock*` returns 0 from a hardcoded empty slice
+    (api/ethapi/api.go:noUncles). Timestamps are NANOSECOND-precision internally,
+    which is why no fork on this chain can be gated on a timestamp — see forks.
+
+baseline_fork: prague
+baseline_note: >-
+  Measured, not claimed. `eth_config` at the probed block reports the live precompile
+  set as 0x01-0x11 — the Prague set, EIP-2537 BLS included, with NO 0x0100 — plus
+  HISTORY_STORAGE_ADDRESS (EIP-2935). Type 0x04 (EIP-7702) transactions were observed
+  in live blocks. Osaka is fully implemented in the client (Brio: CLZ, P256VERIFY,
+  EIP-7823/7883/7825/7934) and is NOT activated: `eth_config.next` is null, and a
+  CLZ probe fails on-chain. Prague is also where the header stops making sense as a
+  mainnet fork at all — see header_fields.
+
+forks:
+  src: "opera/hardforks.go:GetAllHardForksInOrder, opera/rules.go:Upgrades"
+  note: >-
+    FORKS AS ON-CHAIN GOVERNANCE STATE, distinct from every schedule-based mechanism
+    in this dataset. Sonic forks are BOOLEAN FLAGS IN ON-CHAIN NETWORK RULES. A governed call
+    to `updateNetworkRules` on the NodeDriver changes the `Upgrades` struct; the
+    change takes effect at the start of the next epoch, and the client records the
+    BLOCK HEIGHT at which it did. There is no fork timestamp anywhere. The client
+    says why in as many words: Sonic timestamps are nanoseconds and blocks are
+    sub-second, so `CreateTransientEvmChainConfig` hands geth tooling a ChainConfig
+    with every fork time set to 0 — a config it explicitly documents as valid for
+    ONE block height and for nothing else. Anything that reads a fork schedule out
+    of a Sonic ChainConfig reads all-zeros and concludes every fork has always been
+    active.
+
+    `eth_config` is the authoritative live view and it lists exactly two upgrade
+    heights, so Sonic went from its genesis rules straight to Allegro in one step.
+  timeline:
+  - name: Sonic
+    activation_time: 1733011200
+    mainnet_equivalent: cancun
+    src_live: "eth_config @ 78050451 -> last.blockHeight 0x1, last.activationTime 1733011200, precompiles 0x01-0x0a (no BLS)"
+    note: "genesis rules; Cancun feature set. Berlin/London/Sonic flags true, Llr false."
+  - name: Allegro
+    activation_time: 1764165761
+    mainnet_equivalent: prague
+    src_live: "eth_config @ 78050451 -> current.blockHeight 0x35dc910 (56674576), current.activationTime 1764165761, precompiles 0x01-0x11, systemContracts HISTORY_STORAGE_ADDRESS + GAS_SUBSIDY_REGISTRY_ADDRESS"
+    note: >-
+      Prague features. The same rules update also switched GasSubsidies on — the
+      live `Upgrades` struct carries both, and `activeSystemContracts` only lists the
+      subsidy registry when that flag is true, which is how the flag is observable.
+  - name: Brio
+    status: pending
+    activation_time: null
+    mainnet_equivalent: osaka
+    src: "opera/hardforks.go:GetBrioUpgrades, opera/vm_config.go:GetVmConfig"
+    src_live: "eth_config @ 78050451 -> next: null; eth_call CLZ probe @ 78050451 -> execution unsuccessful"
+    note: >-
+      Fully shipped in v2.2.0 and not scheduled. Brio switches the interpreter from
+      LFVM to SFVM, raises max code size to 48 KiB and initcode to 96 KiB, adds CLZ
+      and P256VERIFY, applies EIP-7823/7883 to MODEXP, introduces a per-transaction
+      gas cap and a 10 MiB block RLP cap — and turns OFF nothing.
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    src: "gossip/gasprice/base_fee.go:getBaseFeeForNextBlock, inter/block.go:EncodeExtraData"
+    src_live: "eth_getBlockByNumber @ 78050451 -> baseFeePerGas 0xba43b7400 (50 gwei), extraData 0x36da80c1000000007d03b07c (12 bytes)"
+    note: >-
+      Replaced by a TIME-BASED fee market. Mainnet's rule is per block:
+      `new = old * (1 + (used - target)/target/8)`. Sonic's is
+      `new = old * e^(((rate - targetRate)/targetRate) * duration/128)`, where `rate`
+      is GAS PER SECOND and `duration` is the wall-clock nanoseconds since the parent
+      block. The target is `ShortGasPower.AllocPerSec / 2` (7.5 MGas/s at defaults),
+      the observed rate is clipped at twice that, and a gap of 0 or >60 s freezes the
+      fee. The floor is `Economy.MinBaseFee`, an ON-CHAIN RULE that governance can
+      move.
+
+      The duration input is not derivable from anything mainnet has: it is read out
+      of the block's 12-byte `extraData`. A base-fee estimator ported from Ethereum
+      is wrong on every input, and one that reads only the standard header fields
+      cannot be made right.
+  4844:
+    status: modified
+    severity: high
+    src: "evmcore/tx_validation.go:ValidateTxForNetwork, evmcore/dummy_block.go:GetBlobBaseFee"
+    src_live: "eth_getBlockByNumber @ 78050451 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_call BLOBBASEFEE @ 78050451 -> 0x…01"
+    note: >-
+      AN ANSWER TO BLOBS THAT IS NEITHER ACCEPTANCE NOR REMOVAL. Monad REJECTS type 0x03
+      outright; mainnet accepts it with blobs. Sonic ACCEPTS the envelope and rejects
+      the payload: a type-0x03 transaction passes validation only if its blob-hash
+      list is empty, otherwise `ErrNonEmptyBlobTx`. So the type byte is live, BLOBHASH
+      is live and always returns zero, BLOBBASEFEE is live and constant 1 (the client
+      derives it: excess_blob_gas is always 0, so 1 * e^0 = 1), and the KZG
+      point-evaluation precompile at 0x0a is present and functional. Everything about
+      4844 works except blobs.
+  4788:
+    status: removed
+    severity: high
+    src: inter/block.go:GetEthereumHeader
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 78050451 -> 0x"
+    note: >-
+      No beacon chain, so no beacon-roots contract and — the part that bites — no
+      `parentBeaconBlockRoot` HEADER FIELD. Mainnet made that field MANDATORY at
+      Cancun. Sonic has Cancun's blob-gas fields and not Cancun's beacon field, which
+      is why its header matches no mainnet fork at all. See header_fields.
+  4895:
+    status: modified
+    src: inter/block.go:GetEthereumHeader
+    src_live: "eth_getBlockByNumber @ 78050451 -> withdrawalsRoot 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
+    note: >-
+      `withdrawalsRoot` is present and pinned to the empty-list hash forever; there is
+      no withdrawals list and no consensus layer to produce one. Kept because the
+      field is load-bearing for the block hash — see header_fields.
+  7685:
+    status: removed
+    src: inter/block.go:GetEthereumHeader
+    src_live: "block-hash reconstruction @ 78050451 -> 19-field header, no requestsHash"
+    note: >-
+      No `requestsHash` field at all, and this is the OPPOSITE of Monad's failure
+      mode: Monad emits the field as the zero hash where mainnet emits keccak of the
+      empty list, so a verifier gets a mismatch; Sonic omits the field, so a verifier
+      gets a header one RLP item shorter than it expects. Two chains, one missing
+      feature, two incompatible ways of not having it.
+  6110:
+    status: removed
+    src_live: "eth_config @ 78050451 -> current.systemContracts has no deposit contract"
+    note: "no consensus layer; the Prague request contracts are simply not deployed"
+  7002:
+    status: removed
+    src_live: "eth_getCode 0x00000961Ef480Eb55e80D19ad83579A64c007002 @ 78050451 -> 0x"
+  7251:
+    status: removed
+    src_live: "eth_config @ 78050451 -> current.systemContracts lists only HISTORY_STORAGE_ADDRESS and GAS_SUBSIDY_REGISTRY_ADDRESS"
+  2935:
+    status: inherited
+    src: "evmcore/state_processor.go:ProcessWithDifficulty, api/ethapi/config.go:activeSystemContracts"
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 78050451 -> 0x3373fffff…5ff35b5f5ffd5b5f35611fff60014303065500 (canonical)"
+    note: >-
+      Worth stating because of what sits next to it: Sonic deploys EIP-2935's history
+      contract and calls `ProcessParentBlockHash` on every Prague block, while having
+      neither EIP-4788's contract nor its header field. The two Cancun/Prague
+      "protocol writes a ring buffer" contracts are usually assumed to travel
+      together; here one shipped and the other could not.
+  7702:
+    status: inherited
+    src: "go-ethereum/core/state_transition.go:validateAuthorization, evmcore/tx_validation.go:ValidateTxForNetwork"
+    src_live: "eth_getBlockByNumber @ 78050451 and 200 preceding blocks -> 2 transactions of type 0x04"
+    note: >-
+      Delegation is live and unmodified — `validateAuthorization` is upstream geth's.
+      Contrast Monad, which accepts 7702 and then forbids CREATE inside a delegated
+      account; Sonic adds no such restriction.
+  7623:
+    status: inherited
+    src: evmcore/tx_validation.go:ValidateTxForNetwork
+    note: "floor data gas enforced at Allegro"
+  7825:
+    status: pending
+    fork: Brio
+    src: "opera/vm_config.go:GetVmConfig, go-ethereum/core/state_transition.go:preCheck"
+    note: >-
+      TODAY THERE IS NO PER-TRANSACTION GAS CAP. Upstream geth applies
+      `params.MaxTxGas` only when `rules.IsOsaka`, and Osaka is not active here, so
+      the 16,777,216 ceiling every other Osaka-era chain enforces is absent. At Brio,
+      Sonic does not adopt that number: it sets `vm.Config.MaxTxGas` from
+      `Economy.Gas.MaxEventGas`, an ON-CHAIN RULE. The cap becomes governance-set
+      rather than protocol-constant.
+  170:
+    status: pending
+    fork: Brio
+    src: "opera/vm_config.go:SonicPostAllegroMaxCodeSize, go-ethereum/core/vm/common.go:CheckMaxCodeSize"
+    note: "48 KiB (2x EIP-170) from Brio; 24 KiB today because MaxCodeSize is nil and geth's default applies"
+  3860:
+    status: pending
+    fork: Brio
+    src: "opera/vm_config.go:SonicPostAllegroMaxInitCodeSize, go-ethereum/core/vm/common.go:CheckMaxInitCodeSize"
+    note: "96 KiB initcode (2x EIP-3860) from Brio"
+  7951:
+    status: pending
+    fork: Brio
+    severity: high
+    src: "opera/vm_config.go:GetVmConfig, tests/secp256r1_precompile_test.go:TestSECP256r1_VerifySignatureInBrio"
+    src_live: "eth_call 0x0100 @ 78050451 with the client's own valid test vector -> 0x (mainnet control returns 0x…01)"
+    note: >-
+      See precompiles.0x0100. The client's own test asserts the empty-return
+      behaviour for Sonic and Allegro and charges 6900 gas at Brio, matching mainnet
+      EIP-7951 rather than RIP-7212's 3450.
+  7939:
+    status: pending
+    fork: Brio
+    src: tosca/go/interpreter/sfvm/instructions.go:opClz
+    src_live: "eth_call CLZ initcode @ 78050451 -> execution unsuccessful"
+  7823:
+    status: pending
+    fork: Brio
+    src: changelog.md
+    note: "MODEXP input-length restriction, Brio only. No cap today — contrast zkSync's 32-byte operand limit."
+  7883:
+    status: pending
+    fork: Brio
+    src: changelog.md
+    note: "MODEXP repricing, Brio only"
+  7934:
+    status: pending
+    fork: Brio
+    src: changelog.md
+    note: "10 MiB RLP block-size cap, Brio only"
+  7910:
+    status: added
+    src: api/ethapi/config.go:activeSystemContracts
+    src_live: "eth_config @ 78050451 -> {last, current, next}"
+    note: >-
+      `eth_config` ships at Prague-equivalence here, ahead of the Osaka fork that
+      introduces it on mainnet, and it is the only machine-readable statement of
+      Sonic's fork position that exists — the ChainConfig is all zeros by design and
+      there are no fork timestamps. It also reports `blockHeight` per upgrade, which
+      mainnet's version has no need for. Any tool trying to determine what fork Sonic
+      is on should call this and nothing else.
+  3529:
+    status: inherited
+    src: go-ethereum/core/state_transition.go:calcRefund
+    note: >-
+      Refunds themselves are upstream geth's. The reason a Sonic receipt still does
+      not show the gas actually consumed is `chargeExcessGas`, which is a separate
+      mechanism applied before the refund — see fee_model.
+
+non_eip_specs:
+  - id: GasSubsidies
+    name: "Sponsored zero-gas-price transactions"
+    adoption: adopted
+    availability: optional
+    activation_condition: "Upgrades.GasSubsidies flag in on-chain network rules"
+    src: "opera/rules.go:Upgrades, gossip/blockproc/subsidies/subsidies.go:IsCovered, gossip/blockproc/subsidies/registry/registry.go:contractAddress"
+    src_live: "eth_config @ 78050451 -> current.systemContracts.GAS_SUBSIDY_REGISTRY_ADDRESS 0x7d0e23398b6ca0ec7cdb5b5aad7f1b11215012d2; eth_getCode there -> 163 bytes"
+    note: >-
+      LIVE ON MAINNET. A transaction with gasPrice == 0 is a sponsorship request. At
+      block-processing time the node calls `chooseFund` on the registry; if it
+      answers with a mode other than 0 the transaction executes with NoBaseFee, and
+      the protocol APPENDS a synthetic transaction to the block — `deductFees(fundId,
+      fee)` for fund-backed sponsorship, `track(trackingId, fee)` for tracked network
+      sponsorship, or nothing at all for untracked network sponsorship. Whether a
+      zero-gas-price transaction is valid therefore depends on the return value of a
+      CONTRACT CALL made during block processing, which is a validity rule no other
+      row in this dataset has.
+  - id: TransactionBundles
+    name: "Atomically executed transaction bundles"
+    adoption: optional
+    availability: optional
+    activation_condition: "Upgrades.TransactionBundles flag in on-chain network rules; client v2.2+"
+    src: "opera/rules.go:Upgrades, evmcore/tx_validation.go:validateBundleTransactions"
+    src_doc: https://docs.soniclabs.com/
+    note: >-
+      Not observable as enabled at the probed block: `eth_config` does not surface the
+      flag and the changelog ties bundles to Brio, which is not active. Recorded
+      because the RPC surface (`sonic_prepareBundle`, `sonic_submitBundle`,
+      `sonic_getBundleInfo`) and the validation path are in the pinned client.
+  - id: SingleProposerBlockFormation
+    name: "Single-proposer block formation"
+    adoption: optional
+    availability: optional
+    activation_condition: "Upgrades.SingleProposerBlockFormation flag in on-chain network rules; client v2.1+"
+    src: "opera/rules.go:Upgrades, opera/vm_config.go:GetVmConfig"
+    src_live: "receipt gasUsed arithmetic @ 78050318-78050451 shows ChargeExcessGas still applied, which GetVmConfig disables under this flag -> flag is OFF"
+    note: >-
+      Replaces the event-based distributed block formation with a single proposer.
+      It is not a fork: it can be toggled at any time, effective next epoch. It also
+      silently changes the FEE RULE — `GetVmConfig` clears `ChargeExcessGas` when it
+      is set — so flipping a block-production option changes what every transaction
+      on the chain costs.
+
+tx_types:
+  note: >-
+    NO custom type bytes, and the type-byte frontier README.md tracks is untouched by
+    this chain. The interest is entirely in 0x03 and in what has no type byte at all.
+  "0x03":
+    name: BlobTx
+    status: modified
+    severity: high
+    src: evmcore/tx_validation.go:ValidateTxForNetwork
+    note: >-
+      Accepted, but only with an EMPTY blob-hash list: `ErrNonEmptyBlobTx` otherwise.
+      Distinct from Monad's `removed` and from mainnet's `inherited` — the envelope
+      is valid, the payload is not. `TxAsMessage` additionally rewrites an empty
+      BlobHashes slice to nil so that geth's precheck, which forbids a blob tx with
+      no blobs, does not fire.
+  "0x04":
+    name: SetCodeTx
+    status: inherited
+    src: evmcore/tx_validation.go:ValidateTxForNetwork
+    src_live: "eth_getBlockByNumber @ 78050451 over 201 blocks -> type census 0x00:69, 0x02:133, 0x04:2"
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    For user transactions there is no delta: the signer is upstream geth's, the
+    address is the hash of the recovered secp256k1 key, and Tosca never touches
+    signature recovery. The delta is the protocol path, and Sonic's version of it is
+    a design of its own — and the least announced.
+
+    OP Stack marks a protocol transaction with a type byte (0x7e) and reads the
+    sender out of a dedicated `From` field. Monad signs its protocol transactions
+    with a real secp256k1 key and identifies them by the recovered address. Sonic
+    does neither: an internal transaction is an ordinary LEGACY (0x00) transaction
+    whose signature fields are `v = 0, r = 0`, and whose SENDER IS STORED IN THE `s`
+    FIELD — `InternalSender` casts the S component of the ECDSA signature to a
+    20-byte address. There is no signature to check and no type byte to filter on.
+
+    Observed live: the epoch-sealing block 78050318 carries two type-0x00
+    transactions with v/r/s all zero, `from` 0x0000…0000, `to` the NodeDriver at
+    0xd100a01e…, gasPrice 0, gas 500,000,000 — sitting in `transactionsRoot`
+    alongside a normal user transaction.
+
+    WHAT KEEPS IT SAFE is not a check on the transaction, it is a check on the
+    envelope: `heavycheck` recovers a sender for every transaction inside every
+    Lachesis event, so an internal-shaped transaction can never enter through the
+    DAG, and internal transactions are only ever constructed by the block processor
+    itself. Guarded, but guarded one layer away from where the forgery would happen.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "go-ethereum/core/types/transaction_signing.go:recoverPlain, evmcore/state_processor.go:TxAsMessage"
+    unsigned:
+      status: added
+      authorizes: protocol
+      precompile: none
+      signers_per_tx: 0
+      severity: high
+      src: "utils/signers/internaltx/internaltx.go:IsInternal, utils/signers/internaltx/internaltx.go:InternalSender, evmcore/state_processor.go:TxAsMessage, eventcheck/heavycheck/heavy_check.go"
+      src_live: "eth_getBlockByNumber 0x4a6f40e @ 78050318 (full) -> 2 txs, type 0x0, v 0x0, r 0x0, s 0x0, from 0x0, to 0xd100a01e…, gasPrice 0x0, nonce 0x2d0de/0x2d0df"
+      note: >-
+        NOT A SIGNATURE SCHEME — the entry exists because "an accepted transaction has
+        a signer" is false here. `TxAsMessage` builds the message with
+        `SkipNonceChecks: true` and `SkipTransactionChecks: true`, so nonce, balance
+        and EOA-ness are all waived. The sender is whatever 20 bytes sit in `s`; on
+        mainnet Sonic that is the zero address, which is also the address
+        `chargeExcessGas` special-cases to exempt protocol transactions from the 10%
+        surcharge. A tool classifying protocol vs user traffic by type byte counts
+        these as ordinary legacy transactions.
+    secp256r1:
+      status: pending
+      authorizes: never
+      precompile: "0x0100"
+      fork: Brio
+      note: >-
+        The precompile arrives at Brio and a P-256 key still will not be able to
+        authorize a Sonic transaction. Today the address is an empty account — see
+        precompiles.0x0100.
+
+precompiles:
+  note: >-
+    The 0x01-0x11 set is upstream geth's, unmodified: the Sonic geth fork touches
+    `core/vm/contracts.go` only to add the `PrecompiledStateContract` interface, and
+    Tosca's geth_adapter decides precompile membership by looking up geth's own
+    `PrecompiledContractsPrague` map. No repricing, no input caps, no omissions. The
+    two entries below are the whole delta.
+  "0xd100ec0000000000000000000000000000000000":
+    name: EvmWriter
+    status: added
+    severity: high
+    src: "opera/contracts/evmwriter/evm_writer.go:PreCompiledContract, opera/vm_config.go:sonicVmConfig, go-ethereum/core/vm/evm.go:statePrecompile, integration/makefakegenesis/genesis.go:113"
+    src_live: "eth_getCode @ 78050451 -> 0x00 (one byte); EXTCODEHASH @ 78050451 -> 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a = keccak256(0x00); eth_call setBalance from an arbitrary sender @ 78050451 -> execution reverted"
+    note: >-
+      A PRECOMPILE THAT WRITES ARBITRARY STATE. Five methods: `setBalance(acc,value)`
+      sets any account's balance to any number, `setStorage(acc,key,value)` writes any
+      slot of any contract, `incNonce(acc,diff)` bumps any nonce, and `copyCode` /
+      `swapCode` overwrite or EXCHANGE the bytecode of two accounts. Contract code on
+      Sonic is therefore not immutable at the protocol level. The only guard is
+      `caller != driver.ContractAddress -> revert`; the only self-restraint is that
+      `setBalance` and `incNonce` refuse to touch `tx.origin`.
+
+      IT ALSO BREAKS THE SCHEMA'S PRECOMPILE/SYSTEM-CONTRACT BOUNDARY, which says a
+      precompile has "no bytecode in state, no EXTCODESIZE". Genesis writes a single
+      `0x00` byte to this address, under the comment "set non-zero code for
+      pre-compiled contracts" — so EXTCODESIZE returns 1 and EXTCODEHASH returns
+      keccak(0x00) rather than the empty-code hash, and every "is there a contract
+      here" probe answers YES, while execution is intercepted by the native handler
+      and the stub is never run. It is both categories at once, and the client says
+      it means to be.
+  "0x0100":
+    name: P256VERIFY
+    status: pending
+    severity: high
+    fork: Brio
+    src: opera/vm_config.go:GetVmConfig
+    src_live: "eth_call @ 78050451 with the 160-byte valid vector from tests/secp256r1_precompile_test.go -> 0x; the same calldata on Ethereum mainnet -> 0x…01"
+    note: >-
+      IN THE SILENT-P256 CLASS, by a cause of its own. On
+      Hyperliquid 0x0100 is simply empty. On Sei it is empty while the chain HAS
+      P256VERIFY elsewhere. On Sonic it is empty because the chain has not activated
+      Osaka — the feature is written, tested and shipped in the pinned client and
+      switched off. The observable is identical in all three cases and identical to a
+      valid-signature rejection under EIP-7951: empty output, no revert, no error. A
+      passkey wallet deployed here verifies nothing and reports "invalid signature"
+      forever, and will start working on a date nobody has set.
+
+system_contracts:
+  note: >-
+    Sonic's system contracts live HIGH in the address space in leetspeak, not low:
+    0xfc00face…, 0xd100a01e…, 0xd100ae00…, 0xd1005eed…, 0xd100ec00…. That is the
+    opposite placement discipline from BSC's and Arbitrum's 0x64-0x69, and it cannot
+    collide with anything mainnet grows into — the same property README.md credits
+    Tron's 0xd0-0xdf opcodes with. One further address, EmitterDriver at
+    0xee00d10000000000000000000000000000000000, is declared in the client and has NO
+    CODE on mainnet at the probed block, so it is deliberately not listed as a live
+    entry here.
+  "0xfc00face00000000000000000000000000000000":
+    name: SFC (Special Fee Contract)
+    status: added
+    src: opera/contracts/sfc/sfc_predeploy.go:ContractAddress
+    src_live: "eth_getCode @ 78050451 -> 163-byte ERC-1967 proxy; eth_call currentEpoch() -> 0x16866 (92262), matching the block's own `epoch` header field; eth_call lastValidatorID() -> 0x36 (54)"
+    note: >-
+      Staking, delegation, validator registry and — the part that matters for the fee
+      model — reward and fee DISTRIBUTION. Fees are not paid to a coinbase per block;
+      they are settled once per epoch when the protocol calls
+      `sealEpoch(offlineTimes, offlineBlocks, uptimes, originatedTxsFee, usedGas)`
+      through the NodeDriver. Behind an upgradeable proxy, so its code can change
+      without a client release.
+  "0xd100a01e00000000000000000000000000000000":
+    name: NodeDriver
+    status: added
+    severity: high
+    src: opera/contracts/driver/driver_predeploy.go:ContractAddress
+    src_live: "eth_getCode @ 78050451 -> 163-byte proxy; recipient of both internal transactions in block 78050318"
+    note: >-
+      The bridge between consensus and the EVM, and the ONLY account allowed to call
+      the EvmWriter precompile. Its `updateNetworkRules(bytes diff)` is how forks
+      activate on this chain; `advanceEpochs`, `updateValidatorWeight` and
+      `updateValidatorPubkey` reach back into consensus. Every protocol transaction
+      in a Sonic block is addressed here.
+  "0xd100ae0000000000000000000000000000000000":
+    name: NodeDriverAuth
+    status: added
+    src: opera/contracts/driverauth/driverauth.go:ContractAddress
+    src_live: "eth_getCode @ 78050451 -> 163-byte proxy"
+    note: "the ownership/authorisation layer in front of NodeDriver"
+  "0xd1005eed00000000000000000000000000000000":
+    name: NetworkInitializer
+    status: added
+    src: opera/contracts/netinit/network_initializer.go:ContractAddress
+    src_live: "eth_getCode @ 78050451 -> 5209 bytes"
+    note: "genesis wiring: InitializeAll(sealedEpoch, totalSupply, sfc, driverauth, driver, evmwriter, owner)"
+  "0x7d0E23398b6CA0eC7Cdb5b5Aad7F1b11215012d2":
+    name: SubsidiesRegistry
+    status: added
+    src: gossip/blockproc/subsidies/registry/registry.go:contractAddress
+    src_live: "eth_config @ 78050451 -> current.systemContracts.GAS_SUBSIDY_REGISTRY_ADDRESS; eth_getCode -> 163-byte proxy"
+    note: >-
+      Consulted DURING BLOCK PROCESSING for every zero-gas-price transaction. Unlike
+      every other system contract in this dataset, its return value decides whether a
+      transaction is includable at all. Note the address is an ordinary deployed
+      contract address, not a reserved one.
+
+system_transactions:
+  internal_transactions:
+    name: "internal (protocol) transactions"
+    status: added
+    severity: high
+    src: "gossip/c_block_callbacks.go, opera/contracts/driver/drivercall/driver_calls.go:SealEpoch, utils/signers/internaltx/internaltx.go:IsInternal"
+    src_live: "eth_getBlockByNumber @ 78050318 -> txs 0 and 1: type 0x0, from 0x0, to 0xd100a01e…, gas 0x1dcd6500, gasPrice 0x0, v/r/s all 0x0"
+    note: >-
+      Emitted in two batches per block — `PreTxTransactor.PopInternalTxs` before user
+      transactions and `PostTxTransactor.PopInternalTxs` after, the latter carrying
+      `sealEpoch` and `sealEpochValidators` on epoch boundaries. They are included in
+      `transactionsRoot` and returned by the standard RPC with no distinguishing
+      field except a zero `from`. See tx_authorization.unsigned for how they are
+      authorized, which is: they are not.
+  subsidy_settlement:
+    name: "appended deductFees / track transaction"
+    status: added
+    src: "gossip/blockproc/subsidies/subsidies.go, gossip/blockproc/subsidies/network_sponsorships.md"
+    note: >-
+      When a sponsored zero-gas-price transaction executes, the protocol appends a
+      SECOND transaction to the block that the user never submitted:
+      `deductFees(fundId, fee)` against the subsidies registry, or `track(trackingId,
+      fee)`, or nothing, depending on the mode the registry returned. Block
+      transaction counts therefore exceed submitted transaction counts by an amount
+      that depends on contract state.
+  skipped_transactions:
+    name: "skipped transactions"
+    status: added
+    severity: high
+    src: evmcore/state_processor.go:Process
+    note: >-
+      Inherited from Fantom and still consensus-relevant: a transaction whose
+      execution "is not possible in the given order" is SKIPPED — no gas, no receipt,
+      no state change — and block processing continues with the next one. The client
+      documents this as "rules inherited from the Fantom network" that future
+      hard-forks may clean up. Skipped transactions do not reach the final block, so
+      a transaction can be ordered by consensus and then silently vanish.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  pending:
+    - {op: "0x1e", name: CLZ, spec: EIP-7939, fork: Brio,
+       src: tosca/go/interpreter/sfvm/instructions.go:opClz}
+  src: "tosca/go/interpreter/sfvm/sfvm.go:newestSupportedRevision, opera/vm_config.go:sfvmFactory"
+  note: >-
+    ZERO opcode-set divergence at the live fork, and that is the interesting part
+    given WHERE the opcodes are implemented. The jump table is not geth's — every
+    Sonic transaction runs on Tosca's LFVM today and on SFVM from Brio, a separate Go
+    EVM whose gas constants (`SstoreSetGasEIP2200` = 20000, `SstoreClearsSchedule…` =
+    15000, …) are the spec's. Equality here is a claim about two implementations
+    agreeing, backed by Tosca's conformance-testing harness and by
+    tests/eth_exec_spec/state_test.go, which runs the Ethereum execution-spec state
+    tests through Sonic's own processor and skips only pre-Istanbul forks.
+
+    The trap is the reverse of Monad's. Monad ships geth's opcode table and changes
+    the prices underneath. Sonic ships a different implementation of the table at the
+    same prices — and then uses GETH'S interpreter for tracing only, so a
+    `debug_traceTransaction` and the block that contains the transaction were
+    produced by two different EVMs.
+
+fee_model:
+  metering: gas
+  fee_market: "time-based exponential on gas-per-second; floor from on-chain MinBaseFee"
+  extra_components:
+    - name: excess-gas surcharge
+      severity: high
+      src: "go-ethereum/core/state_transition.go:chargeExcessGas, opera/vm_config.go:sonicVmConfig"
+      src_live: "eth_getTransactionReceipt 0xc82adca9… @ 78050451 -> gas 0x7b0c (31500), gasUsed 0x5622 (22050) on a plain transfer; 0xdcb55a2c… -> gas 0x59d8 (23000), gasUsed 0x52d0 (21200)"
+      note: >-
+        THE HEADLINE. Sonic charges 10% OF THE GAS YOU DID NOT USE:
+        `gasRemaining -= gasRemaining/10` before the refund, for every transaction
+        whose sender is not the zero address. A plain transfer costing 21000 gas is
+        billed 22050 at a 31500 limit and 21200 at a 23000 limit — both verified
+        live, both exactly `21000 + (limit - 21000)/10`.
+
+        The cruelty is in the tooling: `eth_estimateGas` returns the TRUE
+        consumption (24000 for a bare ecrecover call, checked live), so the universal
+        practice of padding an estimate by 20-50% for safety converts directly into a
+        larger bill. Nothing reverts, nothing warns, and the receipt reports the
+        inflated number as though it were consumption. It is the same failure family
+        as Monad's `gasUsed == gasLimit`, at 10% instead of 100%, and it disappears
+        the moment someone toggles the SingleProposerBlockFormation rule.
+    - name: no coinbase payment
+      src: "go-ethereum/core/state_transition.go:SkipTipPaymentToCoinbase, inter/block.go:GetEthereumHeader"
+      src_live: "eth_getBlockByNumber @ 78050451 -> miner 0x0000000000000000000000000000000000000000"
+      note: >-
+        `SkipTipPaymentToCoinbase` is set and the coinbase is the zero address on
+        every block, so the priority fee is not credited to any account during
+        execution. Fees accrue to the protocol and are redistributed to validators
+        once per epoch through SFC's `sealEpoch(…, originatedTxsFee, …)`. "Who was
+        paid for this block" has no answer at block granularity.
+    - name: nonce on failure
+      severity: high
+      src: "go-ethereum/core/state_transition.go:InsufficientBalanceIsNotAnError, go-ethereum/core/state_transition.go:SetNonce"
+      note: >-
+        NONCE ON FAILURE: BURNED, with a receipt. Sonic's balance precheck omits
+        `msg.Value` in two places — the gas purchase and clause 6 of the
+        pre-check — under the in-source note "insufficient balance for
+        **topmost** call isn't a consensus error in Opera, unlike Ethereum. Such
+        transaction will revert and consume sender's gas." A transaction that
+        can afford its FEE but not its VALUE therefore passes admission, reaches
+        `st.state.SetNonce(msg.From, ...+1)` in the state transition, and fails
+        inside execution. Fee charged, NONCE BURNED, receipt present with
+        `status: 0`. On mainnet the same transaction is never included and the
+        nonce is preserved for a free resubmit; here the nonce is gone and the
+        sender must re-fund the account before resending at nonce+1. Monad
+        reaches the identical rule from deferred execution; Conflux burns the
+        nonce on this failure and preserves it on another.
+    - name: duplicate inclusion
+      severity: high
+      src: "gossip/scrambler/tx_scrambler.go:analyseEntryList, gossip/c_block_callbacks.go:txPositions, gossip/blockproc/evmmodule/evm.go:Finalize, gossip/emitter/txs.go:isMyTxTurn, gossip/emitter/scheduler/scheduler.go:Schedule"
+      note: >-
+        DUPLICATE INCLUSION: DEDUPLICATED BY HASH DURING BLOCK DERIVATION, THE
+        SECOND COPY ERASED, AND THE FEE PAID ENTIRELY TO THE FIRST EMITTER.
+        Lachesis is a leaderless DAG: validators emit `events` concurrently and
+        the same transaction reaching two emitters is a normal occurrence, not an
+        attack. Sonic answers it at four layers, only two of which are consensus.
+
+        (1) EMISSION, node-local. `isMyTxTurn` runs a deterministic lottery — a
+        stake-weighted permutation seeded by `hash(sender, nonce/32, epoch)`,
+        indexed by the 8-second round since the transaction was first seen — and a
+        validator emits only when the permutation names it, skipping validators it
+        believes are offline. The in-source rationale is "try to not include the
+        same tx simultaneously by different validators". It is a HEURISTIC: two
+        validators disagreeing about who is offline, or straddling a round change,
+        both emit. Nothing rejects the resulting event.
+
+        (2) BLOCK DERIVATION, consensus, only in the multi-emitter path.
+        `c_block_callbacks.go` concatenates the transactions of every event in the
+        confirmed Atropos set and hands them to `scrambler.GetExecutionOrder`;
+        `analyseEntryList` walks that list with a `seenHashes` set and drops every
+        repeat, keeping the FIRST. The salt that scrambles the surviving order is
+        the XOR of the unique hashes, so it is a function of the SET and not of the
+        arrival order — dedup is what makes the ordering deterministic across
+        nodes, not a side effect of it.
+
+        (3) EXECUTION, consensus, and the only defence against a duplicate that
+        spans two blocks. The scrambler's set is per-block, so an event confirmed
+        into block N+1 carrying a transaction already executed in block N is not
+        caught above. It runs, fails the nonce precheck, and returns
+        `ProcessedTransaction{Receipt: nil}` — a SKIP. `Finalize` then builds the
+        stored block from the receipt-bearing entries only, so the skipped copy is
+        absent from `eth_getBlockByNumber`, has no receipt, and gets no
+        `SetTxPosition` index entry. Only the `chain/txs/skipped` meter records it.
+        The client states the rule outright at `isPermissible`: "Permissible
+        transactions may still be rejected by the block processor due to nonce or
+        balance issues. In such cases, the transaction is considered a skipped
+        transaction."
+
+        (4) SINGLE-PROPOSER MODE HAS NO HASH DEDUP AT ALL. When
+        `SingleProposerBlockFormation` is on, `proposal.Transactions` comes from
+        `extractProposalForNextBlock` and NEVER reaches the scrambler; the
+        proposer's `Schedule` trial-runs candidates and "will only accept the first
+        that can be successfully processed, ignoring the rest", which excludes a
+        duplicate by executing it rather than by recognising it. That is a
+        proposer-local heuristic; layer (3) remains the consensus backstop. Sonic
+        therefore has two block-formation modes with two different duplicate
+        mechanisms, reached by an on-chain rules toggle.
+
+        WHO IS PAID: only the first emitter. `txPositions` is built by iterating
+        the confirmed events in order under the comment "If tx was met in multiple
+        events, then assign to first ordered event", and the resulting
+        `EventCreator` is the `originator` passed to `OnNewReceipt`, which credits
+        `ValidatorStates[originator].Originated` with the whole fee for epoch
+        settlement through `sealEpoch(..., originatedTxsFee, ...)`. A validator
+        that emits a duplicate earns nothing from it and is not penalised for it —
+        no slash, no cheater record, only the gas power it spent carrying the
+        transaction in its event. Same shape as Taraxa, where fees go strictly to
+        the first includer.
+
+        WHAT A CLIENT SEES: the same as Conflux at the `eth_*` layer — the second
+        copy is simply not there, indistinguishable from never submitted — but
+        UNLIKE Conflux the evidence survives one level down. The DAG event that
+        carried the duplicate is stored intact and
+        `dag_getEventPayload(<id>, true)` still lists the transaction in it. That
+        is Taraxa's outcome, reached through a different mechanism: visible in the
+        DAG, absent from the executed list.
+
+        THE NONCE-WAIVER INTERACTION: layer (3) is a nonce check, so it cannot
+        protect the paths where Sonic waives nonce checks. `TxAsMessage` sets
+        `SkipNonceChecks: true` for internal transactions, which would make a
+        replayed internal transaction execute twice. It is not reachable in
+        practice because internal transactions are minted deterministically by
+        `DriverTxPreTransactor.PopInternalTxs` during block processing rather than
+        carried in events, so no emitter can duplicate one. The
+        `InsufficientBalanceIsNotAnError` precheck does NOT interact: it removes
+        `msg.Value` from the balance test and leaves the nonce test untouched.
+    - name: fee-only balance precheck
+      severity: high
+      src: go-ethereum/core/state_transition.go:buyGas
+      note: >-
+        `InsufficientBalanceIsNotAnError` removes `msg.Value` from the balance check,
+        with the in-source comment "insufficient balance for topmost call isn't a
+        consensus error in Opera, unlike Ethereum. Such transaction will revert and
+        consume sender's gas." A transaction only has to afford its FEE to be
+        included; it is then charged, its nonce is burned, and it fails inside
+        execution. Monad reached the identical rule from a completely different
+        direction (deferred execution) — two unrelated chains, one deviation from
+        Ethereum's validity rules.
+    - name: gas fee cap ignored in the balance check
+      src: go-ethereum/core/state_transition.go:buyGas
+      note: >-
+        `IgnoreGasFeeCap` makes `buyGas` check the balance against `gasLimit *
+        gasPrice` rather than `gasLimit * gasFeeCap`. A transaction can be admitted
+        with a fee cap it could not pay if the base fee rose to meet it.
+    - name: validator gas power allocation
+      src: "opera/rules.go:DefaultGasPowerRules, gossip/evm_state_reader.go:CurrentMaxGasLimit"
+      src_live: "eth_getBlockByNumber @ 78050451 -> gasLimit 0x12a05f200 (5,000,000,000)"
+      note: >-
+        The header's `gasLimit` is 5,000,000,000 — 333x mainnet's — and IS NOT THE
+        LIMIT. It is `MinimumMaxBlockGas`, a technical ceiling the client documents as
+        "gas is mostly governed by gas power allocation". Real throughput is a
+        per-second allocation (2 x 15 MGas/s at defaults) distributed among validators
+        by stake, accumulable for up to 5 seconds. Any tool that sizes work against
+        `block.gasLimit` is wrong by two orders of magnitude.
+    - name: gas subsidies
+      src: gossip/blockproc/subsidies/subsidies.go:IsSponsorshipRequest
+      note: "zero-gas-price transactions are valid when the registry says so; see non_eip_specs"
+  note: >-
+    Sonic's fee model diverges at five independent points and adds no new
+    transaction type and no new gas token to do it. Mantle needed a gas-token change;
+    Sonic changes who pays, how much, when, and to whom, entirely inside the existing
+    envelope.
+
+header_fields:
+  src: "inter/block.go:GetEthereumHeader, inter/block.go:EncodeExtraData, evmcore/dummy_block.go:EvmHeaderJson"
+  src_live: "block-hash reconstruction @ 78050451: keccak(RLP(19 fields)) == 0xbc01ebf65a442adb0036f69099c827b3ea2b9e0f11bbddd0989ca16c08acd3b1"
+  added:
+    - name: timestampNano
+      src: evmcore/dummy_block.go:EvmHeaderJson
+      src_live: "eth_getBlockByNumber @ 78050451 -> timestampNano 0x18cea2b0eefedcc1"
+      note: >-
+        RPC-only, not in the hashed header. The full nanosecond Lachesis timestamp;
+        `timestamp` is the same value truncated to seconds. With sub-second blocks,
+        consecutive blocks routinely share a `timestamp`.
+    - name: epoch
+      src: evmcore/dummy_block.go:EvmHeaderJson
+      src_live: "eth_getBlockByNumber @ 78050451 -> epoch 0x16866, equal to SFC.currentEpoch()"
+      note: "RPC-only. The Lachesis epoch, and the unit in which rules changes and fee settlement happen."
+  removed:
+    - name: parentBeaconBlockRoot
+      severity: high
+      note: "mandatory on mainnet since Cancun; absent from both the RPC object and the hashed header"
+    - name: requestsHash
+      note: "mandatory on mainnet since Prague; absent. Contrast Monad, which emits it as the zero hash."
+  modified:
+    - name: extraData
+      severity: high
+      src: inter/block.go:EncodeExtraData
+      src_live: "extraData 0x36da80c1000000007d03b07c @ 78050451 -> nanos 920617153, duration 2097225852 ns"
+      note: >-
+        REPURPOSED AND CONSENSUS-CRITICAL. Exactly 12 bytes: a big-endian uint32 of
+        the block timestamp's nanosecond part, then a big-endian uint64 of the block's
+        DURATION in nanoseconds. The duration is an input to the next block's base fee
+        (`getBaseFeeForNextBlock`), so `extraData` carries a metering dimension the
+        header has no other field for — the same move as OP Stack repurposing
+        `blobGasUsed` for a DA footprint, and as Taiko's second dimension in
+        `difficulty`. Anything treating extraData as an opaque vanity string is
+        discarding a consensus input.
+    - name: sha3Uncles
+      src: "inter/block.go:GetEthereumHeader, api/ethapi/api.go:noUncles"
+      src_live: "eth_getBlockByNumber @ 78050451 -> sha3Uncles 0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"
+      note: "the EmptyUncleHash constant on every block; `uncles` is always []. Present because the block hash needs it."
+    - name: miner
+      src: inter/block.go:GetEthereumHeader
+      src_live: "miner 0x0000000000000000000000000000000000000000 @ 78050451"
+      note: >-
+        Always the zero address, in the hashed header and in the RPC. Combined with
+        `SkipTipPaymentToCoinbase` this means COINBASE inside a contract returns
+        0x0 — a value some fee-splitting and MEV-aware contracts treat as a sentinel.
+    - name: difficulty
+      src: "evmcore/dummy_block.go:ToJson, evmcore/evm.go:NewEVMBlockContextWithDifficulty"
+      src_live: "difficulty 0x0, totalDifficulty 0x0 @ 78050451; confirmed as the hashed value by block-hash reconstruction"
+      note: >-
+        Zero and meaningless, by two independent paths that happen to agree: the RPC
+        encoder hardcodes a fresh zero, and the stored block's Difficulty is never
+        set. `totalDifficulty` is likewise a hardcoded zero rather than a running sum.
+        Sonic does NOT ride a second metering dimension in this field.
+    - name: mixHash
+      src: gossip/prevrandao.go:computePrevRandao
+      src_live: "mixHash 0xcbeb05ba4f7b29fd199f4efe99a4623f937e3b0298618bd9e93db4353cc52869 @ 78050451, identical to the value PREVRANDAO returns"
+      note: >-
+        Carries Sonic's own randomness, not a beacon-chain RANDAO: sha256 of the XOR
+        of bytes 8..31 of the confirmed Lachesis event hashes, the first 8 bytes being
+        dropped as non-random. Verified live to equal what opcode 0x44 returns. It is
+        derived from data the validators themselves produced, which is a materially
+        weaker randomness assumption than mainnet's and is not visible from the field.
+    - name: nonce
+      src: inter/block.go:GetEthereumHeader
+      src_live: "nonce 0x0000000000000000 @ 78050451"
+      note: "constant zero; no meaning"
+    - name: withdrawalsRoot
+      note: "constant EmptyWithdrawalsHash; see eips.4895"
+    - name: blobGasUsed / excessBlobGas
+      src_live: "both 0x0 @ 78050451"
+      note: >-
+        Present and pinned to zero. Yet another meaning for the same JSON key (see
+        findings.yaml:fields-outlive-features): OP Stack repurposes it as a DA
+        footprint, Avalanche pins it to zero and rejects anything else, Sonic pins it
+        to zero and derives BLOBBASEFEE = 1 from it.
+    - name: gasLimit
+      severity: high
+      src_live: "gasLimit 0x12a05f200 (5,000,000,000) @ 78050451"
+      note: "not the operative limit; see fee_model.validator gas power allocation"
+  note: >-
+    THE HEADER MATCHES NO MAINNET FORK. Reconstructing the block hash from the RPC
+    fields shows it is keccak of a NINETEEN-item RLP list ending at `excessBlobGas` —
+    Shanghai's seventeen plus `blobGasUsed` and `excessBlobGas`, and then it stops.
+    Mainnet's Cancun header has twenty items (parentBeaconBlockRoot is mandatory) and
+    Prague's has twenty-one. Sonic runs Prague's EVM behind a header shape that has
+    never existed on mainnet, so a header verifier written against ANY mainnet fork
+    fails on every Sonic block — not on a value, on the field count.
+
+gotchas:
+- >-
+  AN UNDERFUNDED TRANSACTION BURNS ITS NONCE INSTEAD OF BOUNCING. The balance
+  precheck drops `msg.Value`, so a transaction only has to afford its FEE to be
+  admitted. It is then charged, its nonce is incremented, and it fails inside
+  execution with a `status: 0` receipt. On mainnet that transaction is never
+  included and the sender resubmits at the same nonce for free; here the nonce is
+  spent and the sender must top the account up before sending nonce+1.
+  - >-
+    YOU ARE CHARGED 10% OF THE GAS YOU DID NOT USE. `chargeExcessGas` takes a tenth
+    of the remaining gas before the refund on every transaction from a non-zero
+    sender. A 21000-gas transfer sent with a 31500 limit costs 22050; sent with a
+    23000 limit it costs 21200. Both verified on live mainnet transactions.
+    `eth_estimateGas` reports the true consumption, so the standard practice of
+    padding an estimate is a direct transfer of value. Nothing reverts and the
+    receipt shows the inflated figure as gasUsed.
+  - >-
+    THE BLOCK HEADER IS A 19-FIELD RLP LIST. No `parentBeaconBlockRoot` (mandatory on
+    mainnet since Cancun) and no `requestsHash` (mandatory since Prague), while the
+    EVM is at Prague. Verified by reconstructing the live block hash. Any header
+    verifier or light client written against a mainnet fork fails on the field count.
+  - >-
+    `extraData` IS NOT VANITY DATA. Twelve bytes: the nanosecond part of the
+    timestamp and the block's duration in nanoseconds. The duration feeds the next
+    block's base fee, so discarding extraData discards a consensus input, and the
+    fee market cannot be reproduced from the standard header fields alone.
+  - >-
+    `gasLimit` IS 5,000,000,000 AND MEANS NOTHING. It is a technical ceiling; real
+    capacity is a per-second gas-power allocation shared among validators by stake.
+    There is also no per-transaction gas cap today — geth applies EIP-7825's
+    16,777,216 only at Osaka, and Osaka is not active here.
+  - >-
+    PROTOCOL TRANSACTIONS HAVE NO TYPE BYTE AND NO SIGNATURE. They are legacy 0x00
+    transactions with `v = 0, r = 0`, and the SENDER IS READ OUT OF THE `s` FIELD.
+    They sit in `transactionsRoot` next to user transactions; the only tell is a
+    `from` of 0x0000…0000. Observed at block 78050318.
+  - >-
+    A PRECOMPILE CAN REWRITE ANY ACCOUNT'S CODE, BALANCE, STORAGE AND NONCE.
+    EvmWriter at 0xd100ec00… exposes setBalance / setStorage / incNonce / copyCode /
+    swapCode to the NodeDriver. Bytecode at an address is not immutable on this
+    chain. The address also carries a one-byte `0x00` stub, so EXTCODESIZE says 1 and
+    EXTCODEHASH says keccak(0x00) — it reads as a contract and behaves as a
+    precompile.
+  - >-
+    0x0100 RETURNS EMPTY FOR A VALID P-256 SIGNATURE. In the silent-P256 class (see
+    findings.yaml:p256-silent-invalid), by a cause of its own: the feature is
+    implemented and shipped in the running client, gated behind a fork nobody has
+    scheduled. Indistinguishable
+    from "signature invalid" under EIP-7951 — no revert, no error.
+  - >-
+    TYPE 0x03 IS ACCEPTED, BLOBS ARE NOT. A blob transaction with an empty blob-hash
+    list is valid; one carrying blobs is rejected with `ErrNonEmptyBlobTx`. BLOBHASH
+    always returns zero and BLOBBASEFEE is always 1.
+  - >-
+    FORKS ARE ON-CHAIN BOOLEANS WITH NO TIMESTAMP. A governed `updateNetworkRules`
+    call flips a flag, effective next epoch, and the client records the block height.
+    The ChainConfig handed to geth tooling has every fork time set to 0 and is
+    documented as valid for exactly one block height. Call `eth_config`; do not read
+    a fork schedule.
+  - >-
+    A ZERO-GAS-PRICE TRANSACTION MAY BE VALID. With GasSubsidies live, validity
+    depends on what the SubsidiesRegistry contract returns during block processing,
+    and the protocol may append a settlement transaction the user never sent.
+  - >-
+    TRANSACTIONS CAN BE SKIPPED. A transaction consensus ordered but that cannot
+    execute in that order is dropped with no gas, no receipt and no state change,
+    and processing continues. Inherited from Fantom and still live.
+  - >-
+    THE TRACER AND THE CHAIN RUN DIFFERENT EVMS. Consensus execution uses Tosca's
+    LFVM (SFVM from Brio); `InterpreterForTracing` uses geth's. Two implementations,
+    conformance-tested against each other, but a trace is not a replay of the same
+    code.
+  - >-
+    A BLOCK-PRODUCTION SETTING CHANGES THE FEE RULE. Enabling
+    SingleProposerBlockFormation clears `ChargeExcessGas`, so toggling an option
+    documented as "can be enabled or disabled at any time" silently changes what
+    every transaction on the chain costs.

@@ -1,0 +1,721 @@
+schema_version: 2
+
+chain:
+  name: Gnosis Chain
+  slug: gnosis
+  chain_id: 100
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    `fork` overstates the distance, but less than it does for Linea. Gnosis maintains
+    no execution client of its own for the client that actually produces its blocks:
+    the observed block was sealed by stock upstream Nethermind (extraData decodes to
+    the ASCII string "Nethermind v1.39.3"), and Nethermind carries Gnosis IN-TREE —
+    the chainspec, a dedicated GnosisSpecProvider fork ladder, and the AuRa/merge
+    consensus code all live in the upstream repo. So the delta is a config-and-
+    upstream-support diff, not a source diff, and it can be read off a mainnet client.
+
+    The CANDIDATES.md premise that `gnosischain/gnosis` holds the spec is WRONG in
+    two ways and both are findings. That repo does not exist (404). And the Gnosis-
+    owned config repo that does exist, gnosischain/configs, holds an EL genesis that
+    is FROZEN PRE-MERGE: its params block has no terminalTotalDifficulty and not one
+    of the twenty-eight eip*TransitionTimestamp keys the live chain runs on. The
+    authoritative live chainspec is the copy inside Nethermind. Pinning the Gnosis-
+    owned repo as the client, the way the Linea row pins lineth-monorepo, would have
+    pinned a document the network stopped following in 2022.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: null
+  sync_point: >-
+    Fully caught up at Osaka/Fusaka (activated 1776168380). Nethermind also ships an
+    AmsterdamGnosis spec class and the header decoder already has BlockAccessListHash
+    and SlotNumber slots, but no Amsterdam timestamp is set for chain 100 and
+    gnosischain/specs' glamsterdam.md carries an empty schedule table.
+  note: >-
+    Gnosis descends from the OpenEthereum/Parity AuRa lineage (xDai, 2018), not from
+    go-ethereum, which is why its chainspec is still in Parity format and why POSDAO
+    contracts, a validator-set contract and a transaction-permission contract are
+    consensus objects here. It converged onto Ethereum rather than diverging from it.
+    Client forks DO exist beside the in-tree support — gnosischain/reth_gnosis (a
+    standalone Gnosis node, pinned here) and gnosischain/go-ethereum (tag v1.17.5-gc,
+    released 2026-08-12, NOT pinned or read for this row) — so "no client fork of its
+    own" is true only of the reference client.
+
+client:
+  name: Nethermind
+  repo: https://github.com/NethermindEth/nethermind
+  version: 1.39.3
+  commit: 28cbe2a0ae28373f66abdc584f3eaf21516e84b3
+  language: c#
+  note: >-
+    Chosen over the Gnosis-owned config repo because it is the client that produced
+    the pinned block AND the place the live chainspec lives. Everything Gnosis-
+    specific is upstream: src/Nethermind/Chains/gnosis.json, the
+    Nethermind.Specs/GnosisForks/ ladder, Nethermind.Consensus.AuRa and
+    Nethermind.Merge.AuRa. Cross-checked against a fully independent Rust
+    implementation (reth_gnosis) so that no single-client reading is load-bearing.
+  companion_repos:
+  - {name: specs, repo: "https://github.com/gnosischain/specs",
+     commit: 045d46d6db96a39b4d91485f9783474c13546ac9,
+     provides: "the normative Gnosis-only specs: modified EIP-4895 withdrawals, POSDAO post-merge, Balancer recovery, and the per-upgrade diff-vs-mainnet tables"}
+  - {name: reth_gnosis, repo: "https://github.com/gnosischain/reth_gnosis",
+     version: v2.0.0, commit: 5b236a06cfa29a29060fcb3355b73fef182e6e0c,
+     provides: "second, independent implementation — every constant below appears twice, in C# and in Rust"}
+  - {name: configs, repo: "https://github.com/gnosischain/configs",
+     commit: e542d132340e68fd7922149b145a0d361e1c87d4,
+     provides: "the Gnosis-owned config repo — pinned to DOCUMENT that its EL genesis is stale, not to source facts from it"}
+
+live_probe:
+  endpoint: https://rpc.gnosischain.com
+  chain_id: 100
+  observed_at_block: 47884196
+
+consensus:
+  engine: >-
+    Gnosis Beacon Chain (Gasper) over the Engine API; AuRa before the merge, and the
+    AuRa objects are still in the chainspec
+  finality: ~1 min 40 s (2 epochs of 16 slots x 5 s)
+  block_time: 5s
+  note: >-
+    Validators stake GNO, not the gas token. 1 GNO = 32 mGNO on the beacon side, so a
+    validator's 32-mGNO effective balance mirrors mainnet's 32 ETH — and that factor
+    of 32 leaks into the execution layer, see eips.4895. Terminal total difficulty was
+    8626000000000000000000058750000000000000000000, an absurd number only because AuRa
+    writes a fake difficulty into the header (see header_fields.difficulty).
+
+baseline_fork: osaka
+
+forks:
+  src: "src/Nethermind/Nethermind.Specs/GnosisSpecProvider.cs:OsakaTimestamp"
+  activation_src: "src/Nethermind/Chains/gnosis.json:eip7951TransitionTimestamp, reth_gnosis/src/spec/chainspecs/gnosis.json:osakaTime"
+  note: >-
+    Gnosis uses MAINNET fork names for everything except one fork of its own, and the
+    lag is NOT monotonic — which is the interesting part. It was 110 days late to
+    Shanghai, then shipped Cancun 1.8 days EARLY and Prague 6.8 days EARLY (both
+    before Ethereum mainnet), then was 132 days late to Osaka. "How far behind is
+    Gnosis" has no sign, let alone a value. Nethermind's fork ladder is a real class
+    hierarchy (NamedGnosisReleaseSpec: each Gnosis fork takes a mainnet fork for its
+    EIP delta and a Gnosis parent for its overrides), so the divergence is expressed
+    as an override list of exactly four items, not as a rewrite.
+  timeline:
+  - {name: constantinople, activation_block: 1604400, mainnet_equivalent: constantinople}
+  - {name: constantinople-fix, activation_block: 2508800, mainnet_equivalent: petersburg}
+  - {name: istanbul, activation_block: 7298030, mainnet_equivalent: istanbul}
+  - {name: posdao, activation_block: 9186425, mainnet_equivalent: null,
+     note: "Gnosis-only. Switches the validator set to a contract and turns on the transaction-permission contract. Alters no EVM rule — GnosisSpecProvider comments it 'does not alter EVM specs, fork-id boundary only' — but it IS a fork-id transition."}
+  - {name: berlin, activation_block: 16101500, mainnet_equivalent: berlin}
+  - {name: london, activation_block: 19040000, mainnet_equivalent: london,
+     note: "same block turns on eip1559FeeCollectorTransition — Gnosis has NEVER burned a base fee"}
+  - {name: merge, activation_condition: "TTD 8626000000000000000000058750000000000000000000",
+     mainnet_equivalent: paris,
+     note: "no Paris-equivalent spec object exists. The ladder goes LondonGnosis -> ShanghaiGnosis, and ShanghaiGnosis sets IsPostMerge = true explicitly because there is no Paris anchor to do it."}
+  - {name: gip-31, activation_block: 21735000, mainnet_equivalent: null,
+     note: "Gnosis-only. Rewrites the bytecode at 0xf8D1677c... by chainspec. Not a fork-id transition — Nethermind's ForkInfoTests give block 21735000 the same fork hash 0x018479d3 as first-London."}
+  - {name: shapella, activation_time: 1690889660, mainnet_equivalent: shanghai,
+     note: "2023-08-01, 110.5 days AFTER mainnet Shanghai (1681338455). Also the fork at which EIP-170 finally arrived."}
+  - {name: dencun, activation_time: 1710181820, mainnet_equivalent: cancun,
+     note: "2024-03-11, 1.81 days BEFORE mainnet Cancun (1710338135)"}
+  - {name: pectra, activation_time: 1746021820, mainnet_equivalent: prague,
+     note: "2025-04-30, 6.83 days BEFORE mainnet Prague (1746612311)"}
+  - {name: balancer, activation_time: 1766419900, mainnet_equivalent: null,
+     note: "Gnosis-only, 2025-12-22. Changes no EVM rule and IS a fork-id transition (0xd00284ad). Its entire content is one irregular state transition — see system_contracts.\"0x506d1f9efe24f0d47853adca907eb8d89ae03207\"."}
+  - {name: fusaka, activation_time: 1776168380, mainnet_equivalent: osaka,
+     note: "2026-04-14, 131.6 days AFTER mainnet Osaka (1764798551). Current fork."}
+  - {name: glamsterdam, activation_time: null, status: pending, mainnet_equivalent: amsterdam,
+     note: "AmsterdamGnosis spec class exists in Nethermind; no timestamp for chain 100, empty schedule table in specs/network-upgrades/glamsterdam.md"}
+
+eips:
+  170:
+    status: modified
+    name: contract code size limit
+    note: >-
+      Mainnet has enforced the 24576-byte limit since Spurious Dragon (2016). Gnosis
+      did NOT enforce it until Shapella (2023-08-01), and enabled it then only because
+      EIP-3860 requires it — gnosischain/specs says so in as many words. The chainspec
+      encodes this as maxCodeSize 0x6000 gated by maxCodeSizeTransitionTimestamp
+      0x64c8edbc rather than from genesis. Consequence: Gnosis state may contain
+      deployed contracts larger than any mainnet contract can be, and they still
+      execute. Whether any such contract actually exists is `unrecorded` — establishing
+      it needs a state scan this row did not do.
+    src: "src/Nethermind/Chains/gnosis.json:maxCodeSizeTransitionTimestamp, network-upgrades/shapella.md:EIP-170"
+  1559:
+    status: modified
+    severity: high
+    name: fee market
+    note: >-
+      THE BASE FEE IS NOT BURNED. It is credited, in full, to a fixed collector
+      account. The market half of EIP-1559 is untouched — elasticity 2, denominator 8,
+      initial 1 gwei, all identical to mainnet — so every formula a fee estimator uses
+      is right and the monetary consequence is inverted. Nethermind implements it in
+      the shared transaction processor: PayFees adds `collectedFees` to
+      `spec.FeeCollector` instead of dropping them, and Gnosis is the chain that sets
+      that field (LondonGnosis.Apply, from block 19040000). reth_gnosis makes the same
+      address MANDATORY — GnosisEvmConfig::new panics with "no eip1559collector field"
+      if it is missing, so a Gnosis node literally cannot start without knowing where
+      the base fee goes. PROVED LIVE, exactly: over the pinned block the collector's
+      balance rose by 32211530 wei and baseFeePerGas * gasUsed was 13 * 2477810 =
+      32211530. Any supply model, burn dashboard or EIP-1559 analytic ported from
+      mainnet reports a burn that never happened.
+    src: "src/Nethermind/Nethermind.Evm/TransactionProcessing/TransactionProcessor.cs:PayFees, src/Nethermind/Nethermind.Specs/GnosisForks/12_LondonGnosis.cs:FeeCollector, src/Nethermind/Chains/gnosis.json:eip1559FeeCollectorTransition, reth_gnosis/src/evm_config.rs:eip1559collector"
+    src_live: "eth_getBalance(0x6BBe78ee9e474842Dbd4AB4987b3CeFE88426A92) @ 47884196 minus @ 47884195 = 32211530 == baseFeePerGas 13 * gasUsed 2477810"
+  4844:
+    status: modified
+    severity: high
+    name: blob transactions
+    note: >-
+      There IS a blob market — type 0x03 transactions are live and mined — and every
+      constant that prices it differs. MIN_BLOB_GASPRICE is 1 GWEI, a factor of 10^9
+      above mainnet's 1 wei; target 1 / max 2 blobs against mainnet's Cancun 3/6; and
+      BLOB_GASPRICE_UPDATE_FRACTION 1112826 against mainnet's 3338477. The stated
+      reason is that Gnosis's native token is a stablecoin and 5-second slots make big
+      blocks expensive, so free blob space under target was judged a spam vector.
+      OBSERVED: baseFeePerBlobGas is pinned at 0x3b9aca00 for every block in a
+      20-block feeHistory window and excessBlobGas is 0 everywhere sampled — the blob
+      fee market on Gnosis has never left its floor, and its floor is a billion times
+      mainnet's. One blob therefore costs at minimum 131072 * 1 gwei = 1.31e14 wei of
+      xDAI, while the same blob on mainnet at the floor costs 131072 wei.
+    src: "src/Nethermind/Nethermind.Specs/GnosisForks/17_CancunGnosis.cs:MaxBlobCount, src/Nethermind/Chains/gnosis.json:eip4844MinBlobGasPrice, src/Nethermind/Nethermind.Core/Eip4844Constants.cs:MinBlobGasPrice, reth_gnosis/src/blobs.rs:gnosis_blob_schedule, network-upgrades/dencun.md:MIN_BLOB_GASPRICE"
+    src_live: "eth_feeHistory(0x14, 47884196) @ 47884196 -> every baseFeePerBlobGas 0x3b9aca00; blob tx receipt in block 47884158 -> blobGasPrice 0x3b9aca00, blobGasUsed 0x20000"
+  4895:
+    status: modified
+    severity: high
+    name: beacon-chain push withdrawals
+    note: >-
+      THE SHARPEST DIVERGENCE ON THIS CHAIN, and it exists precisely because the
+      staking token is not the gas token. Mainnet credits withdrawal.amount to
+      withdrawal.address as native ETH. Gnosis credits NOTHING natively: instead the
+      block executes one system transaction from 0xfff...ffe calling
+      executeSystemWithdrawals(uint256,uint64[],address[]) on 0x0B98057e..., which
+      moves GNO. Nethermind's AuraWithdrawalProcessor packs the whole withdrawals list
+      into that one call; reth_gnosis's comment for the same code says outright "Do
+      NOT credit withdrawals as native token mint".
+
+      TWO CONSEQUENCES, both silent. (1) A tool that reads the withdrawals array and
+      adds amount to the recipient's native balance is wrong on every block. PROVED:
+      the pinned block carries 8 withdrawals totalling 30663773 Gwei to
+      0x56cf0ff0...76640, and that account's xDAI balance is UNCHANGED across the
+      block — delta exactly 0. (2) The units are not the token. withdrawal.amount is
+      denominated in mGNO-Gwei, and 1 GNO = 32 mGNO, so the contract divides by 32.
+      PROVED: withdrawableAmount(0x56cf0ff0...) rose by 958242906250000 wei over the
+      same block, and 30663773 Gwei / 32 = 958242.90625 Gwei = 958242906250000 wei
+      EXACTLY. Read the header value as GNO and you are wrong by 32x.
+
+      Withdrawals also accrue as a CLAIMABLE balance rather than a push, so the
+      recipient's GNO ERC-20 balance is unchanged too (delta 0 over the block); the
+      value sits in the deposit contract until claimed. If no contract is deployed at
+      the withdrawal address the spec says to skip the call and keep the block valid.
+    src: "src/Nethermind/Nethermind.Merge.AuRa/Withdrawals/AuraWithdrawalProcessor.cs:ProcessWithdrawals, src/Nethermind/Nethermind.Merge.AuRa/Contracts/WithdrawalContract.cs:executeSystemWithdrawals, src/Nethermind/Chains/gnosis.json:withdrawalContractAddress, reth_gnosis/src/gnosis.rs:apply_withdrawals_contract_call, execution/withdrawals.md:MAX_FAILED_WITHDRAWALS_TO_PROCESS"
+    src_live: "eth_getBalance(0x56cf0ff00fd6cfb23ce964c6338b228b0fa76640) @ 47884196 vs 47884195 -> delta 0 despite 30663773 Gwei of withdrawals; eth_call withdrawableAmount(address) on 0x0B98057eA310F4d31F2a452B414647007d1645d9 @ 47884196 vs 47884195 -> delta 958242906250000 == 30663773 Gwei / 32"
+  6110:
+    status: modified
+    severity: high
+    name: validator deposits on chain
+    note: >-
+      The deposit contract is at 0x0B98057eA310F4d31F2a452B414647007d1645d9, not
+      mainnet's 0x00000000219ab540356cBB839Cbe05303d7705Fa — and mainnet's address is
+      an EMPTY ACCOUNT on Gnosis, not a revert. That is the silent shape: a staking
+      integration that hardcodes the canonical deposit address gets success and no
+      data from every call and every read, instead of an error. The same address is
+      ALSO the withdrawal contract (chainspec sets depositContractAddress and
+      withdrawalContractAddress to it), so deposits and withdrawals share one GNO
+      contract. Confirmed live: stake_token() returns
+      0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb (GNO).
+    src: "src/Nethermind/Chains/gnosis.json:depositContractAddress, reth_gnosis/src/spec/chainspecs/gnosis.json:depositContractAddress"
+    src_live: "eth_getCode(0x00000000219ab540356cBB839Cbe05303d7705Fa) @ 47884196 -> 0x (EMPTY); eth_getCode(0x0B98057eA310F4d31F2a452B414647007d1645d9) @ 47884196 -> 1165 bytes; eth_call stake_token() @ 47884196 -> 0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb"
+  4788:
+    status: inherited
+    note: >-
+      Positively established, not assumed, and worth stating because Linea's identical
+      address answers with a permanent zero. Gnosis has a real beacon chain, the
+      contract is at the canonical 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02, its
+      code is BYTE-IDENTICAL to mainnet's, and parentBeaconBlockRoot in the pinned
+      header is a real non-zero root.
+    src_live: "eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) @ 47884196 == mainnet's byte for byte (97 bytes); header parentBeaconBlockRoot @ 47884196 -> 0x20e91f24aa573285975ee50585d6498443971f89b2e043550772e17e725eadcd"
+  2935:
+    status: inherited
+    note: "canonical 0x0000F90827F1C53a10cb7A02335B175320002935, code byte-identical to mainnet (83 bytes)"
+    src: "src/Nethermind/Chains/gnosis.json:eip2935TransitionTimestamp"
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 47884196 == mainnet"
+  7002:
+    status: inherited
+    note: >-
+      Canonical 0x00000961Ef480Eb55e80D19ad83579A64c007002, code byte-identical to
+      mainnet (504 bytes). Notable as the counter-case to Linea, which relocated this
+      predeploy and left the canonical address empty. Gnosis moved only the contract
+      whose ADDRESS is a chainspec field (the deposit contract, EIP-6110); the three
+      whose addresses are hardcoded constants are exactly where mainnet puts them.
+    src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 47884196 == mainnet"
+  7251:
+    status: inherited
+    note: "canonical 0x0000BBdDc7CE488642fb579F8B00f3a590007251, code byte-identical to mainnet (414 bytes)"
+    src_live: "eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 47884196 == mainnet"
+  7685:
+    status: inherited
+    note: "requestsHash present in the header, observed as the empty-requests hash"
+    src_live: "eth_getBlockByNumber @ 47884196 -> requestsHash 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  7691:
+    status: removed
+    name: blob throughput increase
+    note: >-
+      Declined. Mainnet's Pectra raised the blob schedule; Gnosis explicitly kept
+      Dencun's — PragueGnosis re-asserts TargetBlobCount 1 / MaxBlobCount 2, and
+      pectra.md tabulates MAX_BLOBS_PER_BLOCK_ELECTRA = 2 against mainnet's 9.
+    src: "src/Nethermind/Nethermind.Specs/GnosisForks/18_PragueGnosis.cs:MaxBlobCount, network-upgrades/pectra.md:MAX_BLOBS_PER_BLOCK_ELECTRA"
+  7892:
+    status: modified
+    name: blob-parameter-only hardforks
+    note: >-
+      The MECHANISM is present and ZERO BPO forks have ever run. Nethermind's
+      blobSchedule for chain 100 contains exactly one entry, cancun, and
+      SetBlobScheduleParameters selects the latest entry at or before the release
+      timestamp — so Cancun's 1/2 is still in force at Prague and at Osaka.
+      reth_gnosis states the same shape declaratively: cancun, prague and osaka blob
+      params are all 1/2/1112826 with `scheduled: vec![]`. Mainnet meanwhile ran BPO1
+      and BPO2 and sits at target 14 / max 21. Gnosis's blob target is 1/14th of
+      mainnet's and drifting further with every BPO. fusaka.md still says Gnosis
+      "intends to set a different blob target and max schedule than Ethereum, TBD".
+    src: "src/Nethermind/Nethermind.Specs/ChainSpecStyle/ChainSpecBasedSpecProvider.cs:SetBlobScheduleParameters, src/Nethermind/Chains/gnosis.json:blobSchedule, reth_gnosis/src/blobs.rs:OSAKA_BLOB_PARAMS, network-upgrades/fusaka.md:EIP-7892"
+    src_live: "eth_getBlockByNumber @ 47884196 -> excessBlobGas 0x0; blob block 47884158 -> blobGasUsed 0x20000 (1 blob of a maximum 2)"
+  7935:
+    status: modified
+    name: default gas limit
+    note: >-
+      Gnosis did not take mainnet's raised default. Observed gasLimit is 17000000,
+      against mainnet's 60000000 at the same fork; fusaka.md records the intent as
+      "Gnosis chain intends to sets a different gas limit than Ethereum, TBD". Ugly
+      interaction worth flagging: EIP-7825 caps a single transaction at 2^24 =
+      16777216 gas, which is 98.7% of a whole Gnosis block, so one transaction can
+      legally crowd out an entire block. On mainnet the same cap is 28% of a block.
+    src: "network-upgrades/fusaka.md:EIP-7935"
+    src_live: "eth_getBlockByNumber @ 47884196 -> gasLimit 0x1036640 (17000000)"
+  7702:
+    status: inherited
+    note: "live — type 0x04 transactions observed in the sampled range"
+    src: "src/Nethermind/Chains/gnosis.json:eip7702TransitionTimestamp"
+    src_live: "tx type census over 200 blocks ending @ 47884196 -> 2 transactions of type 0x04"
+  7951:
+    status: inherited
+    note: >-
+      P256VERIFY at 0x0100 with mainnet Osaka semantics, established with a REAL
+      signature rather than by presence. A freshly generated valid P-256 signature
+      returns the 32-byte 0x..01; the same call with s+1 returns empty. This is the
+      probe the dataset's Sei/Hyperliquid finding says is the only one that
+      distinguishes a working verifier from a missing one, and Gnosis passes it.
+      Reached through mainnet's own Osaka fork, not RIP-7212, so the gas is mainnet's.
+    src: "src/Nethermind/Chains/gnosis.json:eip7951TransitionTimestamp"
+    src_live: "eth_call 0x0100 @ 47884196, valid sig -> 0x00..01; same call with s+1 -> 0x"
+  7823: {status: inherited, note: "MODEXP upper bounds, unmodified per fusaka.md", src: "src/Nethermind/Chains/gnosis.json:eip7823TransitionTimestamp"}
+  7825: {status: inherited, note: "transaction gas cap 2^24 — see eips.7935 for why that is nearly a whole block here", src: "src/Nethermind/Chains/gnosis.json:eip7825TransitionTimestamp"}
+  7883: {status: inherited, src: "src/Nethermind/Chains/gnosis.json:eip7883TransitionTimestamp"}
+  7918:
+    status: inherited
+    note: >-
+      Present, and structurally inert. EIP-7918 lifts the blob base fee when execution
+      gas is expensive relative to blob gas; on Gnosis the execution base fee is ~13
+      wei while the blob floor is 1 gwei, so the bound it imposes is many orders of
+      magnitude below the floor already in force. Inherited rule, no reachable effect.
+    src: "src/Nethermind/Chains/gnosis.json:eip7918TransitionTimestamp"
+  7934: {status: inherited, src: "src/Nethermind/Chains/gnosis.json:eip7934TransitionTimestamp"}
+  7939: {status: inherited, note: "CLZ opcode", src: "src/Nethermind/Chains/gnosis.json:eip7939TransitionTimestamp"}
+  7594: {status: inherited, note: "PeerDAS, unmodified per fusaka.md", src: "src/Nethermind/Chains/gnosis.json:eip7594TransitionTimestamp"}
+  2537: {status: inherited, note: "BLS12-381 at 0x0b-0x11", src: "src/Nethermind/Chains/gnosis.json:eip2537TransitionTimestamp"}
+  7623: {status: inherited, src: "src/Nethermind/Chains/gnosis.json:eip7623TransitionTimestamp"}
+  3607:
+    status: inherited
+    note: >-
+      Recorded because Gnosis USES it as a governance instrument rather than merely
+      obeying it. The Balancer hardfork's whole mechanism is to give an EOA code so
+      that EIP-3607 permanently rejects transactions signed by its still-live private
+      key. See tx_authorization.
+    src: "execution/balancer_recovery.md:BALANCER_ATTACKER_ADDRESS"
+  7910:
+    status: unrecorded
+    note: >-
+      eth_config is implemented in the pinned client (IEthRpcModule.eth_config), but
+      the public endpoint answers "method not found". Whether that is a gateway
+      allowlist or the chain not enabling it was not established.
+    src: "src/Nethermind/Nethermind.JsonRpc/Modules/Eth/IEthRpcModule.cs:eth_config"
+    src_live: "eth_config @ 47884196 -> error -32601 method not found"
+  7928:
+    status: pending
+    note: >-
+      Amsterdam is unscheduled for chain 100. Nethermind already carries the plumbing
+      — HeaderDecoder has a BlockAccessListHash slot and AuRaBlockProcessor's
+      post-merge path calls ApplyAuRaPreprocessingChanges with the Gnosis withdrawal
+      contract address, i.e. the BAL work has already been made Gnosis-aware.
+    src: "src/Nethermind/Nethermind.Serialization.Rlp/HeaderDecoder.cs:BlockAccessListHash, src/Nethermind/Nethermind.Consensus.AuRa/AuRaBlockProcessor.cs:PostMergeProcessBlock"
+
+non_eip_specs:
+  - id: gnosis-withdrawals
+    name: "Modified EIP-4895: withdrawals via system call to a GNO contract"
+    adoption: adopted
+    fork: shapella
+    src: "execution/withdrawals.md:WITHDRAWAL_CONTRACT"
+    note: "the only spec in this row that changes a state-transition rule mainnet also has"
+  - id: posdao-post-merge
+    name: POSDAO post-merge block-reward system call
+    adoption: adopted
+    src: "execution/posdao-post-merge.md:BLOCK_REWARD_CONTRACT"
+    note: >-
+      Keeps one AuRa system call alive after the merge, solely so the erc-to-native
+      bridge can mint xDAI. See system_transactions.
+  - id: balancer-recovery
+    name: Balancer recovery irregular state transition
+    adoption: adopted
+    fork: balancer
+    created: 2025-11
+    src: "execution/balancer_recovery.md:BALANCER_RESCUE_BYTECODE"
+    note: >-
+      A named hard fork whose entire content is overwriting one account's bytecode.
+      Reproducible: the deployed source is given, with compiler version and settings,
+      and a control deployment at 0x87b95414E23f122c00C896d6Ce671B44Cf471C96.
+  - id: GIP-31
+    name: Chainspec bytecode rewrite at block 21735000
+    adoption: adopted
+    src: "src/Nethermind/Chains/gnosis.json:rewriteBytecode"
+    note: >-
+      The earlier, block-numbered instance of the same mechanism, named GIP-31 in
+      Nethermind's own fork tests. Unlike Balancer it is not a fork-id transition.
+  # Gnosis publishes per-upgrade diff tables against mainnet (gnosischain/specs
+  # network-upgrades/*.md) rather than a numbered EIP-analogue series. Those tables
+  # are unusually honest: they enumerate "Not modified" line by line and mark the
+  # four genuine deltas as modified constants.
+
+tx_types:
+  # 0x00, 0x01, 0x02, 0x03, 0x04 all present with mainnet semantics.
+  note: >-
+    ZERO custom transaction types. Gnosis took no byte from the 0x7f ceiling and added
+    nothing below 0x04 — the envelope is mainnet's, exactly. A 200-block census ending
+    at the pinned block found 3017 of type 0x02, 603 of 0x00, 7 of 0x03 (blob) and 2
+    of 0x04 (7702); type 0x01 did not appear in the sample but is enabled by
+    eip2930Transition at block 16101500. The two Gnosis-only system operations
+    (withdrawals, POSDAO reward) carry no type byte at all and are recorded under
+    system_transactions, not here.
+  src_live: "tx type census over 200 blocks ending @ 47884196 -> {0x02: 3017, 0x00: 603, 0x03: 7, 0x04: 2}"
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    No delta from mainnet on who may sign, and this is a positive result from a THIRD
+    independent codebase (C#, after go-ethereum and Besu): nothing in the Gnosis fork
+    ladder, the AuRa tree or the merge plugin touches signature recovery. Two Gnosis
+    peculiarities sit NEXT to this axis and neither changes it.
+
+    First, Gnosis is the only chain in this dataset with a consensus-level SENDER
+    ALLOWLIST in its chainspec: transactionPermissionContract
+    0x7Dd7032AA75A37ea0b150f57F899119C7379A78b, live from block 9186425, consulted per
+    transaction at block validation as well as production. It is DORMANT post-merge —
+    AuRaMergePlugin wraps every AuRa filter in AuRaMergeTxFilter, and
+    CreateTxPermissionFilter passes no post-merge fallback, so the post-merge branch
+    is NullTxFilter. Corroborated by reth_gnosis, which does not implement transaction
+    permissioning at all and could not follow the chain if it were live. Recorded
+    because it is still in the chainspec and could be reactivated by configuration
+    rather than by code.
+
+    Second, and live: Gnosis has revoked one account's ability to authorize
+    transactions by hard fork. The Balancer upgrade set code on
+    0x506d1f9efe24f0d47853adca907eb8d89ae03207 for the express purpose of triggering
+    EIP-3607, so a party who still holds that private key can produce valid signatures
+    that no Gnosis block will ever include. The scheme is unchanged; a specific key's
+    authority was withdrawn by consensus. No other row here has that.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "src/Nethermind/Nethermind.Consensus.AuRa/AuRaBlockProcessor.cs:EthereumEcdsa"
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: >-
+        P256VERIFY is live and correct (see eips.7951) and a P-256 key still cannot
+        move a single wei. The ordinary pairing.
+      src: "src/Nethermind/Chains/gnosis.json:eip7951TransitionTimestamp"
+
+precompiles:
+  "0x0100":
+    name: P256VERIFY
+    status: inherited
+    spec: EIP-7951
+    note: >-
+      Listed although inherited, because on two rows in this dataset this address is a
+      trap and the probe that distinguishes them is not the obvious one. Verified with
+      a generated valid signature and a one-bit-broken control at the same block:
+      valid -> 0x..01, invalid -> empty. Mainnet Osaka gas, reached through Osaka and
+      not RIP-7212.
+    src_live: "eth_call 0x0100 @ 47884196, valid P-256 sig -> 0x00..01; s+1 -> 0x"
+  note: >-
+    ZERO added, ZERO removed, ZERO repriced, ZERO relocated. The EVM is upstream
+    Nethermind's — the Gnosis fork ladder overrides four release-spec fields
+    (FeeCollector, IsEip4844FeeCollectorEnabled, the blob triple, IsPostMerge/
+    WithdrawalTimestamp) and touches no precompile. Established live as well as from
+    source: eth_getCode at all of 0x01-0x11 and at 0x0100 returns 0x at the pinned
+    block, so every one is native code and none is a predeploy in disguise.
+  src_live: "eth_getCode @ 47884196 for 0x01..0x11 and 0x0100 -> 0x on all eighteen"
+
+system_contracts:
+  "0x0B98057eA310F4d31F2a452B414647007d1645d9":
+    name: SBCDepositContract (EIP-6110 deposits AND EIP-4895 withdrawals)
+    status: added
+    severity: high
+    note: >-
+      One contract doing two jobs mainnet splits between a deposit contract and the
+      protocol itself. The chainspec names it as both depositContractAddress and
+      (in the AuRa engine params) withdrawalContractAddress. Withdrawals are executed
+      as a system call into it; deposits are read out of its logs. Mainnet's deposit
+      address is EMPTY here — see eips.6110.
+    src: "src/Nethermind/Chains/gnosis.json:withdrawalContractAddress, reth_gnosis/src/spec/chainspecs/gnosis.json:withdrawalContractAddress"
+    src_live: "eth_getCode @ 47884196 -> 1165 bytes; stake_token() -> 0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb (GNO)"
+  "0x6BBe78ee9e474842Dbd4AB4987b3CeFE88426A92":
+    name: EIP-1559 / EIP-4844 fee collector
+    status: added
+    severity: high
+    note: >-
+      Where the base fee goes instead of being burned, and from Pectra where the blob
+      base fee goes too. A contract, not a sink — 171 bytes of code at the pinned
+      block. This is the single address that makes "Gnosis burns like Ethereum" false.
+    src: "src/Nethermind/Nethermind.Specs/GnosisSpecProvider.cs:FeeCollector, src/Nethermind/Nethermind.Specs/GnosisForks/18_PragueGnosis.cs:IsEip4844FeeCollectorEnabled, network-upgrades/pectra.md:EIP4844_FEE_COLLECTOR"
+    src_live: "eth_getCode @ 47884196 -> 171 bytes; balance delta over block 47884196 == baseFeePerGas * gasUsed"
+  "0x481c034c6d9441db23Ea48De68BCAe812C5d39bA":
+    name: BlockRewardAuRa (POSDAO)
+    status: added
+    note: >-
+      Still called every block AFTER the merge, which is not what a reader of
+      Nethermind's merge plugin would guess: MergePluginModule installs the
+      MergeRewardCalculatorSource decorator that would zero it, but AuRaMergeModule
+      composes BaseMergePluginModule instead and never adds that decorator, so
+      AuRaRewardCalculator survives. reth_gnosis calls it unconditionally in
+      apply_post_block_system_calls, and gnosischain/specs requires it. Its live
+      purpose is minting xDAI for the erc-to-native bridge; over the pinned block it
+      minted nothing, since the beneficiary's balance delta equalled the priority fees
+      exactly.
+    src: "src/Nethermind/Nethermind.Consensus.AuRa/Rewards/AuRaRewardCalculator.cs:CalculateRewards, reth_gnosis/src/gnosis.rs:apply_post_block_system_calls, execution/posdao-post-merge.md:BLOCK_REWARD_CONTRACT"
+    src_live: "eth_getCode @ 47884196 -> 1324 bytes; beneficiary 0x86ead908.. balance delta over block 47884196 == sum of priority fees exactly (no mint in this block)"
+  "0x7Dd7032AA75A37ea0b150f57F899119C7379A78b":
+    name: TransactionPermissionContract (AuRa sender allowlist)
+    status: tombstoned
+    note: >-
+      A consensus-level per-transaction sender filter, active from block 9186425 and
+      DORMANT since the merge (see tx_authorization). `tombstoned` rather than
+      `removed`: the code is still there and still callable, it is simply no longer
+      consulted by the state transition. reth_gnosis does not implement the mechanism
+      at all.
+    src: "src/Nethermind/Chains/gnosis.json:transactionPermissionContract, src/Nethermind/Nethermind.Consensus.AuRa/InitializationSteps/TxAuRaFilterBuilders.cs:CreateTxPermissionFilter, src/Nethermind/Nethermind.Merge.AuRa/AuRaMergePlugin.cs:AuRaMergeTxFilter"
+    src_live: "eth_getCode @ 47884196 -> 1324 bytes (a proxy)"
+  "0xB87BE9f7196F2AE084Ca1DE6af5264292976e013":
+    name: ValidatorSetAuRa
+    status: added
+    note: "AuRa validator-set contract from block 9186425; consensus-relevant pre-merge only. A RandomnessAuRa contract at 0x5870b0527DeDB1cFBD9534343Feda1a41Ce47766 is declared alongside it."
+    src: "src/Nethermind/Chains/gnosis.json:randomnessContractAddress"
+    src_live: "eth_getCode @ 47884196 -> 1324 bytes"
+  "0x506d1f9efe24f0d47853adca907eb8d89ae03207":
+    name: "Balancer attacker EOA, code-overwritten by hard fork"
+    status: added
+    severity: high
+    note: >-
+      NOT A PREDEPLOY AND NOT A DEPLOYMENT. This was an externally owned account. The
+      Balancer hard fork (timestamp 1766419900) wrote a fixed HardcodedForwarder
+      bytecode into it during block processing, before the EIP-4788 and EIP-2935
+      system calls, leaving balance, nonce and storage untouched. The purpose is
+      EIP-3607: an account with code cannot originate transactions, so the attacker's
+      key is neutralised and a named rescue address can forward calls out.
+
+      VERIFIED END TO END: the live code at this address is byte-identical to
+      BALANCER_RESCUE_BYTECODE in gnosischain/specs AND to the rewriteBytecodeTimestamp
+      entry in Nethermind's chainspec, all three the same 1828 bytes.
+
+      This is the dataset's first hard fork whose entire content is an irregular state
+      transition, and Gnosis has done it TWICE — the other is GIP-31 below. The
+      mechanism is a first-class chainspec feature (ContractRewriter, keyed by block
+      number or by timestamp), not a patch, and both clients implement it.
+    src: "execution/balancer_recovery.md:BALANCER_RESCUE_BYTECODE, src/Nethermind/Chains/gnosis.json:rewriteBytecodeTimestamp, src/Nethermind/Nethermind.Consensus.AuRa/ContractRewriter.cs:RewriteContracts, reth_gnosis/src/gnosis.rs:rewrite_bytecodes, reth_gnosis/src/consts.rs:parse_balancer_hardfork_config"
+    src_live: "eth_getCode @ 47884196 -> 1828 bytes, byte-identical to BALANCER_RESCUE_BYTECODE in the pinned spec and to the pinned chainspec entry"
+  "0xf8D1677c8a0c961938bf2f9aDc3F3CFDA759A9d9":
+    name: "GIP-31 token, code-overwritten at block 21735000"
+    status: added
+    note: >-
+      The earlier bytecode rewrite, keyed by block number rather than timestamp, and
+      not a fork-id transition. Live code is byte-identical to the chainspec's
+      rewriteBytecode entry (7645 bytes). Included because it shows the Balancer fork
+      was not a one-off emergency: consensus-level code replacement is a tool Gnosis
+      has used more than once.
+    src: "src/Nethermind/Chains/gnosis.json:rewriteBytecode, reth_gnosis/src/gnosis.rs:rewrite_aura_bytecodes"
+    src_live: "eth_getCode @ 47884196 -> 7645 bytes, byte-identical to the pinned chainspec rewriteBytecode entry for block 21735000"
+  note: >-
+    The four MAINNET system contracts are all at their canonical addresses with
+    byte-identical code — 4788, 2935, 7002, 7251 diffed against a mainnet node and
+    equal in every byte. Only the one whose address is a chainspec FIELD moved, and
+    the address it vacated is empty rather than reverting. Everything else listed here
+    is Gnosis's own AuRa/POSDAO furniture plus two accounts whose code was written by
+    hard fork.
+
+system_transactions:
+  withdrawals:
+    name: "executeSystemWithdrawals(uint256,uint64[],address[])"
+    status: added
+    severity: high
+    note: >-
+      From 0xfffffffffffffffffffffffffffffffffffffffe to the deposit contract, gas
+      limit 30000000, after all user transactions. Gas-limit, balance and nonce checks
+      disabled; block.gasUsed not incremented; a revert invalidates the block. This
+      REPLACES mainnet's native balance credit for EIP-4895 rather than supplementing
+      it — see eips.4895.
+    src: "execution/withdrawals.md:SYSTEM_SENDER, src/Nethermind/Nethermind.Merge.AuRa/Contracts/WithdrawalContract.cs:executeSystemWithdrawals"
+  posdao_block_reward:
+    name: "reward(address[],uint16[]) on BlockRewardAuRa"
+    status: added
+    note: >-
+      From the same system sender to 0x481c034c6d9441db23Ea48De68BCAe812C5d39bA with
+      ([coinbase],[0]), returning (receiversNative, rewardsNative) whose entries are
+      then credited. Survives the merge — see system_contracts — and mints xDAI for
+      the erc-to-native bridge.
+    src: "execution/posdao-post-merge.md:BLOCK_REWARD_CONTRACT, reth_gnosis/src/gnosis.rs:apply_block_rewards_contract_call"
+  chainspec_bytecode_rewrite:
+    name: irregular state transition (ContractRewriter)
+    status: added
+    severity: high
+    note: >-
+      Not a call at all — a direct state write performed at the first block whose
+      number or timestamp crosses a configured trigger, BEFORE the EIP-4788 and
+      EIP-2935 system calls. Two have fired: GIP-31 (block 21735000) and Balancer
+      (timestamp 1766419900). No transaction, no receipt, no log.
+    src: "src/Nethermind/Nethermind.Consensus.AuRa/ContractRewriter.cs:RewriteContracts"
+  note: >-
+    Mainnet's own system calls (EIP-4788, EIP-2935, and EIP-6110/7002/7251 request
+    processing) all run unchanged, against the canonical addresses. The three above
+    are Gnosis additions.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode divergence, and it is a strong claim rather than a default: the EVM is
+    upstream Nethermind at a pinned tag, the Gnosis fork classes derive from the
+    mainnet fork classes and override four non-EVM fields, and a second implementation
+    in Rust reaches the same set.
+  src: "src/Nethermind/Nethermind.Specs/GnosisForks/19_OsakaGnosis.cs:OsakaGnosis"
+
+fee_model:
+  metering: gas
+  fee_market: "EIP-1559, mainnet parameters, base fee COLLECTED not burned"
+  extra_components:
+    - name: base-fee redirection
+      severity: high
+      note: >-
+        Not an extra charge to the sender — an extra recipient. The payer's arithmetic
+        is mainnet's; only the destination of the base fee differs, and from Pectra the
+        blob base fee joins it. Nothing in the header, the receipt or eth_feeHistory
+        shows this.
+      src: "src/Nethermind/Nethermind.Evm/TransactionProcessing/TransactionProcessor.cs:PayFees"
+    - name: blob fee floor
+      note: >-
+        MIN_BLOB_GASPRICE is 1 gwei, not 1 wei. The blob market has never risen above
+        it, so on Gnosis the blob price is effectively a constant, not a market.
+      src: "src/Nethermind/Chains/gnosis.json:eip4844MinBlobGasPrice"
+  note: >-
+    Observed base fee at the pinned block is 13 wei against a 17,000,000 gas limit.
+    The gas token is xDAI, a bridged stablecoin, so a "gwei" of Gnosis gas is a
+    thousand-millionth of a dollar rather than of an ETH — which is the stated reason
+    for both the blob floor and the reduced blob target.
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: difficulty
+      note: >-
+        Pre-merge only, and it is a repurposed field, not a value. AuRa writes a
+        step-derived ordering key here rather than any measure of work — the header at
+        block 20,000,000 carries 0xfffffffffffffffffffffffffffffffe. That is where the
+        chain's preposterous terminal total difficulty
+        (8626000000000000000000058750000000000000000000) comes from. Post-merge it is
+        0 as on mainnet.
+      src_live: "debug_getRawHeader(20000000) @ 47884196 -> difficulty 0xfffffffffffffffffffffffffffffffe"
+    - name: "mixHash / nonce (pre-merge: auRaStep / auRaSignature)"
+      severity: high
+      note: >-
+        A FLAVOUR OF HEADER DIVERGENCE THIS DATASET HAS NOT SEEN. Pre-merge Gnosis
+        headers have the SAME ITEM COUNT as mainnet's — 16 after London — but items 14
+        and 15 are not mixHash and nonce. They are auRaStep and auRaSignature, and
+        their sizes are 4 bytes and 65 bytes where mainnet has 32 and 8. Decoded live
+        at block 20,000,000: item 14 = 0x1391ec5a, item 15 = 65 bytes, item 16 =
+        baseFeePerGas 0x07. Nethermind disambiguates the two layouts by PEEKING
+        whether the next item is exactly 32 bytes long, which is the only signal there
+        is. A positional mainnet decoder does not fail on these headers — it reads an
+        AuRa step as a mixHash and a signature as a nonce and computes a wrong block
+        hash. Worse, the JSON-RPC papers over it: eth_getBlockByNumber reports
+        mixHash 0x00..00 and nonce 0x00..00 for that block and adds auraStep and
+        auraSeal as extra keys, so only the RLP tells the truth.
+
+        POST-MERGE THE HEADER IS EXACTLY MAINNET'S. The pinned block decodes to 21
+        items in mainnet Osaka order, parentBeaconBlockRoot and requestsHash included.
+        Gnosis is the row whose header shape CONVERGED; the hazard is entirely
+        historical, and it covers 40 million blocks.
+      src: "src/Nethermind/Nethermind.Serialization.Rlp/HeaderDecoder.cs:AuRaSignature"
+      src_live: "debug_getRawHeader(20000000) @ 47884196 -> 16 RLP items, items 14/15 = 4B step + 65B signature; debug_getRawHeader(47884196) @ 47884196 -> 21 items, mainnet Osaka layout"
+  note: >-
+    Checked explicitly for repurposing, because four rows in this dataset carry a
+    consensus dimension in a field that was not meant for one. extraData is NOT
+    repurposed here: it is 18 bytes of ASCII client version ("Nethermind v1.39.3"),
+    within the chainspec's 32-byte maximumExtraDataSize, with no protocol meaning.
+    blobGasUsed and excessBlobGas are NOT repurposed: they carry real blob gas for a
+    real, if tiny, blob market. mixHash carries a real RANDAO from a real beacon
+    chain. The only repurposed field is pre-merge difficulty, above.
+
+gotchas:
+  - >-
+    THE BASE FEE IS NOT BURNED. It is credited in full to
+    0x6BBe78ee9e474842Dbd4AB4987b3CeFE88426A92, and from Pectra so is the blob base
+    fee. The 1559 parameters are mainnet's to the digit, so every fee formula ported
+    from mainnet is correct and every SUPPLY model is wrong. Measured: the collector's
+    balance rose by exactly baseFeePerGas * gasUsed over the pinned block.
+  - >-
+    Withdrawals credit ZERO native token. The withdrawals array in a Gnosis header is
+    an argument list for a system call to a GNO contract, not a set of balance
+    credits — the recipient's xDAI balance is unchanged across the block. And the
+    amounts are in mGNO: divide by 32 to get GNO. A withdrawals indexer written
+    against mainnet is wrong twice over, in kind and by a factor of 32.
+  - >-
+    Mainnet's deposit contract address 0x00000000219ab540356cBB839Cbe05303d7705Fa is
+    an EMPTY ACCOUNT on Gnosis. Gnosis's is 0x0B98057eA310F4d31F2a452B414647007d1645d9.
+    An empty account answers every call with success and no data, so staking code that
+    hardcodes the canonical address fails silently rather than reverting. The other
+    four mainnet system contracts (4788, 2935, 7002, 7251) ARE at their canonical
+    addresses with byte-identical code.
+  - >-
+    Pre-merge Gnosis headers are the same LENGTH as mainnet's and a different SHAPE.
+    Items 14 and 15 are auRaStep (4 bytes) and auRaSignature (65 bytes) where mainnet
+    has mixHash (32) and nonce (8). Clients tell the layouts apart by peeking at the
+    next item's length. A positional decoder produces a wrong block hash rather than
+    an error, and the JSON-RPC hides it by reporting mixHash and nonce as zero. Every
+    block below ~40,000,000 is affected.
+  - >-
+    Gnosis has twice replaced the bytecode of a live account by hard fork — GIP-31 at
+    block 21735000 and Balancer at timestamp 1766419900, the latter overwriting an
+    EOA's code specifically so EIP-3607 would stop its owner from ever transacting
+    again. Both are chainspec entries implemented by both clients, and the live code
+    matches the pinned spec byte for byte. Any assumption that "code at an address is
+    immutable unless SELFDESTRUCTed or CREATE2-redeployed" is false here.
+  - >-
+    The blob market exists and is priced a billion times higher at the floor: 1 gwei
+    minimum blob gas price against mainnet's 1 wei, target 1 / max 2 blobs, and NO BPO
+    fork has ever run, so Gnosis is still on Cancun's schedule while mainnet is at
+    target 14 / max 21. excessBlobGas has been 0 in every block sampled — the blob fee
+    on Gnosis is a constant, not a market.
+  - >-
+    The block gas limit is 17,000,000 while EIP-7825 caps one transaction at
+    16,777,216 gas. A single transaction may legally consume 98.7% of a Gnosis block.
+  - >-
+    EIP-170 arrived at Shapella in 2023, not at Spurious Dragon. Gnosis state may
+    contain contracts larger than 24576 bytes, which no mainnet block could ever have
+    produced.
+  - >-
+    Fork lag has no sign. Gnosis was 110 days late to Shanghai, 1.8 days EARLY to
+    Cancun, 6.8 days EARLY to Prague, and 132 days late to Osaka. Two of its four
+    post-merge upgrades shipped before Ethereum's.

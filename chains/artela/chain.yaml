@@ -1,0 +1,1188 @@
+schema_version: 2
+
+chain:
+  name: Artela
+  slug: artela
+  chain_id: 11820
+  role: fork
+  live: false
+  live_state: halted
+  evidence: source
+  chain_id_src: init.sh:CHAINID
+  note: >-
+    A Cosmos SDK L1 whose EVM module is a RENAMED FORK OF ETHERMINT — the same
+    tree cosmos/evm descends from — carrying one feature no other row in this
+    dataset has: ASPECTS. An Aspect is a WASM module registered on-chain and
+    BOUND TO A CONTRACT BY THAT CONTRACT'S OWNER, which the protocol then invokes
+    at five join points around EVM execution. It can abort a transaction before
+    it runs, abort a nested CALL, and — this is the part with no analogue
+    anywhere — turn an ALREADY-SUCCESSFUL transaction into a failed one after the
+    EVM returned, substituting its own return data. The party that installs it is
+    not the transaction sender and need not be the contract's deployer.
+
+    This file states ONLY Artela's own deltas. The Cosmos-EVM shape — the
+    MsgEthereumTx wrapper, the fabricated Ethereum block, the CometBFT-derived
+    opcodes, the module-account fee sink, the base fee over gas WANTED — comes
+    from chains/cosmos-evm/. Artela forked that tree EARLY (Cosmos SDK v0.47.4,
+    CometBFT v0.37.2, go-ethereum v1.12.0), so a large part of the ancestor row
+    does not apply and is overridden below rather than inherited.
+
+    NOT REACHABLE. On 2026-08-27 every endpoint published for this chain was
+    dead: the only RPC listed by chainid.network and chainlist.org for chain id
+    11820 (https://node-euro.artela.network/rpc) returns Cloudflare 522, the
+    testnet's (11822, https://betanet-rpc1.artela.network) returns 526,
+    artela.network returns 404, docs.artela.network 526 and both explorers 521 /
+    connection-refused. NO LIVE PROBE WAS POSSIBLE, so there is not one src_live
+    in this row and every fact rests on source. `live_state: halted` here means
+    UNREACHABLE, not "observed to have stopped at height N" — no last block was
+    seen. The client agrees: the newest release is v0.4.9-rc9 of 2024-09-05 and
+    the default branch has had no push since 2024-11-15.
+
+lineage:
+  upstream: cosmos-evm
+  ancestry: [ethereum, cosmos-evm]
+  fork_of: evmos/ethermint (vendored and renamed, not imported)
+  second_heritage: null
+  sync_point: >-
+    ARTELA DOES NOT DEPEND ON cosmos/evm, AND NEVER DID — `grep cosmos/evm
+    go.mod` returns nothing. The EVM module is a copy of the Ethermint tree with
+    every identifier renamed: `x/evm` and `x/fee` are Ethermint's `x/evm` and
+    `x/feemarket`, and the protobuf packages are Ethermint's with the word
+    swapped — `artela/evm/v1`, `artela/fee/v1`, `artela/types/v1`,
+    `artela/crypto/v1/ethsecp256k1` where Ethermint writes `ethermint/...`. The
+    rename is complete enough that a case-insensitive grep for "ethermint" over
+    the whole tree returns NOTHING; the one surviving fingerprint is a comment in
+    the RPC layer reading "NOTE: Evmos doesn't have a storage hash".
+    Establishing the lineage therefore takes the proto layout, not a string
+    search, and treating Artela as an independent Cosmos EVM would have been
+    wrong.
+
+    THE FORK POINT IS OLD, AND THAT IS MOST OF THE DELTA. go.mod pins Cosmos SDK
+    v0.47.4 (itself replaced by a fork, see client.companion_repos), CometBFT
+    v0.37.2 and go-ethereum v1.12.0 — an Ethermint of roughly mid-2023, three
+    years behind the cosmos-evm row's v0.7.2. Five consequences, each of which
+    OVERRIDES an inherited fact:
+
+    (1) ABCI 0.37, NOT ABCI++ 0.38. There is no FinalizeBlock on this chain.
+    Execution is BeginBlock / DeliverTx-per-transaction / EndBlock / Commit. Any
+    statement about Cosmos EVM ordering phrased in terms of FinalizeBlock has to
+    be re-read one ABCI version back — see consensus.
+
+    (2) NO x/erc20 MODULE. There is no token-pair registry, no MsgConvertERC20 /
+    MsgConvertCoin, no dynamic ERC-20 precompiles and no IBC-packet-creates-a-
+    precompile path. The ancestor's `precompiles.dynamic_range` and its
+    `ibc_recv_erc20_registration` system transaction DO NOT EXIST here.
+
+    (3) NO COSMOS PRECOMPILES AT ALL. There is no `precompiles/` package, no
+    ActiveStaticPrecompiles param and no two-step registration. The entire
+    0x0100 / 0x0400 / 0x0800-0x0807 block the ancestor documents is absent, and
+    the precompile set is exactly go-ethereum v1.12.0's — 0x01..0x09. Artela is
+    the counter-example to the assumption that a Cosmos EVM chain exposes staking
+    and IBC to bytecode.
+
+    (4) NO PREINSTALLS MECHANISM AND NO MsgRegisterPreinstalls. Genesis bytecode
+    is installed by a CLI subcommand at chain setup (`artelad
+    add-genesis-contract`), not by a governance message, so the ancestor's
+    "governance can install bytecode at any address at any time" does not hold.
+
+    (5) THE FORK SCHEDULE IS BLOCK-NUMBERED, INCLUDING SHANGHAI AND CANCUN.
+    ChainConfig has `ShanghaiBlock` and `CancunBlock`, not `ShanghaiTime` /
+    `CancunTime`; the timestamps geth needs are SYNTHESISED per call as 0 or
+    MaxUint64 from a height comparison. There is no Prague or Osaka field, so
+    neither is schedulable — Artela is on the Injective side of the
+    "not activated vs not representable" line, one fork earlier.
+
+client:
+  name: artela (artelad)
+  repo: https://github.com/artela-network/artela
+  version: v0.4.9-rc9
+  commit: 0de86198b36e42c5442c9b059bbd10b5adc05498
+  language: go
+  built_on: >-
+    artela-network/artela-evm v0.4.8-rc8 (a go-ethereum v1.12.0 core/vm fork),
+    artela-network/aspect-core v0.4.9-rc9, artela-network/aspect-runtime
+    v0.4.8-rc8, artela-network/artela-cosmos-sdk v0.47.4-artela-rc9,
+    CometBFT v0.37.2, ibc-go v7.1.0
+  note: >-
+    v0.4.9-rc9 is the newest tag AND the newest GitHub release, and the release
+    is NOT marked prerelease despite the `-rc9` suffix — this project never
+    shipped a tag without a beta/rc suffix, so the "released tag" rule resolves
+    to an rc here. Published 2024-09-05; the default branch has had no push since
+    2024-11-15.
+
+    THE DECOMPOSITION IS FOUR REPOS, AND THE EVM IS NOT IN THE MAIN ONE.
+    `artela` is the Cosmos application (x/evm, x/aspect, x/fee, the ante chain,
+    the JSON-RPC shim). `artela-evm` is the EVM: a fork of go-ethereum v1.12.0's
+    `core/vm` plus `core/evm.go` and the tracers, with the Aspect join points
+    woven into EVM.Call itself. `aspect-core` is the join-point dispatcher, the
+    AspectCore system-contract ABI and the built-in ERC-4337 plumbing.
+    `aspect-runtime` is the wasmtime host. A fifth, `artela-cosmos-sdk`, is a
+    fork of the SDK carrying the Aspect handle on BaseApp. go-ethereum itself is
+    required at v1.12.0 and is NOT replaced, so `params`, `crypto`, `core/types`
+    and the fork-rule predicates are stock 1.12.0 while `core/vm` is the fork.
+  companion_repos:
+  - name: artela-evm
+    repo: https://github.com/artela-network/artela-evm
+    version: v0.4.8-rc8
+    commit: 93316786d69d0c6ab34e97e6c172ece2905c0e42
+    provides: >-
+      the interpreter, the jump tables, the 0x01-0x09 precompiles, and the
+      PreContractCall / PostContractCall join points inside EVM.Call
+  - name: aspect-core
+    repo: https://github.com/artela-network/aspect-core
+    version: v0.4.9-rc9
+    commit: 1e5d97e5fe6dedb64287d12c0d22fd2e3d2a7a03
+    provides: >-
+      the five join points, the AspectCore address and ABI, the unsigned-
+      transaction verification path, and the built-in ERC-4337 EntryPoint address
+  - name: aspect-runtime
+    repo: https://github.com/artela-network/aspect-runtime
+    version: v0.4.8-rc8
+    commit: 9ae423f1ec4060b53a193e0fbb584c8689b9c080
+    provides: the wasmtime-based WASM runtime and validator that executes Aspects
+  - name: artela-cosmos-sdk
+    repo: https://github.com/artela-network/artela-cosmos-sdk
+    version: v0.47.4-artela-rc9
+    commit: be1d73d660f2ee6af81182479854b2496423b27b
+    provides: >-
+      baseapp — DeliverTx, runTx and the panic-recovery middleware that decide
+      what an ordered-but-invalid transaction becomes
+
+consensus:
+  engine: CometBFT v0.37.2 (unforked), Cosmos SDK ABCI application
+  finality: single-block instant finality; no reorgs, no uncles, NO PRECONFIRMATIONS
+  block_time: ~2s (CometBFT default timeout_commit; per-deployment)
+  src: "artela-cosmos-sdk/baseapp/abci.go:DeliverTx, artela-cosmos-sdk/baseapp/baseapp.go:runTx"
+  note: >-
+    ORDERING COMMITS BEFORE EXECUTION, AND THIS IS ABCI 0.37, NOT 0.38. The
+    CometBFT proposer selects and orders transactions at PrepareProposal; the
+    block is then voted on; execution happens afterwards, one transaction at a
+    time, through BeginBlock / DeliverTx / EndBlock / Commit. There is no
+    FinalizeBlock in CometBFT v0.37.2 — a distinction that matters because the
+    per-transaction failure semantics below live in DeliverTx, which has its own
+    ResponseDeliverTx per transaction rather than one batched result.
+
+    ARTELA USES THE STOCK PROPOSAL HANDLERS. app.go constructs an
+    ArtelaProposalHandler and then LEAVES BOTH SetPrepareProposal AND
+    SetProcessProposal COMMENTED OUT, so the SDK defaults apply: the proposer
+    drains its own mempool in that mempool's order, re-running the AnteHandler on
+    each candidate, and ProcessProposal accepts unconditionally. A proposer may
+    therefore reorder freely and insert its own transactions; the only
+    protocol-level constraints are the block byte limit and the AnteHandler
+    re-check. Nothing in the Aspect machinery reaches the proposal phase — the
+    dead handler in x/evm/artela/handle/prepare.go is a verbatim copy of the SDK
+    default with no join point in it.
+
+    EXECUTION IS SEQUENTIAL. Despite "elastic execution" and parallel execution
+    in Artela's marketing, the pinned SDK fork's DeliverTx calls runTx once per
+    transaction on a single deliverState; there is no scheduler, no optimistic
+    execution and no conflict resolution anywhere in the tree. See
+    gotchas — this is a refuted claim, not an unrecorded one.
+
+    NO PRECONFIRMATIONS. CometBFT is single-slot-final: a transaction has no
+    block, no receipt and no `blockHash` until the block that contains it is
+    committed, and once committed nothing about it can change. There is no
+    early-receipt analogue to MegaETH's 0xffff…ff blockHash here, and
+    eth_getTransactionReceipt for a pending transaction returns null.
+
+baseline_fork: cancun
+baseline_note: >-
+  A CANCUN THAT IS MISSING MOST OF CANCUN, DECLARED BY BLOCK NUMBER.
+  DefaultChainConfig sets every fork including ShanghaiBlock and CancunBlock to
+  0, so a genesis deployment is nominally Cancun from block 0, and
+  EthereumConfig() converts those heights into the ShanghaiTime / CancunTime
+  values go-ethereum wants. Because go-ethereum v1.12.0 gates IsShanghai and
+  IsCancun on IsLondon(num) alone — not on the merge flag — the interpreter does
+  select the Cancun jump table. But that table is Artela's own: it enables
+  EIP-1153 and EIP-5656 and DELIBERATELY OMITS EIP-4844's BLOBHASH, EIP-7516's
+  BLOBBASEFEE and EIP-6780's SELFDESTRUCT change, under an in-source FIXME. The
+  precompile map stops at BERLIN, so there is no point-evaluation precompile at
+  0x0a. Prague and Osaka are not merely unscheduled: ChainConfig has no field for
+  either, so they cannot be activated without a client release. The four symbols
+  behind this paragraph — DefaultChainConfig and EthereumConfig in
+  x/evm/txs/support/chain_config.go, newCancunInstructionSet in
+  artela-evm/vm/jump_table.go, and the precompile switch in artela-evm/vm/evm.go
+  — are each cited with a `src:` key under `forks:` and `eips:` below.
+
+forks:
+  src: x/evm/txs/support/chain_config.go:DefaultChainConfig
+  note: >-
+    THE ONLY ROW IN THIS DATASET WHERE SHANGHAI AND CANCUN ARE BLOCK-NUMBERED.
+    Ethereum made Shanghai and Cancun timestamp forks; Artela's ChainConfig proto
+    declares them as `shanghai_block` and `cancun_block`, sdkmath.Int heights,
+    and EthereumConfig() then fabricates the timestamps go-ethereum consumes:
+    `shanghaiTime := 0` if the current height has reached ShanghaiBlock and
+    `MaxUint64` if it has not, and the same for Cancun. The comment says it
+    plainly — "use height instead of time to determine if the fork has been
+    applied". So the fork boundary is a height, the timestamp is a derived
+    fiction, and any tool that reads the chain's fork schedule expecting a
+    timestamp gets one of two sentinel values. As on the ancestor, the schedule
+    lives in x/evm module state and is movable by a governance MsgUpdateParams,
+    not by a client release.
+  timeline:
+  - name: "homestead..cancun"
+    activation_time: 0
+    mainnet_equivalent: cancun
+    activation_condition: "genesis ChainConfig — every fork BLOCK including ShanghaiBlock and CancunBlock set to 0"
+    src: x/evm/txs/support/chain_config.go:DefaultChainConfig
+  - name: prague
+    status: pending
+    mainnet_equivalent: prague
+    note: >-
+      NOT EXPRESSIBLE. There is no PragueBlock or PragueTime field in the
+      ChainConfig proto, in the Go type or in EthereumConfig's output struct.
+    src: x/evm/txs/support/chain_config.go:EthereumConfig
+  - name: osaka
+    status: pending
+    mainnet_equivalent: osaka
+    note: "NOT EXPRESSIBLE — same reason; the pinned go-ethereum v1.12.0 predates both forks entirely."
+    src: x/evm/txs/support/chain_config.go:EthereumConfig
+
+eips:
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO DOES NOT RETURN A WRONG VALUE — IT PANICS THE NODE OUT OF THE
+      TRANSACTION. This is the single sharpest divergence in the row and it is
+      three lines of code. The keeper builds BlockContext with `Random: nil, //
+      not supported`. go-ethereum v1.12.0 derives the merge rule from exactly
+      that field — NewEVM computes chainRules as
+      `chainConfig.Rules(num, blockCtx.Random != nil, time)` — so IsMerge is
+      false. But IsShanghai and IsCancun in v1.12.0 are gated on IsLondon(num)
+      ALONE, so both are true, and the interpreter selects the CANCUN jump table,
+      which is built from the merge set and therefore installs opRandom at 0x44
+      unconditionally. opRandom then evaluates
+      `interpreter.evm.Context.Random.Bytes()` on a nil *common.Hash, and
+      common.Hash.Bytes has a VALUE receiver — so it dereferences nil.
+
+      The panic is not caught by the EVM; it unwinds through EVM.Call and
+      ApplyMessage into the Cosmos SDK's runTx recovery middleware, which turns
+      it into a transaction-level error whose log is a Go runtime message. That
+      log does not contain the block-gas-limit sentinel string the RPC layer
+      looks for, so — see gotchas — the transaction is ERASED from the Ethereum
+      view entirely: no receipt, absent from the eth block, eth_getTransactionByHash
+      null, while the AnteHandler's fee deduction and nonce increment have
+      already been committed. Compare the ancestor, where PREVRANDAO is at least
+      a constant, and Sei, where it is a function of the timestamp. Here 0x44 is
+      an unconditional transaction-killer, and 0x44 is also DIFFICULTY, so
+      pre-merge bytecode is caught by the same trap.
+    src: "x/evm/keeper/evm.go:BlockContext, artela-evm/vm/evm.go:chainRules, artela-evm/vm/instructions.go:opRandom, artela-evm/vm/jump_table.go:newMergeInstructionSet, artela-evm/vm/interpreter.go:NewEVMInterpreter"
+  4844:
+    status: removed
+    severity: high
+    note: >-
+      THE CANCUN JUMP TABLE DECLINES ITS OWN CANCUN OPCODES. newCancunInstructionSet
+      carries a FIXME listing why: "blob tx is not supported yet" and
+      "selfdestruct requires a lot of modifications". enable4844 and enable7516
+      are present in the tree and commented out, so BLOBHASH (0x49) and
+      BLOBBASEFEE (0x4a) are UNDEFINED OPCODES on a chain that reports itself as
+      Cancun — they abort the frame with ErrInvalidOpCode and burn all gas. There
+      is also no point-evaluation precompile at 0x0a, because the precompile map
+      switch stops at IsBerlin.
+    src: "artela-evm/vm/jump_table.go:newCancunInstructionSet, artela-evm/vm/evm.go:precompile"
+  7516:
+    status: removed
+    note: "BLOBBASEFEE (0x4a) — enable7516 is commented out of the Cancun set; the opcode is undefined."
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  6780:
+    status: removed
+    severity: high
+    note: >-
+      SELFDESTRUCT STILL DESTROYS, ON A CHAIN THAT CLAIMS CANCUN. enable6780 is
+      commented out of newCancunInstructionSet with the reason that it "requires
+      a lot of modifications ... on the state db and state object". So the
+      pre-Cancun semantics survive: an account selfdestructed outside its own
+      creation transaction is really deleted, its storage cleared and its balance
+      moved. A contract audited against mainnet's Cancun assumption — that
+      SELFDESTRUCT only sweeps the balance unless it is in the creating
+      transaction — is wrong here, and nothing in the chain's advertised fork
+      level says so. This is the mirror image of eips.4844: there the missing
+      Cancun feature fails loudly with an invalid opcode, here it fails silently
+      by doing the OLD thing.
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  1153:
+    status: inherited
+    note: "TLOAD/TSTORE are enabled in the Cancun set — one of the two Cancun features Artela did take."
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  5656:
+    status: inherited
+    note: "MCOPY is enabled in the Cancun set."
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  3855:
+    status: inherited
+    note: "PUSH0 is enabled in the Shanghai set, which the Cancun set is built from."
+    src: artela-evm/vm/jump_table.go:newShanghaiInstructionSet
+  3860:
+    status: inherited
+    src: artela-evm/vm/jump_table.go:newShanghaiInstructionSet
+  4788:
+    status: removed
+    note: >-
+      No beacon chain and no beacon-roots contract. Unlike the ancestor, which
+      fabricates `parentBeaconBlockRoot` as a constant in the RPC header, the
+      pinned go-ethereum v1.12.0 header type has no such field at all, so the
+      JSON-RPC block simply does not carry it — an honest absence rather than a
+      meaningless constant.
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  2935:
+    status: removed
+    severity: high
+    note: >-
+      THE ANCESTOR'S SHARPEST BUG IS ABSENT HERE, AND SOMETHING ELSE REPLACES IT.
+      There is no history-storage contract, no preinstall and no ring buffer, so
+      the cosmos-evm 8192-vs-8191 mismatch cannot occur. What Artela has instead
+      is a BLOCKHASH whose depth is unbounded in one direction: GetHashFn serves
+      CometBFT header hashes for any height in the same chain epoch, from the
+      keeper's own header-hash store, rather than the last 256. See opcodes.
+    src: x/evm/keeper/evm.go:GetHashFn
+  7685:
+    status: removed
+    note: "no execution-layer requests; the pinned go-ethereum v1.12.0 header type has no requestsHash field."
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  4895:
+    status: removed
+    note: "no beacon withdrawals; withdrawalsRoot is not a field of the v1.12.0 header this chain fabricates."
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  7702:
+    status: removed
+    note: "SetCodeTx does not exist in go-ethereum v1.12.0; type 0x04 is undecodable, not merely refused."
+    src: x/evm/txs/tx_utils.go:UnpackTxData
+  7951:
+    status: removed
+    note: >-
+      No P256VERIFY. Artela has NO custom precompiles of any kind — 0x0100 is an
+      ordinary empty account. This is a direct override of the ancestor's
+      optional 0x0100 entry.
+    src: artela-evm/vm/contracts.go:PrecompiledContractsBerlin
+  1559:
+    status: modified
+    severity: high
+    note: >-
+      INHERITED IN SHAPE FROM cosmos-evm, WITH ONE ARTELA-SPECIFIC TWIST THAT
+      COSTS USERS MONEY. The Ethermint mechanics carry over unchanged: the base
+      fee is recomputed from the parent block's gas WANTED (the sum of gas
+      LIMITS, not gas used), the gas target is the CometBFT consensus-params
+      Block.MaxGas divided by a governance ElasticityMultiplier, the base fee is
+      a LegacyDec floored at a governance MinGasPrice, the whole market can be
+      switched off with NoBaseFee, and nothing is burned — base fee plus tip is
+      bank-sent to the FeeCollector module account.
+
+      ARTELA'S OWN DELTA IS MinGasMultiplier, DEFAULT 0.5. ApplyMessage computes
+      the charged gas as `max(gasLimit * MinGasMultiplier, actualGasUsed)`, so a
+      transaction is billed for AT LEAST HALF ITS GAS LIMIT no matter what it
+      actually consumed, and `receipt.gasUsed` reports that inflated number
+      rather than the EVM's. A 21000-gas transfer submitted with a 1,000,000 gas
+      limit is charged 500,000. Every mainnet habit around generous gas limits is
+      a direct loss here, and the receipt gives no hint that the number is a
+      floor rather than a measurement.
+    src: "x/fee/keeper/base_fee.go:CalculateBaseFee, x/evm/keeper/evm.go:minimumGasUsed, x/fee/types/params.go:DefaultMinGasMultiplier"
+  3529:
+    status: inherited
+    note: "RefundQuotientEIP3529 is applied when IsLondon, which is true from genesis."
+    src: x/evm/keeper/evm.go:refundQuotient
+  2200:
+    status: inherited
+    availability: optional
+    activation_condition: "EIP number listed in the x/evm params ExtraEIPs"
+    note: >-
+      OVERRIDES the ancestor's `unrecorded`, and PARTIALLY REFUTES its companion
+      finding. Artela does have the Ethermint ExtraEIPs mechanism — the x/evm
+      params carry an `ExtraEIPs []int64` which VMConfig hands to the interpreter
+      as vm.Config.ExtraEips, mutating a copy of the jump table per transaction —
+      but it does NOT have the cosmos-evm EVMConfigurator, so no chain-defined
+      mutators can be registered and the activator map is stock go-ethereum's.
+      The advertised set, AvailableExtraEIPs, is [1344, 1884, 2200, 2929, 3198,
+      3529] — REAL EIP numbers, every one of which is already active at Cancun,
+      so re-listing them is at worst a re-application. cosmos-evm's headline
+      "the EIP namespace is fake, the mutators are numbered 0, 1 and 2" therefore
+      does NOT apply to Artela: the numbering here is honest. What does carry
+      over is that validateEIPs checks only vm.ValidEip, i.e. membership of the
+      global activator map, not membership of AvailableExtraEIPs — so governance
+      may enable any activator the pinned go-ethereum registers, and the default
+      is nil.
+    src: "x/evm/keeper/config.go:VMConfig, x/evm/txs/support/params.go:AvailableExtraEIPs, x/evm/txs/support/params.go:validateEIPs, artela-evm/vm/interpreter.go:ExtraEips"
+
+non_eip_specs:
+- id: "Aspect (Artela AVM)"
+  name: "on-chain WASM extension modules invoked at five EVM join points"
+  adoption: adopted
+  note: >-
+    Artela's own extension mechanism, and the reason this row exists. Five join
+    points, encoded as a bitmask on the Aspect's deployment: VerifyTx (1),
+    PreTxExecute (2), PreContractCall (4), PostContractCall (8) and
+    PostTxExecute (16). See system_transactions.aspect_join_points, precompiles
+    0xA27E14 and tx_authorization.
+  src: "aspect-core/types/aspect_type.go:JoinPointRunType, aspect-core/djpm/aspect_impl.go:transactionAdvice"
+- id: "ERC-4337 v0.6"
+  name: "EntryPoint deployed at a chain-specific address as genesis bytecode"
+  adoption: adopted
+  note: >-
+    Not the canonical 0x5FF1…2789. Artela installs the EntryPoint runtime at
+    0x…AAEC via `artelad add-genesis-contract`, and aspect-core hard-codes that
+    address as the target of an Aspect's JIT call. See system_contracts.
+  src: "aspect-core/chaincoreext/account_abstraction/types.go:EntryPointContract, init.sh:add-genesis-contract"
+- id: "EIP-712 (Web3Tx extension)"
+  name: "EIP-712 typed-data signing of Cosmos transactions, with a fee payer"
+  adoption: adopted
+  note: >-
+    OVERRIDES the ancestor, WHERE THIS IS DEAD CODE. evmd's ante router accepts
+    exactly two extension-option type URLs and refuses Web3Tx; Artela's router
+    accepts THREE — ExtensionOptionsEthereumTx, ExtensionOptionsWeb3Tx and
+    ExtensionOptionDynamicFeeTx — and routes Web3Tx to a live EIP-712 ante
+    handler. The typed-data payload carries a `feePayer` field, so this is a real
+    second-party fee-payment path on a chain whose EVM surface is otherwise
+    single-signer.
+  src: "app/ante/handler.go:NewAnteHandler, ethereum/eip712/eip712_legacy.go:FeePayer"
+- id: RIP-7212
+  name: secp256r1 precompile
+  adoption: withdrawn
+  note: "not present — Artela has no custom precompiles; 0x0100 is an empty account."
+  src: artela-evm/vm/contracts.go:PrecompiledContractsBerlin
+
+tx_types:
+  "0x00": {name: LegacyTx, status: inherited, src: "x/evm/txs/tx_legacy.go:newLegacyTx"}
+  "0x01": {name: AccessListTx, status: inherited, src: "x/evm/txs/tx_access_list.go:newAccessListTx"}
+  "0x02": {name: DynamicFeeTx, status: inherited, src: "x/evm/txs/tx_dynamic_fee.go:newDynamicFeeTx"}
+  "0x03":
+    name: BlobTx
+    status: modified
+    severity: high
+    note: >-
+      NOT REJECTED — SILENTLY DEMOTED TO A LEGACY TRANSACTION. The pinned
+      go-ethereum v1.12.0 DOES decode type 0x03 (decodeTyped has a BlobTxType
+      case), and Artela's NewTxDataFromTx then switches on the type with cases
+      for only 0x02 and 0x01 and a `default:` that calls newLegacyTx. So a blob
+      transaction submitted to eth_sendRawTransaction is decoded, stripped of its
+      type byte, blob hashes, blob-gas fee cap and access list, and re-packed as
+      a protobuf LegacyTx — while MsgEthereumTx.Hash keeps the ORIGINAL blob
+      transaction's hash. Nothing anywhere validates the type. Recorded as
+      `modified` rather than `removed` because the byte is neither refused (Cosmos
+      EVM) nor deliberately consumed (Sei): it is accepted and reinterpreted.
+      The end-to-end consequence — whether the reconstructed transaction then
+      fails signature recovery or is attributed to a recovered garbage address —
+      could not be settled, because no reachable node exists to probe; see
+      `Not established` in SUMMARY.md.
+    src: "x/evm/txs/tx_wrapper.go:NewTxDataFromTx, x/evm/txs/tx_wrapper.go:FromEthereumTx"
+  "0x04":
+    name: SetCodeTx
+    status: removed
+    note: "EIP-7702 postdates go-ethereum v1.12.0 by two years; 0x04 is not a decodable type here — decodeTyped returns ErrTxTypeNotSupported."
+    src: x/evm/txs/tx_wrapper.go:NewTxDataFromTx
+  note: >-
+    NO NEW TYPE BYTES — AND YET THE MOST IMPORTANT TRANSACTION SHAPE ON THIS
+    CHAIN HAS NO TYPE BYTE OF ITS OWN. An Aspect-verified transaction (see
+    tx_authorization) is an ORDINARY type 0x00 or 0x02 envelope whose v, r and s
+    are all zero and whose calldata begins with the four bytes 0xCAFECAFE. Every
+    Ethereum tool will parse it as a normal transaction with an invalid
+    signature. It is a distinct authorization scheme wearing an existing type
+    byte, which is why it is recorded in tx_authorization and not here.
+
+    THE INNER ENCODING IS THE OLD ETHERMINT ONE, NOT cosmos/evm v0.7's.
+    MsgEthereumTx carries `data` as a protobuf `Any` of LegacyTx / AccessListTx /
+    DynamicFeeTx, plus the deprecated `size`, `hash` and `from` fields — the
+    field-by-field re-encoding that cosmos/evm later replaced with a verbatim
+    `raw` envelope and `reserved 1, 2, 3, 4`. So on Artela the RLP bytes DO NOT
+    SURVIVE: the transaction is taken apart and rebuilt. That places Artela with
+    Sei rather than with its own ancestor's current file, and it is the direct
+    cause of the 0x03 demotion above.
+  src: proto/artela/evm/v1/tx.proto:MsgEthereumTx
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    A TRANSACTION WITH v = r = s = 0 IS VALID ON THIS CHAIN. This is the
+    strongest single divergence in the row after the Aspect join points, and it
+    needs no new transaction type to reach.
+
+    THE TRIGGER IS A CALLDATA MAGIC NUMBER. IsCustomizedVerification returns true
+    when (a) the signature values are nil or all zero, (b) `to` is non-nil and
+    non-zero, (c) the calldata is at least 8 bytes, (d) the first four bytes are
+    literally 0xCAFECAFE, and (e) bytes 4..8 equal the first four bytes of
+    keccak256 of the remainder. The keeper additionally requires that the target
+    have code. There is no type byte, no extension option and no envelope
+    change: this is an ordinary 0x00 or 0x02 transaction that happens to carry a
+    zero signature.
+
+    THE SENDER IS RETURNED BY A WASM MODULE, NOT RECOVERED. The remainder of the
+    calldata is `abi.encode(validationData, callData)`. The protocol looks up the
+    verifier Aspects bound to the CALLEE, requires there to be exactly one, runs
+    it at the VerifyTx join point with the validation data, and takes the 20
+    bytes it returns as the sender. It then checks that this claimed sender has
+    itself bound the SAME Aspect as a verifier — a two-sided opt-in that is the
+    only thing standing between this mechanism and arbitrary impersonation. The
+    result is memoised per transaction hash in VerifySigCache. `ecrecover(sig) ==
+    from` is not merely false for these transactions, it is undefined: there is
+    no signature to recover from.
+
+    CONSEQUENCES A TOOL AUTHOR MUST KNOW. (1) The transaction hash is the hash of
+    an UNSIGNED transaction, so replay protection is whatever the Aspect chooses
+    to implement, not EIP-155. (2) An aspectSigner is substituted for the real
+    signer wherever go-ethereum would recover — MakeSigner returns it — and its
+    Hash() is the plain transaction hash and its SignatureValues() returns an
+    error. (3) Verification is charged as a FLAT 150,000 gas added to intrinsic
+    gas (djpm.MaxTxVerificationGas), whether the Aspect uses it or not, and it is
+    charged before anything runs. (4) The in-source comment claims "transactions
+    that transfer value or creating contract must be signed", but the predicate
+    only excludes contract creation — it does not examine `value` — so the
+    comment is stricter than the code.
+
+    THE ANCESTOR'S SECOND SECP256K1 DERIVATION IS ABSENT HERE. cosmos/evm's
+    ante switch admits both `ethsecp256k1.PubKey` (keccak-derived) and the Cosmos
+    `secp256k1.PubKey` (ripemd160(sha256(·))-derived), which is why that row has
+    a `secp256k1_cosmos` scheme. Artela's switch has cases for ethsecp256k1,
+    ed25519 and multisig ONLY, and its `default:` branch rejects anything else —
+    so a Cosmos-style secp256k1 account cannot sign any transaction on Artela.
+    That whole hazard class is refuted for this chain.
+  src: "ethereum/utils/utils.go:IsCustomizedVerification, x/evm/keeper/tx_verify.go:VerifySig, aspect-core/djpm/aspect_impl.go:GetSenderAndCallData, app/ante/validator.go:SigVerificationGasConsumer, x/evm/keeper/meter.go:GetEthIntrinsicGas"
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The ordinary path. ethsecp256k1 only — keccak-derived addresses, recovered
+        by go-ethereum's signer over the reconstructed transaction and matched
+        against MsgEthereumTx.From.
+      src: "app/ante/validator.go:SigVerificationGasConsumer, x/evm/keeper/tx_verify.go:VerifySig"
+    aspect_verifier:
+      status: added
+      authorizes: account_code
+      precompile: none
+      severity: high
+      note: >-
+        A WASM module decides who sent the transaction. Distinct from zkSync's
+        account_code in one respect that matters: the validator is NOT the
+        sender's own code — it is a verifier Aspect bound to the CALLEE, and the
+        sender's only involvement is having previously bound the same Aspect.
+        Unpaired with any precompile: there is no way for a contract to
+        re-validate an authorization the protocol accepted, because the
+        validation logic is WASM outside the EVM. A contract that treats
+        `msg.sender` as ECDSA-authenticated is wrong for this class of
+        transaction, with no signal in the envelope beyond the zero signature.
+      src: "aspect-core/djpm/aspect_impl.go:GetSenderAndCallData, x/evm/keeper/tx_verify.go:aspectSigner"
+    ed25519:
+      status: removed
+      authorizes: never
+      precompile: none
+      note: >-
+        Registered, charged params.SigVerifyCostED25519, and then refused with
+        "ED25519 public keys are unsupported" — the same charge-then-refuse shape
+        the ancestor documents, reached through Artela's own copy of the code.
+        The live ed25519 on this chain is the CometBFT validator key, which is
+        consensus signing and not transaction authorization.
+      src: app/ante/validator.go:SigVerificationGasConsumer
+    multisig:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        Cosmos LegacyAminoPubKey k-of-n on the Cosmos surface only; recurses
+        through the same switch, so it inherits both the ed25519 refusal and the
+        rejection of Cosmos-style secp256k1 keys. No precompile reproduces the
+        threshold arithmetic.
+      src: app/ante/validator.go:ConsumeMultisignatureVerificationGas
+
+precompiles:
+  "0x0000000000000000000000000000000000A27E14":
+    name: AspectCore
+    status: added
+    severity: high
+    src: "aspect-core/types/controller.go:aspectCoreAddr, x/evm/keeper/evm.go:IsAspectContractAddr, x/evm/artela/contract/contract.go:AspectNativeContract, aspect-core/djpm/contract/aspectcore.sol:AspectCore"
+    note: >-
+      THE ONLY NON-MAINNET PRECOMPILE ON THIS CHAIN, AND IT IS ONLY REACHABLE AS
+      A TOP-LEVEL `to`. Nine ABI-dispatched methods — deploy, upgrade, bind,
+      unbind, changeVersion, versionOf, aspectsOf, boundAddressesOf, entrypoint —
+      implemented in Go with no bytecode in state, so `eth_getCode` returns
+      empty. Solidity-ABI dispatched, like Sei's and the ancestor's and unlike
+      every mainnet precompile.
+
+      THE INTERCEPTION IS IN THE KEEPER, NOT IN THE EVM. ApplyMessage checks
+      `IsAspectContractAddr(msg.To)` and short-circuits into the native contract
+      BEFORE constructing any call frame. The forked EVM's own precompile lookup
+      (artela-evm/vm/evm.go:precompile) is stock go-ethereum's Berlin map and
+      does NOT contain 0xA27E14. Consequence: a CALL to 0xA27E14 from inside
+      contract bytecode does not reach the Aspect system contract at all — it
+      hits an account with no code, and go-ethereum's Call returns success with
+      empty output. A contract that tries to bind or query an Aspect gets a
+      SILENT NO-OP THAT LOOKS LIKE SUCCESS. This is the inverse of the usual
+      "precompile with no code" hazard: here the address is native at depth 0 and
+      an empty account at depth 1 or more.
+
+      DEPLOYING AN ASPECT CONSUMES AN EVM ADDRESS. DeployHandler derives the
+      aspect id as `crypto.CreateAddress(from, nonce)` — the same derivation
+      CREATE uses, in the same 20-byte space — and stores WASM there, not EVM
+      code. So the receipt for an Aspect deployment reports a `contractAddress`
+      (ApplyTransaction sets it whenever IsAspectDeploy is true) at which
+      `eth_getCode` will forever return `0x`. Anyone may deploy; deployment is
+      not permissioned.
+  note: >-
+    THE 0x01-0x09 SET AND NOTHING ELSE. Artela has no `precompiles/` package, no
+    ActiveStaticPrecompiles parameter and no two-step registration — the entire
+    Cosmos-EVM apparatus for exposing bank, staking, gov, slashing, distribution
+    and IBC to bytecode is absent, and so is the ancestor's dynamic ERC-20 range.
+    The map the EVM consults is go-ethereum v1.12.0's, whose selection switch
+    tops out at `IsBerlin`, so even though the chain reports Cancun there is no
+    point-evaluation precompile at 0x0a and no BLS precompiles. 0x0100 (P256VERIFY)
+    is an ordinary empty account.
+
+    A CONTRACT PORTED FROM A COSMOS-EVM CHAIN TO ARTELA THEREFORE LOSES EVERY
+    MODULE PRECOMPILE SILENTLY: a call to 0x…0800 or 0x…0804 does not revert, it
+    succeeds with empty output, because those are empty accounts.
+
+system_contracts:
+  "0x000000000000000000000000000000000000AAEC":
+    name: ERC-4337 v0.6 EntryPoint
+    status: added
+    severity: high
+    src: "init.sh:add-genesis-contract, aspect-core/chaincoreext/account_abstraction/types.go:EntryPointContract"
+    note: >-
+      REAL EVM BYTECODE, INSTALLED AT GENESIS, AT A NON-CANONICAL ADDRESS. The
+      chain-setup script writes the compiled EntryPoint runtime to
+      0x…AAEC with `artelad add-genesis-contract`, and aspect-core hard-codes
+      that same address as the target of every Aspect JIT call. Mainnet's
+      EntryPoint v0.6 lives at 0x5FF1…2789 and is deployed by an ordinary
+      transaction; here the address is different and there is no deployment
+      transaction, no deployer nonce and no receipt. Bundler tooling and
+      4337 SDKs configured with the canonical address will find an empty account.
+
+      WHETHER MAINNET'S GENESIS ACTUALLY CONTAINED IT IS UNVERIFIED — init.sh is
+      a local-devnet script, and no node was reachable to check. If the address
+      is empty on a given deployment, the Aspect JIT call in
+      system_transactions.aspect_jit_call becomes a call to a codeless account,
+      which go-ethereum reports as SUCCESS with empty return data, so a failed
+      JIT call is indistinguishable from a successful one.
+  note: >-
+    NO PREINSTALL SET AND NO GOVERNANCE INSTALLER. Unlike the ancestor there is
+    no x/vm Preinstalls list and no MsgRegisterPreinstalls, so no Create2 deployer,
+    no Multicall3, no Permit2 and no Safe factory are guaranteed, and governance
+    cannot conjure bytecode at an address. Genesis bytecode is a chain-setup-time
+    CLI action only.
+
+system_transactions:
+  aspect_join_points:
+    name: "Aspect join points — WASM executed inside someone else's transaction"
+    status: added
+    severity: high
+    src: "artela-evm/vm/evm.go:PreContractCall, artela-evm/vm/evm.go:PostContractCall, x/evm/keeper/evm.go:PreTxExecute, x/evm/keeper/evm.go:PostTxExecute, aspect-core/djpm/aspect_impl.go:transactionAdvice, aspect-core/types/aspect_type.go:JoinPointRunType"
+    note: >-
+      THE HEADLINE OF THIS ROW. Four of the five join points run inside ordinary
+      user transactions, and the code that runs is chosen by the CALLEE, not the
+      sender.
+
+      WHERE THEY FIRE. PreTxExecute and PostTxExecute are in the keeper, around
+      the whole message; PreContractCall and PostContractCall are inside the
+      forked EVM.Call itself, around EVERY call frame that reaches non-empty
+      bytecode. For each, transactionAdvice looks up the Aspects bound to the
+      CONTRACT BEING CALLED — `*msg.To` for the transaction-level pair, the
+      frame's `addr` for the call-level pair — and runs them in bound order.
+
+      WHAT AN ASPECT CAN DO TO A TRANSACTION IT DID NOT ORIGINATE. (1) ABORT IT
+      BEFORE EXECUTION: a PreTxExecute error short-circuits ApplyMessage, so
+      nothing runs. (2) ABORT A NESTED CALL: a PreContractCall error returns from
+      EVM.Call with that error, and because the error is not
+      ErrExecutionReverted the frame's ENTIRE REMAINING GAS IS BURNED. (3) FAIL A
+      CALL THAT ALREADY SUCCEEDED, AND REWRITE ITS RETURN DATA: PostContractCall
+      runs after `interpreter.Run` returns; if it errors, EVM.Call sets
+      `err = postCallResult.Err` and `ret = postCallResult.Ret` and reverts to
+      the frame snapshot. (4) FAIL A TRANSACTION THAT ALREADY SUCCEEDED:
+      PostTxExecute runs only when vmErr is nil — i.e. only on the success path —
+      and its error OVERWRITES vmErr, which means ApplyTransaction never calls
+      commit() and the whole transaction's state is discarded. The receipt
+      reports status 0 with the Aspect's own error string in the Cosmos log.
+
+      SO THERE IS A THIRD REJECTION LAYER. A transaction on Artela can die at the
+      AnteHandler (no Ethereum receipt at all), inside the EVM (status 0, ordinary
+      revert), or at an Aspect (status 0, with an error string that is not an EVM
+      revert reason and no REVERT opcode anywhere in the trace). The third is
+      indistinguishable from the second to any client that only reads
+      `receipt.status`.
+
+      WHO CAN INSTALL ONE. BindHandler requires, for a target WITH code, that
+      checkContractOwner return true — and it establishes ownership BY CALLING
+      THE TARGET CONTRACT: first Artela's own `isOwner(address)` interface, and
+      if that call errors, OpenZeppelin's `owner()`, comparing the result to
+      msg.sender. So the party who can attach an Aspect is whoever the contract's
+      own code says is its owner — NOT necessarily its deployer, and never its
+      users. Any Ownable contract already deployed on Artela is bindable by its
+      current owner, including one transferred after deployment; a contract whose
+      `isOwner` returns true for everyone is bindable by anyone. For a target
+      WITHOUT code the binder must be that EOA itself, and only a verifier Aspect
+      may be bound.
+
+      METERING. Join-point gas is taken from the transaction's own remaining gas
+      — runAspect threads `gas` through and EVM.Call assigns the returned value
+      back — so the sender pays for code the callee's owner installed. A panic
+      inside the WASM runtime is recovered and converted to
+      "aspect execution crashed", which becomes a revert of the surrounding call.
+  aspect_jit_call:
+    name: "Aspect-originated ERC-4337 UserOperation inside a user's transaction"
+    status: added
+    severity: high
+    src: "x/evm/artela/api/evm_api.go:JITCall, aspect-core/chaincoreext/jit_inherent/jit_inherent.go:submitJITCall"
+    note: >-
+      AN ASPECT CAN ORIGINATE A STATE-WRITING EVM CALL. From the PreContractCall
+      or PostContractCall join point only, the host API `JITCall` builds an
+      ERC-4337 UserOperation from the Aspect's request, fetches the AA wallet's
+      nonce from the EntryPoint, and calls `handleOps` on the EntryPoint contract
+      at 0x…AAEC with `vm.AccountRef(userOp.Sender)` as the caller — that is,
+      with the EVM `msg.sender` set to the address the ASPECT named. Gas comes
+      out of the surrounding transaction. Authorization is delegated entirely to
+      the EntryPoint's own UserOp validation, so the safety of the mechanism is
+      the safety of whatever wallet contract is being invoked. The remaining host
+      APIs are read-only: the StateDB host interface exposes only Get* methods,
+      and the other EVM host method is StaticCall.
+  cosmos_module_balance_changes:
+    name: "bank / staking / distribution / IBC move EVM-visible balances with no Ethereum transaction"
+    status: added
+    severity: high
+    src: "app/app.go:BankKeeper, x/evm/states/statedb.go:GetBalance"
+    note: >-
+      Inherited in kind from the ancestor and stated here because the mechanism
+      differs: with no x/erc20 module there is no token-pair machinery, but the
+      EVM still reads the bank module's balance directly, so an ordinary
+      MsgSend, a staking reward withdrawal, a slashing event or an inbound
+      ICS-20 packet changes an account's `eth_getBalance` with no Ethereum
+      transaction, no receipt and no Transfer log. What Artela does NOT have is
+      the ancestor's IBC-creates-a-precompile path: an unseen denom arriving over
+      IBC registers no address and installs no bytecode.
+
+non_evm_transactions:
+  note: >-
+    THE SAME INVERSION THE ANCESTOR DESCRIBES, ONE GENERATION EARLIER AND ONE
+    STEP WORSE. A user signs an RLP transaction; the node wraps it in
+    MsgEthereumTx, which is wrapped in a Cosmos SDK TxBody, which is what
+    CometBFT hashes and orders. But where cosmos/evm v0.7 keeps the EIP-2718
+    envelope byte-exact in a `raw` field, Artela's MsgEthereumTx carries the
+    transaction TAKEN APART into a protobuf `Any` of LegacyTx / AccessListTx /
+    DynamicFeeTx. The RLP bytes do not survive, which is why a type 0x03
+    transaction can be silently rebuilt as a legacy one (see tx_types."0x03").
+    The Ethereum transaction hash is carried alongside as a STRING field rather
+    than being recomputable from the stored data.
+  entries:
+  - id: artela.evm.v1.MsgEthereumTx
+    name: MsgEthereumTx
+    status: added
+    severity: high
+    note: >-
+      Four fields — `data` (Any of the decomposed transaction), the deprecated
+      `size` (ValidateBasic rejects it non-zero), `hash` (the Ethereum hash as
+      hex text) and `from`. The redundant `from` is checked against the recovered
+      sender, except on the Aspect-verified path where there is nothing to
+      recover from.
+    src: "proto/artela/evm/v1/tx.proto:MsgEthereumTx, x/evm/txs/tx_wrapper.go:ValidateBasic"
+  - id: artela.evm.v1.MsgUpdateParams
+    name: "MsgUpdateParams (x/evm)"
+    status: added
+    severity: high
+    note: >-
+      Governance rewrites the EVM's rules: the whole ChainConfig fork schedule
+      (which on this chain is block-numbered, so a fork is a height set by a
+      vote), the ExtraEIPs jump-table mutators, EnableCreate, EnableCall,
+      AllowUnprotectedTxs and the EVM denom. EnableCreate and EnableCall are
+      Artela's simpler ancestor of cosmos/evm's AccessControl: two booleans that
+      switch contract creation or contract calls off chain-wide.
+    src: "proto/artela/evm/v1/tx.proto:MsgUpdateParams, x/evm/txs/support/params.go:DefaultParams"
+  - id: artela.fee.v1.MsgUpdateParams
+    name: "MsgUpdateParams (x/fee)"
+    status: added
+    severity: high
+    note: >-
+      Moves NoBaseFee, BaseFee, EnableHeight, MinGasPrice, ElasticityMultiplier,
+      BaseFeeChangeDenominator and MinGasMultiplier. The last is the one that
+      changes what every user pays — see fee_model.
+    src: "proto/artela/fee/v1/tx.proto:MsgUpdateParams, x/fee/types/params.go:ParamStoreKeyMinGasMultiplier"
+  - id: "cosmos-sdk module messages"
+    name: "bank / staking / gov / distribution / slashing / authz / feegrant / IBC transfer"
+    status: added
+    note: >-
+      The standard SDK message set, not enumerated. What matters here is that
+      they move balances the EVM reads directly and that, unlike the ancestor,
+      NONE of them is reachable from EVM bytecode — there are no module
+      precompiles on this chain. The Cosmos surface and the EVM surface share
+      state and share nothing else.
+    src: app/app.go:ModuleBasics
+  - id: "artela.types.v1.ExtensionOptionsWeb3Tx"
+    name: "EIP-712-signed Cosmos transaction"
+    status: added
+    note: >-
+      A Cosmos transaction whose signature is an EIP-712 typed-data signature
+      over the Cosmos message set, carrying a `feePayer`. Live here, unlike in
+      the ancestor's reference node. An Ethereum wallet signature that moves
+      Cosmos state and is not an Ethereum transaction.
+    src: "app/ante/handler.go:ExtensionOptionsWeb3Tx, ethereum/eip712/eip712_legacy.go:FeePayer"
+
+opcodes:
+  added: []
+  removed:
+  - op: "0x49"
+    name: BLOBHASH
+    note: "enable4844 is commented out of the Cancun jump table; 0x49 is undefined and aborts the frame with ErrInvalidOpCode, burning all gas."
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  - op: "0x4a"
+    name: BLOBBASEFEE
+    note: "enable7516 is commented out of the Cancun jump table; 0x4a is undefined. Contrast the ancestor, where the opcode exists and its input is never assigned."
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  modified:
+  - op: "0x44"
+    name: PREVRANDAO / DIFFICULTY
+    severity: high
+    note: >-
+      PANICS. BlockContext.Random is nil and opRandom dereferences it. Not a
+      constant, not a weak randomness source — executing this opcode aborts the
+      transaction through the Cosmos SDK's panic recovery, and the transaction is
+      then erased from the Ethereum RPC view. See eips.4399.
+    src: "x/evm/keeper/evm.go:BlockContext, artela-evm/vm/instructions.go:opRandom"
+  - op: "0xff"
+    name: SELFDESTRUCT
+    severity: high
+    note: >-
+      Pre-Cancun semantics on a Cancun chain: EIP-6780 is commented out of the
+      jump table, so an account destroyed outside its creation transaction is
+      really deleted and its storage cleared.
+    src: artela-evm/vm/jump_table.go:newCancunInstructionSet
+  - op: "0x40"
+    name: BLOCKHASH
+    note: >-
+      Returns CometBFT header hashes, and the 256-block window is gone: GetHashFn
+      serves any height in the current chain epoch from the keeper's own
+      header-hash store, returning the zero hash only for heights above the
+      current one or from a previous epoch. So BLOCKHASH reaches arbitrarily far
+      back rather than 256 blocks — the opposite failure mode from a chain that
+      truncates it, and different again from the ancestor's governance-set 8192
+      window.
+    src: x/evm/keeper/evm.go:GetHashFn
+  - op: "0x45"
+    name: GASLIMIT
+    note: "the CometBFT consensus-params Block.MaxGas, changeable by governance between blocks with no Ethereum-visible fork."
+    src: "x/evm/keeper/evm.go:BlockGasLimit, ethereum/rpc/types/utils.go:BlockMaxGasFromConsensusParams"
+  - op: "0x42"
+    name: TIMESTAMP
+    note: "the CometBFT block time, which is the median of validators' precommit timestamps rather than a proposer-chosen value; it is monotonic but not a clock any single party controls."
+    src: x/evm/keeper/evm.go:BlockContext
+  - op: "0x41"
+    name: COINBASE
+    note: "derived from the block proposer's CometBFT validator consensus address, not an EVM account that received anything — fees go to the FeeCollector module account."
+    src: x/evm/keeper/config.go:EVMConfig
+  note: >-
+    No opcode is added. Two are removed by omission from Artela's own Cancun jump
+    table, one panics, and one keeps semantics the chain's declared fork level
+    says it should have dropped. That combination — a fork level asserted in
+    config and only partly implemented in the jump table — is the shape of this
+    row's opcode risk: the chain answers "which fork are you on" with "Cancun"
+    and the answer is wrong in four different directions at once.
+
+fee_model:
+  metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
+  fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"
+  src: x/fee/keeper/base_fee.go:CalculateBaseFee
+  extra_components:
+  - name: nonce on failure
+    severity: high
+    src: "app/ante/evm/basic_checker.go:EthIncrementSenderSequenceDecorator, app/ante/evm/context_checker.go:EthEmitEventDecorator, ethereum/rpc/types/utils.go:TxSuccessOrExceedsBlockGasLimit, ethereum/rpc/blockchain.go:EthMsgsFromCosmosBlock, ethereum/rpc/tx.go:queryCosmosTxIndexer, artela-evm/vm/instructions.go:opRandom"
+    note: >-
+      NONCE ON FAILURE: BURNED, FEE TAKEN, AND THE TRANSACTION ERASED FROM THE
+      ETHEREUM VIEW ENTIRELY. This is the worst combination in the dataset and it
+      is reachable from ORDINARY BYTECODE, not from an edge case.
+
+      THE CONSEQUENCE, PLAINLY: a sender whose transaction takes this path gets
+      no receipt, no `eth_getTransactionByHash` entry, and no line in
+      `eth_getBlockByNumber`. Every observable says the transaction never
+      happened. But the fee is gone and the account's sequence has advanced. The
+      sender does the only reasonable thing — resubmits at what they still
+      believe is their next nonce — and that resubmission is now nonce-too-low
+      forever. Every subsequent transaction from that account is stuck behind a
+      one-slot gap the sender has no way to see, because the only evidence of it
+      was deleted by the RPC layer. `eth_getTransactionCount` is the sole
+      instrument that reveals it, and nothing prompts anyone to look.
+
+      HOW IT HAPPENS. The nonce and the fee live in the AnteHandler:
+      `EthIncrementSenderSequenceDecorator` does `acc.SetSequence(nonce + 1)`
+      (with the nonce equality check merged into it), and the SDK commits the
+      ante writes before running the message. `EthEmitEventDecorator` then emits
+      the `ethereum_tx` / `ethereumTxHash` event at the very END of the ante
+      chain, under a comment that states the intended invariant outright: "After
+      eth tx passed ante handler, the fee is deducted and nonce increased, it
+      SHOULDN'T BE IGNORED BY JSON-RPC". The RPC ignores it anyway.
+      `TxSuccessOrExceedsBlockGasLimit` admits only ABCI code 0 or a log matching
+      the literal substring "out of gas in location: block gas meter;
+      gasWanted:". `EthMsgsFromCosmosBlock` applies it and drops the transaction
+      from the block; `queryCosmosTxIndexer` applies it and returns
+      `errors.New("invalid ethereum tx")` even though the ante-emitted event IS
+      in the CometBFT index — so the hash lookup and the receipt lookup both fail
+      on a transaction the node can see.
+
+      WHY ORDINARY BYTECODE REACHES IT. `BlockContext.Random` is `nil, // not
+      supported`, `opRandom` calls `.Bytes()` on it, and `common.Hash.Bytes` has
+      a VALUE receiver — so executing PREVRANDAO (0x44, and therefore also
+      pre-merge DIFFICULTY) is a nil dereference. The Go panic unwinds into the
+      SDK's `runTx` recovery, which turns it into a transaction-level error whose
+      log is a Go runtime message — not code 0, and not the block-gas sentinel.
+      Any contract that reads `block.prevrandao` or `block.difficulty` burns its
+      caller's nonce and fee and vanishes.
+
+      THE OTHER PATHS, FOR CONTRAST. An ante failure (stale nonce, insufficient
+      balance, gas price below the current minimum, bad signature) discards the
+      ante cache, so the NONCE IS PRESERVED and no fee is taken — but the
+      transaction is erased by the same filter, so it is equally invisible. An
+      EVM revert returns a response with `VmError`, ABCI code 0, and gets a
+      `status: 0` receipt with the nonce burned. Block-gas-limit exhaustion is
+      the one fee-taken failure the substring whitelist lets back through.
+
+      OTHER ROWS WITH THIS SHAPE: `cosmos-evm`, the framework Artela forked, has
+      the identical ante-commit and the identical
+      `TxSucessOrExpectedFailure` gate — its outcome (3) is the same
+      erased-and-burned combination, reachable through `failed to commit
+      stateDB` and the refund gas-overflow guards rather than through
+      PREVRANDAO. `injective` has half of it: the nonce is burned and the receipt
+      is lost, but `EthMsgsFromTendermintBlock` applies no filter, so the
+      transaction still appears in the block and the gap is at least observable.
+      Artela is the only row where the gap is invisible AND ordinary bytecode
+      opens it.
+  - name: minimum gas charge is a fraction of the gas LIMIT
+    severity: high
+    src: "x/evm/keeper/evm.go:minimumGasUsed, x/fee/types/params.go:DefaultMinGasMultiplier"
+    note: >-
+      ARTELA'S OWN, AND THE ONE THAT COSTS EVERY USER MONEY. ApplyMessage
+      finishes with `gasUsed = max(gasLimit * MinGasMultiplier, temporaryGasUsed)`
+      where MinGasMultiplier defaults to 0.5. A transaction is therefore billed
+      for at least HALF THE GAS LIMIT IT DECLARED, and `receipt.gasUsed` reports
+      that floor rather than what the EVM measured. The universal client habit of
+      padding the gas limit is a direct, silent loss here, and gas estimation
+      that trusts `gasUsed` from a prior receipt will converge on the padded
+      figure rather than the real one. Governance can change the multiplier.
+  - name: flat 150,000 gas surcharge on Aspect-verified transactions
+    severity: high
+    src: "x/evm/keeper/meter.go:GetEthIntrinsicGas, aspect-core/djpm/aspect_impl.go:MaxTxVerificationGas"
+    note: >-
+      GetEthIntrinsicGas adds djpm.MaxTxVerificationGas — a hard-coded 150,000 —
+      to intrinsic gas for any transaction taking the unsigned/Aspect-verified
+      path, regardless of how much the verifier actually used. It is added to
+      INTRINSIC gas, so it is charged before execution and is not refundable.
+  - name: join-point gas comes out of the caller's budget
+    severity: high
+    src: "aspect-core/djpm/aspect_impl.go:runAspect, artela-evm/vm/evm.go:PreContractCall"
+    note: >-
+      Aspect execution is metered in EVM gas out of the transaction's own
+      remaining gas. The sender pays for WASM the callee's owner installed, and
+      an aborting PreContractCall returns a non-revert error, which makes
+      EVM.Call zero the frame's remaining gas.
+  - name: base fee is not burned
+    src: x/evm/keeper/meter.go:DeductTxCostsFromUserBalance
+    note: "the whole fee is bank-sent to the FeeCollector module account through the SDK's DeductFees; nothing is destroyed."
+  - name: base fee tracks gas WANTED
+    src: x/fee/keeper/base_fee.go:CalculateBaseFee
+    note: "computed from the parent block's summed gas LIMITS, with the target taken as the CometBFT consensus MaxGas divided by a governance ElasticityMultiplier — inherited unchanged from the ancestor."
+  note: >-
+    NO SUB-UNIT SCALING PROBLEM. The ancestor's ConvertAmountTo18DecimalsBigInt
+    machinery does not exist here; Artela's EVM denom is 18-decimal and there is
+    no extended-denom conversion factor, so the bank balance and the EVM balance
+    are the same integer. The base fee can still be switched off entirely with
+    the x/fee NoBaseFee parameter while `baseFeePerGas` continues to be reported.
+
+header_fields:
+  src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint, ethereum/rpc/types/utils.go:FormatBlock, ethereum/rpc/blockchain.go:BlockFromCosmosBlock"
+  note: >-
+    NOT A DELTA — THERE IS NO ETHEREUM HEADER. The consensus object is a CometBFT
+    block; EthHeaderFromTendermint fabricates an ethtypes.Header from seven
+    CometBFT fields plus constants, and FormatBlock assembles the JSON object.
+    Because the pinned go-ethereum is v1.12.0, the fabricated header has NO
+    withdrawalsRoot, parentBeaconBlockRoot, requestsHash, blobGasUsed or
+    excessBlobGas fields at all — Artela is the honest case where the ancestor
+    emits meaningless constants.
+
+    THE HEADER DOES NOT HASH TO THE HASH. FormatBlock reports `hash` as
+    `header.Hash()`, the CometBFT block hash, so keccak256(rlp(header)) is not
+    the reported hash. Any header-verifying light client or bridge fails on every
+    block.
+  added: []
+  removed:
+  - {name: uncleHash / ommers, note: "BFT finality; reported as the constant EmptyUncleHash with uncles always []"}
+  - {name: withdrawalsRoot, note: "the field does not exist in the go-ethereum v1.12.0 header type this chain fabricates"}
+  - {name: parentBeaconBlockRoot, note: "same — absent rather than a constant"}
+  - {name: blobGasUsed / excessBlobGas, note: "same — absent, on a chain that reports Cancun"}
+  - {name: requestsHash, note: "same"}
+  modified:
+  - name: stateRoot
+    severity: high
+    note: >-
+      the CometBFT APP HASH, a commitment to the whole Cosmos multistore rather
+      than to an Ethereum state trie. Same key, same 32 bytes, unrelated meaning;
+      no eth_getProof result can verify against it.
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  - name: receiptsRoot
+    severity: high
+    note: "the CONSTANT EmptyRootHash in every block — the fabricated header never computes a receipts trie at all, so the field is present, well-formed and meaningless."
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  - name: transactionsRoot
+    note: "the CometBFT header's DataHash, which commits to the full Cosmos transaction list including non-EVM transactions and transactions the Ethereum view hides."
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  - name: gasUsed
+    severity: high
+    note: >-
+      the sum of the Cosmos GasUsed of EVERY transaction result in the block,
+      including Cosmos-only transactions and including transactions the Ethereum
+      view omits — so a block's `gasUsed` regularly exceeds the sum of the
+      `gasUsed` of the receipts it lists.
+    src: ethereum/rpc/blockchain.go:BlockFromCosmosBlock
+  - name: gasLimit
+    note: "the CometBFT consensus-params Block.MaxGas, or 2^32-1 when MaxGas is -1 (unlimited)."
+    src: ethereum/rpc/types/utils.go:BlockMaxGasFromConsensusParams
+  - name: miner
+    note: "the block proposer's CometBFT validator address reinterpreted as 20 bytes; not an account that received anything."
+    src: ethereum/rpc/types/utils.go:EthHeaderFromTendermint
+  - {name: mixHash, note: "the zero hash — and unlike the ancestor there is no PREVRANDAO value to disagree with, because PREVRANDAO panics",
+     src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"}
+  - {name: difficulty, note: "constant 0", src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"}
+  - {name: extraData, note: "always empty; CometBFT consensus data is not exposed", src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"}
+  - {name: nonce, note: "always zero", src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"}
+
+gotchas:
+- >-
+  YOU CAN BE CHARGED, LOSE YOUR NONCE, AND SEE NO EVIDENCE OF EITHER — AND
+  ORDINARY BYTECODE CAN DO IT TO YOU. The AnteHandler deducts the fee and does
+  `SetSequence(nonce + 1)`, and the SDK commits those writes before the message
+  runs. If execution then fails with anything other than an EVM revert — and
+  executing PREVRANDAO is such a failure, because BlockContext.Random is nil and
+  opRandom dereferences it — the transaction has a non-zero ABCI code, and
+  `TxSuccessOrExceedsBlockGasLimit` erases it from `eth_getBlockByNumber`, from
+  `eth_getTransactionByHash` and from `eth_getTransactionReceipt`. The sender
+  sees a transaction that apparently never existed, resubmits at the same nonce,
+  and is now permanently behind a one-slot gap that nothing but
+  `eth_getTransactionCount` will ever reveal. The ante decorator that emits the
+  index event says in a comment that such a transaction "shouldn't be ignored by
+  json-rpc"; it is ignored anyway.
+- >-
+  A CONTRACT'S OWNER CAN INSTALL WASM THAT REVERTS OTHER PEOPLE'S TRANSACTIONS,
+  AFTER THEY HAVE ALREADY SUCCEEDED. This is the row's headline. An Aspect is a
+  WASM module bound to a contract; the protocol runs it at four points inside
+  ordinary user transactions. PostContractCall runs after a call frame returned
+  and, if it errors, EVM.Call overwrites both the error AND the return data and
+  reverts to the frame snapshot. PostTxExecute runs only on the SUCCESS path of
+  the whole transaction and, if it errors, overwrites vmErr — so ApplyTransaction
+  never commits and the entire transaction's state is thrown away. Neither
+  involves a REVERT opcode. The transaction that failed was not the Aspect
+  owner's, and the gas was not the Aspect owner's either: join-point execution is
+  metered out of the sender's remaining gas.
+- >-
+  THE PARTY WHO CAN BIND AN ASPECT IS DECIDED BY ASKING THE CONTRACT. BindHandler
+  calls `isOwner(address)` on the target and, if that call errors, falls back to
+  OpenZeppelin's `owner()`, comparing the answer to msg.sender. So it is the
+  contract's CURRENT owner, not its deployer, and any already-deployed Ownable
+  contract is bindable — including one whose ownership was transferred later. A
+  contract whose `isOwner` returns true unconditionally can be bound by anyone.
+  Nothing asks the contract's users, and nothing in the contract's bytecode or in
+  `eth_getCode` records that an Aspect is attached; the only way to find out is
+  to call `aspectsOf` on the AspectCore precompile.
+- >-
+  THERE ARE THREE WAYS A TRANSACTION CAN FAIL AND ONLY TWO OF THEM LOOK LIKE
+  FAILURE. AnteHandler rejection during DeliverTx leaves the transaction in the
+  CometBFT block with NO ETHEREUM RECEIPT AT ALL. An EVM revert gives status 0.
+  An Aspect rejection also gives status 0, but with an error string that is not
+  an EVM revert reason and a trace containing no REVERT. A client reading only
+  `receipt.status` cannot tell the last two apart, and a client that trusts
+  `eth_getTransactionReceipt` cannot see the first at all.
+- >-
+  A TRANSACTION IN A BLOCK CAN HAVE NO RECEIPT, NO `eth_getTransactionByHash`
+  ENTRY, AND NOT APPEAR IN THE BLOCK'S TRANSACTION LIST. The `ethereum_tx` event
+  that carries `ethereumTxHash` is emitted by the LAST ante decorator, so any
+  earlier ante failure — stale nonce, insufficient balance, gas price below the
+  now-current minimum, bad signature — leaves nothing for the CometBFT indexer to
+  find. GetTxByEthHash then errors and GetTransactionReceipt returns null.
+  EthMsgsFromCosmosBlock independently filters the block by
+  TxSuccessOrExceedsBlockGasLimit, so the transaction is missing from
+  `eth_getBlockByNumber` too. THE ONE EXCEPTION IS EXACT AND FRAGILE: a
+  transaction that exceeded the BLOCK gas limit is kept, and it is recognised by
+  a SUBSTRING MATCH on the Cosmos log against the literal
+  "out of gas in location: block gas meter; gasWanted:".
+- >-
+  EXECUTING PREVRANDAO PANICS THE TRANSACTION OUT OF EXISTENCE. BlockContext.Random
+  is `nil, // not supported`, opRandom calls `.Bytes()` on it, and
+  common.Hash.Bytes has a value receiver — so 0x44 is a nil dereference. The Go
+  panic is caught by the Cosmos SDK's runTx recovery, the resulting log is a Go
+  runtime message rather than the block-gas sentinel, and so the transaction takes
+  the erasure path above: fees deducted and nonce incremented by the ante handler,
+  and nothing at all visible over JSON-RPC. 0x44 is also DIFFICULTY, so pre-merge
+  bytecode hits the same trap. Compare Cosmos EVM, where PREVRANDAO is the
+  constant 0xffff…ff, and Sei, where it is a function of the timestamp.
+- >-
+  THE CHAIN REPORTS CANCUN AND IS NOT CANCUN. Artela's own Cancun jump table
+  enables EIP-1153 and EIP-5656 and comments out EIP-4844, EIP-7516 and EIP-6780
+  under a FIXME. So TSTORE and MCOPY work; BLOBHASH and BLOBBASEFEE are UNDEFINED
+  opcodes that burn the frame's gas; SELFDESTRUCT still really destroys; and
+  there is no point-evaluation precompile at 0x0a because the precompile switch
+  stops at Berlin. Four different wrong answers behind one fork name.
+- >-
+  SHANGHAI AND CANCUN ARE BLOCK NUMBERS HERE. The ChainConfig proto has
+  `shanghai_block` and `cancun_block`, and EthereumConfig() manufactures the
+  ShanghaiTime and CancunTime go-ethereum wants as either 0 or MaxUint64 by
+  comparing the current HEIGHT against them. Ethereum made both of these
+  timestamp forks; Artela un-made that decision. Prague and Osaka have no field
+  at all and are not schedulable.
+- >-
+  EVERY TRANSACTION IS BILLED FOR AT LEAST HALF ITS GAS LIMIT. ApplyMessage ends
+  with `gasUsed = max(gasLimit * MinGasMultiplier, actualGasUsed)`, default
+  multiplier 0.5, and the receipt reports the floor rather than the measurement.
+  Padding a gas limit — the standard defensive habit everywhere else — is a
+  direct loss, and gas estimators that learn from receipts learn the padded
+  number.
+- >-
+  A TRANSACTION WITH v = r = s = 0 CAN BE VALID. If the calldata starts with the
+  four bytes 0xCAFECAFE followed by a four-byte keccak checksum, and the target
+  has code, the sender is not recovered — it is RETURNED by a verifier Aspect
+  bound to the target, and accepted if that same Aspect is also bound to the
+  address it named. There is no new transaction type and no envelope change, so
+  every Ethereum tool parses it as an ordinary transaction with a broken
+  signature. `ecrecover(sig) == from` is not false here, it is undefined.
+  Verification costs a flat, non-refundable 150,000 gas added to intrinsic gas.
+- >-
+  CALLING THE ASPECT SYSTEM CONTRACT FROM A CONTRACT IS A SILENT NO-OP.
+  0x…A27E14 is intercepted in the keeper by comparing `msg.To`, before any EVM
+  frame is built, and it is NOT in the EVM's own precompile map. So it works as a
+  transaction target and, from inside bytecode, it is an account with no code —
+  which go-ethereum's CALL reports as success with empty output. A contract that
+  tries to bind, unbind or query an Aspect gets a successful-looking call that
+  did nothing.
+- >-
+  DEPLOYING AN ASPECT MINTS A CONTRACT ADDRESS THAT HAS NO CODE. The aspect id is
+  `crypto.CreateAddress(from, nonce)` — the same derivation CREATE uses, out of
+  the same address space — and the transaction receipt reports it in
+  `contractAddress`. What lives there is WASM in a separate store, so
+  `eth_getCode` at an address a receipt says was just created returns `0x`,
+  forever.
+- >-
+  A BLOB TRANSACTION IS NOT REJECTED, IT IS DEMOTED. go-ethereum v1.12.0 decodes
+  type 0x03, and Artela's NewTxDataFromTx has cases for only 0x01 and 0x02 with a
+  `default:` that builds a LEGACY transaction — so the type byte, blob hashes and
+  blob fee cap are discarded and the transaction is re-encoded as a 0x00 while
+  MsgEthereumTx.Hash keeps the original 0x03 hash. Because MsgEthereumTx stores
+  the transaction FIELD BY FIELD in a protobuf Any rather than keeping the raw
+  envelope, the original bytes cannot be recovered to check.
+- >-
+  BLOCKHASH IS NOT LIMITED TO 256 BLOCKS. GetHashFn serves CometBFT header hashes
+  for any height in the current chain epoch out of the keeper's own store, so a
+  contract can read hashes arbitrarily far back. Mainnet contracts that rely on
+  BLOCKHASH returning zero beyond 256 blocks — a common cheap "is this recent"
+  test — silently get a real hash instead.
+- >-
+  NO MODULE PRECOMPILES AT ALL, WHICH BREAKS PORTS IN THE OPPOSITE DIRECTION.
+  This is a Cosmos EVM chain with no bank, staking, gov, slashing, distribution
+  or IBC precompiles and no bech32 helper — the 0x0100 / 0x0400 / 0x0800-0x0807
+  block that the cosmos-evm and Sei rows document is entirely empty here. A
+  contract moved from another Cosmos EVM chain does not revert when it calls one;
+  it succeeds with empty output, because those addresses are empty accounts.
+- >-
+  "ELASTIC EXECUTION" AND PARALLEL EXECUTION ARE NOT IN THE SHIPPED CLIENT. The
+  pinned SDK fork's DeliverTx calls runTx once per transaction against a single
+  deliverState; there is no scheduler, no optimistic execution, no conflict
+  detection and no re-run path anywhere in the five repos. Likewise the Aspect
+  block-level proposal handler exists and is COMMENTED OUT of app.go, so
+  PrepareProposal and ProcessProposal are the stock Cosmos SDK defaults and no
+  Aspect ever runs at the proposal phase.
+- >-
+  THE NETWORK IS NOT REACHABLE. Every RPC endpoint published for chain id 11820
+  and 11822 in both chainid.network and chainlist.org, plus artela.network,
+  docs.artela.network and both explorers, returned Cloudflare origin errors or
+  refused connections on 2026-08-27. Nothing in this row rests on a live probe,
+  and every claim above is a claim about what the pinned client WOULD do.

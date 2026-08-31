@@ -1,0 +1,777 @@
+schema_version: 2
+
+chain:
+  name: Rollkit / Evolve (ev-node + ev-reth)
+  slug: rollkit
+  role: template
+  live: true
+  evidence: source
+  note: >-
+    NOT A CHAIN. "Rollkit" is now `evstack/ev-node` — github.com/rollkit/rollkit
+    301-redirects to github.com/evstack/ev-node, and the product is branded
+    "Evolve". ev-node is a sovereign-rollup node: it sequences, signs and posts
+    to a DA layer (Celestia in practice) and drives a SEPARATE execution client
+    over the Engine API. It is execution-agnostic; the EVM path is the
+    in-repo adapter `execution/evm` plus a reth fork, `evstack/ev-reth`.
+
+    Why `template` and not `stack`: every EVM-visible divergence below is
+    per-deployment configuration, not inherited code. ev-reth reads a
+    `config.evolve` stanza out of the chainspec — base-fee sink, EIP-1559
+    parameters, contract size limit, deploy allowlist, mint admin, proposer
+    admin — each with its own `...ActivationHeight`
+    (crates/node/src/config.rs:ChainspecEvolveConfig). ev-node reads block
+    time, lazy mode, sequencer kind and the three Celestia namespaces from
+    per-node config (pkg/config/defaults.go:DefaultConfig). Two Evolve EVM
+    chains can therefore disagree about whether the base fee is burned, how
+    big a contract may be, and whether native token can be minted. No
+    descendant is describable by pointing at this row, which is exactly
+    SCHEMA.md's `template` test. Nearly every entry below carries
+    `availability: optional`.
+
+    IS THE ROW WARRANTED? Yes, but on narrower grounds than op-stack. The
+    shared artifact here is a genuinely shared BINARY PAIR (ev-node + ev-reth,
+    both released and tagged, ev-reth published as ghcr.io/evstack/ev-reth),
+    not a codebase each descendant forks — which is what disqualified
+    Frontier, Polygon CDK and BeaconKit. What is thin is the DESCENDANT LIST:
+    exactly one live EVM deployment could be identified (Eden mainnet, chain
+    714, run by Celestia's own org), so this row is a template with one
+    confirmed instance. See `deployments` below.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: reth (via evstack/ev-reth); ev-node itself contains no EVM
+  sync_point: >-
+    ev-reth v0.5.2 pins reth as a Cargo dependency and adds crates around it;
+    it does NOT vendor a modified interpreter. The EVM opcode/gas semantics
+    are upstream reth's. Eden mainnet reports
+    `reth/v2.2.0-88505c7/x86_64-unknown-linux-gnu` from
+    `web3_clientVersion` — ev-reth does not rename itself, so a probe CANNOT
+    distinguish an Evolve chain from stock reth by client string.
+  note: >-
+    The Plasma row is the near-precedent — an execution layer that is
+    upstream reth — and Rollkit is the instructive contrast. Plasma runs reth
+    UNMODIFIED and the finding was the emptiness. ev-reth is a real fork: it
+    adds a transaction type, two precompiles, a custom payload builder, a
+    custom consensus rule and a base-fee handler. The EVM *interpreter* is
+    stock; the *block* around it is not.
+
+client:
+  name: ev-node (Evolve)
+  repo: https://github.com/evstack/ev-node
+  version: v1.2.3
+  commit: d76e0dfcb0ffa3384d875fa2538eeb9a5321b335
+  language: go
+  built_on: libp2p, go-header, Celestia DA client; drives the EL over the Engine API
+  note: >-
+    v1.2.3 is the newest non-prerelease tag on the monorepo. The EVM adapter
+    is a Go submodule inside it (execution/evm, separately tagged
+    execution/evm/v1.1.1). The redirect from rollkit/rollkit is what
+    establishes the rename; there is no separate `rollkit/go-execution-evm`
+    any more — it redirects to evstack/go-execution-evm and its code now
+    lives in-tree.
+  companion_repos:
+  - name: ev-reth
+    repo: https://github.com/evstack/ev-reth
+    version: v0.5.2
+    commit: 7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0
+    provides: "the actual EVM: reth fork with tx type 0x76, precompiles 0xF100/0xF101, EvolvePayloadBuilder, EvolveConsensus, base-fee redirect, configurable EIP-170 limit"
+
+live_probe:
+  endpoint: https://rpc.eden.gateway.fm/
+  chain_id: 714
+  observed_at_block: 182440651
+  note: >-
+    Eden mainnet, operated by celestiaorg. It is the ONLY live Evolve EVM
+    deployment identified. Per SCHEMA.md's `availability: optional`, every
+    `src_live:` below is evidence about EDEN, not about the template: another
+    deployment may set the same knobs differently. `web3_clientVersion` at
+    this block returned `reth/v2.2.0-88505c7/x86_64-unknown-linux-gnu`;
+    `eth_chainId` returned `0x2ca`.
+
+deployments:
+  confirmed:
+  - name: Eden
+    chain_id: 714
+    live: true
+    genesis_time: "2025-12-11T16:09:44Z"
+    gas_token: TIA (18 decimals)
+    block_time: 100ms
+    da: "Celestia mainnet, namespaces eden_mainnet_headers / eden_mainnet_data"
+    src_doc: https://github.com/celestiaorg/eden-docs/blob/main/public/eden-artifacts/mainnet/ev-reth.genesis.json
+    note: "found by searching public genesis files for the ev-reth-specific chainspec keys `mintAdmin` and `baseFeeSink`; not advertised from any evstack page"
+  not_found: >-
+    No other live EVM chain running ev-node could be identified. Forma was
+    checked and REFUTED: rpc.forma.art reports
+    `Geth/v1.14.3-stable-057abfaf` at chain 984122, which is not ev-reth.
+    "EVOLVE Mainnet" on chainlist (chain 3424, EVO token) is an unrelated
+    project. evstack publishes no ecosystem page listing chains.
+
+consensus:
+  engine: >-
+    Single centralized sequencer (ev-node in aggregator mode). Optional Raft
+    cluster for sequencer HA, not for consensus. Celestia supplies DATA
+    AVAILABILITY and, for the forced-inclusion namespace only, ORDERING.
+  finality: >-
+    Two incompatible notions. (1) The real one: a block is final when its
+    header AND data blobs are on Celestia and Celestia has finalized them.
+    (2) The one the Ethereum RPC reports: `finalized` = head minus 3 rollup
+    blocks, a hard-coded local lag with NO reference to DA at all. See eips
+    and gotchas.
+  block_time: >-
+    per deployment (pkg/config/defaults.go default 1s; Eden runs 100ms). With
+    LazyMode enabled, blocks are produced only when transactions arrive, plus
+    one heartbeat block every LazyBlockInterval (default 60s).
+  src: block/internal/executing/executor.go:executionLoop
+  src_live: "eth_getBlockByNumber @ 182440651 -> 100ms cadence; blocks 182440253-182440255 all carry timestamp 0x6a91e1ab"
+  note: >-
+    There is no L1 settlement contract, no fraud proof and no validity proof.
+    Nothing on Celestia adjudicates the rollup's state transition. The
+    canonical chain is "the blocks the sequencer signed, in the order its
+    header chain declares, as recovered from Celestia" — plus, if the
+    forced-inclusion namespace is configured, a censorship check that full
+    nodes apply locally by halting.
+
+baseline_fork: prague
+baseline_note: >-
+  The fork level is per-deployment genesis, not a client constant. Both the
+  in-repo example genesis (execution/evm/docker/chain/genesis.json) and Eden
+  mainnet set every block-numbered fork to 0 and shanghaiTime/cancunTime/
+  pragueTime to 0; Eden sets osakaTime to 97000000, which had not been
+  reached at the probed block. So the OPCODE and GAS rules are Prague.
+  THREE OF PRAGUE'S FOUR SYSTEM CONTRACTS ARE NOT DEPLOYED, and neither is
+  Cancun's — see system_contracts. A chain can claim a fork by chainspec
+  timestamp while omitting the state the fork assumes, and Rollkit's
+  documented genesis omits it by default.
+
+forks:
+  src: execution/evm/docker/chain/genesis.json:pragueTime
+  note: >-
+    A deployment has no named hard forks of its own. Upgrading means
+    restarting every node on a new ev-reth binary and, for the `evolve`
+    stanza, a chainspec edit — which is why each option carries an
+    `...ActivationHeight` so operators can stage the change. Those activation
+    heights are the closest thing to a fork schedule this framework has, and
+    they are not published in any block header.
+  timeline:
+  - name: "genesis (homestead..prague)"
+    activation_time: 0
+    mainnet_equivalent: prague
+    activation_condition: "genesis chainspec: all block forks 0, shanghaiTime/cancunTime/pragueTime 0"
+    src: execution/evm/docker/chain/genesis.json:pragueTime
+  - name: osaka
+    status: pending
+    mainnet_equivalent: osaka
+    activation_condition: "per-deployment osakaTime; Eden sets 97000000, unreached at the probed block"
+    src_doc: https://github.com/celestiaorg/eden-docs/blob/main/public/eden-artifacts/mainnet/ev-reth.genesis.json
+  - name: amsterdam
+    status: pending
+    mainnet_equivalent: amsterdam
+    activation_condition: "per-deployment amsterdamTime; ev-node already speaks engine_forkchoiceUpdatedV4 / getPayloadV6 / newPayloadV5 and derives slotNumber from rollup height"
+    src: execution/evm/execution.go:deriveSlotNumber
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    availability: optional
+    activation_condition: "chainspec config.evolve.baseFeeSink + baseFeeRedirectActivationHeight"
+    note: >-
+      THE BASE FEE IS NOT BURNED. ev-reth intercepts the `reward_beneficiary`
+      hook and credits `base_fee_per_gas * gas_used` to a configured sink
+      address, so total supply is unchanged by fees. The elasticity
+      multiplier and max-change denominator are also chainspec overrides, so
+      the base-fee update rule itself is per-deployment: Eden runs
+      denominator 5000 and elasticity 10 against mainnet's 8 and 2, which
+      makes its base fee move ~625x more slowly than mainnet's per block.
+      Confirmed live to the wei: at block 182440651, gasUsed 127872 and
+      baseFeePerGas 1480, and the sink's balance rose by exactly 189250560
+      = 1480 * 127872 across that block.
+    src: crates/ev-revm/src/base_fee.rs:BaseFeeRedirect, crates/node/src/chainspec.rs:base_fee_elasticity_multiplier
+    src_live: "eth_getBalance(0x0337d738074c83B6133940051490c7c6080a5094) @ 182440650 -> 0x2c6984933f8c568e2, @ 182440651 -> 0x2c6984934040d24e2, delta 189250560 == baseFeePerGas*gasUsed"
+  170:
+    status: modified
+    availability: optional
+    activation_condition: "chainspec config.evolve.contractSizeLimit + contractSizeLimitActivationHeight"
+    note: >-
+      The 24576-byte contract size limit is a chainspec value. Default is
+      EIP-170's 24 KiB (crates/node/src/config.rs:DEFAULT_CONTRACT_SIZE_LIMIT);
+      Eden mainnet sets 131072, i.e. 128 KiB, active from genesis. This is the
+      second row in this dataset to move EIP-170 (Berachain is the other) and
+      the first where the limit is per-deployment configuration rather than a
+      client constant, so tooling cannot assume a single value for "a Rollkit
+      chain".
+    src: crates/node/src/config.rs:DEFAULT_CONTRACT_SIZE_LIMIT, crates/ev-revm/src/factory.rs:contract_size_limit_for_block
+    src_doc: https://github.com/celestiaorg/eden-docs/blob/main/public/eden-artifacts/mainnet/ev-reth.genesis.json
+  3860:
+    status: unrecorded
+    note: >-
+      Whether raising `contractSizeLimit` also raises the EIP-3860 initcode
+      cap (revm normally derives it as 2x the code limit) was not established
+      from source, and no deployment probe distinguishes the two. Deploying a
+      >49152-byte initcode against Eden would settle it.
+  4788:
+    status: modified
+    severity: high
+    note: >-
+      The header field survives; the mechanism does not. ev-node hard-codes
+      `parentBeaconBlockRoot` to the zero hash in every payload it builds, and
+      ev-reth's payload builder hard-codes `Some(B256::ZERO)` too. The
+      beacon-roots system contract at 0x000F3df6...Beac02 is NOT deployed, so
+      the ring buffer is never written and never readable. A contract reading
+      `block.parentBeaconBlockRoot` (or the 4788 contract) on a Rollkit chain
+      gets a constant zero, or an empty return, with no revert — which is
+      exactly the silent-wrong-answer class.
+    src: execution/evm/execution.go:buildPayloadAttributes, crates/node/src/builder.rs:parent_beacon_block_root
+    src_live: "eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) @ 182440651 -> 0x; eth_getBlockByNumber @ 182440651 -> parentBeaconBlockRoot 0x00..00"
+  2935:
+    status: removed
+    note: >-
+      Prague is active by chainspec timestamp but the history-storage
+      contract at 0x0000F90827F1...002935 has no code, on Eden and in
+      ev-node's own example genesis alloc. BLOCKHASH therefore keeps its
+      pre-Prague 256-block window, which at Eden's 100ms block time is
+      TWENTY-FIVE SECONDS of history rather than mainnet's ~54 minutes.
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 182440651 -> 0x"
+  6110:
+    status: removed
+    note: no beacon chain; requestsHash is the empty-list hash in every block.
+    src_live: "eth_getBlockByNumber @ 182440651 -> requestsHash 0xe3b0c442...7852b855"
+  7002:
+    status: removed
+    note: withdrawal-request predeploy absent; there is no validator set to withdraw from.
+    src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 182440651 -> 0x"
+  7251:
+    status: removed
+    note: consolidation-request predeploy absent.
+    src_live: "eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 182440651 -> 0x"
+  4895:
+    status: removed
+    note: >-
+      ev-node always sends an EMPTY withdrawals list in payload attributes,
+      and ev-reth's payload builder hard-codes `Some(Default::default())`.
+      withdrawalsRoot is the empty-trie root in every block. Nothing can ever
+      credit balance through the withdrawal path.
+    src: execution/evm/execution.go:buildPayloadAttributes
+    src_live: "eth_getBlockByNumber @ 182440651 -> withdrawals [], withdrawalsRoot 0x56e81f17...363b421"
+  4844:
+    status: removed
+    note: >-
+      ev-node passes an empty blob-hash list to every `engine_newPayload`
+      call, so no blob-carrying transaction can be included. blobGasUsed and
+      excessBlobGas are present in the header and permanently zero.
+    src: execution/evm/execution.go:processPayload
+    src_live: "eth_getBlockByNumber @ 182440651 -> blobGasUsed 0x0, excessBlobGas 0x0"
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO IS THE BLOCK NUMBER. ev-node computes the prevRandao payload
+      attribute as `common.BigToHash(new(big.Int).SetUint64(blockHeight))` —
+      a one-line function with no entropy input at all. Confirmed live: at
+      heights 182440253-182440258 the mixHash values are
+      0x...0adfd13d through 0x...0adfd142, i.e. the height, zero-padded.
+      Any contract using `block.prevrandao` as randomness on a Rollkit chain
+      is using a counter that anyone can predict arbitrarily far ahead. It
+      does not revert, does not look constant, and passes a "is it nonzero,
+      is it changing" smoke test.
+    src: execution/evm/execution.go:derivePrevRandao
+    src_live: "eth_getBlockByNumber @ 182440253..182440258 -> mixHash 0x...0adfd13d .. 0x...0adfd142, equal to the block number in each case"
+  7951:
+    status: pending
+    note: >-
+      P256VERIFY arrives with Osaka, which Eden schedules at osakaTime
+      97000000 and had not reached at the probed block. `eth_call` to 0x0100
+      with 160 zero bytes returned empty output, which does not distinguish
+      "EIP-7951 semantics, invalid signature" from "no precompile at this
+      address"; the row does not claim it either way.
+    src_live: "eth_call(0x0100, 160 zero bytes) @ 182440651 -> 0x (ambiguous)"
+  7702:
+    status: inherited
+    note: Prague is active and the interpreter is upstream reth; not separately probed.
+
+non_eip_specs:
+  ADR-019:
+    name: Forced inclusion mechanism
+    adoption: optional
+    note: >-
+      ev-node's own spec series. Defines the forced-inclusion namespace, the
+      DA epoch, and the rule that a sequencer which omits a force-included
+      transaction past its grace boundary is malicious. Per-deployment: it is
+      off unless the node is given a forced-inclusion namespace.
+    src: block/internal/da/forced_inclusion_retriever.go:ErrForceInclusionNotConfigured
+  ADR-021:
+    name: Lazy aggregation with DA layer consistency
+    adoption: optional
+    note: >-
+      Defines lazy block production and the `DataHashForEmptyTxs` sentinel
+      that lets an empty block skip its DA data blob while keeping the header
+      chain contiguous.
+    src: block/internal/common/empty.go:DataHashForEmptyTxs
+  ADR-023:
+    name: Execution-owned proposer rotation
+    adoption: optional
+    note: >-
+      The EXECUTION layer picks the next consensus proposer: ExecuteTxs
+      returns a NextProposerAddress, which ev-reth sources from the 0xF101
+      precompile's storage. An EVM transaction therefore rotates the
+      sequencer. Off unless proposerControlAdmin is set.
+    src: core/execution/execution.go:NextProposerAddress
+  ADR-012:
+    name: Based sequencing
+    adoption: optional
+    note: >-
+      A mode in which the sequencer accepts NO mempool transactions and takes
+      its entire ordering from the Celestia forced-inclusion namespace.
+    src: pkg/sequencers/based/sequencer.go
+
+tx_types:
+  "0x76":
+    name: EvNodeTransaction (batch calls + fee payer)
+    status: added
+    availability: optional
+    activation_condition: "present in ev-reth >= v0.4.0; not gated by chainspec, so it is a property of the BINARY a deployment runs, with no on-chain signal"
+    spec: crates/ev-reth README, "EvNode Transaction (Type 0x76)"
+    note: >-
+      Replaces the single to/value/input triple with a `Vec<Call>` executed
+      ATOMICALLY inside one transaction — if any call reverts the whole batch
+      is journal-reverted — and adds an optional `fee_payer_signature`. Only
+      the first call in a batch may be a contract creation. Two independent
+      signatures with two different domains: the executor signs over domain
+      byte 0x76, the sponsor signs over domain byte 0x78 with the executor's
+      address bound in, so a sponsor signature cannot be replayed under a
+      different executor. Sponsored gas is debited from the sponsor and gas
+      REFUNDS are returned to the sponsor, not the sender. `feePayer` appears
+      as an extra field on `eth_getTransactionByHash` and on receipts —
+      a field no standard receipt decoder knows about.
+    src: crates/ev-primitives/src/tx.rs:EVNODE_TX_TYPE_ID, crates/ev-primitives/src/tx.rs:EVNODE_SPONSOR_DOMAIN, crates/ev-revm/src/handler.rs:batch_calls
+    src_live: "not confirmed on Eden: eth_sendRawTransaction with a stub 0x76 payload @ 182440651 returned the same generic 'failed to decode signed transaction' as 0x7e and 0x04, so the probe cannot distinguish supported from unsupported"
+  "0x03":
+    status: removed
+    note: blob transactions cannot be included; ev-node passes an empty blob-hash list to newPayload. See eips.4844.
+    src: execution/evm/execution.go:processPayload
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 2
+  note: >-
+    Ordinary types are mainnet's. Type 0x76 in its sponsored form carries TWO
+    parties with two different digests — an executor and a fee payer — which
+    makes this the second lineage in this dataset with genuine protocol-level
+    fee delegation, independently of Kaia and with a completely different
+    encoding. The sponsor's signature is not over the transaction the
+    executor signed: it is over a separate preimage prefixed with domain byte
+    0x78 that includes the executor's recovered address. `signers_per_tx: 2`
+    counts parties; the unsponsored form has one.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: crates/ev-primitives/src/tx.rs:EVNODE_SPONSOR_DOMAIN
+    p256:
+      status: pending
+      authorizes: never
+      precompile: none
+      note: P256VERIFY arrives with Osaka, not yet active on the one live deployment.
+
+non_evm_transactions:
+  entries:
+  - id: forced_inclusion_blob
+    name: raw Celestia blob in the forced-inclusion namespace
+    status: added
+    availability: optional
+    activation_condition: node configured with a forced-inclusion namespace AND genesis da_epoch_forced_inclusion
+      > 0
+    note: Not a transaction type — a raw Celestia blob. Any bytes written by anyone to the rollup's
+      forced-inclusion namespace are collected in DA-height order across a DA epoch and handed to
+      the executor as candidate transactions. This is the only path by which something other than
+      the sequencer's mempool can determine ordering, and the only writer authorization is "can pay
+      for a Celestia blob". It is also the only place where CELESTIA's order, rather than the sequencer's,
+      is binding.
+    src: block/internal/da/forced_inclusion_retriever.go:RetrieveForcedIncludedTxs
+precompiles:
+  "0x000000000000000000000000000000000000f100":
+    name: Native token mint/burn (INativeToken)
+    status: added
+    severity: high
+    availability: optional
+    activation_condition: "chainspec config.evolve.mintAdmin + mintPrecompileActivationHeight"
+    note: >-
+      mint(address,uint256) and burn(address,uint256) write account balances
+      directly through the EVM internals API — arbitrary, unbacked native
+      supply change, callable by the configured admin and by any address the
+      admin adds to an on-precompile allowlist. There is no event and no log;
+      the README states plainly that these operations emit nothing. Total
+      native supply on a Rollkit chain is therefore not conserved and not
+      auditable from logs. Eden mainnet has this ACTIVE from genesis with the
+      admin set to an upgradeable proxy at 0x...Ad00.
+
+      Second finding at the same address: this precompile is the only one on
+      the chain that has CODE. ev-reth installs a one-byte `0xFE` bytecode at
+      0xF100 so `EXTCODESIZE` is 1 and Solidity's extcode guard on a typed
+      external call passes. Confirmed live and contrasted against the
+      standard precompiles, which all return empty code. It sits exactly on
+      SCHEMA.md's precompile / system_contract boundary and satisfies neither
+      definition cleanly.
+    src: crates/ev-precompiles/src/mint.rs:MINT_PRECOMPILE_ADDR, crates/ev-precompiles/src/mint.rs:Bytecode
+    src_live: "eth_getCode(0x..f100) @ 182440651 -> 0xfe, while eth_getCode(0x01/0x04/0x0a/0x0b/0x11) -> 0x; eth_call allowlist(0x0) @ 182440651 -> 32 zero bytes (selector decoded, so the precompile is live)"
+  "0x000000000000000000000000000000000000f101":
+    name: Proposer control (IProposerControl)
+    status: added
+    severity: high
+    availability: optional
+    activation_condition: "chainspec config.evolve.proposerControlAdmin + proposerControlActivationHeight"
+    note: >-
+      setNextProposer(bytes32) stores the ev-node signer that must sign the
+      NEXT block. Execution state therefore selects consensus leadership: an
+      EVM transaction rotates the sequencer. The precompile validates only
+      that the value is non-zero, so a wrong 32 bytes stalls the chain until
+      another rotation. It rejects DELEGATECALL by design (msg.sender would
+      be the original EOA).
+
+      The dangerous case is BEFORE the activation height, and ev-reth's own
+      README says it: a call to 0xF101 is then an ordinary call to an empty
+      account, which SUCCEEDS and writes nothing. A rotation transaction sent
+      one block early gets a status-1 receipt and has no effect.
+
+      NOT ACTIVE on Eden — nextProposer() returns empty and the address has
+      no code, which is exactly the `availability: optional` case: this row
+      records what a deployment MAY have.
+    src: crates/ev-precompiles/src/proposer.rs:PROPOSER_CONTROL_PRECOMPILE_ADDR
+    src_live: "eth_getCode(0x..f101) @ 182440651 -> 0x; eth_call nextProposer() @ 182440651 -> 0x (absent on Eden)"
+
+system_contracts:
+  "0x000000000000000000000000000000000000ad00":
+    name: AdminProxy (mint / proposer admin)
+    status: added
+    availability: optional
+    activation_condition: "genesis alloc; ev-reth ships the generator script and suggests this address"
+    note: >-
+      The framework's recommended pattern is to make the mint admin a
+      CONTRACT rather than an EOA, so the key behind unbacked native minting
+      can be rotated to a multisig without a hard fork. Present with code and
+      storage on Eden mainnet.
+    src: contracts/script/GenerateAdminProxyAlloc.s.sol:SUGGESTED_ADDRESS
+    src_live: "eth_getCode(0x..ad00) @ 182440651 -> 0x6080604052... (non-empty)"
+  "0x0337d738074c83b6133940051490c7c6080a5094":
+    name: FeeVault (Eden's base-fee sink)
+    status: added
+    availability: optional
+    activation_condition: "chainspec config.evolve.baseFeeSink; address is per-deployment"
+    note: >-
+      A real contract, not a burn hole. It is also the block `miner` in every
+      Eden block, because ev-reth defaults suggestedFeeRecipient to the sink
+      when ev-node leaves it zero — so COINBASE is a constant contract
+      address on this chain, and both halves of the fee land there.
+    src: crates/node/src/builder.rs:base_fee_sink_for_block
+    src_live: "eth_getBlockByNumber @ 182440651 -> miner 0x0337d738...a5094; eth_getCode at that address -> non-empty"
+  "0x000f3df6d732807ef1319fb7b8bb8522d0beac02":
+    name: Beacon roots (EIP-4788)
+    status: removed
+    note: not in the genesis alloc; see eips.4788.
+    src_live: "eth_getCode @ 182440651 -> 0x"
+  "0x0000f90827f1c53a10cb7a02335b175320002935":
+    name: History storage (EIP-2935)
+    status: removed
+    note: not in the genesis alloc; see eips.2935.
+    src_live: "eth_getCode @ 182440651 -> 0x"
+
+system_transactions:
+  none:
+    status: removed
+    note: >-
+      A deliberate negative, and an unusual one. There is no deposit
+      transaction, no L1-attributes transaction, no anchor transaction and no
+      4788/2935 system call. Nothing in a Rollkit block is inserted by the
+      protocol: every transaction in a block is a user-signed transaction,
+      including the forced-inclusion ones, which arrive as ordinary signed
+      EVM transactions read out of a Celestia namespace. Compare Taiko, whose
+      anchor is a protocol transaction wearing type 0x02, and OP Stack's
+      0x7e. Rollkit's L1 does not push anything into the rollup at all.
+    src: crates/node/src/builder.rs:apply_pre_execution_changes
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - name: PREVRANDAO
+    opcode: "0x44"
+    severity: high
+    note: "equals the block number. See eips.4399."
+    src: execution/evm/execution.go:derivePrevRandao
+  - name: TIMESTAMP
+    opcode: "0x42"
+    severity: high
+    note: >-
+      NOT STRICTLY INCREASING. ev-node passes seconds to the Engine API while
+      producing blocks far faster than 1 Hz, and ev-reth ships a custom
+      consensus rule that accepts `header.timestamp >= parent.timestamp`
+      instead of `>`. On Eden, ten consecutive blocks share one timestamp
+      value. Any contract using block.timestamp as a unique key, a
+      monotonic clock, a rate limiter, or a per-block nonce is wrong here,
+      and wrong silently.
+    src: crates/evolve/src/consensus.rs:EvolveConsensus, execution/evm/execution.go:buildPayloadAttributes
+    src_live: "eth_getBlockByNumber @ 182440253,182440254,182440255 -> timestamp 0x6a91e1ab on all three; 182440256-182440258 -> 0x6a91e1ac"
+  - name: BLOCKHASH
+    opcode: "0x40"
+    note: >-
+      Semantics are upstream reth's, but the 256-block window means something
+      different at a 100ms block time: ~25 seconds of history rather than
+      ~54 minutes, and EIP-2935's extension is unavailable because the
+      history contract is not deployed.
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 182440651 -> 0x"
+  - name: COINBASE
+    opcode: "0x41"
+    note: constant — the configured base-fee sink, not a rotating proposer.
+    src: crates/node/src/builder.rs:base_fee_sink_for_block
+
+fee_model:
+  metering: standard EVM gas (upstream reth interpreter)
+  fee_market: >-
+    EIP-1559, with the elasticity multiplier, max-change denominator and
+    initial base fee all overridable per deployment from the chainspec.
+  extra_components:
+  - name: nonce on failure
+    src: "crates/node/src/builder.rs:execute_transaction, crates/node/src/evm_executor.rs:execute_transaction_without_commit"
+    note: >-
+      NONCE ON FAILURE: PRESERVED, and there is no receipt because the
+      transaction is not in the block. `EvolvePayloadBuilder::build_payload`
+      loops over the sequencer's list and matches on `execute_transaction`; the
+      `Err` arm is a `tracing::warn!` and nothing else — no append, no receipt,
+      no gas charge. Nothing is committed for it, because the executor's own
+      entry point is `execute_transaction_without_commit`: the block-gas check
+      and revm's validation (nonce, balance, fee cap) all return `Err` BEFORE any
+      state is written, and the caller only commits on `Ok`. So a transaction the
+      sequencer ordered but the EVM refuses — nonce already consumed,
+      insufficient balance, gas price below the base fee, gas limit over the
+      block's remainder — leaves the account nonce untouched and is freely
+      resubmittable. A REVERT is different and ordinary: it returns `Ok`, is
+      appended, and gets a `status: 0` receipt with the nonce burned.
+
+      The distinctive part is not the nonce answer but the SILENCE around it.
+      Rollkit is in the "ordered then erased" class with Conflux, IOTA EVM and
+      Artela, but the sender's nonce is safe here in a way it is not on Artela —
+      the transaction was never executed at all, so there is nothing to be
+      inconsistent about. The cost is only that the discrepancy between the
+      sequencer's ordering and the EVM's block is recorded nowhere.
+  - name: base fee is credited, not burned
+    severity: high
+    note: see eips.1559 — the sink receives base_fee_per_gas * gas_used, verified to the wei.
+    src: crates/ev-revm/src/base_fee.rs:BaseFeeRedirect
+  - name: protocol-level gas sponsorship
+    note: >-
+      Type 0x76's fee payer pays max_fee_per_gas * gas_limit and receives the
+      refund; the executor needs balance only for the value it moves. This is
+      consensus-level sponsorship, not ERC-4337 — contrast Plasma, whose
+      zero-fee path turned out to be a 4337 paymaster.
+    src: crates/ev-revm/src/handler.rs:validate_and_deduct_sponsored_tx
+  - name: gas token supply is mutable
+    severity: high
+    note: the 0xF100 precompile mints and burns the fee token itself, with no log.
+    src: crates/ev-precompiles/src/mint.rs:MINT_PRECOMPILE_ADDR
+  - name: min_gas_price floor in the payload builder
+    note: "the payload builder carries a configurable min_gas_price (default 1 gwei) independent of the base fee; a transaction below it is simply not selected."
+    src_doc: https://github.com/evstack/ev-reth/blob/main/README.md
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+  - name: mixHash / prevRandao
+    note: the block number, zero-padded to 32 bytes.
+    src: execution/evm/execution.go:derivePrevRandao
+  - name: parentBeaconBlockRoot
+    note: constant zero hash in every block.
+    src: execution/evm/execution.go:buildPayloadAttributes
+  - name: timestamp
+    note: non-decreasing rather than strictly increasing; repeats across blocks.
+    src: crates/evolve/src/consensus.rs:EvolveConsensus
+  - name: extraData
+    note: always empty; ev-reth sets extra_data to Default.
+    src: crates/node/src/builder.rs:extra_data
+  - name: miner
+    note: the base-fee sink, constant.
+    src: crates/node/src/builder.rs:base_fee_sink_for_block
+  - name: gasLimit
+    note: >-
+      per-payload, set by ev-node from the PARENT header's gas limit unless
+      overridden in the Engine API attributes — so a sequencer can change the
+      block gas limit at will, at any height, with no announcement.
+    src: execution/evm/execution.go:buildPayloadAttributes
+  note: >-
+    Separately: the Ethereum header is only half the story. The canonical
+    object the rollup commits to is ev-node's own signed header, posted to
+    Celestia in a different namespace from the block data. The EVM header a
+    JSON-RPC client sees is derived, not consensus.
+
+gotchas:
+  ordering_a_who_orders: >-
+    (a) THE SEQUENCER ORDERS; CELESTIA ONLY RECORDS THE ORDER. This is the
+    claim most often muddled in modular-rollup marketing, and the source
+    settles it. ev-node's single sequencer drains its own queue, hands the
+    ordered list to the EVM, gets a block back, and only THEN posts to
+    Celestia — and it posts in two pieces, to two different namespaces: a
+    SIGNED HEADER to the header namespace and the block's transaction DATA to
+    the data namespace (block/internal/submitting/da_submitter.go, SubmitHeaders
+    and SubmitData). What lands on Celestia is a finished, signed, already-executed
+    block. Celestia's own block order is irrelevant to it: reordering two
+    Rollkit blobs on Celestia would not reorder the rollup, because the
+    rollup's order is carried by the signed header chain inside the blobs.
+    Celestia is a bulletin board here, not a sequencer.
+
+    THE ONE EXCEPTION, and it is a real one: the optional forced-inclusion
+    namespace. Blobs there are collected across a DA EPOCH (a fixed span of
+    Celestia heights; Eden's genesis sets da_epoch_forced_inclusion = 100,
+    about 10 minutes) and concatenated in DA-height order, then blob order
+    within a height. For those transactions Celestia's order IS binding, and
+    ev-node checks the sequencer honoured it. In `--node.based_sequencer`
+    mode this is the ONLY source of transactions and the rollup becomes a
+    genuinely based rollup with Celestia as its sequencer.
+
+    Ordering also commits before execution in a second, subtler sense: the
+    EVM adapter serializes the whole in-flight execution payload as the FIRST
+    "transaction" returned by GetTxs and reconstitutes it in ExecuteTxs, so
+    the payload — and therefore the selection and ordering — is fixed inside
+    the EVM and cannot be rewritten by the consensus layer.
+  ordering_b_parallel: >-
+    (b) NO PARALLEL OR OPTIMISTIC EXECUTION. Blocks are built by
+    EvolvePayloadBuilder, which loops over the attribute-supplied transaction
+    list and calls execute_transaction on each in order, sequentially. There
+    is no conflict detection and nothing to re-run. The only "conflict" a
+    Rollkit chain has is between the sequencer's chosen list and what the EVM
+    is willing to execute, and that is resolved by dropping — see (c).
+  ordering_c_ordered_but_invalid: >-
+    (c) THE CENTRAL QUESTION: A VALIDLY ORDERED, INVALID TRANSACTION IS
+    SILENTLY DROPPED FROM THE BLOCK. In EvolvePayloadBuilder::build_payload,
+    execute_transaction's error arm is a `tracing::warn!` and nothing else:
+    the transaction is not appended to the block, gets no receipt, no
+    status-0, no gas charge, and leaves no on-chain trace whatsoever. It is
+    indistinguishable from never having been submitted. That covers nonce
+    already consumed, insufficient balance, gas price below the base fee,
+    and gas limit over the block's remainder. A REVERT is different and
+    normal: it returns Ok, is included, and gets a status-0 receipt.
+
+    This puts Rollkit squarely in the "ordered then erased" class alongside
+    Conflux, IOTA EVM and Artela, and opposite Taraxa. What is distinctive
+    here is WHY. On those chains the erasure is a consequence of a consensus
+    design. Here it is because the sequencer's ordering is a SUGGESTION: the
+    EVM is handed a list and returns a block, and the difference between the
+    two is discarded without being recorded anywhere.
+
+    THE NAMESPACE-SQUATTING CASE, which is the version unique to a sovereign
+    rollup on shared DA: anyone can write anything to any Celestia namespace,
+    including a rollup's forced-inclusion namespace. There IS a rule, and it
+    is fixed by the framework rather than left to the EL. FilterTxs
+    RLP-decodes each force-included blob and returns FilterRemove for
+    anything that fails — the log line literally says "filtering out invalid
+    transaction (gibberish)" — and separately for a transaction whose own gas
+    limit exceeds the block gas limit, or whose size exceeds the blob limit.
+    Removed transactions are consumed from the checkpoint and never retried.
+    A transaction that is too LARGE for the current block but otherwise valid
+    gets FilterPostpone and is retried at the next height, so
+    "postponed" and "dropped" are different outcomes with different retry
+    semantics. Garbage therefore cannot halt the chain and cannot make the
+    sequencer look malicious.
+
+    THE GAP, and it is the consensus-split-shaped one: FilterTxs is a method
+    on the EXECUTION client, not a protocol rule. ev-node calls it and trusts
+    it, both when building blocks and when auditing the sequencer for
+    censorship. Two execution clients that disagree about whether a given
+    blob is a valid transaction would disagree about whether the sequencer
+    censored it, and therefore about whether to halt — a liveness split
+    driven by an EL's decoder. Today there is one EVM execution client, so
+    the question is latent rather than live.
+  ordering_d_preconfirmation: >-
+    (d) YES — AND THE `finalized` TAG LIES. A block is visible over
+    eth_getBlockByNumber with full receipts the instant the sequencer builds
+    it, long before its data reaches Celestia. That much is expected. What is
+    not expected is that the Ethereum `finalized` and `safe` tags do not
+    track DA inclusion at all. On every block it produces, the EVM adapter
+    calls setFinalWithHeight, which sets safe = head - SafeBlockLag (2) and
+    finalized = head - FinalizedBlockLag (3) by pure height arithmetic. The
+    source comment says so outright: "This is a temporary mock value until
+    proper DA-based finalization is wired up." A DA-driven SetFinal exists
+    and is called from the submitter, but it writes the same field and is
+    overwritten by the next block's height-lag update, which on Eden happens
+    ten times a second.
+
+    Live: at the probed moment `finalized` was 7 blocks behind head and
+    `safe` 2 behind — 0.7 and 0.2 SECONDS on a chain whose DA layer produces
+    a block every ~6 seconds. An exchange, bridge or indexer that waits for
+    the `finalized` tag on a Rollkit chain is waiting for essentially
+    nothing: it is confirming a block the sequencer could still be the only
+    holder of. The honest finality signal is not on the Ethereum RPC at all —
+    it is ev-node's own RPC on port 7331, which is not exposed by the public
+    gateway.
+  sequencer_failure_modes: >-
+    Sequencer stops: the chain stops. There is no leader election. Recovery
+    is either the optional Raft cluster (HA for the same operator, not a
+    different one) or an operator-initiated rotation through the 0xF101
+    precompile if the deployment enabled it.
+
+    Sequencer posts an invalid block: full nodes syncing from DA reject it
+    and stop. Validation is signature, proposer, chain id, height and
+    sequence, plus a header/data pairing check; the fault is tagged as
+    header-side or data-side so the honest half of a pair is not evicted with
+    the bad half.
+
+    Sequencer censors a force-included transaction: full nodes count it as
+    malicious after a grace window (a base of several DA epochs, extended
+    when DA blocks are full) and HALT with the message "sequencer malicious.
+    Restart the node with --node.aggregator --node.based_sequencer or keep
+    the chain halted". That is the whole enforcement mechanism: no slashing,
+    no automatic fork, no proof — a local halt and a social decision to
+    restart the network as a based rollup.
+
+    Sequencer posts out of order: cannot happen in the sense the question
+    implies. The order is the signed header chain, not the Celestia arrival
+    order; the submitter posts headers and data as separate blobs that may
+    even land in different Celestia blocks, and the syncer pairs them by
+    hash.
+  forced_inclusion_is_not_verified_on_the_p2p_path: >-
+    Forced-inclusion verification runs ONLY on blocks a node obtained from
+    DA. The comment in the syncer is explicit that a node following the P2P
+    gossip cannot perform the check, "a known limitation described in the
+    ADR". So two honest full nodes of the same chain, one following DA and
+    one following P2P, apply DIFFERENT acceptance rules to the same block:
+    one halts on a censoring sequencer and the other does not. Which rule a
+    node enforces depends on how it happened to receive the block.
+  forced_inclusion_may_be_declared_and_not_wired: >-
+    Eden's ev-node genesis sets da_epoch_forced_inclusion = 100, but the
+    node .env the chain publishes configures only the header and data
+    namespaces — there is no forced-inclusion namespace. With no namespace,
+    HasForcedInclusionNamespace() is false, RetrieveForcedIncludedTxs returns
+    ErrForceInclusionNotConfigured, and VerifyForcedInclusionTxs returns nil:
+    a node started from the published artifacts performs NO censorship check
+    at all, despite the genesis declaring an epoch. Whether the operators run
+    something else was not established.
+  lazy_blocks: >-
+    LazyMode is off by default but is the framework's headline feature and is
+    per-deployment. With it on, no block is produced while the mempool is
+    empty except one heartbeat block per LazyBlockInterval (default 60s), so
+    block.number and block.timestamp advance in bursts. Empty blocks also
+    post only a HEADER to Celestia and no data blob — the data commitment is
+    the DataHashForEmptyTxs sentinel and the block is treated as
+    DA-included the moment its header is. Eden does not run lazy mode: its
+    blocks tick at 100ms whether or not there are transactions.
+  no_randomness_at_all: >-
+    Worth stating as one fact because the three usual sources fail together:
+    PREVRANDAO is the block number, parentBeaconBlockRoot is constant zero,
+    and block.timestamp repeats across ten consecutive blocks. BLOCKHASH is
+    the only non-trivial entropy left, it covers 25 seconds of history at
+    Eden's block time, and the single sequencer chooses what goes in it. A
+    contract that would be merely weak on mainnet is deterministic here.
+  client_string_does_not_identify_the_chain: >-
+    ev-reth reports itself as `reth/vX` — the fork does not rename the
+    client. Neither the diverging precompiles, nor the base-fee redirect, nor
+    the raised contract size limit, nor tx type 0x76 are visible from
+    web3_clientVersion, and the ev-reth-only RPC namespaces (txpoolExt_,
+    evolve_) are filtered out by the public gateway. The only reliable
+    fingerprint found from outside is behavioural: mixHash == block number,
+    plus a one-byte 0xfe code at 0xF100.
+  celestia_reorgs_are_not_handled: >-
+    ev-node's own operator documentation says to set --evnode.da.block_time
+    to the DA layer's FINALITY time rather than its block time, "as Evolve
+    does not handle reorganization logic". There is no code path that
+    unwinds rollup state because Celestia reorganised beneath it.

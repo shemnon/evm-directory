@@ -245,6 +245,28 @@ opcodes:
 fee_model:
   metering: gas
   note: inherits op-stack's three-component model (L2 1559 + L1 data fee + operator fee)
+  extra_components:
+  - name: nonce on failure
+    status: pending
+    src: "specs/wips/wip-1001.md:evaluateSessionPolicy, specs/wips/wip-1001.md:BLOCK_VALIDATION_GAS_BUDGET"
+    note: >-
+      NONCE ON FAILURE: TODAY, PRESERVED — mainnet semantics, inherited whole
+      from OP Stack. World Chain does not separate ordering from execution and
+      has zero live EVM divergence, so an invalid transaction is never included
+      and the sender resubmits at the same nonce. Recorded here only because the
+      UNSHIPPED type-0x1D proposal would change the answer.
+
+      IF WIP-1001 SHIPS. Authorization for a 0x1D transaction straddles
+      execution: the payload runs tentatively, then `evaluateSessionPolicy` is
+      asked whether the resulting `WorldChainExecutionTrace` was allowed. The
+      spec gives "failed" two meanings, and both spend the nonce — a payload that
+      REVERTS under an accepted policy is committed as a revert, and a payload
+      the policy REJECTS is DISCARDED, both "after burning the nonce and charging
+      a fee". A discarded-but-charged transaction is the shape that makes Artela
+      dangerous, so whether the discarded case still produces a RECEIPT is the
+      question to settle before this ships; the WIP does not say, and no client
+      implements it. NOTHING IS SCHEDULED — every parameter in WIP-1001 is TBD,
+      and this entry is a spec reading, not an observation.
 
 header_fields:
   added: []

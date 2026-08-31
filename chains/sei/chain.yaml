@@ -34,6 +34,14 @@ client:
     sei-chain holds the Cosmos modules, the custom precompiles and the whole
     transaction/fee/RPC layer. The EVM interpreter itself is a separate repo,
     pulled in by a `replace` directive in go.mod and cloned here as a companion.
+    AS OF v6.6.1 THERE IS NOTHING ELSE TO CLONE: sei-cosmos, sei-tendermint,
+    sei-db, sei-ibc-go and sei-wasmd are no longer separate Go modules but
+    directories INSIDE the sei-chain module — `go.mod` declares only
+    `github.com/sei-protocol/sei-chain` and the consensus engine is imported as
+    `github.com/sei-protocol/sei-chain/sei-tendermint/...`. The forked SDK and
+    the forked consensus engine are therefore pinned by the same commit as the
+    app, and the OCC scheduler, the multi-version store and the EVM-aware
+    mempool all cite into this clone.
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/sei-protocol/go-ethereum",
      version: v1.15.7-sei-17, commit: 929fc329f2a82d97c51a97233f394f8d66d9cfc5,
@@ -45,14 +53,122 @@ live_probe:
   observed_at_block: 226969278
 
 consensus:
-  engine: CometBFT fork (sei-tendermint), Cosmos-SDK ABCI application
+  engine: >-
+    sei-tendermint — a fork of Tendermint v0.35 (NOT CometBFT 0.37/0.38),
+    vendored in-tree, driving a Cosmos-SDK ABCI application
   finality: single-block instant finality (BFT); no reorgs, no uncles
   block_time: ~0.48s
   block_time_src_live: "eth_getBlockByNumber @ 226969278 vs 226959278 -> 4777s / 10000 blocks"
+  abci: >-
+    ABCI 0.17.0 (sei-tendermint/version/version.go:ABCISemVer), the Tendermint
+    v0.35/v0.36-dev ABCI++ line. NOT ABCI 0.37 DeliverTx and NOT ABCI 0.38
+    CometBFT. The Application interface is FinalizeBlock + ProcessProposal, and
+    it is REDUCED and EXTENDED relative to stock: there is NO PrepareProposal,
+    no ExtendVote and no VerifyVoteExtension, and there ARE three non-standard
+    methods — GetTxPriorityHint, EvmNonce(common.Address) and
+    EvmBalance(common.Address, []byte). The consensus engine asks the
+    application for EVM account state directly; ABCI on Sei is not the ABCI any
+    other Cosmos chain in this dataset speaks.
   note: >-
     Blocks are Tendermint blocks. There is no Ethereum block header anywhere in
     consensus; the one returned by eth_getBlockByNumber is assembled at RPC time.
     See header_fields.
+
+    (a) ORDERING COMMITS BEFORE EXECUTION, AND THE APPLICATION DOES NOT CHOOSE
+    THE ORDER. Because there is no PrepareProposal, block contents are selected
+    entirely inside sei-tendermint's mempool by the proposer; the application
+    never gets to reorder, insert or drop. The mempool is EVM-aware — it indexes
+    by sender address and EVM nonce, keeps at most one tx per (sender, nonce),
+    calls back into the app for EvmNonce/EvmBalance, marks a tx "ready" only
+    when every lower nonce is ready-or-executed AND balance >= required, and
+    "reaps by highest prio, while respecting nonces". ProcessProposal then does
+    two consensus checks and can REJECT the whole block: any protobuf decode
+    failure, and sum(GasWanted) over the block exceeding the consensus-params
+    block max gas (checkTotalBlockGas). Everything else is decided at execution.
+
+    (b) EXECUTION IS PARALLEL AND OPTIMISTIC, AND IT IS NODE-LOCAL. See the
+    `occ` note below.
+
+    (c) A TRANSACTION ORDERED THEN INVALID SPLITS INTO TWO CASES, AND SEI TIES
+    THEM TO THE NONCE. The EVM ante handler registers a DeliverTxCallback that
+    bumps the sender's nonce even when the ante handler FAILS — but only if the
+    tx's nonce equalled the account nonce at entry
+    (app/ante/evm_delivertx.go:DecorateNonceCallback). Then EndBlock walks the
+    deferred-info list and, for every ante-failed EVM tx, writes a stub receipt
+    IF AND ONLY IF the nonce was bumped (x/evm/keeper/abci.go:GetNonceBumped).
+    So:
+      * insufficient funds / fee below minimum / init-code too large / gas over
+        block max, at the CORRECT nonce -> nonce burned, and a stub receipt IS
+        written and IS returned by eth_getTransactionReceipt. It carries only
+        txHash, transactionIndex, blockNumber and vmError (the Cosmos ABCI error
+        string); gasUsed = 0 and effectiveGasPrice = 0, which is the chain's own
+        discriminator for "never reached the VM".
+      * wrong nonce (too low or too high) -> ErrWrongSequence in the ante, NO
+        nonce bump, NO receipt. The tx is in the Tendermint block and
+        eth_getTransactionReceipt returns null forever.
+    Sei therefore does NOT have Artela's burned-nonce-with-no-receipt
+    combination: on Sei, burning a nonce and minting a receipt are gated on the
+    same condition. See eips-adjacent note in gotchas.
+
+    (d) NO PRECONFIRMATIONS AND NO EARLY RECEIPTS — but there IS optimistic
+    block processing. ProcessProposal starts a full ProcessBlock in a goroutine
+    against the proposal before the block is committed, and FinalizeBlock reuses
+    the result only if the proposal hash matches and the run did not abort;
+    otherwise it re-executes from scratch. Nothing is published from that
+    speculative run: the block-header notifier only Stashes inside FinalizeBlock
+    and publishes at Commit. There is no MegaETH-style receipt for a block that
+    does not exist yet, and no receipt or block ever changes after it is
+    returned.
+  src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+  occ:
+    note: >-
+      OCC (optimistic concurrency control) IS SHIPPED AND ON BY DEFAULT, and it is
+      a NODE-LOCAL OPTIMISATION, not a consensus rule. sei-cosmos/tasks/scheduler.go
+      is a Block-STM: each tx is a deliverTxTask executing against a
+      VersionIndexedStore over a MultiVersionStore, tasks that read a key an
+      earlier-indexed task later writes are invalidated and re-executed with an
+      incremented Incarnation, and the loop runs until every task validates. On
+      ABORT the loser's writes are turned into ESTIMATES
+      (WriteEstimatesToMultiVersionStore) so its dependents block rather than
+      thrash. There is no retry cap per transaction; the cap is on the whole
+      block — after maximumIterations = 10 scheduler passes the scheduler sets
+      `synchronous = true` and finishes the remainder strictly sequentially from
+      the first non-validated index, which is deterministic and produces the same
+      state as the parallel path. The repo asserts that equivalence directly:
+      occ_tests/occ_test.go runs each scenario sequentially and in parallel and
+      requires identical store state, identical events and identical
+      ExecTxResults. Worker count (`concurrency-workers`) and the on/off switch
+      (`occ-enabled`, DefaultOccEnabled = true) are app.toml settings, so two
+      nodes with different settings must still agree. One deterministic
+      block-content heuristic bypasses OCC entirely: >= 64 transactions that are
+      ALL plain value transfers to the SAME recipient are executed sequentially
+      (shouldProcessSingleRecipientEVMTransfersSynchronously) — a function of the
+      block only, so it is the same on every node. OCC has no interaction with the
+      dual address space or the association precompile that a contract can
+      observe; association writes go through the same versioned store as any other
+      write and conflict-resolve the same way.
+    src: "sei-cosmos/tasks/scheduler.go:maximumIterations, sei-cosmos/tasks/scheduler.go:ProcessAll, sei-cosmos/store/multiversion/mvkv.go:WriteEstimatesToMultiVersionStore, sei-cosmos/store/multiversion/store.go:ValidateTransactionStateWithKeys, sei-cosmos/server/config/config.go:DefaultOccEnabled, app/abci.go:DeliverTxBatch, app/app.go:shouldProcessSingleRecipientEVMTransfersSynchronously, occ_tests/occ_test.go:TestParallelTransactionsEvmTransferConflicting"
+  giga:
+    note: >-
+      THE CONSENSUS-VISIBLE PIECE IS NOT OCC, IT IS THE GIGA EXECUTOR. v6.6 ships
+      a second EVM execution path ("Giga", optionally backed by an evmone shared
+      library loaded best-effort at startup) with its own OCC scheduler under
+      giga/. Both switches default to TRUE
+      (giga/executor/config/config.go:DefaultConfig), and enabling it executes
+      `tmtypes.SkipLastResultsHashValidation.Store(true)` — which turns OFF
+      Tendermint's check that a proposed block's LastResultsHash matches the
+      locally computed per-transaction results. The in-source justification is
+      explicit: "This is set to true when the Giga executor is enabled, since it
+      may produce different gas used values." So Sei's answer to a second executor
+      that disagrees about gas used was to stop cross-checking per-transaction
+      results at the consensus layer rather than to make the two agree. This is
+      the opposite of every other parallel row here: Monad, RISE and MegaETH all
+      leave the state transition alone, and MegaETH promoted the scheduler's needs
+      INTO consensus; Sei has instead REMOVED a consensus check to accommodate its
+      executor. Only the AppHash still binds. Giga additionally falls back to the
+      OCC-V2 path mid-block whenever a block is not "all EVM txs then all Cosmos
+      txs", and on execution or validation errors.
+    src: "app/app.go:GigaExecutorEnabled, giga/executor/config/config.go:DefaultConfig, sei-tendermint/types/block.go:SkipLastResultsHashValidation, sei-tendermint/internal/state/validation.go:SkipLastResultsHashValidation, app/app.go:ProcessTXsWithOCCGiga"
 
 baseline_fork: prague
 baseline_note: >-
@@ -599,8 +715,14 @@ fee_model:
       an EVM transaction's gas limit lives in the EVM payload, not in the Cosmos
       GasWanted field, so Sei runs a dedicated ante chain that sets an infinite
       gas meter, hands control to the EVM, then converts the EVM gas consumed
-      back into Cosmos gas units against the block gas limit
-    src: x/evm/keeper/msg_server.go:PrepareCtxForEVMTransaction
+      back into Cosmos gas units against the block gas limit. THE CONVERSION
+      FACTOR IS `PriorityNormalizer`, an x/evm governance parameter that
+      defaults to 1 — the same coefficient Sei uses to normalise EVM gas-limit
+      priority into Cosmos priority, reused as a gas-unit conversion. A
+      governance vote that changed it to price EVM transactions differently in
+      the mempool would silently change how much of the block gas limit every
+      EVM transaction consumes.
+    src: "x/evm/keeper/msg_server.go:PrepareCtxForEVMTransaction, x/evm/keeper/msg_server.go:adjustedGasUsed, x/evm/types/params.go:DefaultPriorityNormalizer"
   - name: wei balances
     note: >-
       the native denom usei has 6 decimals but the EVM presents 18; the bank
@@ -652,6 +774,73 @@ header_fields:
      src: "evmrpc/block.go:EncodeTmBlock"}
 
 gotchas:
+- >-
+  A FAILED TRANSACTION EITHER BURNS YOUR NONCE AND GIVES YOU A RECEIPT, OR DOES
+  NEITHER. This is the answer to the question this dataset asks of every chain,
+  and Sei's answer is unusually tidy. The EVM ante handler arms a
+  DeliverTxCallback that bumps the sender's nonce even if the ante handler then
+  fails — but ONLY when the transaction's nonce equalled the account nonce on
+  entry. EndBlock then writes a stub receipt for an ante-failed transaction IF
+  AND ONLY IF that same nonce bump happened. So an insufficient-funds or
+  below-minimum-fee transaction at the right nonce burns the nonce AND appears
+  in eth_getTransactionReceipt; a wrong-nonce transaction burns nothing and
+  never gets a receipt at all. Sei does NOT reproduce Artela's trap of a spent
+  nonce with no receipt.
+- >-
+  THE STUB RECEIPT IS NOT AN ETHEREUM RECEIPT. It carries txHash,
+  transactionIndex, blockNumber and vmError (a Cosmos ABCI error string, not an
+  EVM revert reason) and NOTHING ELSE: gasUsed = 0, effectiveGasPrice = 0, no
+  logs, no cumulativeGasUsed, no contractAddress, no from/to. Zero gasUsed with
+  zero effectiveGasPrice is the chain's own discriminator for "ordered, charged,
+  but never reached the VM", and Sei ships a whole parallel RPC namespace
+  (sei_get*ExcludeTraceFail) whose entire job is to hide these transactions from
+  callers that cannot cope with them. A tool that reads gasUsed == 0 as "free"
+  or status as "success" is wrong on every one of them.
+- >-
+  AN EVM ACCOUNT ON SEI HAS TWO INDEPENDENT NONCES. The EVM nonce lives in
+  x/evm state under NonceKeyPrefix keyed by the 20-byte EVM address; the Cosmos
+  account sequence lives in the auth module and is bumped by the SDK signature
+  decorator. EVM transactions are routed to a completely separate ante chain
+  (EVMRouterDecorator) that never touches the auth sequence, and Cosmos
+  transactions never touch the EVM nonce. For an associated account the two
+  numbers drift apart permanently and nothing reconciles them. eth_* sees only
+  the first; a Cosmos SDK client sees only the second.
+- >-
+  OCC IS REAL, IS ON BY DEFAULT, AND CHANGES NOTHING YOU CAN OBSERVE. Sei runs a
+  Block-STM scheduler over a multi-version store: transactions execute in
+  parallel, a transaction that read a key an earlier transaction later wrote is
+  re-executed, and after 10 whole-block passes the scheduler gives up and
+  finishes sequentially. Conflict resolution is node-local; the invariant the
+  repo tests is that the parallel result equals the sequential result exactly,
+  down to events and per-transaction result codes. No gas is charged for a
+  discarded incarnation, nothing about the parallelism is visible to a contract,
+  and the dual address space plays no special role.
+- >-
+  THE PARALLELISM THAT *IS* CONSENSUS-VISIBLE IS THE ONE NOBODY ADVERTISES. v6.6
+  ships a second EVM execution path ("Giga", optionally evmone-backed), enabled
+  by default, and switching it on calls
+  tmtypes.SkipLastResultsHashValidation.Store(true) — the node stops checking a
+  proposed block's LastResultsHash against its own per-transaction results. The
+  in-source reason is verbatim: "since it may produce different gas used
+  values." Sei's response to two executors disagreeing about gas used was to
+  remove the consensus check, not to reconcile them. Only the app hash still
+  binds; the per-transaction results header field is no longer cross-validated
+  by anyone.
+- >-
+  A TRANSACTION THAT FAILS EXECUTION GETS A SECOND CHANCE, AND ONLY A SECOND.
+  sei-tendermint's mempool caches successfully-executed transactions as
+  permanently invalid but keeps a once-failed transaction eligible for
+  re-execution ("Failed txs are given a second chance"); a second failure moves
+  it into the reject cache. The same transaction hash can therefore be ordered
+  into two different blocks at two different heights.
+- >-
+  THE BLOCK PROPOSER, NOT THE APPLICATION, DECIDES WHAT IS IN A BLOCK. Sei's
+  ABCI has no PrepareProposal at all — the interface is a Tendermint v0.35-era
+  one (ABCI 0.17.0) with FinalizeBlock and ProcessProposal, plus three
+  non-standard methods the consensus engine uses to read EVM state directly:
+  GetTxPriorityHint, EvmNonce and EvmBalance. Ordering, nonce-gap parking and
+  fee-based replacement all happen inside the consensus engine's mempool, which
+  is node-local admission policy, not a consensus rule.
 - >-
   0x0100 IS EMPTY AND SEI HAS P256VERIFY. It is at 0x1011, behind an ABI method
   selector `verify(bytes)`, priced at 300 gas per input byte, and it refuses

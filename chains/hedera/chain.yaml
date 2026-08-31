@@ -1,0 +1,1222 @@
+schema_version: 2
+
+chain:
+  name: Hedera
+  slug: hedera
+  chain_id: 295
+  role: independent
+  equivalence: behavioural
+  live: true
+  evidence: source
+  chain_id_src: "hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ContractsConfig.java:chainId"
+  chain_id_src_live: "eth_chainId @ 99380446 -> 0x127 (295); eth_getBlockByNumber 0x5ec6cde @ 99380446 -> transactions[0].chainId 0x127"
+  note: >-
+    Hedera is NOT a blockchain client with an Ethereum JSON-RPC server bolted on. It is a
+    hashgraph consensus node whose native API is protobuf (HAPI), which EMBEDS Hyperledger
+    Besu's `evm` module as a Maven LIBRARY, and in front of which a SEPARATE PROCESS in a
+    SEPARATE REPOSITORY (`hiero-json-rpc-relay`, TypeScript) SYNTHESISES an `eth_*` API out
+    of Hedera records read from a third component, the mirror node. Three consequences run
+    through this whole row and every entry below is marked for which one it rests on:
+    (1) the EVM is Besu's, pinned at 25.2.2 and configured to `EvmSpecVersion.CANCUN`, so
+    opcode and precompile semantics are Besu's Cancun and the deltas are what Hedera
+    OVERRIDES around it; (2) blocks, block hashes, `parentHash`, roots, `gasLimit` and the
+    tag semantics of `latest`/`safe`/`finalized`/`pending` are RELAY ARTEFACTS, computed in
+    TypeScript from record-file metadata, and are cited to the relay repo; (3) transaction
+    identity, ordering, fee charging, duplicate detection and expiry are CONSENSUS, cited
+    to the consensus node. Confusing (2) for (3) is the single largest source of wrong
+    beliefs about this chain.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: null
+  second_heritage: null
+  note: >-
+    NOT A FORK OF ANY ETHEREUM CLIENT. `hiero-consensus-node` is a Java consensus node with
+    its own state model (a Merkle/virtual-map ledger of HAPI entities, not an Ethereum MPT)
+    that consumes `org.hyperledger.besu:evm:25.2.2` and `org.hyperledger.besu:besu-datatypes`
+    as ORDINARY MAVEN DEPENDENCIES. This is the MegaETH pattern — semantics inherited as a
+    LIBRARY rather than as a diff against a client — but with the libraries taken from Besu
+    rather than revm, and with no upstream chain configuration inherited at all: Hedera never
+    reads a genesis file, has no fork-schedule JSON, and selects its EVM by a network
+    property `contracts.evm.version` (default `v0.67`) whose values are Hedera release
+    numbers, not Ethereum fork names. Each of the nine `HederaEvmVersion` values wires up a
+    Dagger module that calls a Besu `MainnetEVMs.register*Operations` entry point; `v0.65`,
+    `v0.66` and `v0.67` all call `registerCancunOperations` and
+    `MainnetPrecompiledContracts.populateForCancun`. So the mainnet-equivalent fork is
+    CANCUN, and it is a claim about Besu's jump table and precompile map only.
+  sync_point: >-
+    STOPS AT CANCUN, AND STOPPED THERE IN BESU 25.2.2. Hedera has no Prague/Osaka path:
+    there is no `registerPragueOperations` call anywhere in the tree, `CustomGasCalculator`
+    extends Besu's `CancunGasCalculator` with a source comment saying it is deliberately
+    fixed at that level, and `eth_getCode` at the EIP-4788 and EIP-2935 system-contract
+    addresses returns `0x` on mainnet. A reader must not infer "Cancun" to mean blobs:
+    `populateForCancun` installs KZG point evaluation at `0x0a` and `registerCancunOperations`
+    installs TLOAD/TSTORE/MCOPY/BLOBHASH/BLOBBASEFEE, but there is no blob transaction type,
+    no blob gas market and no `excessBlobGas` header field anywhere in the stack.
+  src: "hiero-dependency-versions/build.gradle.kts:org.hyperledger.besu:evm, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:CancunGasCalculator"
+
+client:
+  name: hiero-consensus-node (Hedera Services)
+  repo: https://github.com/hiero-ledger/hiero-consensus-node
+  version: v0.76.1
+  commit: cd5a2ad0946e1950c64f5a76754a6cd3ee29793e
+  language: java
+  built_on: "org.hyperledger.besu:evm:25.2.2 (library, not a fork)"
+  note: >-
+    THE ORG RENAMED. `hashgraph/hedera-services` now redirects to
+    `hiero-ledger/hiero-consensus-node` and serves an identical tag list; the old
+    `hashgraph/hedera-json-rpc-relay` is GONE (HTTP 404) and lives at
+    `hiero-ledger/hiero-json-rpc-relay`. Any tooling still pointing at the `hashgraph`
+    coordinates resolves for the node and 404s for the relay.
+    MAINNET RUNS A VERSION WITH NO PUBLIC TAG: every record file carries
+    `hapi_version: 0.76.2` and there is no `v0.76.2` tag in the repository — the newest
+    `vX.Y.Z` tag is `v0.76.1`, which is what this row pins. The gap is one patch release.
+  companion_repos:
+  - {name: hiero-json-rpc-relay, repo: "https://github.com/hiero-ledger/hiero-json-rpc-relay",
+     version: v0.78.4, commit: 1701d192333ca19c3cfd630a4e6ababcdf6cd001, language: typescript,
+     provides: "the entire eth_* JSON-RPC surface: block synthesis, header field fabrication, tag resolution, eth_getCode overrides, gas price conversion, receipt assembly. NOT part of the state transition, and versioned independently of the node."}
+  note_relay_is_not_consensus: >-
+    THE RELAY IS NOT A NODE. It holds no state, executes nothing, and reaches consensus data
+    only by HTTP to a mirror node; the live endpoint reports `web3_clientVersion` =
+    `relay/0.78.4`, which is the RELAY's version and says nothing about which consensus
+    software the network runs (0.76.2, from the record files). Two independently versioned
+    components answer one RPC endpoint, and the one that answers `web3_clientVersion` is the
+    one that does not execute transactions.
+
+live_probe:
+  endpoint: https://mainnet.hashio.io/api
+  chain_id: 295
+  observed_at_block: 99380446
+  observed_at: 2026-08-28
+  client_version_src_live: "web3_clientVersion @ 99380446 -> relay/0.78.4 (the RELAY's version, not the consensus node's)"
+  note: >-
+    Hashio (operated by Hiero/Swirlds Labs) is the public mainnet relay. Block 99380446
+    (0x5ec6cde) was chosen because it CONTAINS A TRANSACTION — the overwhelming majority of
+    Hedera blocks are EVM-empty, because most Hedera traffic is native HAPI transactions
+    that never enter the EVM and therefore never appear in `eth_getBlockByNumber` at all.
+    A second reference is the mirror node REST API
+    (https://mainnet-public.mirrornode.hedera.com/api/v1), which is what the relay itself
+    reads; where a fact is visible there but not over `eth_*` it is cited as
+    `src_live: "mirror ... @ <block>"`, because that IS the primary observation and the
+    `eth_*` absence is the finding.
+
+consensus:
+  engine: "hashgraph aBFT — gossip-about-gossip + virtual voting, no leader, no proposer, no block"
+  finality: "single-round aBFT; a transaction is final the instant it receives a consensus timestamp. No reorgs, no forks, nothing to revert."
+  block_time: "2s, but a 'block' is a wall-clock BUCKET of consensus time, not a produced object"
+  src: "platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusImpl.java:setIsConsensusTrue, platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusSorter.java:sort, hedera-node/hedera-app/src/main/java/com/hedera/node/app/records/impl/BlockRecordManagerImpl.java:willOpenNewBlock"
+  src_live: "eth_getBlockByNumber finalized|safe|pending|latest @ 99380446 -> byte-identical objects; mirror /api/v1/blocks/99380446 @ 99380446 -> timestamp {from 1787954993.481359104, to 1787954995.583447104}, name 2026-08-28T22_09_53.481359104Z.rcd.gz"
+  note: >-
+    THERE IS NO BLOCK PROPOSER AND NO BLOCK. Nodes gossip EVENTS (each carrying its
+    creator's transactions plus hashes of two parents); every node independently runs
+    virtual voting over the resulting DAG to decide famous witnesses; `setIsConsensusTrue`
+    then assigns each event the MEDIAN of the times at which the unique famous witnesses
+    first saw it, and `ConsensusSorter.sort` puts the round's events into a total order by
+    (roundReceived, consensusTimestamp, extended median, generation, whitened hash).
+    `setConsensusOrder` then walks that order and pushes each event's timestamp forward so
+    that every TRANSACTION gets a strictly increasing timestamp at least
+    `MIN_TRANS_TIMESTAMP_INCR_NANOS` = 1000 ns after the previous one. The consensus
+    timestamp IS the position: there is no height, no hash chain and no signature over an
+    ordered list. A "block" appears only later and only as an artefact of writing the
+    record stream: `willOpenNewBlock` returns true whenever
+    `floor(consensusSecond / blockPeriod)` (blockPeriod = 2 s) increases while the node is
+    already iterating an ordered round. Block number is therefore a COUNT OF TWO-SECOND
+    BUCKETS, not a chain of committed objects, and no quorum ever votes on one.
+  ordering:
+    note: >-
+      (a) ORDERING COMMITS BEFORE EXECUTION, ABSOLUTELY AND IRREVOCABLY. Virtual voting
+      finalises the order of a round's transactions with no reference whatsoever to their
+      content, validity, payer balance, nonce or gas. `HandleWorkflow.handleRound` then
+      iterates the already-ordered rounds and calls `handlePlatformTransaction` for each
+      transaction in turn, using the PLATFORM-ASSIGNED consensus time (HIP-993) as
+      `consensusNow`. Ordering and execution are not merely separated, they are performed
+      by different modules with no feedback path: nothing execution discovers can change,
+      delay, reorder or remove a transaction that consensus has already timestamped.
+      Unlike Monad, where consensus commits a list and the state root catches up three
+      heights later, there is no state root at all to catch up — see `header_fields`.
+    parallelism: >-
+      (b) EXECUTION IS SEQUENTIAL AND DETERMINISTIC. `handleRound` runs one
+      `handlePlatformTransaction` at a time in consensus order on a single handle thread;
+      there is no optimistic execution, no speculative parallelism and no conflict
+      resolution, so the "would two implementations disagree" question does not arise from
+      scheduling. The parallelism in Hedera is in gossip and in virtual voting, both of
+      which run BEFORE and INDEPENDENTLY of execution.
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/HandleWorkflow.java:handlePlatformTransaction, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch"
+  ordered_then_invalid:
+    answer: "charged a fee anyway, with a record — and WHO is charged depends on WHY it is invalid"
+    severity: high
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:chargeCreator, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/dispatch/DispatchValidator.java:creatorErrorIfKnown, hedera-node/hedera-app/src/main/java/com/hedera/node/app/fees/AppFeeCharging.java:charge"
+    note: >-
+      (c) THE CENTRAL QUESTION, and Hedera's answer is a THIRD ONE the dataset did not yet
+      hold: the transaction is neither erased nor executed-and-failed — it is BILLED
+      WITHOUT BEING EXECUTED, and the bill may land on the SUBMITTING NODE instead of the
+      sender. `DispatchProcessor.processDispatch` has exactly two arms.
+      (1) `!validation.creatorDidDueDiligence()` -> `chargeCreator`, which charges
+      `dispatch.fees().networkFee()` to THE NODE ACCOUNT that submitted the transaction and
+      charges the payer NOTHING. This arm covers a transaction whose valid-start window has
+      expired by the time it reaches consensus (`getExpiryError` re-runs `checkTimeBox`
+      against `consensusNow`), an invalid payer signature, and every ingest-level due
+      diligence failure. The node eats the cost of having relayed something that consensus
+      later found unusable.
+      (2) otherwise `chargePayer(...)` runs FIRST, then `alreadyFailed(...)` decides whether
+      `tryHandle` is called at all. A payer who cannot cover the service fee, an
+      unauthorised payer, a failed signature check, or a DUPLICATE all short-circuit here:
+      fees are already taken, `streamBuilder().status(...)` is set to the failure code, and
+      the handler NEVER RUNS. If `tryHandle` does run and throws `HandleException`, the
+      stack is rolled back and `chargePayer` is called AGAIN, so a transaction that fails
+      inside execution is charged too.
+      In all cases a RECORD IS WRITTEN. Hedera has no notion of "dropped without trace"
+      once consensus has been reached; the record stream contains an entry with a
+      `ResponseCodeEnum` status for every transaction that got a consensus timestamp.
+      What an ETHEREUM client sees is a different question — see `gotchas`.
+  preconfirmation:
+    answer: "none, and none needed"
+    note: >-
+      (d) THERE IS NO PRECONFIRMATION AND NO REORG. Hashgraph gives aBFT finality in the
+      round in which a transaction receives its consensus timestamp; there is no
+      probabilistic head, no fork choice and no state that can be revisited. Correspondingly
+      there is nothing here of the MegaETH `0xffff..ff` receipt shape. The honest answer to
+      "can a receipt change later" is NO. What DOES change is availability: the relay serves
+      `eth_getTransactionReceipt` out of the MIRROR NODE, which ingests record files
+      asynchronously, so a receipt is `null` for a while after the transaction is already
+      irreversibly final. A null receipt on Hedera means "the mirror node has not caught up
+      yet", never "it might still be pending" and never "it is gone forever" — the opposite
+      of Conflux, IOTA EVM, Artela and Rollkit, where null is permanent.
+    src_live: "eth_getBlockByNumber @ 99380446 for tags latest, safe, finalized and pending returned four byte-identical block objects (number 0x5ec6cea in that sample); there is no lag between them because there is no unfinalised state"
+
+baseline_fork: cancun
+baseline_note: >-
+  `V067Module.provideEVM` calls Besu's `MainnetEVMs.registerCancunOperations` and
+  `MainnetPrecompiledContracts.populateForCancun`, and constructs the EVM with
+  `EvmSpecVersion.CANCUN`; `contracts.evm.version` defaults to `v0.67`. So the instruction
+  set and precompile map ARE Besu 25.2.2's Cancun, minus/plus the overrides listed below.
+  "Cancun" here says nothing about blobs (no blob transaction type exists), nothing about
+  withdrawals (none exist), and nothing about the header (there is no Ethereum header at
+  all — see `header_fields`). EIP-4788 and EIP-2935, both Cancun-or-later mainnet system
+  contracts, are absent from state.
+
+transaction_identity:
+  model: "payer account + valid-start timestamp (TransactionID), NOT (sender, nonce) and NOT a hash of the contents"
+  severity: high
+  src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/state/recordcache/RecordCacheImpl.java:hasDuplicate, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/dispatch/DispatchValidator.java:DuplicateStatus, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/HederaConfig.java:transactionMaxValidDuration"
+  note: >-
+    A HAPI transaction is identified by its `TransactionID` = (payer AccountID,
+    transactionValidStart Timestamp). Nothing about the transaction's CONTENTS enters its
+    identity: the body, the memo, the amounts, the signatures and the wrapped Ethereum
+    payload are all outside the key. Two submissions are "the same transaction" iff those
+    two fields match — so two byte-identical submissions with different valid-start values
+    are DIFFERENT transactions, and two completely different transaction bodies sharing a
+    payer and a valid-start instant are THE SAME transaction. Neither statement has an
+    analogue on Ethereum, where identity is (sender, nonce) for replacement purposes and
+    keccak(rlp(tx)) for lookup. Uniqueness holds only inside a sliding window:
+    `purgeExpiredReceiptEntries` drops history older than
+    `hedera.transaction.maxValidDuration` (default 180 s) behind the consensus clock, after
+    which the same TransactionID may be reused.
+
+duplicate_transactions:
+  detection: "in-state record cache, keyed by TransactionID, over a 180-second window"
+  severity: high
+  src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/state/recordcache/RecordCacheImpl.java:hasDuplicate, hedera-node/hedera-app/src/main/java/com/hedera/node/app/state/recordcache/RecordCacheImpl.java:purgeExpiredReceiptEntries, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/dispatch/DispatchValidator.java:validateFeeChargingScenario, hedera-node/hedera-app/src/main/java/com/hedera/node/app/fees/AppFeeCharging.java:charge, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:chargeCreator"
+  note: >-
+    DUPLICATE SUBMISSION IS THE DESIGNED-FOR CASE, NOT AN EDGE CASE. Hedera's own client
+    SDKs submit the same signed transaction to several nodes for reliability, so a
+    TransactionID reaching consensus more than once is routine. `RecordCacheImpl.hasDuplicate`
+    returns a THREE-valued result and the two duplicate values are treated completely
+    differently, which is the finding:
+
+    NO_DUPLICATE — first occurrence. Executes normally.
+
+    OTHER_NODE — the same TransactionID already reached consensus, submitted by a DIFFERENT
+    node. `DispatchValidator` routes this to `getFinalPayerValidation(payer, DUPLICATE, ...)`,
+    so `creatorDidDueDiligence()` is TRUE, `chargePayer` runs, and `alreadyFailed()` then
+    returns true on the `DUPLICATE_TRANSACTION` status so `tryHandle` IS NEVER CALLED. THE
+    PAYER IS CHARGED FOR A TRANSACTION THAT DID NOT EXECUTE. `AppFeeCharging.charge` sets
+    `shouldWaiveServiceFee` when `duplicateStatus() == DUPLICATE`, so the charge is
+    `fees.withoutServiceComponent()` — the NODE FEE plus the NETWORK FEE, waiving only the
+    service fee. There is no state change, no EVM execution, no gas, and a real debit.
+
+    SAME_NODE — the same node submitted it twice. `newCreatorError(creatorId,
+    DUPLICATE_TRANSACTION)`, so `creatorDidDueDiligence()` is FALSE and `chargeCreator`
+    debits `fees().networkFee()` from THE NODE'S OWN ACCOUNT. The payer pays nothing. The
+    submitting node is therefore penalised for its own duplicates and NOT penalised for
+    racing another node — in the OTHER_NODE case the losing node is actually PAID, since
+    `ctx.charge(payerId, feesToCharge, ctx.nodeAccountId(), null)` routes the node fee to
+    the node that submitted the losing copy.
+
+    WHICH OCCURRENCE EXECUTES: the first to receive a consensus timestamp, because
+    `hasDuplicate` is evaluated during handling, in consensus order, against a cache
+    populated by transactions already handled in this and prior rounds. Every later
+    occurrence is billed and skipped.
+  visibility_to_eth_rpc:
+    answer: "invisible — permanently null over eth_*, while the payer has been debited"
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/handlers/EthereumTransactionHandler.java:ethereumHash"
+    note: >-
+      The Ethereum transaction hash is written into the record ONLY by
+      `EthereumTransactionHandler.handle` (and `handleThrottled`). A duplicate never reaches
+      `tryHandle`, so its record carries NO `ethereum_hash`, so the mirror node has nothing
+      to index it under, so the relay's `eth_getTransactionByHash` and
+      `eth_getTransactionReceipt` return NULL FOR THAT OCCURRENCE FOREVER. The duplicate is
+      fully visible over HAPI and the mirror node's `/api/v1/transactions` — it has a
+      record, a consensus timestamp and status `DUPLICATE_TRANSACTION` — and completely
+      invisible to every Ethereum tool. An operator relaying Ethereum transactions sees an
+      HBAR debit with no receipt and no `eth_*` object to attribute it to.
+  two_different_duplicate_notions:
+    note: >-
+      THERE ARE TWO KINDS OF "DUPLICATE" HERE AND THEY ARE HANDLED AT DIFFERENT LAYERS,
+      which is why importing Ethereum intuitions is dangerous. (1) A HAPI duplicate — same
+      TransactionID — is caught before execution and billed as above. (2) Re-broadcasting
+      the SAME SIGNED ETHEREUM TRANSACTION produces a NEW HAPI EthereumTransaction body with
+      a NEW valid-start, hence a DIFFERENT TransactionID, hence NOT a Hedera duplicate at
+      all: it is dispatched, reaches `TransactionProcessor.tryToResolveParties`, fails
+      `validateTrue(transaction.nonce() == parties.sender().getNonce(), WRONG_NONCE)`, and is
+      charged. So the same Ethereum transaction submitted twice is billed twice by two
+      completely different mechanisms with two different status codes, and only one of the
+      two mechanisms even knows the word "duplicate".
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/TransactionProcessor.java:WRONG_NONCE"
+  ingest_layer:
+    note: >-
+      A node-local, NOT-IN-STATE `DeduplicationCache` rejects duplicate TransactionIDs at
+      ingest before they are ever gossiped. It is a best-effort optimisation on one node and
+      is explicitly documented as not part of state, so it cannot prevent the cross-node
+      case above — which is precisely the case the SDKs create.
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/state/DeduplicationCache.java:DeduplicationCache"
+
+tx_types:
+  note: >-
+    Only three EIP-2718 shapes exist, and none of them is a top-level object on this chain:
+    every one is a byte string inside the `ethereum_data` field of a HAPI
+    `EthereumTransactionBody` (HIP-410). `EthTxData.populateEthTxData` switches on the first
+    byte and returns `null` — an outright rejection — for type 3, with a source comment
+    saying blob transactions are not supported, and for every other type byte. There is no
+    0x03 and no 0x04. The relay contains a `Transaction7702` model class but the consensus
+    node cannot decode a type-4 payload, so it can never be populated from mainnet data.
+  "0x00":
+    name: Legacy
+    status: modified
+    severity: high
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:populateEthTxData, hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:WEIBARS_IN_A_TINYBAR"
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> transactions[0].type 0x0, v 0x272 (EIP-155, chainId 295)"
+    note: >-
+      Accepted, but `value` and `gasPrice` are divided by 10^10 with `BigInteger.divide`
+      and no remainder check, so any sub-10^10-weibar component is SILENTLY TRUNCATED
+      before the EVM ever sees it. See `fee_model.denomination`.
+  "0x01":
+    name: EIP-2930 access list
+    status: modified
+    severity: high
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:populateEip2390EthTxData"
+    note: >-
+      THE ENVELOPE IS ACCEPTED AND THE ACCESS LIST IS IGNORED. `EthTxData` parses
+      `accessList` and keeps it only for `equals`/`hashCode`; nothing in
+      `hedera-smart-contract-service-impl` reads it, so no address or slot is pre-warmed and
+      no discount or surcharge is applied. A transaction tuned on mainnet to pay for warm
+      access gets cold pricing here, with no error and no signal. Re-encoding the access
+      list is not even implemented (`IllegalStateException("Re-encoding access list is
+      unsupported")`), so a transaction whose call data is uploaded separately as a HAPI
+      file cannot carry one at all.
+  "0x02":
+    name: EIP-1559 dynamic fee
+    status: modified
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getBaseFee, hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:getMaxGasAsBigInteger"
+    note: >-
+      Accepted, but there is no base fee to be dynamic against: `maxFeePerGas` is read as a
+      flat offered price (`getMaxGasAsBigInteger` returns `maxGas` for EIP1559), the priority
+      fee is never used, `eth_maxPriorityFeePerGas` returns `0x0`, and the `BASEFEE` opcode
+      returns literally `Wei.ZERO`. The transaction type is a container, not a fee market.
+  "0x03":
+    name: EIP-4844 blob
+    status: removed
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:populateEthTxData"
+    note: >-
+      `case 3 -> null;` with the comment "We don't currently support Cancun blob
+      transactions". Rejected at decode. Note the asymmetry: the Cancun OPCODES
+      (BLOBHASH, BLOBBASEFEE) and the KZG precompile at 0x0a ARE installed, because they
+      come with Besu's `registerCancunOperations`/`populateForCancun`.
+  "0x04":
+    name: EIP-7702 set code
+    status: removed
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:EthTransactionType"
+    note: >-
+      `EthTransactionType` has exactly three values. Type 4 falls through
+      `populateEthTxData`'s switch to `return null`. The relay's `Transaction7702` class is
+      dead code with respect to mainnet.
+  synthetic_hapi:
+    name: "relay-fabricated 'transactions' with no signature and no sender"
+    status: added
+    severity: high
+    src: "hiero-json-rpc-relay/src/relay/lib/services/ethService/blockService/blockWorker.ts:syntheticTransactions, hiero-json-rpc-relay/src/relay/lib/factories/transactionFactory.ts:createTransactionFromLog"
+    src_live: "mirror /api/v1/blocks/99380446 @ 99380446 -> count 7 (seven HAPI transactions in the record file) while eth_getBlockByNumber 0x5ec6cde @ 99380446 returned exactly ONE transaction"
+    note: >-
+      NOT A CONSENSUS TRANSACTION TYPE — a relay fabrication, recorded here because it
+      appears in `eth_getBlockByNumber(..., true)` output and nothing distinguishes it. When
+      a log exists whose transaction is not an Ethereum transaction (an HTS token transfer,
+      for instance), `blockWorker` INVENTS a legacy transaction for it with
+      `from = to = log.address`, `input = 0x0000000000000000`,
+      `gasPrice = 0xfe` (the byte for the INVALID opcode, used as a sentinel),
+      `nonce = 0x0`, `r = s = v = 0x0`. It cannot be RLP-re-encoded to its own hash, its
+      `from` is a contract, and it never existed. Conversely, the majority of real HAPI
+      transactions in a block are omitted entirely.
+
+tx_authorization:
+  key_binding: declared
+  signers_per_tx: 2
+  note: >-
+    TWO INDEPENDENT AUTHORIZATION SYSTEMS STACKED, AND THE ETHEREUM ONE IS THE INNER LAYER.
+    Every transaction on this network is a HAPI transaction signed by a Hedera key
+    structure (`Key`: single ED25519, single ECDSA(secp256k1), a threshold list, a key list,
+    a contract ID, or a delegatable contract ID) belonging to the PAYER account. An
+    Ethereum transaction is a `bytes` field inside such a HAPI transaction, so it carries
+    TWO parties: the HAPI payer (the "relayer", conventionally an operator running the
+    relay) and the EVM sender recovered from the inner secp256k1 signature. They are
+    different accounts, they are charged differently, and on an aborted Ethereum transaction
+    `CustomGasCharging.chargeGasForAbortedTransaction` charges the RELAYER, not the sender.
+    `signers_per_tx: 2` counts those parties. Separately, an account's ADDRESS is not
+    derived from its key: a Hedera account is `shard.realm.num` and gets a 20-byte EVM
+    address either as an ECDSA-derived alias or as a "long-zero" address whose last 8 bytes
+    are the entity number, so `ecrecover(sig) == from` is not an identity here.
+  schemes:
+    secp256k1:
+      status: modified
+      authorizes: protocol
+      precompile: "0x01"
+      src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxSigs.java:extractSignatures"
+      note: >-
+        Authorizes both as a HAPI `Key` and as the inner Ethereum signature. `modified`
+        because the address it authorizes need not be derived from it — see `key_binding`.
+    ed25519:
+      status: added
+      authorizes: protocol
+      precompile: none
+      src: "hapi/hedera-protobuf-java-api/src/main/proto/services/basic_types.proto:ed25519"
+      note: >-
+        THE `authorizes: protocol` + `precompile: none` PAIRING SCHEMA.md ASKS FOR. ED25519
+        is the ORIGINAL and still most common Hedera key type: it can pay for, and authorize,
+        any HAPI transaction including one that carries an EVM call. There is NO ED25519
+        verification precompile in the Besu Cancun set, so an on-chain multisig, guardian or
+        recovery contract written in Solidity CANNOT verify the very signatures the protocol
+        just accepted. The only in-EVM path to an ED25519 check is `isAuthorizedRaw` on the
+        Hedera Account Service system contract at 0x16a, which is a Hedera-specific dispatch,
+        not a precompile, and which `CustomGasCalculator.getEdSignatureVerificationSystemContractGasCost`
+        prices at the ECRECOVER rate.
+    key_lists_and_thresholds:
+      status: added
+      authorizes: protocol
+      precompile: none
+      src: "hapi/hedera-protobuf-java-api/src/main/proto/services/basic_types.proto:ThresholdKey"
+      note: >-
+        A payer's `Key` may be an m-of-n threshold list or an arbitrarily nested key list
+        mixing ED25519 and ECDSA. The protocol validates it; no EVM code can.
+    contract_id_keys:
+      status: added
+      authorizes: protocol
+      precompile: none
+      src: "hapi/hedera-protobuf-java-api/src/main/proto/services/basic_types.proto:contractID"
+      note: >-
+        A `Key` may BE a contract ID: the "signature" is satisfied when that contract is the
+        active frame. This is account abstraction at the protocol level with no transaction
+        type, no entry point and no EVM representation.
+
+non_evm_transactions:
+  note: >-
+    THE MAJORITY OF THIS CHAIN. HAPI's `TransactionBody` carries a `oneof data` with 59
+    protobuf message types in field slots 7-72 (sparse). Exactly ONE of them,
+    `EthereumTransactionBody ethereumTransaction = 50`, contains an EIP-2718 envelope, and
+    two more (`contractCall = 7`, `contractCreateInstance = 8`) reach the EVM without one.
+    The other 56 have no type byte, no signature scheme the EVM can check, and no
+    representation in `eth_getBlockByNumber` — yet they move HBAR, mint and transfer
+    fungible and non-fungible tokens, and change the keys that control accounts holding EVM
+    balances. Listed below are the ones that move value or touch EVM-visible state, plus
+    representative examples of the rest. Live confirmation of the gap: record file 99380446
+    contains 7 transactions and `eth_getBlockByNumber` reports 1.
+  entries:
+  - {id: 50, name: EthereumTransaction, status: added, note: "HIP-410. The ONLY carrier of an EIP-2718 envelope: an RLP transaction in the `ethereum_data` bytes field, optionally with call data uploaded separately as a HAPI file (`call_data`), plus `max_gas_allowance` naming how much the HAPI payer will subsidise."}
+  - {id: 7,  name: ContractCall, status: added, note: "A native EVM call with NO Ethereum envelope and NO Ethereum signature — authorized by the HAPI payer's Hedera key. Sender may be an ED25519 account, which no EVM signature scheme can express. Its `from` is a long-zero address."}
+  - {id: 8,  name: ContractCreateInstance, status: added, note: "native EVM deployment, same authorization story"}
+  - {id: 22, name: ContractDeleteInstance, status: added, note: "deletes a contract and sweeps its balance to an obtainer — a state transition with no EVM opcode behind it and no SELFDESTRUCT in the trace"}
+  - {id: 14, name: CryptoTransfer, status: added, note: "the main HBAR and token transfer type; moves balances that BALANCE and eth_getBalance both read, with no EVM transaction to show for it"}
+  - {id: 11, name: CryptoCreateAccount, status: added, note: "creates an account, optionally with an ECDSA alias that becomes its EVM address"}
+  - {id: 15, name: CryptoUpdateAccount, status: added, note: "can REPLACE the key that controls an account holding an EVM balance — key rotation with no address change"}
+  - {id: 48, name: CryptoApproveAllowance, status: added, note: "HBAR/token/NFT allowances outside any ERC contract"}
+  - {id: 29, name: TokenCreate, status: added, note: "creates an HTS token, which is then visible at an EVM address with relay- and node-synthesised ERC-20/721 bytecode"}
+  - {id: 37, name: TokenMint, status: added}
+  - {id: 38, name: TokenBurn, status: added}
+  - {id: 39, name: TokenWipe, status: added, note: "an admin key can DESTROY a holder's balance; there is no ERC-20 analogue and no EVM event a token contract could have emitted"}
+  - {id: 40, name: TokenAssociate, status: added, note: "an account must be ASSOCIATED with a token before it can hold it — a transfer to an unassociated account fails, which has no ERC-20 equivalent"}
+  - {id: 31, name: TokenFreezeAccount, status: added}
+  - {id: 46, name: TokenPause, status: added}
+  - {id: 42, name: ScheduleCreate, status: added, note: "a transaction that will execute later when enough signatures accumulate — reachable from the EVM through the Hedera Schedule Service system contract at 0x16b"}
+  - {id: 27, name: ConsensusSubmitMessage, status: added, note: "HCS topic message; the highest-volume transaction type on the network and wholly invisible to eth_*"}
+  - {id: 52, name: UtilPrng, status: added, note: "native randomness, mirrored into the EVM by the PRNG system contract at 0x169"}
+  - {id: 51, name: NodeStakeUpdate, status: added, note: "a SYSTEM transaction the network issues to itself at each staking period boundary"}
+  - {id: 65, name: StateSignatureTransaction, status: added, note: "platform-level: a node's signature over a state hash, gossiped in the same event stream as user transactions"}
+  - {id: 72, name: CrsPublication, status: added, note: "hinTS/history-proof ceremony traffic — consensus machinery submitted as ordinary transactions"}
+  full_list_src: hapi/hedera-protobuf-java-api/src/main/proto/services/transaction.proto:ethereumTransaction
+
+fee_model:
+  severity: high
+  note: >-
+    HBAR HAS EIGHT DECIMALS AND THE 10^10 CONVERSION IS APPLIED INCONSISTENTLY AT THREE
+    LAYERS. The signed transaction's `value` is divided by 10^10 with integer division and
+    no remainder check, so any amount below 10^10 weibar silently becomes ZERO and the
+    transaction still succeeds. Inside the EVM, `msg.value` and `BALANCE` are in TINYBARS
+    (eight decimals). Over JSON-RPC, `eth_getBalance` multiplies back to eighteen. The same
+    account's balance differs by exactly 10^10 depending on which one you ask, and neither
+    answer carries a unit. Separately the `BASEFEE` opcode is hardcoded to zero while the
+    RPC reports 1.11e12 for the same block, and gas is priced in USD at an oracle rate
+    rather than by demand. See `denomination`, `base_fee_contradiction` and `gas_price`.
+  metering: "gas, PLUS an independent HAPI fee schedule, PLUS a second execution meter (ops duration)"
+  fee_market: "none — no base fee, no priority fee, no auction. Gas is priced in USD and converted to HBAR at an oracle rate, times a congestion multiplier."
+  denomination:
+    severity: high
+    src_live: "eth_getBalance 0x2abefbbb0b1b18a180dfa5887b31f3929dc2c45b @ 99380446 -> 0x452217627b6f413400 = 1,275,281,881,490,000,000,000; mirror /api/v1/accounts/0x2abe... @ 99380446 -> account 0.0.7644395, balance 127,528,188,149 tinybar. The ratio is EXACTLY 10^10."
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:WEIBARS_IN_A_TINYBAR, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEvmTransaction.java:weiValue, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/DispatchingEvmFrameState.java:getBalance, hiero-json-rpc-relay/src/relay/lib/services/ethService/accountService/AccountService.ts:TINYBAR_TO_WEIBAR_COEF"
+    note: >-
+      THE BIGGEST SILENT DIVERGENCE ON THIS CHAIN. HBAR has EIGHT decimals (tinybar).
+      Ethereum tooling assumes eighteen. Hedera reconciles them with a 10^10 "weibar"
+      convention applied INCONSISTENTLY at three layers:
+      (1) DECODE: `EthTxData.getAmount()` is `value.divide(WEIBARS_IN_A_TINYBAR)` —
+      `BigInteger.divide`, integer division, NO remainder check and NO error. A transfer of
+      anything under 10^10 weibar becomes ZERO and the transaction still succeeds; a
+      transfer of 1.5 tinybar-equivalent silently loses the half. The same division is
+      applied to the offered gas price in `effectiveOfferedGasPriceInTinybars`.
+      (2) EVM: `HederaEvmTransaction.weiValue()` is `Wei.of(value)` where `value` is ALREADY
+      IN TINYBARS, and `DispatchingEvmFrameState.getBalance` is
+      `Wei.of(account.tinybarBalance())`. So inside the EVM, `msg.value`, `CALLVALUE`,
+      `BALANCE` and `address(x).balance` are all denominated in TINYBARS — eight decimals.
+      A contract that compares `msg.value` to `1 ether` can never be satisfied; a contract
+      that computes a percentage of `address(this).balance` and sends it back is correct,
+      because the error cancels; a contract that mixes an EVM-read balance with an
+      RPC-read balance is wrong by 10^10.
+      (3) RPC: the RELAY multiplies back, `BigInt(balance) * TINYBAR_TO_WEIBAR_COEF`, so
+      `eth_getBalance` returns EIGHTEEN-decimal weibars for the same account whose `BALANCE`
+      opcode returned eight-decimal tinybars. The two answers differ by exactly 10^10 and
+      neither reports a unit.
+  gas_price:
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/TinybarValues.java:topLevelTinybarGasPrice"
+    src_live: "eth_gasPrice @ 99380446 -> 0x1027127dc00 = 1,110,000,000,000 weibar = exactly 111 tinybar; eth_maxPriorityFeePerGas @ 99380446 -> 0x0; eth_getBlockByNumber @ 99380446 and eth_getBlockByNumber earliest both -> baseFeePerGas 0x1027127dc00 (the SAME value at the genesis block and at head)"
+    note: >-
+      GAS IS PRICED IN DOLLARS. `topLevelTinybarGasPrice` = the fee schedule's tinycent
+      price for a gas unit, times a congestion multiplier, converted to tinybars at the
+      network's current HBAR/USD `ExchangeRate` (the on-chain file 0.0.112, also readable
+      from the EVM at 0x168). Consequences: the HBAR-denominated gas price moves when the
+      HBAR PRICE moves, with no change in demand; it is a network-wide value, not a
+      per-block one, which is why the relay reports the identical `baseFeePerGas` for the
+      genesis block and for head; and there is no fee auction, so paying more buys nothing.
+      Congestion is handled by a multiplier on the price and by throttles, not by an
+      auction.
+  base_fee_contradiction:
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getBaseFee"
+    src_live: "eth_getBlockByNumber @ 99380446 -> baseFeePerGas 0x1027127dc00"
+    note: >-
+      `HevmBlockValues.getBaseFee()` returns `Optional.of(Wei.ZERO)` — a hardcoded constant.
+      The `BASEFEE` opcode therefore reads 0 for every transaction ever executed on this
+      chain, while `eth_getBlockByNumber(...).baseFeePerGas` reports 1.11e12 for the same
+      block. A contract that reads `block.basefee` to price anything gets zero; the wallet
+      that built the transaction used 1.11e12. Same failure shape as IOTA EVM's zero
+      `GASPRICE`, one field over.
+  extra_components:
+  - name: nonce on failure
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeForGas, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeGasForAbortedTransaction, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/TransactionProcessor.java:computeInvolvedPartiesOrAbort, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/ContextTransactionProcessor.java:maybeChargeFeesAndReturnOutcome"
+    note: >-
+      NONCE ON FAILURE: PRESERVED IN BOTH FAILURE MODES, AND HBAR IS TAKEN
+      ANYWAY. Hedera keeps two independent counters and only one of them is an
+      EVM nonce, so the axis has to be answered twice.
+
+      THE EVM NONCE moves in exactly one place: `CustomGasCharging.chargeForGas`
+      does `sender.incrementNonce()` immediately after the gas charge, and only
+      `if (transaction.isEthereumTransaction())`. Everything that aborts before
+      that line leaves it alone.
+
+      A WRONG NONCE ABORTS BEFORE THAT LINE. `computeInvolvedPartiesOrAbort`
+      runs first and does
+      `validateTrue(transaction.nonce() == parties.sender().getNonce(),
+      WRONG_NONCE)`; the HandleException it throws never reaches `chargeForGas`.
+      `ContextTransactionProcessor.maybeChargeFeesAndReturnOutcome` then calls
+      `chargeGasForAbortedTransaction`, which for an Ethereum transaction bills
+      the intrinsic gas TO THE RELAYER, not to the sender, and does NOT touch the
+      nonce — and the aborted result carries `withSignerNonce(sender.getNonce())`,
+      the unchanged value. SENDER'S NONCE PRESERVED; the relayer pays.
+
+      A DUPLICATE NEVER EXECUTES, so the EVM nonce is likewise untouched.
+      `DispatchValidator` short-circuits on `DUPLICATE_TRANSACTION` and
+      `tryHandle` IS NEVER CALLED, so no `chargeForGas`, no
+      `incrementNonce`. But the PAYER IS STILL BILLED the node and network fees
+      (service waived), and because `ethereum_hash` is written into the record
+      only by `EthereumTransactionHandler.handle`, the duplicate's record has no
+      Ethereum hash — so `eth_getTransactionByHash` and
+      `eth_getTransactionReceipt` are NULL for that occurrence forever while the
+      HBAR debit is real and visible over HAPI.
+
+      WHY IT CANNOT BECOME ARTELA'S BUG. Hedera's transaction IDENTITY is
+      `(payer account, valid-start timestamp)`, not `(sender, nonce)`. Duplicate
+      detection, fee charging and expiry all key on that TransactionID, and it is
+      an entirely separate mechanism from the EVM nonce — neither one can advance
+      the other. So the charged-but-invisible failure that strands a sender
+      elsewhere strands nothing here: the money is gone, but the nonce sequence
+      is intact and the next transaction goes through. Re-broadcasting the SAME
+      signed Ethereum transaction is not even a Hedera duplicate — it gets a new
+      valid-start and therefore a new TransactionID — so it is dispatched, fails
+      `WRONG_NONCE`, and is billed by the other mechanism entirely.
+  - name: HAPI fee (node + network + service)
+    note: >-
+      Every transaction, EVM or not, is charged a three-part HAPI fee ON TOP OF GAS: the
+      NODE fee (paid to the node that submitted it), the NETWORK fee (paid to the network),
+      and the SERVICE fee. The three are separable and the protocol waives them
+      individually — a duplicate is charged node+network with service waived, a payer who
+      cannot afford the service fee is charged the other two. Nothing in an Ethereum receipt
+      can express this: `gasUsed * effectiveGasPrice` does not equal what left the account.
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/fees/AppFeeCharging.java:charge"
+  - name: "zero-HAPI-fee refund for successful Ethereum transactions"
+    note: >-
+      `contracts.evm.ethTransaction.zeroHapiFees.enabled` defaults TRUE: when an
+      ETHEREUM_TRANSACTION dispatch SUCCEEDS, `DispatchProcessor.tryHandle` calls
+      `feeCharging.refund(dispatch, fees)` and gives the HAPI fee back. A SUCCESSFUL
+      Ethereum transaction therefore pays gas only; a FAILED one pays gas AND keeps the HAPI
+      fee. The failure surcharge is invisible in the receipt.
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:tryHandle, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ContractsConfig.java:evmEthTransactionZeroHapiFeesEnabled"
+  - name: "relayer subsidy (max_gas_allowance)"
+    note: >-
+      `EthereumTransactionBody.max_gas_allowance` lets the HAPI payer subsidise the EVM
+      sender's gas. `CustomGasCharging.chargeForGas` charges the sender first and the
+      relayer for the remainder, and refunds in the same order. On an ABORTED Ethereum
+      transaction `chargeGasForAbortedTransaction` charges the RELAYER the intrinsic gas
+      outright. Two accounts are debited by one transaction and the receipt names one.
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeGasForAbortedTransaction, hapi/hedera-protobuf-java-api/src/main/proto/services/ethereum_transaction.proto:max_gas_allowance"
+  - name: "ops-duration throttle — a second execution meter"
+    note: >-
+      Besides gas, execution is metered by "ops duration" units
+      (`contracts.opsDurationThrottleCapacity`, default 5e8, refilled at 5e8/s). When
+      capacity is exhausted the transaction aborts with `CONSENSUS_GAS_EXHAUSTED` even
+      though it had gas left. This is a resource limit the EVM's gas accounting cannot see
+      and no Ethereum receipt field can express.
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/ContextTransactionProcessor.java:opsDurationCounter, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ContractsConfig.java:opsDurationThrottleCapacity"
+  - name: "storage rent priced into LOG"
+    note: >-
+      `CustomGasCalculator.logOperationGasCost` returns
+      `max(besuLogCost, gasCostOfStoring(logSize, recordsTtl, tinycentRbhPrice, tinycentGasPrice))`.
+      LOG0-LOG4 therefore cost MORE than mainnet whenever the storage-rent term dominates,
+      and the amount depends on the HBAR/USD exchange rate and the record TTL. An opcode
+      whose gas cost moves with an external price oracle has no mainnet analogue.
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
+
+precompiles:
+  note: >-
+    `V067Module.providePrecompileContractRegistry` calls Besu's
+    `MainnetPrecompiledContracts.populateForCancun` and NOTHING ELSE — no address is added,
+    removed or repriced. 0x01-0x0a are stock Besu 25.2.2 Cancun. The divergence is not in
+    the precompiles; it is in what happens at every OTHER address below 0x2EE.
+  dynamic_range:
+    name: "system-account sink — every address 0x01..0x2EE with no precompile and no system contract"
+    status: added
+    severity: high
+    pattern: "long-zero address with entity number <= 750 (0x2EE), excluding 0x01-0x0a and 0x167-0x16d"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v038/Version038AddressChecks.java:isSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:NUM_SYSTEM_ACCOUNTS"
+    src_live: "eth_call to 0x0000000000000000000000000000000000000100 with 160 zero bytes @ 99380446 -> 0x (success, empty output); eth_getCode 0x0100 @ 99380446 -> 0x"
+    note: >-
+      `Version038AddressChecks.isSystemAccount` returns true for EVERY long-zero address
+      whose entity number is <= `NUM_SYSTEM_ACCOUNTS` = 750. In
+      `CustomMessageCallProcessor.start`, such an address that resolves to neither a Besu
+      precompile nor a Hedera system contract reaches `handleNonExtantSystemAccount`, which
+      does `frame.clearGasRemaining()` and then returns `PrecompileContractResult.success(Bytes.EMPTY)`.
+      THE CALL SUCCEEDS, RETURNS NOTHING, AND CONSUMES EVERY UNIT OF GAS FORWARDED TO IT.
+      On mainnet the same call to, say, 0x0b succeeds and costs 100 gas. Here it silently
+      burns the frame's entire gas allowance and the caller sees `success = 1`. Sending
+      VALUE to any such address halts with `INVALID_CONTRACT_ID` instead of creating the
+      account. This also settles the P256VERIFY probe: `eth_call` to 0x0100 returns empty
+      output NOT because EIP-7951 semantics are present but because 0x0100 is inside the
+      sink — Besu 25.2.2's Cancun map has no 0x0100 entry at all.
+  "0x0a":
+    name: KZG point evaluation
+    status: added
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:KZGPointEvalPrecompiledContract"
+    note: >-
+      `added` relative to a reader's likely expectation, not to mainnet Cancun: it IS
+      mainnet's 0x0a and it IS installed and initialised here, on a chain that cannot accept
+      a blob transaction and has no blob gas. It verifies proofs about data the chain has no
+      way to carry.
+  "0x0100":
+    name: P256VERIFY (RIP-7212 / EIP-7951)
+    status: removed
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
+    src_live: "eth_call 0x0100 @ 99380446 -> 0x (indistinguishable from an invalid-signature answer; source settles it)"
+    note: >-
+      Absent. Eleven rows in this dataset carry it; Hedera is not one. The empty `eth_call`
+      answer is the system-account sink above, not a precompile.
+
+system_contracts:
+  note: >-
+    Hedera's "precompiles" are, in this dataset's vocabulary, NEITHER precompiles NOR system
+    contracts cleanly, and the boundary lands differently for each address. They are
+    dispatched natively by `CustomMessageCallProcessor.start` BEFORE the Besu precompile
+    registry is consulted, so they have no EVM bytecode in state — that makes them
+    precompiles by SCHEMA.md's rule. But `eth_getCode` does not agree with itself across
+    them, and for 0x167 the relay LIES. Both facts are recorded per address.
+  "0x0000000000000000000000000000000000000167":
+    name: Hedera Token Service (HTS)
+    status: added
+    kind: "native dispatch, no bytecode in state — a precompile by SCHEMA.md's rule"
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HtsSystemContract.java:HTS_167_EVM_ADDRESS"
+    src_live: "eth_getCode 0x...167 @ 99380446 -> 0xfe"
+    note: >-
+      `eth_getCode` returns `0xfe` — ONE BYTE, the INVALID opcode — and it is a RELAY
+      FABRICATION, not state: `ContractService.getCode` short-circuits on
+      `address === constants.HTS_ADDRESS` and returns `constants.INVALID_EVM_INSTRUCTION`
+      "before consulting nodes". No such byte is stored in consensus state and nothing ever
+      executes it. Every other Hedera system contract returns `0x` from the same method.
+      So `EXTCODESIZE`-style contract detection over RPC says "0x167 is a contract, 0x168
+      is not", which is true of neither. This is the Taraxa "precompile shadowing bytecode"
+      pattern, except the bytecode does not exist and only one of six addresses has it.
+  "0x000000000000000000000000000000000000016c":
+    name: Hedera Token Service v2 (HTS at 0x16C)
+    status: added
+    kind: "native dispatch, no bytecode"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HtsSystemContract.java:HTS_16C_EVM_ADDRESS"
+    src_live: "eth_getCode 0x...16c @ 99380446 -> 0x"
+    note: "A second HTS entry point. The relay's getCode short-circuit knows only about 0x167, so this one reports as a plain EOA."
+  "0x0000000000000000000000000000000000000168":
+    name: Exchange rate
+    status: added
+    kind: "native dispatch, no bytecode"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/ExchangeRateSystemContract.java:EXCHANGE_RATE_CONTRACT_ID"
+    src_live: "eth_call 0x...168 tinycentsToTinybars(0x05f5e100) @ 99380446 -> 0x00..c8c184 (13,157,252 tinybar per 1e8 tinycent); eth_getCode 0x...168 @ 99380446 -> 0x"
+    note: >-
+      Exposes the HBAR/USD oracle that PRICES GAS to contracts. A live, working precompile
+      whose output changes with an off-chain price feed, at an address `eth_getCode` says is
+      empty.
+  "0x0000000000000000000000000000000000000169":
+    name: PRNG (util_prng)
+    status: added
+    kind: "native dispatch, no bytecode"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/PrngSystemContract.java:PRNG_CONTRACT_ID"
+    src_live: "eth_getCode 0x...169 @ 99380446 -> 0x"
+  "0x000000000000000000000000000000000000016a":
+    name: Hedera Account Service (HAS)
+    status: added
+    kind: "native dispatch, no bytecode"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HasSystemContract.java:HAS_EVM_ADDRESS"
+    src_live: "eth_getCode 0x...16a @ 99380446 -> 0x"
+    note: >-
+      Carries `isAuthorizedRaw`, the ONLY way EVM code can check an ED25519 signature on
+      this chain. Priced at the ECRECOVER rate by
+      `CustomGasCalculator.getEdSignatureVerificationSystemContractGasCost`.
+  "0x000000000000000000000000000000000000016b":
+    name: Hedera Schedule Service (HSS)
+    status: added
+    kind: "native dispatch, no bytecode"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HssSystemContract.java:HSS_EVM_ADDRESS"
+    src_live: "eth_getCode 0x...16b @ 99380446 -> 0x"
+    note: "Lets EVM code create and sign SCHEDULED transactions — a transaction that executes later, when signatures accumulate, with no EVM frame to attribute it to."
+  synthesised_bytecode:
+    name: "code that is invented per account, and per CALL"
+    status: added
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/TokenEvmAccount.java:getCode, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/ProxyEvmAccount.java:ACCOUNT_PROXY_FUNCTION_SELECTOR, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/utils/RedirectBytecodeUtils.java:PROXY_PRE_BYTES"
+    src_doc: https://hips.hedera.com/hip/hip-218
+    note: >-
+      THE ACCOUNT MODEL IS NOT ETHEREUM'S. (1) Every HTS TOKEN has an EVM address whose
+      "code" is generated on demand by `RedirectBytecodeUtils.tokenProxyBytecodeFor(address)`
+      — a proxy that delegate-calls 0x167 with the token address prepended — so a native
+      Hedera token that was never deployed presents as an ERC-20/721 contract with a
+      deterministic, address-dependent `EXTCODEHASH`. The relay reproduces the same bytes in
+      `CommonService.redirectBytecodeAddressReplace`. (2) `ProxyEvmAccount.getEvmCode` takes
+      the CALL'S FUNCTION SELECTOR as an argument and returns account-proxy bytecode only
+      when the selector is one of `hbarAllowance`, `hbarApprove` or
+      `setUnlimitedAutomaticAssociations`, and `0x` otherwise. AN ACCOUNT'S CODE IS A
+      FUNCTION OF THE CALLDATA USED TO CALL IT. There is no expressible Ethereum account
+      state that behaves this way, and no static analysis over `eth_getCode` can predict it.
+      (3) Schedules get the same treatment via `ScheduleEvmAccount`.
+
+opcodes:
+  note: >-
+    The instruction table is Besu 25.2.2's Cancun set, then nine operations are REPLACED by
+    Hedera versions in the Dagger module. The replacements are listed here; everything else
+    is stock.
+  added: []
+  removed: []
+  modified:
+  - op: "0x48"
+    name: BASEFEE
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getBaseFee"
+    note: "Returns Wei.ZERO unconditionally, while eth_getBlockByNumber reports 1.11e12 for the same block."
+  - op: "0x45"
+    name: GASLIMIT
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getGasLimit"
+    note: >-
+      `HevmBlockValues.from(blockRecordInfo, gasLimit)` is constructed with THE
+      TRANSACTION'S OWN GAS LIMIT. `block.gaslimit` therefore returns the caller's gas
+      limit, not a block limit, and changes from transaction to transaction inside the same
+      block. The relay meanwhile reports a `gasLimit` header field looked up from a
+      HAPI-version table.
+  - op: "0x41"
+    name: COINBASE
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/utils/FrameBuilder.java:miningBeneficiary, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/LedgerConfig.java:fundingAccount"
+    note: >-
+      A CONSTANT: the long-zero address of `ledger.fundingAccount` (default entity 98), i.e.
+      0x0000000000000000000000000000000000000062. There is no proposer to name. The relay's
+      block `miner` field is the ZERO address, so the two disagree.
+  - op: "0x44"
+    name: PREVRANDAO
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomPrevRandaoOperation.java:CustomPrevRandaoOperation"
+    note: >-
+      Replaced, and REAL: returns the first 32 bytes of the N-3 record running hash rather
+      than a beacon-chain RANDAO. Unlike most non-Ethereum chains, this is genuine entropy
+      committed by consensus — but it is a Hedera quantity with Hedera's bias properties,
+      not the beacon randomness a mainnet contract assumes.
+  - op: "0xff"
+    name: SELFDESTRUCT
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomSelfDestructOperation.java:UseEIP6780Semantics"
+    note: >-
+      "In EVM the SELFDESTRUCT operation never fails" — the source says so, and then makes
+      it fail. It halts if the contract holds any HTS token, if it is a token treasury, if
+      the beneficiary transfer would violate Hedera signature requirements, if the frame
+      originates from a hook, or if the contract is its own beneficiary while being deleted
+      with a non-zero balance. A pattern that is total on mainnet is partial here.
+  - op: "0x31"
+    name: BALANCE
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomBalanceOperation.java:isSystemAccount"
+    note: >-
+      Two changes. (1) For ANY system account (entity number <= 750, so all of 0x01..0x2EE)
+      it pushes ZERO with no error — "make system contract balance invisible to EVM". (2)
+      The value it pushes is in TINYBARS, eight decimals, not weibars — see
+      `fee_model.denomination`.
+  - op: "0x3b"
+    name: EXTCODESIZE
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomExtCodeSizeOperation.java:INVALID_SOLIDITY_ADDRESS"
+    note: >-
+      Can HALT the frame with the Hedera-specific `INVALID_SOLIDITY_ADDRESS` reason for a
+      non-existent address, where mainnet always returns 0. Since v0.46
+      `contracts.evm.allowCallsToNonContractAccounts` defaults true and suppresses this —
+      EXCEPT for entity numbers listed in `contracts.evm.nonExtantContractsFail`, a
+      grandfathered per-address exception set that is a network property. The chain
+      therefore has a consensus-relevant ALLOW-LIST of addresses for which a core opcode
+      behaves differently.
+  - op: "0x3f"
+    name: EXTCODEHASH
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomExtCodeHashOperation.java:INVALID_SOLIDITY_ADDRESS"
+    note: >-
+      Same halt path as EXTCODESIZE, plus: for an HTS token address it hashes bytecode that
+      was SYNTHESISED for that address on demand, and for a plain account it may hash
+      account-proxy bytecode whose presence depends on the calling selector.
+  - op: "0xf1/0xf2/0xf4/0xfa"
+    name: "CALL / CALLCODE / DELEGATECALL / STATICCALL"
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount"
+    note: >-
+      A call to any address in 0x01..0x2EE that is neither a Besu precompile nor a Hedera
+      system contract SUCCEEDS with empty output after `frame.clearGasRemaining()` — the
+      child frame's entire gas allowance is consumed and nothing is returned. Sending value
+      to such an address halts with `INVALID_CONTRACT_ID`. See `precompiles.dynamic_range`.
+  - op: "0xa0-0xa4"
+    name: LOG0-LOG4
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
+    divergence: gas
+    note: "Priced at max(Besu cost, Hedera storage-rent cost), where the rent term depends on the live HBAR/USD exchange rate."
+
+header_fields:
+  note: >-
+    THERE IS NO ETHEREUM BLOCK HEADER ON THIS CHAIN. Nothing signs one, nothing hashes one,
+    and no consensus rule references one. What `eth_getBlockByNumber` returns is assembled
+    field by field in TypeScript by `BlockFactory.createBlock` from a mirror-node record-file
+    summary. Every entry below is therefore a statement about the RELAY, and the citations
+    are to the relay repo — with the one consensus-side exception noted on `hash`.
+  added: []
+  removed: []
+  modified:
+  - name: hash
+    severity: high
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:toHash32, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/utils/ConversionUtils.java:ethHashFrom"
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> hash 0x961c4709699645d815396c31dc2aec6120921195a558fefc99eea6f730de1d96; mirror /api/v1/blocks/99380446 @ 99380446 -> hash 0x961c4709699645d815396c31dc2aec6120921195a558fefc99eea6f730de1d968191fdcff7664d2d3f4b2e6e4b572a8a (48 bytes)"
+    note: >-
+      THE REAL BLOCK HASH IS 48 BYTES. It is the SHA-384 running hash of the record file, and
+      a 32-byte Ethereum hash cannot hold it. BOTH the relay (`toHash32`) and the EVM
+      (`ConversionUtils.ethHashFrom`, whose javadoc says "wraps the first 32 bytes of the
+      given SHA-384 hash") TRUNCATE it to its first 32 bytes. Verified live: the `eth_*`
+      hash is a byte-exact prefix of the mirror node's 48-byte hash. Two blocks colliding in
+      their first 32 bytes would be indistinguishable to every Ethereum tool while remaining
+      distinct to the protocol.
+  - name: parentHash
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:previous_hash"
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> parentHash 0x514380435be71ecf6d8788477db1d07cf0643144f0b41244e94c3eb9701f79da; mirror previous_hash 0x514380...79da0470dd3f40797dc90dba8b5a3983e99c"
+    note: >-
+      `previous_hash.substring(0, 66)` — the same first-32-bytes truncation. BECAUSE BOTH
+      SIDES TRUNCATE IDENTICALLY, `BLOCKHASH(n-1) == parentHash` HOLDS. That is the
+      negative result, and it is worth stating: the EVM's `BLOCKHASH` and the RPC's
+      `parentHash` agree, and both are lossy views of the same 48-byte object.
+  - name: stateRoot
+    severity: high
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:DEFAULT_ROOT_HASH"
+    src_live: "eth_getBlockByNumber @ 99380446 and eth_getBlockByNumber earliest -> stateRoot 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421 in BOTH"
+    note: >-
+      A HARDCODED CONSTANT — the keccak of the empty RLP string, i.e. the EMPTY Merkle
+      Patricia trie root — identical in every block since genesis. Hedera's state is a
+      virtual-map Merkle tree with no MPT root to report, so the relay reports the empty
+      one. Any light client, state-proof verifier or bridge that reads `stateRoot` is
+      reading a constant that asserts the state is empty.
+  - name: transactionsRoot
+    severity: high
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:transactionsRoot"
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> transactionsRoot == hash == 0x961c4709...1d96; empty blocks (e.g. 0x5ec6cea) -> transactionsRoot 0x56e81f17...b421"
+    note: >-
+      `txArray.length === 0 ? DEFAULT_ROOT_HASH : blockHash`. When a block has transactions
+      the transactions root IS THE BLOCK HASH — not a trie root over the transactions, and
+      not even a distinct value. When it has none it is the empty-trie constant. It commits
+      to nothing.
+  - name: receiptsRoot
+    src: "hiero-json-rpc-relay/src/relay/lib/services/ethService/blockService/blockWorker.ts:getRootHash"
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> 0xf86d54498881097077c2964b64d525a1f16e3938ebeb625f90d87cd4760719cc; empty block 0x5ec6cea @ 99380446 -> 0x0000...0000"
+    note: >-
+      The one root the relay actually computes — it RLP-encodes the receipts it synthesised
+      and tries them. For an empty block it is 32 zero bytes, NOT the empty-trie root that
+      `transactionsRoot` uses for the same case. Two different conventions for "nothing" in
+      one header.
+  - name: gasLimit
+    severity: high
+    src: "hiero-json-rpc-relay/src/relay/lib/config/blockGasLimit.ts:BLOCK_GAS_LIMIT_BY_HAPI_VERSION"
+    src_live: "eth_getBlockByNumber @ 99380446 -> 0x8f0d180 (150,000,000); eth_getBlockByNumber earliest @ 99380446 -> 0x1c9c380 (30,000,000)"
+    note: >-
+      NOT A CONSENSUS VALUE. A lookup table in the relay maps the record file's
+      `hapi_version` to a number: >= 0.69.0 gives 150,000,000, anything else 30,000,000. The
+      real limits are elsewhere and are different in kind: `contracts.maxGasPerTransaction`
+      and `contracts.maxGasPerSec` are THROTTLES in gas per SECOND, and the pinned tag
+      defaults both to 15,000,000. A client sizing a transaction against the reported
+      `gasLimit` is reading a relay constant.
+  - name: miner
+    src_live: "eth_getBlockByNumber @ 99380446 -> 0x0000000000000000000000000000000000000000"
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:ZERO_ADDRESS_HEX"
+    note: "Always zero — there is no proposer. Disagrees with the COINBASE opcode, which returns entity 98."
+  - name: timestamp
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:timestampRange"
+    note: >-
+      The record file's consensus timestamp RANGE truncated to whole seconds and reported as
+      its `from` value. Nanosecond precision — which is the actual ordering key — is
+      discarded. Inside the EVM, `TIMESTAMP` is `blockTime.seconds()` of the current block
+      record, so two transactions with different consensus timestamps in the same 2-second
+      bucket see the same `block.timestamp` even though the protocol ordered them strictly.
+  - name: "difficulty / totalDifficulty / nonce / mixHash / sha3Uncles / uncles / extraData / withdrawals / withdrawalsRoot"
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:createBlock"
+    note: >-
+      All constants: zero, zero, 8 zero bytes, 32 zero bytes, the empty-uncles hash, [], 0x,
+      [] and 32 zero bytes respectively. `withdrawalsRoot` is zero rather than the empty-trie
+      root, which is the same inconsistency as `receiptsRoot`.
+  - name: "excessBlobGas / blobGasUsed / parentBeaconBlockRoot / requestsHash"
+    status: removed
+    src: "hiero-json-rpc-relay/src/relay/lib/factories/blockFactory.ts:createBlock"
+    src_live: "eth_getBlockByNumber @ 99380446 -> keys absent from the response object entirely"
+    note: >-
+      Not present at all — not zero, ABSENT. A Cancun header decoder that requires
+      `excessBlobGas`/`blobGasUsed`/`parentBeaconBlockRoot` fails on every block, despite
+      `baseline_fork: cancun`.
+
+forks:
+  src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEvmVersion.java:EVM_VERSIONS"
+  note: >-
+    NO TIMESTAMPS, NO FORK SCHEDULE, NO GENESIS FILE. The EVM version is a NETWORK PROPERTY
+    string (`contracts.evm.version`, default `v0.67`) whose value is a Hedera RELEASE number.
+    A "fork" here is a governance action that updates file 0.0.121 or a software upgrade that
+    changes the default — there is no `activation_time` to publish and nothing a client can
+    compute in advance. `HederaEvmVersion.EVM_VERSIONS` enumerates the nine values a node
+    will accept; anything else is unrecognised. Each maps to a Dagger module that picks a
+    Besu operation-registration entry point.
+  timeline:
+  - {name: "v0.30", mainnet_equivalent: london, activation_condition: "contracts.evm.version = v0.30", note: "registerLondonOperations with an Istanbul gas calculator"}
+  - {name: "v0.34", mainnet_equivalent: london, activation_condition: "contracts.evm.version = v0.34"}
+  - {name: "v0.38", mainnet_equivalent: shanghai, activation_condition: "contracts.evm.version = v0.38", note: "registerShanghaiOperations; PUSH0 gated on EvmSpecVersion.SHANGHAI <= spec"}
+  - {name: "v0.46", mainnet_equivalent: shanghai, activation_condition: "contracts.evm.version = v0.46", note: "introduces evm.allowCallsToNonContractAccounts and the nonExtantContractsFail grandfather set"}
+  - {name: "v0.50", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.50", note: "first Cancun revision"}
+  - {name: "v0.51", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.51", note: "adds the Hedera Account Service system contract at 0x16a"}
+  - {name: "v0.65", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.65", note: "alternate gas schedule"}
+  - {name: "v0.66", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.66", note: "native-library verification; alternate gas schedule DISABLED — a fork that removed a pricing change"}
+  - {name: "v0.67", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.67 (the default at the pinned tag)", note: "re-enables the alternate gas schedule; can select the experimental BonnevilleEVM via contracts.evm.UseBonnevilleEVM (default false)"}
+
+eips:
+  note: >-
+    Mainnet-relative. The Cancun instruction set and precompile map arrive wholesale from
+    Besu 25.2.2, so most EIPs at or below Cancun are `inherited` and are not restated. Listed
+    here are the ones that are NOT what a reader would assume from `baseline_fork: cancun`.
+  155:
+    status: inherited
+    src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> transactions[0].v = 0x272 = 626 = 2*295 + 36, the EIP-155 encoding for chainId 295"
+  1559:
+    status: modified
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getBaseFee, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/TinybarValues.java:topLevelTinybarGasPrice"
+    src_live: "eth_maxPriorityFeePerGas @ 99380446 -> 0x0; eth_getBlockByNumber earliest and latest @ 99380446 -> the SAME baseFeePerGas 0x1027127dc00"
+    note: >-
+      The type-0x02 envelope is accepted; the fee market behind it does not exist. There is
+      no per-block base fee (the value reported is a network-wide, exchange-rate-derived gas
+      price, identical at genesis and at head), no burn, no priority fee, and the BASEFEE
+      opcode returns zero. Every mainnet base-fee estimator is wrong on every input here,
+      and every base-fee-reading contract reads zero.
+  2718:
+    status: modified
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:populateEthTxData"
+    note: >-
+      Typed envelopes exist only INSIDE a HAPI `EthereumTransactionBody`. There is no
+      top-level 2718 object anywhere in consensus, no `transactionsRoot` over them, and only
+      types 0x00/0x01/0x02 decode.
+  2930:
+    status: modified
+    severity: high
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:accessList"
+    note: "The envelope is accepted and the access list is parsed, stored, and never read by anything in the execution path. No warming, no discount, no error."
+  3198:
+    status: modified
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HevmBlockValues.java:getBaseFee"
+    note: "BASEFEE is present in the jump table and hardcoded to zero."
+  4399:
+    status: modified
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomPrevRandaoOperation.java:CustomPrevRandaoOperation"
+    note: "PREVRANDAO returns the first 32 bytes of the N-3 record running hash."
+  6780:
+    status: modified
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomSelfDestructOperation.java:UseEIP6780Semantics"
+    note: "SELFDESTRUCT can HALT — see opcodes. EIP-6780's own rule is implemented (delete only if created in this transaction), on top of five Hedera-specific failure conditions."
+  4844:
+    status: removed
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:populateEthTxData"
+    note: >-
+      No blob transaction type, no blob gas market, no `excessBlobGas`/`blobGasUsed` header
+      fields. But BLOBHASH, BLOBBASEFEE and the KZG precompile at 0x0a are all installed by
+      Besu's Cancun registration — the opcodes are present and can never see a blob.
+  4788:
+    status: removed
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 99380446 -> 0x"
+    note: "The beacon-roots contract is not in state. There is no beacon chain."
+  2935:
+    status: removed
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 99380446 -> 0x"
+    note: "Absent, consistent with a Cancun baseline. Block hashes come from an in-state ring of 256 SHA-384 hashes instead."
+  7702:
+    status: removed
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:EthTransactionType"
+    note: >-
+      Type 4 does not decode. Ironically Hedera has had protocol-level account abstraction
+      since launch — a `Key` may be a contract ID, and any account may delegate authority —
+      but none of it is reachable through 7702's interface.
+  7951:
+    status: removed
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
+    note: "No P256VERIFY. An eth_call to 0x0100 returns empty output because of the system-account sink, which is not the same thing."
+  2537:
+    status: removed
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
+    note: "BLS12-381 precompiles are Prague; the map stops at Cancun."
+  7623:
+    status: removed
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:transactionIntrinsicGasCost"
+    note: >-
+      `transactionIntrinsicGasCost` overrides Besu's and DISCARDS the `baselineCost`
+      argument entirely, with the comment "We won't use the baseline cost for now". Correct
+      at Cancun; it also means the calldata floor can never take effect if the baseline
+      moves.
+  170:
+    status: unrecorded
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:provideMaxCodeSizeRule"
+    note: >-
+      `ProcessorModule.provideMaxCodeSizeRule` calls
+      `MaxCodeSizeRule.from(EvmSpecVersion.defaultVersion(), ...)` — Besu's DEFAULT spec
+      version, not the CANCUN the rest of the module is pinned to. At Besu 25.2.2 both give
+      24576, so no divergence is observable today, but the max code size is bound to the
+      library's default rather than to this chain's declared spec. Not established what
+      happens on a Besu bump.
+  1153:
+    status: inherited
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations"
+    note: "TLOAD/TSTORE arrive with Besu's Cancun registration and are not overridden."
+  5656:
+    status: inherited
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations"
+  3855:
+    status: inherited
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEVM.java:enableShanghai"
+    note: "PUSH0 is gated on `EvmSpecVersion.SHANGHAI.ordinal() <= evmSpecVersion.ordinal()` inside HederaEVM's own dispatch loop, so it is live at v0.38 and later."
+  3529:
+    status: unrecorded
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/FrameRunner.java:minimumGasUsed"
+    src_live: "mirror /api/v1/contracts/results @ 99385206 -> gas_limit 4000000 / gas_used 249802 (6.25%), and 500000 / 38457 with result CONTRACT_REVERT_EXECUTED"
+    note: >-
+      Besu's refund logic is not replaced, but Hedera adds an independent FLOOR:
+      `FrameRunner` computes `minimumGasUsed = gasLimit - gasLimit * maxRefundPercentOfGasLimit / 100`.
+      At the pinned default (`contracts.maxRefundPercentOfGasLimit = 100`) the floor is 0 and
+      the rule is inert, which live sampling confirms — 6.25% of the limit was charged on one
+      transaction. It is a NETWORK PROPERTY, so a governance change could reinstate a
+      minimum charge without a client release, and Hedera historically ran it at 20 (an 80%
+      minimum charge). Recorded as `unrecorded` because the LIVE mainnet value of the
+      property was not established, only that it is not currently binding.
+
+system_transactions:
+  note: >-
+    Hedera has protocol-driven state changes, but they are HAPI transactions in the ordinary
+    stream rather than a distinct EVM-visible category, and none of them appears over `eth_*`.
+  entries:
+  - name: NodeStakeUpdate
+    src: "hapi/hedera-protobuf-java-api/src/main/proto/services/transaction.proto:node_stake_update"
+    note: "The network issues this to itself at each staking period boundary; it pays staking rewards, which change HBAR balances that BALANCE and eth_getBalance read."
+  - name: "post-upgrade setup"
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/HandleWorkflow.java:doPostUpgradeSetup"
+    note: "After a software upgrade the first handled transaction triggers `systemTransactions.doPostUpgradeSetup`, which mutates state outside any user transaction."
+  - name: "scheduled transaction execution"
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/HandleWorkflow.java:executeScheduledTransactions"
+    note: >-
+      A previously created Schedule executes when its signature threshold is met or its time
+      arrives — including in an EMPTY ROUND, where `executeScheduledTransactions` runs with
+      the round's consensus time. State can change in a block containing no submitted
+      transaction at all. If such a schedule contains a ContractCall, EVM state changes with
+      no `eth_*` transaction to attribute it to.
+  - name: "hinTS / history-proof ceremony traffic"
+    src: "hapi/hedera-protobuf-java-api/src/main/proto/services/transaction.proto:hints_partial_signature"
+    note: "Consensus machinery (threshold-signature key publication, partial signatures, CRS publication) submitted as ordinary transactions in the same stream as user traffic."
+
+gotchas:
+  - >-
+    THE `eth_*` API IS NOT THE STATE TRANSITION. Blocks, hashes, roots, `gasLimit`, `miner`
+    and the `latest`/`safe`/`finalized`/`pending` tags are computed in TypeScript by a
+    separate process (`hiero-json-rpc-relay`, versioned independently — the live endpoint
+    reports `relay/0.78.4` while the network runs consensus software 0.76.2) reading a
+    mirror node over HTTP. Nothing it returns is signed, voted on, or reproducible from
+    consensus. Everything about ordering, fees, duplicates and execution IS consensus.
+    Confusing the two is the root of most wrong beliefs about this chain.
+  - >-
+    ORDERING IS FINAL BEFORE ANYTHING IS EXECUTED, AND A TRANSACTION THAT IS INVALID WHEN
+    IT EXECUTES IS BILLED WITHOUT EXECUTING. Hashgraph assigns every transaction a consensus
+    timestamp by virtual voting over gossip, with no reference to its content. Handling
+    happens afterwards, sequentially, in that order. `DispatchProcessor.processDispatch`
+    charges fees FIRST and only then decides whether to call the handler. A transaction that
+    has expired, has a bad payer signature, or fails a due-diligence check charges THE
+    SUBMITTING NODE the network fee and the payer nothing. A transaction that is a duplicate,
+    or whose payer cannot cover the service fee, charges THE PAYER and never runs. This is a
+    fate no other row in this dataset has: not erased (Conflux, IOTA EVM, Artela, Rollkit),
+    not executed-and-failed (Taraxa, Monad), but billed-and-skipped.
+  - >-
+    A TRANSACTION IS IDENTIFIED BY PAYER + VALID-START TIMESTAMP, NOT BY ITS CONTENTS. Two
+    submissions are the same transaction iff they share a `TransactionID`; nothing about the
+    body enters the key. Submitting the same signed transaction to several nodes — which
+    Hedera's own SDKs encourage for reliability — makes duplicates the NORMAL case, and the
+    payer pays the node and network fees for every duplicate that reaches consensus, with the
+    service fee waived. THE DUPLICATE NEVER EXECUTES, HAS NO EFFECT, AND IS INVISIBLE OVER
+    `eth_*`: the Ethereum hash is written into the record only by
+    `EthereumTransactionHandler.handle`, which a duplicate never reaches, so
+    `eth_getTransactionReceipt` returns null for that occurrence forever while the HBAR is
+    gone. If the SAME node submits the duplicate, the node is charged instead and the payer
+    is not.
+  - >-
+    HBAR HAS EIGHT DECIMALS AND THE CONVERSION IS APPLIED INCONSISTENTLY. The signed
+    transaction's `value` is divided by 10^10 with integer division and NO remainder check
+    (`EthTxData.getAmount`), so any amount below 10^10 weibar silently becomes ZERO and the
+    transaction still succeeds. Inside the EVM, `msg.value` and `BALANCE` are in TINYBARS
+    (eight decimals) because `weiValue()` is `Wei.of(tinybarValue)`. Over JSON-RPC,
+    `eth_getBalance` multiplies back to eighteen decimals. THE SAME ACCOUNT'S BALANCE DIFFERS
+    BY 10^10 DEPENDING ON WHETHER YOU ASK THE EVM OR THE RPC, and neither answer carries a
+    unit. A contract comparing `msg.value` to `1 ether` can never be satisfied.
+  - >-
+    CALLING ANY ADDRESS FROM 0x01 TO 0x2EE THAT IS NOT A PRECOMPILE CONSUMES ALL FORWARDED
+    GAS AND REPORTS SUCCESS. `Version038AddressChecks.isSystemAccount` covers entity numbers
+    up to 750; `CustomMessageCallProcessor.handleNonExtantSystemAccount` calls
+    `frame.clearGasRemaining()` and returns success with empty output. On mainnet the same
+    call costs 100 gas. Sending value to such an address halts with `INVALID_CONTRACT_ID`
+    instead of creating the account. This is also why an `eth_call` to 0x0100 returns empty
+    output — it is the sink, not P256VERIFY.
+  - >-
+    `stateRoot` IS A CONSTANT AND `transactionsRoot` IS THE BLOCK HASH. `BlockFactory`
+    hardcodes `stateRoot` to the EMPTY Merkle Patricia trie root in every block since
+    genesis, and sets `transactionsRoot` to `txArray.length === 0 ? emptyTrieRoot :
+    blockHash`. Neither commits to anything. `receiptsRoot` is the one root actually
+    computed, and for an empty block it is 32 zero bytes rather than the empty-trie root the
+    same header uses two fields earlier.
+  - >-
+    THE REAL BLOCK HASH IS 48 BYTES OF SHA-384, TRUNCATED TO 32 EVERYWHERE. Both the relay
+    (`toHash32`) and the EVM (`ConversionUtils.ethHashFrom`) keep only the first 32 bytes.
+    The negative result matters: BECAUSE BOTH TRUNCATE IDENTICALLY, `BLOCKHASH(n-1)` DOES
+    EQUAL `parentHash`. Verified live — the `eth_*` hash at block 99380446 is a byte-exact
+    prefix of the mirror node's 48-byte hash.
+  - >-
+    `eth_getCode` AT 0x167 RETURNS `0xfe` AND THE RELAY INVENTED IT. `ContractService.getCode`
+    short-circuits on the HTS address "before consulting nodes" and returns one INVALID
+    opcode byte. No such byte is in state. The five other Hedera system contracts —
+    0x168, 0x169, 0x16a, 0x16b, 0x16c — return `0x` from the same call. Contract-detection
+    by `eth_getCode != "0x"` is therefore wrong in both directions on this chain.
+  - >-
+    AN ACCOUNT'S CODE DEPENDS ON THE CALLDATA USED TO CALL IT. `ProxyEvmAccount.getEvmCode`
+    takes the function selector as a parameter and returns account-proxy bytecode only for
+    `hbarAllowance`, `hbarApprove` and `setUnlimitedAutomaticAssociations`, and empty code
+    otherwise. Separately, every HTS token has synthesised, address-dependent ERC-20/721
+    proxy bytecode generated on demand by `RedirectBytecodeUtils`. There is no Ethereum
+    account state that behaves like either.
+  - >-
+    `block.basefee` IS ZERO AND `block.gaslimit` IS THE TRANSACTION'S OWN GAS LIMIT.
+    `HevmBlockValues.getBaseFee()` returns `Wei.ZERO` unconditionally while
+    `eth_getBlockByNumber` reports 1.11e12 for the same block; `HevmBlockValues` is
+    constructed with the transaction's gas limit, so `block.gaslimit` varies between
+    transactions in one block. `COINBASE` returns entity 98
+    (0x…0062) while the block's `miner` field is the zero address.
+  - >-
+    GAS IS PRICED IN DOLLARS, NOT BY DEMAND. `TinybarValues.topLevelTinybarGasPrice` converts
+    a tinycent fee-schedule price at the network's HBAR/USD exchange rate, times a congestion
+    multiplier. The HBAR gas price therefore moves when the HBAR PRICE moves. There is no
+    auction: `eth_maxPriorityFeePerGas` returns 0 and paying more buys nothing. The rate
+    itself is readable from EVM code at 0x168.
+  - >-
+    ONE ETHEREUM TRANSACTION HAS TWO PAYERS. The HAPI payer ("relayer") that wrapped it in an
+    `EthereumTransactionBody` and the EVM sender recovered from the inner signature are
+    different accounts. `max_gas_allowance` lets the relayer subsidise the sender, and on an
+    ABORTED Ethereum transaction `chargeGasForAbortedTransaction` charges the RELAYER the
+    intrinsic gas. Two accounts are debited by one transaction and the receipt names one.
+  - >-
+    A SUCCESSFUL ETHEREUM TRANSACTION IS REFUNDED ITS HAPI FEE AND A FAILED ONE IS NOT.
+    `contracts.evm.ethTransaction.zeroHapiFees.enabled` defaults true, so success triggers
+    `feeCharging.refund`. Failure keeps the node/network/service fee on top of the gas. The
+    surcharge for failing does not appear in `gasUsed * effectiveGasPrice`.
+  - >-
+    EVERY RECEIPT CLAIMS A `contractAddress`. `TransactionReceiptFactory.getContractAddressFromReceipt`
+    returns `receiptResponse.address` for every non-token-creating call, so a plain CALL —
+    including a REVERTED one — comes back with `contractAddress` set to the callee. Any tool
+    that treats a non-null `contractAddress` as "this was a deployment" misreads every
+    transaction on this chain. Receipts also carry BOTH a pre-Byzantium `root` (hardcoded to
+    the empty-trie constant) AND a `status`, plus a non-standard `revertReason`.
+  - >-
+    `eth_getBlockByNumber` SHOWS A MINORITY OF THE BLOCK AND INVENTS SOME OF WHAT IT SHOWS.
+    Record file 99380446 contains 7 HAPI transactions; `eth_getBlockByNumber` reported 1.
+    Meanwhile `blockWorker` FABRICATES legacy transactions for logs whose transaction is not
+    an Ethereum transaction, with `from` = `to` = the log's contract address,
+    `input = 0x0000000000000000`, `gasPrice = 0xfe` and a zero signature. They cannot be
+    re-encoded to their own hash and they never existed.
+  - >-
+    `finalized`, `safe`, `pending` AND `latest` ALL RETURN THE SAME BLOCK — and here that is
+    HONEST for three of the four. Hashgraph is aBFT: a transaction is final when it gets its
+    consensus timestamp, there are no reorgs, and nothing can be revisited, so `finalized`
+    and `safe` legitimately equal `latest`. `pending` equalling `latest` is the one that
+    misleads: there is no pending pool view. A null `eth_getTransactionReceipt` on this chain
+    means "the mirror node has not ingested the record yet", never "gone forever" — the
+    opposite of Conflux, IOTA EVM, Artela and Rollkit.
+  - >-
+    ACCESS LISTS ARE ACCEPTED AND IGNORED. `EthTxData` parses type-0x01 and type-0x02 access
+    lists and keeps them only for `equals`/`hashCode`; nothing in the execution module reads
+    them. No warming, no discount, no surcharge, no error. Re-encoding one is not even
+    implemented.
+  - >-
+    56 OF THE 59 HAPI TRANSACTION TYPES ARE INVISIBLE TO ETHEREUM TOOLING AND SOME OF THEM
+    MOVE YOUR MONEY. `CryptoTransfer` moves HBAR that `BALANCE` reads. `CryptoUpdateAccount`
+    can replace the key controlling an account. `TokenWipe` destroys a holder's token balance
+    with no ERC-20 event. `ContractDeleteInstance` deletes a contract and sweeps its balance
+    with no SELFDESTRUCT in any trace. `TokenAssociate` means a transfer to an unassociated
+    account fails for a reason ERC-20 has no word for. An indexer built on `eth_*` sees none
+    of it.
+  - >-
+    A BLOCK IS A TWO-SECOND BUCKET OF CONSENSUS TIME, NOT A PRODUCED OBJECT.
+    `BlockRecordManagerImpl.willOpenNewBlock` returns true when
+    `floor(consensusSecond / 2)` increments while the node is already iterating an ordered
+    round. No quorum votes on a block, no proposer builds one, and `block.number` counts
+    buckets since genesis. Inside the EVM `TIMESTAMP` is that bucket's second, so two
+    transactions the protocol ordered strictly apart by nanoseconds can read the same
+    `block.timestamp`.

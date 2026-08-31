@@ -38,7 +38,7 @@ baseline_fork: osaka
 forks:
   src: go-ethereum/params/config.go:837-867, go-ethereum/params/config_arbitrum.go
   note: >-
-    A THIRD mapping mechanism, distinct from every other chain here. Arbitrum does
+    A MAPPING MECHANISM OF ITS OWN — a version counter, not a schedule. Arbitrum does
     not use fork timestamps at all: IsShanghai/IsCancun/IsPrague/IsOsaka each begin
     with "if c.IsArbitrum() { return currentArbosVersion >= N }", short-circuiting
     the timestamp path entirely. ShanghaiTime and friends are ignored on Arbitrum

@@ -51,10 +51,9 @@ baseline_fork: osaka
 forks:
   src: params/config.go:MainnetChainConfig
   note: >-
-    Activation is by BLOCK NUMBER, not timestamp — a fifth incompatible
-    activation mechanism alongside OP Stack's enforced timestamp equality,
-    Avalanche's assigned timestamps, Arbitrum's ArbOS version gating and
-    Polygon's block numbers (which Kaia matches). Fields are named
+    Activation is by BLOCK NUMBER, not timestamp — the mechanism Kaia shares
+    with Polygon, against OP Stack's enforced timestamp equality, Avalanche's
+    assigned timestamps and Arbitrum's ArbOS version gating. Fields are named
     `<Fork>CompatibleBlock`, so a tool looking for `cancunTime` finds nothing.
     Kaia interleaves its own forks with Ethereum's in one linear sequence.
   timeline:

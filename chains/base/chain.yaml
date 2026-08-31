@@ -28,6 +28,12 @@ client:
   note: >-
     base/node is only a Docker packaging repo pinning this client via versions.env.
     Reading node alone would have produced a near-empty and badly wrong row.
+  companion_repos:
+  - {name: node, repo: "https://github.com/base/node",
+     commit: 552280fe4291b3795d7342e39dbb9646e84b175a,
+     provides: "nothing this row states — pinned only so the rejection above names a
+       specific tree. This is the repo the obvious search finds; versions.env in it is
+       what identified base/base v1.2.0 as the client that actually runs."}
 
 consensus:
   engine: OP Stack (sequencer) + fault proofs

@@ -116,8 +116,12 @@ Verified to be a **precompile, not a predeploy**: `eth_getCode` returns `0x` at 
 74884096, while the FeeCurrencyDirectory at the same height returns proxy bytecode.
 
 Placement is the concern. Every other custom precompile in this dataset sits at `0x0100`
-or far above (Tron `0x1000001+`, Monad `0x1000`, Flare `0x1000...0002`). Celo parked one
+or far above (Tron `0x1000001+`, Monad `0x1000`, Sonic `0xd100ec...`). Celo parked one
 at `0xfd`, **three addresses below `0x0100`**, inside the range mainnet is growing into.
+
+(Flare was cited here as `0x1000...0002` in an earlier pass. The `flare` row establishes
+that those addresses hold real genesis bytecode — they are system contracts, and Flare
+adds no precompile addresses at all. The point stands on Tron, Monad and Sonic.)
 
 ## Fifth finding: the contracts repo does not describe mainnet
 

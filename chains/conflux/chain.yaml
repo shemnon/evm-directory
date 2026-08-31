@@ -1,0 +1,1213 @@
+schema_version: 2
+
+chain:
+  name: Conflux eSpace
+  slug: conflux
+  chain_id: 1030
+  role: independent
+  equivalence: behavioural
+  live: true
+  chain_id_src: "run/hydra.toml:evm_chain_id"
+  note: >-
+    eSpace is not a chain. It is one of TWO SPACES inside a single Conflux ledger:
+    Core Space (chain id 1029, `cfx:` base32 addresses, Conflux's own account and
+    transaction model) and eSpace (chain id 1030, `0x` addresses, Ethereum
+    semantics). One node, one block DAG, one consensus, one PoW, one epoch
+    sequence, ONE BLOCK BODY — and two disjoint account trees with separate
+    nonces. Everything below is a BEHAVIOURAL comparison against mainnet:
+    conflux-rust is an original Rust client whose EVM interpreter descends
+    distantly from OpenEthereum/Parity (the file headers still say so) but which
+    reimplements the state transition, the fee market and the ledger.
+
+    THE SINGLE MOST IMPORTANT STRUCTURAL FACT: an eSpace "block" does not exist.
+    `eth_getBlockByNumber` synthesises a PHANTOM BLOCK per EPOCH by scanning every
+    Core-Space block in that epoch's ordered block set, keeping the eSpace
+    transactions, dropping the skipped ones and injecting synthetic transactions
+    for cross-space calls. The header it returns is the epoch's PIVOT block's
+    header with some fields substituted and some invented. Almost every divergence
+    in this row follows from that one sentence.
+
+lineage:
+  upstream: null
+  ancestry: []
+  fork_of: null
+  inspired_by: "OpenEthereum / Parity (VM interpreter and gas-spec skeleton only)"
+  note: >-
+    `crates/execution/vm-types/src/spec.rs` and the interpreter still carry Parity
+    Technologies copyright headers, and `Spec` is recognisably OpenEthereum's cost
+    struct. Everything above the interpreter — consensus (Tree-Graph/GHAST + a PoS
+    finality chain), the two-space state, the epoch executor, the fee market, the
+    RPC layer — is Conflux's own. There is no Ethereum client this row can be
+    diffed against, so every entry is a behavioural claim.
+
+client:
+  name: conflux-rust
+  repo: https://github.com/Conflux-Chain/conflux-rust
+  version: v3.1.0
+  commit: 6e2e837c8271695b139e491f50e586ebd8ed10c8
+  language: rust
+  note: >-
+    The pinned tag is EXACTLY what mainnet runs: `web3_clientVersion` answers
+    `conflux-rust/v3.1.0-6e2e837-20260810/x86_64-linux-gnu/rustc1.94.1`, and
+    `6e2e837` is the short form of this commit. Core Space and eSpace are the same
+    binary; `cfx_clientVersion` on https://main.confluxrpc.com returns the same
+    string. No companion repo: the whole state transition, consensus, tx pool and
+    RPC live in this tree.
+
+live_probe:
+  endpoint: https://evm.confluxrpc.com
+  chain_id: 1030
+  observed_at_block: 155333000
+  note: >-
+    Block 155333000 = epoch 155,333,000, timestamp 1787845217 (2026-08-27
+    ~15:40 UTC), baseFeePerGas 20 gwei, hash 0x89f90b56..0f94. A few claims are
+    pinned to nearby blocks (155332816, 155332825, 155332908) and say so. The
+    CORE-space RPC https://main.confluxrpc.com (chain id 1029) is used for the
+    handful of claims that require seeing the same ledger from the other space;
+    those are marked `cfx_*` in the citation and are pinned to the same epoch.
+
+consensus:
+  engine: "Tree-Graph DAG + GHAST (PoW, adaptive weight) with a PoS finality chain (CIP-43)"
+  finality: "PoS-finalised, ~200-240 epochs behind the tip; PoW blocks before that are reorgable"
+  block_time: "~0.5 s per DAG block, ~1 s per epoch (eSpace block.number advances ~1/s)"
+  src: "crates/parameters/src/lib.rs:DEFERRED_STATE_EPOCH_COUNT, crates/cfxcore/core/src/consensus/consensus_graph/rpc_api/phantom_block_provider.rs:get_phantom_block_by_number"
+  src_live: "cfx_getStatus @ 155333043 -> epochNumber 0x942318e-ish, blockNumber 0x166b396a, latestState = epochNumber-4, latestConfirmed = -46, latestFinalized = -183..-239"
+  note: >-
+    ORDERING COMMITS LONG BEFORE EXECUTION, AND IT IS A DAG, NOT A CHAIN.
+
+    (a) Miners produce blocks into a directed acyclic graph. Each block names one
+    `parentHash` and any number of `refereeHashes`. GHAST picks a PIVOT CHAIN
+    through the DAG; each pivot block defines an EPOCH, whose ordered block set is
+    every block newly reachable from that pivot. Total order = epoch order, then a
+    deterministic order within the epoch, then transaction index. Ordering is
+    therefore fixed the moment the pivot chain is fixed — which is before anybody
+    has executed a byte.
+
+    THE DEFERRAL IS FIVE EPOCHS. `DEFERRED_STATE_EPOCH_COUNT = 5`: the header of
+    the pivot block at height H commits `deferred_state_root`, `deferred_receipts_root`
+    and `deferred_logs_bloom_hash` for epoch H-5, not for H. This is the same
+    invariant break as Monad's deferred execution and a DIFFERENT SHAPE. Monad
+    puts a REAL post-state root of block N in block N's header and defers only the
+    AGREEMENT (block N+3 carries the executed header). Conflux puts a root that
+    belongs to a DIFFERENT EPOCH in the header field named `stateRoot`, and the
+    eSpace RPC republishes it verbatim under the Ethereum key `stateRoot`. Monad's
+    field is right and early; Conflux's field is wrong and on time.
+
+    (b) Execution is sequential within an epoch, single-threaded over the ordered
+    block set. There is no optimistic parallel execution in the consensus rules;
+    an `enable_optimistic_execution` node option exists and is a local
+    speculation, not a protocol feature. Two implementations cannot disagree about
+    conflict resolution because there is no conflict resolution.
+
+    (c) See `gotchas` and `system_transactions`. Short version: a transaction that
+    is ordered but invalid at execution time gets `TransactionStatus::Skipped`,
+    which the eSpace RPC ERASES — no receipt, no transaction lookup, no entry in
+    the block.
+
+    (d) There is no early receipt. `eth.rs:transaction_receipt` returns `None`
+    while `epoch_num > best_executed_state_epoch_number` ("the receipt is only
+    visible to optimistic execution"), and `BlockId::Latest` maps to
+    `EpochNumber::LatestState`, so `eth_blockNumber` itself reports the last
+    EXECUTED epoch, four to five behind the tip. Conflux is the mirror image of
+    MegaETH: MegaETH shows you a receipt before the block exists; Conflux hides
+    the block until after the state exists.
+
+baseline_fork: osaka
+baseline_note: >-
+  Claimed at the OPCODE AND PRECOMPILE SET only, and only since 2026-08-25.
+  Conflux's V3.1 hardfork activated at epoch 155,140,000 (timestamp 1787624438,
+  two days before this row was written) and brought CIP-166 (EIP-7939 CLZ),
+  CIP-167 (P256VERIFY at 0x0100 with the Osaka gas), CIP-174 (EIP-7823 + EIP-7883
+  MODEXP) and CIP-172/175/176. Verified live: `CLZ(1)` returns 255 at the pinned
+  block. What "Osaka" does NOT buy you here: blobs (EIP-4844/7594) do not exist,
+  EIP-4788 has no contract, EIP-2935's contract address has NO CODE so the
+  client's history write is a no-op, the withdrawal/consolidation predeploys are
+  absent, and the gas schedule is NOT Ethereum's — see `fee_model` and
+  `non_eip_specs.CIP-645`. The devnet-only switch that would make gas identical
+  (`align_evm_transition_height`) defaults to `u64::MAX` and is NOT set on
+  mainnet.
+
+forks:
+  src: "crates/config/src/configuration.rs:osaka_opcode_transition_height, crates/execution/executor/src/spec.rs:TransitionsEpochHeight"
+  note: >-
+    TWO LADDERS THAT DO NOT LINE UP, AND THE UNITS ARE THE TRAP. Conflux gates
+    some CIPs on BLOCK HEIGHT (= pivot-chain height = the eSpace `block.number` =
+    the epoch number) and others on BLOCK NUMBER (= the count of blocks in the
+    whole DAG, ~2.42x larger). `TransitionsEpochHeight` and
+    `TransitionsBlockNumber` are separate structs. At the pinned block the epoch
+    number was 155,333,000 and the DAG block number was 376,125,885. A tool that
+    reads "cip107_transition_number = 188900000" as an eSpace block number is
+    wrong by a factor of 2.4. All activation values below are the mainnet
+    defaults compiled into the binary (`Configuration` field defaults), not a
+    config file — the shipped `run/hydra.toml` stops at the v2.0 Hydra fork.
+  timeline:
+  - {name: Tanzanite, activation_condition: "epoch height TANZANITE_HEIGHT", mainnet_equivalent: null,
+     note: "v1.1; CIP-39/40, block reward cut. Pre-eSpace."}
+  - name: Hydra
+    activation_condition: "DAG block number 92060600 / epoch height 36935000"
+    mainnet_equivalent: istanbul
+    note: >-
+      v2.0. CIP-90 CREATES eSPACE. Also CIP-43 (PoS finality chain), CIP-62
+      (EC precompiles 0x05-0x08), CIP-64, CIP-71, CIP-78, CIP-92 (BLAKE2F).
+      Before this fork chain id 1030 did not exist.
+  - {name: "DAO vote", activation_condition: "DAG block number 133800000 / epoch height 56800000",
+     mainnet_equivalent: null,
+     note: "v2.1. CIP-94 on-chain parameter DAO, CIP-97, CIP-105, and CIP-98 — the fix for a BLOCKHASH bug that made eSpace's BLOCKHASH read the DAG block number instead of the epoch height."}
+  - {name: "sigma fix", activation_condition: "DAG block number 137740000", note: "v2.2, undisclosed security fix"}
+  - {name: "v2.3", activation_condition: "DAG block number 188900000 / epoch height 79050000",
+     note: "CIP-107 (DAO-adjustable storage-collateral burn), CIP-112 (header `custom` serde), CIP-118, CIP-119 (PUSH0)"}
+  - name: "Base-fee burn (CIP-1559)"
+    activation_condition: "DAG block number 247480000 / epoch height 101900000"
+    activation_time: 1722958255
+    mainnet_equivalent: london+cancun-opcodes
+    note: >-
+      v2.4, 2024-08-06. CIP-1559 (a TWO-SPACE fee market), CIP-137 (base-fee
+      sharing — only part of the base fee is burnt), CIP-130 (gas limit tied to
+      calldata size), CIP-133 (BLOCKHASH from state, 65536-deep), CIP-144
+      (KZG point evaluation at 0x0a), CIP-145, and CIP-141/142/143 = the Cancun
+      opcodes TLOAD/TSTORE/MCOPY and the removal of the subroutine opcodes.
+  - {name: "c2 fix", activation_condition: "epoch height 118580000", note: "v2.5"}
+  - name: "EOA code (V3.0)"
+    activation_condition: "epoch height 129680000"
+    activation_time: 1756602828
+    mainnet_equivalent: prague
+    note: >-
+      2025-08-31. CIP-7702 (EIP-7702), CIP-645 (the big gas realignment: EIP-1108,
+      1884, 2028, 2200, 2565, 2929, 3529, 3651, 3860, 684, 1153, 5656 fixes),
+      CIP-150 (EIP-3541, reject 0xEF), CIP-151 (EIP-6780 SELFDESTRUCT), CIP-152
+      (EIP-3607, reject senders with code), CIP-154 (TLOAD fix), EIP-2537
+      (BLS12-381 at 0x0b-0x11), EIP-2935 (nominally), EIP-7623 (calldata floor).
+      Conflux reached Berlin/London-era gas pricing in 2025, five years late, in
+      one bundle.
+  - name: "Osaka opcodes (V3.1)"
+    activation_condition: "epoch height 155140000"
+    activation_time: 1787624438
+    mainnet_equivalent: osaka
+    note: >-
+      2026-08-25 02:20:38 UTC, TWO DAYS before this row. CIP-166 (EIP-7939 CLZ),
+      CIP-167 (P256VERIFY at 0x0100), CIP-172 (canonical transaction RLP
+      required), CIP-174 (EIP-7823 + EIP-7883 MODEXP), CIP-175 (resolve EIP-7702
+      delegation in cross-space calls), CIP-176 (merge repeated addresses in an
+      access list). Confirmed live: CLZ works, P256VERIFY at 0x0100 returns empty
+      output for an invalid signature.
+  - name: align_evm
+    status: pending
+    activation_condition: "DEVNET ONLY; mainnet default u64::MAX"
+    src: "crates/config/src/configuration.rs:align_evm_transition_height"
+    note: >-
+      The switch that would make eSpace gas-identical to the canonical EVM:
+      `evm_gas_ratio` 2 -> 1, `create_data_limit` 48 KiB -> 24 KiB,
+      `per_auth_base_cost` 17000 -> 12500, BLOCKHASH window 65536 -> 256,
+      CIP-130 off, and an EVM-style insufficient-balance precheck. It is
+      documented as devnet-only and is NOT scheduled for mainnet. Its existence
+      is the client's own admission of the size of the gap.
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    src: "crates/cfxcore/core/src/verification.rs:check_base_fee, crates/primitives/src/block_header/base_price.rs:compute_next_price, crates/parameters/src/lib.rs:INITIAL_1559_ETH_BASE_PRICE, crates/execution/executor/src/state/state_object/reward.rs:burnt_gas_price"
+    src_live: "eth_getBlockByNumber @ 155333000 -> baseFeePerGas 0x4a817c800 (20 gwei); cfx_getBlockByEpochNumber @ same epoch -> baseFeePerGas 0x3b9aca00 (1 gwei)"
+    note: >-
+      REPLACED, AND THERE ARE TWO OF THEM. `base_price` in a Conflux header is a
+      `SpaceMap<U256>`: one base fee for Core Space, one for eSpace, in the same
+      block, updated independently. Confirmed live — the same epoch reports 20
+      gwei to `eth_getBlockByNumber` and 1 gwei to `cfx_getBlockByEpochNumber`.
+
+      Four differences from EIP-1559, each independently breaking:
+      (1) the update input is the SUM OF TRANSACTION GAS LIMITS packed in the
+      block, not gas consumed (`verify_sync_graph_ready_block` sums
+      `t.gas_limit()` per space); (2) the target is that SPACE's share of the
+      block gas limit / 2, and eSpace's share is 50% of the block limit while
+      Core's is 90% — they overlap, so the two spaces compete for one budget;
+      (3) there is a per-space FLOOR, 20 gwei for eSpace (1 gwei for Core), and
+      mainnet eSpace sits exactly on it; (4) the base fee is computed per DAG
+      BLOCK against that block's own parent, but EXECUTION uses the epoch PIVOT
+      block's base fee (`epoch_execution.rs` takes `pivot_block.base_price()`),
+      so a transaction validated against its packing block's base fee can be
+      executed against a different, higher one — and is then skipped and erased.
+
+      AND THE INCLUSION RULE IS NOT `gasPrice >= baseFeePerGas`. CIP-137 splits
+      the base fee: `burnt_gas_price(base) = base - base*prop/(1e18+prop)` with
+      `prop` a DAO-adjustable on-chain parameter initialised to 1 CFX (which would
+      burn exactly half). `check_base_price` compares the transaction's gas price
+      against the BURNT part only. MEASURED LIVE, and the DAO has moved it: a
+      receipt at the pinned epoch reports `gasUsed` 0xa1a60, `effectiveGasPrice`
+      0x4a817c800 (20 gwei), `gasFee` 0x2f0bbf433b0000 = gasUsed x 20 gwei, and
+      `burntGasFee` 0x115537232a33c0 — 36.84% of the fee, i.e. a burnt gas price
+      of 7.368 gwei against an advertised base fee of 20 gwei (implying prop ~=
+      1.714 CFX, not the 1 CFX initial value). So the real minimum gas price on
+      eSpace mainnet today is roughly ONE THIRD of the number
+      `eth_getBlockByNumber` calls `baseFeePerGas`, and it moves by governance.
+      Any fee estimator or mempool simulator ported from Ethereum is wrong in both
+      directions here.
+  2929:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:eip_cold_warm_access"
+    note: >-
+      cold_sload 2100, sstore_reset 2900, cold_account_access 2600, warm 100 —
+      mainnet values, but only since epoch 129,680,000 (2025-08-31). Before that
+      Conflux charged Istanbul-era prices with no access lists. Corroborated by
+      the SSTORE measurement below, which lands on 40000 + 2100.
+  2930:
+    status: modified
+    fork: "V3.1 (CIP-176)"
+    src: "crates/execution/executor/src/state/state_object/warm.rs:set_tx_access_list"
+    note: >-
+      Access lists are accepted (type 0x01 and the field on 0x02/0x04), but until
+      CIP-176 — two days before this row — a repeated ADDRESS in the access list
+      REPLACED the storage keys warmed by its earlier entry instead of taking the
+      union, so the transaction paid 1900 per key for keys that stayed cold. The
+      in-source comment says so. Every eSpace transaction before epoch
+      155,140,000 with a duplicated access-list address was overcharged and
+      behaved differently from mainnet.
+  3529:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:eip_sstore_and_refund_gas"
+    note: "refund cap and SELFDESTRUCT refund removal arrived with CIP-645, not at London"
+  3541:
+    status: inherited
+    fork: "V3.0 (CIP-150)"
+    src: "crates/execution/executor/src/spec.rs:cip150"
+    note: "CIP-150 rejects new code starting with 0xEF"
+  3607:
+    status: inherited
+    fork: "V3.0 (CIP-152)"
+    src: "crates/execution/executor/src/executive/fresh_executive.rs:check_from_eoa_with_code"
+    note: >-
+      CIP-152. Note the failure mode: a transaction from a code-bearing sender is
+      `TxDropError::SenderWithCode`, i.e. SKIPPED and erased from the RPC, not
+      rejected at the mempool boundary the way mainnet rejects it.
+  6780:
+    status: inherited
+    fork: "V3.0 (CIP-151)"
+    src: "crates/execution/executor/src/internal_contract/impls/admin.rs:soft_suicide"
+    note: "SELFDESTRUCT only deletes the account when it was created in the same transaction; otherwise it becomes a balance sweep"
+  7623:
+    status: modified
+    fork: V3.0
+    src: "crates/execution/vm-types/src/spec.rs:tx_data_floor_non_zero_gas"
+    src_live: "eth_estimateGas @ 155333000 for 100 non-zero calldata bytes to an empty account -> 0x61a8 = 25000 = 21000 + 100*40 (the FLOOR, not 21000 + 100*16)"
+    note: >-
+      The floor (10 / 40 per byte) is mainnet's. `modified` because it composes
+      with CIP-130, which is a stricter and unrelated rule on the same input: the
+      transaction's declared GAS LIMIT must be at least 100 x calldata length or
+      the transaction is invalid outright. Mainnet has no such rule.
+  7702:
+    status: modified
+    fork: "V3.0 (CIP-7702)"
+    src: "crates/execution/vm-types/src/spec.rs:per_auth_base_cost, crates/execution/executor/src/executive/mod.rs:authorization_gas"
+    note: >-
+      SetCode transactions (type 0x04) are accepted, but the intrinsic
+      authorization cost is NOT EIP-7702's. `per_auth_base_cost` is 17000 here
+      against the spec's PER_AUTH_BASE_COST of 12500, and the per-authorization
+      empty-account charge is `per_empty_account_cost * evm_gas_ratio` = 25000 * 2
+      = 50000 against mainnet's 25000. `align_evm` would set 12500 and ratio 1;
+      mainnet does not. CIP-175 (V3.1) additionally makes cross-space calls
+      resolve a 7702 delegation, which has no mainnet analogue because mainnet has
+      no second space.
+  170:
+    status: modified
+    severity: high
+    src: "crates/execution/vm-types/src/spec.rs:create_data_limit, crates/execution/executor/src/context.rs:create_data_gas"
+    src_live: "eth_call @ 155333000 with initcode returning 49152 bytes -> 49152 bytes returned; 49153 bytes -> 'execution reverted: Out of gas'"
+    note: >-
+      MAX CONTRACT CODE SIZE IS 49152 BYTES — EXACTLY 2x EIP-170 — and the code
+      deposit costs 400 GAS PER BYTE instead of 200. Both confirmed live: a
+      49152-byte deployment succeeds and a 49153-byte one fails, and a binary
+      search on the gas needed to deploy 1000 vs 2000 bytes gives 453194 and
+      853292, a slope of 400.1 gas/byte. The size limit is `create_data_limit`,
+      which `align_evm` would set back to 24576; the doubled price is
+      `create_data_gas * evm_gas_ratio` with `evm_gas_ratio = 2`. The failure mode
+      for an oversized contract is `OutOfGas`, not a distinct "max code size
+      exceeded" error, so tooling cannot tell the two apart. Contracts exist on
+      eSpace that no mainnet-equivalent chain can hold, and every deployment
+      costs twice what the same bytecode costs anywhere else.
+  3860:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:init_code_data_limit"
+    note: "48 KiB initcode limit and 2 gas/word — the mainnet numbers, which here coincide with the DOUBLED runtime limit above; initcode and runtime code share the value 49152 for unrelated reasons"
+  2200:
+    status: modified
+    severity: high
+    src: "crates/execution/vm-interpreter/src/interpreter/gasometer.rs:sstore_set_gas, crates/execution/vm-types/src/spec.rs:evm_gas_ratio"
+    src_live: "eth_call @ 155333000, binary search: noop CREATE needs 53064 gas, the same CREATE plus one zero->non-zero SSTORE needs 95238 — a delta of 42174 = 40000 + 2100 cold + pushes"
+    note: >-
+      SSTORE ZERO-TO-NON-ZERO COSTS 40000 GAS, NOT 20000. `sstore_set_gas` is
+      multiplied by `evm_gas_ratio` (2) on every eSpace path in the gasometer.
+      The net-metering RULES are EIP-2200's; the SET price is doubled. Nothing
+      reverts, nothing warns: a contract that fits in a block on mainnet may not
+      fit here, and every storage-cost model is out by 2x on the dominant term.
+  4844:
+    status: removed
+    src: "crates/primitives/src/transaction/mod.rs:EIP7702_TYPE, crates/execution/vm-interpreter/src/interpreter/mod.rs:BLOBBASEFEE"
+    src_live: "eth_call @ 155333000 -> BLOBHASH(0) = 0, BLOBBASEFEE = 0; block header has no blobGasUsed / excessBlobGas keys at all"
+    note: >-
+      There is no type-0x03 constant in the transaction enum; the type byte simply
+      does not decode. CIP-144 took ONLY the point-evaluation precompile at 0x0a.
+      BLOBHASH and BLOBBASEFEE are present in the jump table and hardcoded to push
+      zero. Unlike Monad, the blob header fields are ABSENT rather than pinned to
+      zero — a header consumer gets a missing key, not a wrong value.
+  4788:
+    status: removed
+    src_live: "eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) @ 155333000 -> 0x"
+    note: >-
+      No beacon chain, no beacon-roots contract, and no `parentBeaconBlockRoot`
+      key in the eSpace header.
+  2935:
+    status: tombstoned
+    severity: high
+    src: "crates/execution/executor/src/state/state_object/storage_entry.rs:set_eip2935_storage, crates/cfxcore/core/src/consensus/consensus_inner/consensus_executor/epoch_execution.rs:before_epoch_execution"
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 155333000 -> 0x"
+    note: >-
+      DECLARED, IMPLEMENTED, AND INERT. `set_eip2935_storage` writes the parent
+      hash into slot `(height-1) % 8191` of 0x0000F908..2935 in eSpace, at the
+      START of every epoch since V3.0 — but its first statement is
+      `if self.has_no_code(&EIP2935_ADDRESS) { return Ok(()) }`, and the client
+      never deploys the contract. Confirmed live: the address has no code. So the
+      ring buffer is never written and a `CALL` to the history contract returns
+      empty output like any empty account, which a caller reads as the zero hash.
+      `tombstoned` rather than `removed` because the address is permanently
+      consumed by client logic that will start writing to it the moment anyone
+      deploys code there — an unusual and worth-knowing footgun.
+
+      Conflux does not need it: BLOCKHASH already reaches 65536 blocks back
+      through a different mechanism (CIP-133), which is why nobody noticed.
+  7212:
+    status: modified
+    fork: "V3.1 (CIP-167)"
+    src: "crates/execution/executor/src/machine/mod.rs:P256VERIFY_ADDRESS"
+    src_live: "eth_call(0x0100, 160 zero bytes) @ 155333000 -> 0x (empty output)"
+    note: "P256VERIFY at 0x0100, priced at P256VERIFY_BASE_GAS_FEE_OSAKA, live since 2026-08-25"
+  7951:
+    status: inherited
+    fork: "V3.1 (CIP-167)"
+    src: "crates/execution/executor/src/machine/mod.rs:P256VERIFY_BASE_GAS_FEE_OSAKA"
+    src_live: "eth_call(0x0100, 160 zero bytes) @ 155333000 -> empty output, i.e. EIP-7951 invalid-signature semantics"
+  7823:
+    status: inherited
+    fork: "V3.1 (CIP-174)"
+    src: "crates/execution/executor/src/machine/mod.rs:ModexpPricePlan"
+    note: "MODEXP input upper bounds, via `ModexpPricer::new_osaka(500)`"
+  7883:
+    status: inherited
+    fork: "V3.1 (CIP-174)"
+    src: "crates/execution/executor/src/machine/mod.rs:ModexpPricePlan"
+    note: "MODEXP minimum 500 gas and the Osaka schedule"
+  7939:
+    status: inherited
+    fork: "V3.1 (CIP-166)"
+    src: "crates/execution/vm-interpreter/src/instructions.rs:CLZ"
+    src_live: "eth_call @ 155333000 -> CLZ(1) = 0xff (255)"
+  2537:
+    status: inherited
+    fork: V3.0
+    src: "crates/execution/executor/src/machine/mod.rs:build_bls12_builtin_map"
+    src_live: "eth_call(0x0b, 256 zero bytes) @ 155333000 -> 128 zero bytes (G1ADD identity); eth_call(0x11, 64 bytes) -> 'MAP_FP2_TO_G2 input should be 128 bytes'"
+  1153:
+    status: inherited
+    fork: "V2.4 (CIP-142), fixed by CIP-154 in V3.0"
+    src: "crates/execution/executor/src/spec.rs:cip154"
+    src_live: "eth_call @ 155333000 -> TLOAD(0) = 0"
+    note: "TLOAD had an inconsistent implementation between V2.4 and V3.0; CIP-154 fixed it"
+  5656:
+    status: inherited
+    fork: "V2.4 (CIP-143), fixed by CIP-645"
+    src: "crates/execution/vm-types/src/spec.rs:fix_eip5656"
+  3855:
+    status: inherited
+    fork: "V2.3 (CIP-119)"
+    src: "crates/execution/vm-interpreter/src/instructions.rs:PUSH0"
+  4399:
+    status: modified
+    severity: high
+    src: "crates/execution/vm-interpreter/src/interpreter/mod.rs:DIFFICULTY, crates/rpc/rpc-eth-types/src/block.rs:mix_hash"
+    src_live: "eth_call @ 155333000 -> opcode 0x44 returns 0x00..00, while the same block's header reports difficulty 0x417b1f0be9 and mixHash 0x00..00"
+    note: >-
+      PREVRANDAO IS ALWAYS ZERO, ON A PROOF-OF-WORK CHAIN THAT HAS A REAL NONCE
+      AND A REAL DIFFICULTY. Opcode 0x44 reads `env.difficulty`, which the eSpace
+      environment leaves at its default; the header's `mixHash` is likewise
+      hardcoded to `H256::default()` by the RPC layer while `nonce` and
+      `difficulty` carry real PoW values. So eSpace exposes the two PoW fields
+      that are useless as entropy and zeroes the one field every contract reads
+      for entropy. Every `block.prevrandao` / `block.difficulty` consumer gets 0,
+      silently, forever. Compare Ethereum pre-Merge (real difficulty) and
+      post-Merge (real randomness): eSpace is neither.
+  3651:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:eip_cold_warm_access"
+    note: "warm COINBASE arrives bundled into CIP-645"
+  6110:
+    status: removed
+    note: "no beacon chain, no deposit contract"
+  7002:
+    status: removed
+    src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 155333000 -> 0x"
+  7251:
+    status: removed
+    src_live: "eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 155333000 -> 0x"
+  4895:
+    status: removed
+    src: "crates/rpc/rpc-eth-types/src/block.rs:Header"
+    note: "no withdrawals, no withdrawalsRoot key in the header"
+  7685:
+    status: removed
+    src: "crates/rpc/rpc-eth-types/src/block.rs:Header"
+    note: "no requestsHash key. Contrast Monad, which emits the field as the zero hash — an absent key is the safer of the two failures"
+  7594:
+    status: removed
+    note: "no blobs at all"
+  1108:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/executor/src/machine/mod.rs:bn_add_pricer"
+    note: "alt_bn128 repricing arrived in 2025; before CIP-645, ADD cost 500 and MUL 40000"
+  2565:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/executor/src/machine/mod.rs:mod_exp_pricer"
+  2028:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:eip2028"
+    note: "calldata non-zero gas fell from 68 to 16 only at V3.0"
+  1884:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:eip1884"
+  684:
+    status: inherited
+    fork: "V3.0 (CIP-645)"
+    src: "crates/execution/vm-types/src/spec.rs:fix_eip684"
+    note: "CREATE-into-collision reverts; before CIP-645 it did not"
+  155:
+    status: modified
+    severity: high
+    src: "crates/rpc/rpc-eth-types/src/transaction.rs:from_signed, crates/primitives/src/transaction/eth_transaction.rs:fake_sign_phantom"
+    src_live: "eth_getBlockByNumber(0x94230d9, true) @ 155332825 -> tx 0: from 0x00..00, v 0x82f, r 0x406, s 0x406, while its own `raw` field RLP-encodes r = s = 0x80 (zero)"
+    note: >-
+      THE JSON SIGNATURE FIELDS ARE FABRICATED FOR SOME TRANSACTIONS. Phantom
+      transactions (see `system_transactions`) are fake-signed with `r = s =
+      sender address` and `v = 0`; when the sender is the zero address that gives
+      r = s = 0, so `Transaction::from_signed` substitutes the CHAIN ID —
+      "some txs r and s to 0 which is not valid in some ethereum tools, so we set
+      them to chain_id". The `raw` field in the same JSON object still contains
+      the real RLP with zeros. A client that re-derives the transaction hash from
+      the JSON r/s/v gets a different hash from the one the same response
+      reports; `ecrecover` on the JSON signature returns garbage rather than
+      `from`.
+  7702_delegation_crossspace:
+    status: unrecorded
+    note: >-
+      CIP-175 makes cross-space calls resolve an eSpace 7702 delegation. Whether
+      the resulting phantom transaction reports the delegating account or the
+      delegate as `to` was not established.
+
+non_eip_specs:
+  - id: CIP-90
+    name: "Introduce a fully EVM-compatible space"
+    adoption: adopted
+    fork: Hydra
+    src: "crates/execution/executor/src/spec.rs:cip90"
+    note: "the CIP that created eSpace. Everything in this row is downstream of it."
+  - id: CIP-133
+    name: "Enhanced block hash query"
+    adoption: adopted
+    fork: V2.4
+    severity: high
+    src: "crates/execution/executor/src/context.rs:blockhash_from_state, crates/execution/executor/src/internal_contract/impls/context.rs:epoch_hash_slot"
+    src_live: "eth_call @ 155333000 -> BLOCKHASH(n) returns the true hash for every n from 155333000 down to 155267466 (65534 back) and zero from 155267465 down"
+    note: >-
+      BLOCKHASH SERVES 65,536 BLOCKS, NOT 256 — a 256x window, about 18 hours.
+      Epoch hashes are written into a 65536-slot ring buffer in system storage
+      (`height & 0xffff`) and read back with the guard
+      `env.epoch_height - 65536 < number <= env.epoch_height`. Verified live
+      across the whole range including both boundaries. A contract that treats
+      `blockhash(n) == 0` as "older than 256 blocks" — a standard idiom — never
+      takes that branch on eSpace until 18 hours have passed.
+
+      AND THE UPPER BOUND IS INCLUSIVE, WHICH MAINNET'S IS NOT. `number ==
+      env.epoch_height` is accepted. `before_epoch_execution` writes the pivot
+      block's own hash into its slot BEFORE the epoch's transactions run — which
+      deferred execution makes possible — so inside a mined transaction
+      `blockhash(block.number)` returns THE HASH OF THE BLOCK THE TRANSACTION IS
+      IN. Mainnet defines that to be zero.
+
+      IN `eth_call` THE SAME EXPRESSION RETURNS SOMETHING ELSE AGAIN. A call
+      pinned at block B runs with `block.number = B+1` on the state after epoch B,
+      where slot `(B+1) & 0xffff` still holds the hash from 65536 epochs earlier.
+      Live: `BLOCKHASH(155333001)` returned 0xd6dbfdfb..2243, which is the hash of
+      block 155267465 = 155333001 - 65536. So one expression has three answers:
+      zero on mainnet, the current block's hash in a Conflux transaction, and an
+      18-hour-old hash under `eth_call`. Simulation does not predict execution.
+  - id: CIP-98
+    name: "Fix the BLOCKHASH bug in eSpace"
+    adoption: adopted
+    fork: V2.1
+    src: "crates/execution/executor/src/context.rs:blockhash_from_env"
+    note: >-
+      Historical, but it names the hazard: before CIP-98, eSpace's BLOCKHASH
+      compared the requested number against `env.number` — the DAG BLOCK NUMBER —
+      while eSpace's `block.number` is the EPOCH HEIGHT. The two differ by a
+      factor of ~2.4, so `blockhash(block.number - 1)` returned zero.
+  - id: CIP-137
+    name: "Base fee sharing in CIP-1559"
+    adoption: adopted
+    fork: V2.4
+    severity: high
+    src: "crates/execution/executor/src/state/state_object/reward.rs:burnt_gas_price, crates/parameters/src/lib.rs:CIP137_BASEFEE_PROP_INIT"
+    src_live: "eth_getTransactionReceipt(0x8afdf9bd..0205) @ 155332908 -> gasFee 0x2f0bbf433b0000, burntGasFee 0x115537232a33c0 = 36.84% of it, i.e. 7.368 gwei burnt of a 20 gwei base fee"
+    note: >-
+      Only part of the base fee is burnt; the rest goes to the miner. The split is
+      an on-chain DAO parameter (`BaseFeeProp`) initialised to 1 CFX (a half-burn)
+      and since moved: live receipts show a 36.84% burn. The transaction validity
+      threshold is the BURNT part, not the advertised base fee — see eips.1559.
+      The receipt exposes both numbers in a non-standard `burntGasFee` key, so
+      this is one of the few governance parameters in the dataset that a client
+      can read straight out of a receipt.
+  - id: CIP-130
+    name: "Aligning gas limit with transaction size"
+    adoption: adopted
+    fork: V2.4
+    src: "crates/cfxcore/core/src/verification.rs:check_gas_limit_with_calldata"
+    note: >-
+      A transaction is INVALID unless its declared gas limit is at least 100 x
+      calldata length. Not a pricing rule — a validity rule, checked before
+      execution, applying to eSpace transactions as well as Core ones. A
+      10,000-byte calldata transaction must declare 1,000,000 gas even if it
+      would use 200,000. Mainnet has no analogue and no wallet sets gas this way.
+      `align_evm` would disable it.
+  - id: CIP-645
+    name: "Align Conflux gas pricing with EVM"
+    adoption: adopted
+    fork: V3.0
+    src: "crates/execution/vm-types/src/spec.rs:CIP645Spec"
+    note: >-
+      A single atomic bundle of fourteen flags that dragged Conflux from
+      Istanbul-era gas to Berlin/London/Cancun-era gas in 2025: EIP-1108, 1884,
+      2028, 2200+3529, 2565, 2929+3651, 3860, and fixes for 684, 1559, 5656, 1153,
+      BLOCKHASH gas, the opcode table and EXTCODEHASH. The struct's own doc
+      comment warns that mixing the flags gives undefined behaviour. Note what is
+      NOT in it: `evm_gas_ratio`, which still doubles SSTORE-set, code deposit,
+      new-account transfer and 7702 authorization costs.
+  - id: CIP-172
+    name: "Canonical transaction RLP encoding"
+    adoption: adopted
+    fork: V3.1
+    src: "crates/cfxcore/core/src/verification.rs:check_canonical_rlp"
+    note: >-
+      From epoch 155,140,000 a block containing a non-canonically-RLP-encoded
+      transaction is invalid. Locally-submitted non-canonical transactions were
+      already rejected; V3.1 makes it a consensus rule.
+  - id: CIP-176
+    name: "Merge storage keys of repeated addresses in an access list"
+    adoption: adopted
+    fork: V3.1
+    src: "crates/execution/executor/src/state/state_object/warm.rs:set_tx_access_list"
+    note: "see eips.2930"
+  - id: CIP-107
+    name: "DAO-adjustable burn of storage collateral"
+    adoption: adopted
+    fork: V2.3
+    src: "crates/execution/executor/src/spec.rs:cip107"
+    note: "CORE SPACE ONLY — eSpace has no storage collateral. Listed so the negative is on the record."
+  - id: CIP-1559
+    name: "Fee market change for Conflux"
+    adoption: adopted
+    fork: V2.4
+    src: "crates/primitives/src/block_header/base_price.rs:compute_next_price"
+
+tx_types:
+  note: >-
+    The eSpace type-byte set is 0x00 / 0x01 / 0x02 / 0x04. There is no 0x03 — the
+    decoder has no constant for it — and Conflux adds NO type byte of its own.
+    That is the trap this row exists to flag: an envelope-diffing survey reports
+    eSpace as type-byte-equivalent to Prague mainnet, and everything that actually
+    diverges is in ordering, block synthesis, gas and the second space. Note also
+    that the SAME BLOCK BODY carries Core-Space transactions, which use a
+    different encoding entirely — see `non_evm_transactions`.
+  src: "crates/primitives/src/transaction/mod.rs:EIP7702_TYPE"
+  src_live: "eth_getBlockByNumber over 120 consecutive blocks ending @ 155333000 -> 34 transactions, 24 of type 0x0 and 10 of type 0x2"
+  "0x03":
+    name: BlobTx
+    status: removed
+    src: "crates/primitives/src/transaction/mod.rs:EIP1559_TYPE"
+    note: "no EIP4844_TYPE constant exists; the type byte does not decode. CIP-144 imported only the 0x0a precompile."
+  "0x04":
+    name: SetCodeTx
+    status: modified
+    fork: "V3.0 (CIP-7702)"
+    src: "crates/execution/executor/src/executive/mod.rs:authorization_gas"
+    note: "accepted, but the intrinsic authorization gas is 17000 base + 50000 per empty account rather than 12500 + 25000 — see eips.7702"
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    ORDINARY AT THE PROTOCOL LEVEL AND EXTRAORDINARY AT THE RPC LEVEL. An eSpace
+    transaction is authorized exactly as on mainnet: a secp256k1 signature over
+    the EIP-155 or EIP-2718 payload, recovered to an address that IS the hash of
+    the key. `key_binding: derived`. CIP-152 (V3.0) adds EIP-3607.
+
+    WHAT IS NOT ORDINARY: eSpace contains transactions THAT WERE NEVER SIGNED BY
+    ANYONE and cannot be, and they are indistinguishable from user transactions
+    unless you look. Phantom transactions synthesised from Core-Space cross-space
+    calls are `fake_sign_phantom`ed with `r = s = the sender's own address` and
+    `v = 0`, then re-serialised by the RPC with `r = s = chain_id` when those
+    values are zero. Their authority is a Core-Space transaction that the eSpace
+    RPC will never show you, signed by a Core-Space key over a Core-Space payload
+    with a Core-Space nonce. See `system_transactions` and `non_evm_transactions`.
+
+    A SECOND NONCE-UNIQUENESS BREAK: every "funding" phantom transaction is
+    emitted `from` the ZERO ADDRESS with `nonce: 0`, because "zero address always
+    has nonce 0". eSpace therefore contains an unbounded number of distinct
+    transactions from one sender at one nonce. They are distinguished only by
+    their hash, which is why the fake signature exists at all.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "crates/execution/executor/src/builtin/mod.rs:ecrecover_evm, crates/execution/executor/src/executive/fresh_executive.rs:check_from_eoa_with_code"
+      note: >-
+        The 0x01 implementation is `EcRecover(Space::Ethereum)`, a separate
+        instantiation from the Core-Space one — Core Space forces the recovered
+        address into Conflux's typed-address format and eSpace does not. So the
+        two spaces have DIFFERENT ecrecover behaviour at the same address, and
+        eSpace's is the mainnet one. Confirmed live at 3000 gas via the standard
+        map. EIP-7702 delegation exists from V3.0 and, as on mainnet, changes
+        nothing on this axis.
+    secp256r1:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      src: "crates/execution/executor/src/machine/mod.rs:P256VERIFY_ADDRESS"
+      note: "P256VERIFY since V3.1 (2026-08-25). A tool for contracts; a P-256 key cannot authorize an eSpace transaction."
+    bls12_381:
+      status: inherited
+      authorizes: never
+      precompile: "0x0f"
+      src: "crates/execution/executor/src/machine/mod.rs:build_bls12_builtin_map"
+      note: >-
+        EIP-2537 pairing at 0x0f since V3.0. Conflux's PoS finality chain does use
+        BLS aggregation, but that is Core-Space/PoS consensus and no BLS key can
+        move a wei in eSpace.
+    conflux_core_secp256k1:
+      status: added
+      authorizes: never
+      precompile: none
+      src: "crates/primitives/src/transaction/native_transaction.rs:NativeTransaction, crates/execution/execute-helper/src/phantom_tx/recover.rs:recover_phantom"
+      note: >-
+        THE ROW'S REAL AUTHORIZATION FINDING, AND IT NEEDS ITS OWN ENTRY BECAUSE
+        NEITHER `protocol` NOR `account_code` DESCRIBES IT. A Core-Space
+        transaction is signed with secp256k1 over a NINE-FIELD payload — the
+        Ethereum six plus `storage_limit`, `epoch_height` and `chain_id` (1029) —
+        and cannot authorize an eSpace transaction. But executing it CAN cause
+        eSpace state changes and CAN cause eSpace transactions to appear, with a
+        `from` that is `keccak256(core_address)[12..]`, a mapped address whose
+        private key nobody holds. `authorizes: never` is therefore literally true
+        and materially misleading: the scheme cannot sign an eSpace transaction
+        and can nonetheless move eSpace value. `precompile: none` — eSpace has no
+        way to verify a Core-Space signature or even to observe that one existed.
+
+non_evm_transactions:
+  entries:
+  - id: core_space_legacy
+    name: Conflux Core Space transaction (CIP-155 legacy)
+    status: added
+    src: crates/primitives/src/transaction/native_transaction.rs:NativeTransaction
+    src_live: cfx_getBlockByEpochNumber @ 155332816 -> the same epoch whose eSpace view lists one
+      type-0x02 transaction reports a pivot block with transactionsRoot 0xc5d24601..a470 (keccak
+      of empty)
+    note: 'An untyped RLP list of nine fields: nonce, gas_price, gas, action, value, STORAGE_LIMIT,
+      EPOCH_HEIGHT, chain_id, data — plus v/r/s. No EIP-2718 type byte, so it cannot appear in `tx_types`.
+      `epoch_height` is a validity WINDOW: the transaction may only be packed within TRANSACTION_DEFAULT_EPOCH_BOUND
+      = 100,000 epochs (about 28 hours) either side of the height it names. `storage_limit` is the
+      maximum storage collateral the sender will lock. Neither field exists in eSpace. These transactions
+      sit in the SAME BLOCK BODY as eSpace transactions and are counted in the pivot block''s `transactionsRoot`
+      — the value the eSpace RPC republishes as its own `transactionsRoot`.'
+  - id: core_space_typed
+    name: Conflux Core Space typed transaction (CIP-2930 / CIP-1559)
+    status: added
+    src: crates/primitives/src/transaction/mod.rs:TYPED_NATIVE_TX_PREFIX
+    note: Typed Core transactions are prefixed with the ASCII BYTES `cfx` (0x63 0x66 0x78) followed
+      by 0x01 or 0x02. 0x63 is inside EIP-2718's 0x00-0x7f type-byte range, so a generic 2718 decoder
+      pointed at a Conflux block body reads a Core transaction as an unknown TYPE-0x63 transaction
+      rather than as a foreign encoding. Four-byte envelope, one byte of which collides with a reserved
+      namespace.
+  - id: cross_space_call
+    name: CrossSpaceCall (Core -> eSpace value and calls)
+    status: added
+    src: crates/parameters/src/internal_contract_addresses.rs:CROSS_SPACE_CONTRACT_ADDRESS, crates/execution/executor/src/internal_contract/impls/cross_space.rs:withdraw_from_evmcore
+    src_live: eth_getCode(0x0888000000000000000000000000000000000006) @ 155333000 -> 0x; eth_call
+      to it -> 0x
+    note: The bridge is an INTERNAL CONTRACT at 0x0888..0006 that exists ONLY IN CORE SPACE. `InternalContractMap::contract`
+      returns None for any address whose space is not Native, so from eSpace the address is an ordinary
+      empty account — confirmed live, no code and an empty-output call. It is neither a precompile
+      nor a system contract HERE; it is absent, and that is the answer to the question this row was
+      asked. All eight internal-contract addresses (0x0888..0000-0007 and ..000a) were probed and
+      all are empty in eSpace. Value moves Core -> eSpace by a Core transaction calling `transferEVM`/`callEVM`
+      on this contract, and back by `withdrawFromMapped`, which sweeps the balance of `keccak256(core_address)[12..]`.
+      An eSpace account cannot initiate either direction; there is no eSpace-callable surface at
+      all. Only 1/10 of the remaining gas is forwarded into eSpace (`CROSS_SPACE_GAS_RATIO = 10`)
+      — a 9/10 retention where the EVM's own CALL keeps 1/64.
+precompiles:
+  note: >-
+    THE ADDRESS SET IS MAINNET-OSAKA-EQUIVALENT AND SAYS NOTHING. 0x01-0x11 plus
+    0x0100, built by `new_builtin_map`, which is called twice — once per space —
+    with only 0x01 differing between them. All eighteen were probed live at the
+    pinned block: 0x01-0x0a and 0x0b-0x11 answer, 0x12 and 0x0101 return empty
+    output like empty accounts, none has bytecode. Conflux adds NO precompile of
+    its own to eSpace. Everything Conflux adds lives in Core Space as an internal
+    contract that eSpace cannot see.
+  src: "crates/execution/executor/src/machine/mod.rs:new_builtin_map"
+  "0x0000000000000000000000000000000000000001":
+    name: ECRECOVER
+    status: modified
+    divergence: gas
+    src: "crates/execution/executor/src/builtin/mod.rs:ecrecover_evm"
+    note: >-
+      Same price (3000) and same result as mainnet, but it is a DIFFERENT
+      IMPLEMENTATION from the one at the same address in Core Space: eSpace uses
+      `EcRecover(Space::Ethereum)` and Core Space uses `EcRecover(Space::Native)`,
+      which coerces the recovered address into Conflux's typed-address format.
+      Recorded because "0x01 on Conflux" is ambiguous in a way it is on no other
+      chain in this dataset. Marked `divergence: gas` because eSpace's result is
+      mainnet's.
+  "0x000000000000000000000000000000000000000a":
+    name: POINT_EVALUATION
+    status: added
+    fork: "V2.4 (CIP-144)"
+    src: "crates/execution/executor/src/machine/mod.rs:kzg_point_eval"
+    src_live: "eth_call(0x0a, 1 byte) @ 155333000 -> 'execution reverted: Built-in failed: Blob invalid input length'"
+    note: >-
+      `added` relative to the chain's own history, not to mainnet: eSpace has the
+      KZG precompile at the mainnet address and the mainnet price (50000) while
+      having NO BLOB TRANSACTIONS, no BLOBHASH and no blob gas market. CIP-144
+      imported the precompile alone. A contract can verify a KZG proof about a
+      blob that the chain can never carry.
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY
+    status: added
+    fork: "V3.1 (CIP-167)"
+    src: "crates/execution/executor/src/machine/mod.rs:P256VERIFY_ADDRESS"
+    src_live: "eth_call(0x0100, 160 zero bytes) @ 155333000 -> 0x (empty output = EIP-7951 invalid-signature semantics)"
+
+system_contracts:
+  note: >-
+    NONE IN eSPACE. Not one address in eSpace carries client-installed bytecode.
+    Every Conflux system component — AdminControl 0x0888..0000, SponsorWhitelistControl
+    ..0001, Staking ..0002, Context ..0004, PoSRegister ..0005, CrossSpaceCall
+    ..0006, ParamsControl ..0007, SystemStorage ..000a — is an INTERNAL CONTRACT
+    (native Rust, no bytecode) and is gated to `Space::Native`. All eight return
+    empty code to `eth_getCode` and empty output to `eth_call`. The EIP-2935
+    history address is likewise empty (see eips.2935). This is the opposite of
+    the Flare-style error the brief warns about: there is nothing to
+    misclassify, because from eSpace there is nothing there.
+  src: "crates/execution/executor/src/internal_contract/components/contract_map.rs:InternalContractMap"
+  src_live: "eth_getCode @ 155333000 on 0x0888..0000, ..0001, ..0002, ..0004, ..0005, ..0006, ..0007, ..000a -> 0x on all eight"
+
+system_transactions:
+  phantom_transactions:
+    name: "Phantom transactions (synthesised from Core-Space cross-space calls)"
+    status: added
+    fork: "Hydra (CIP-90)"
+    severity: high
+    src: "crates/execution/execute-helper/src/phantom_tx/recover.rs:recover_phantom, crates/execution/execute-helper/src/phantom_tx/mod.rs:into_eip155, crates/primitives/src/transaction/eth_transaction.rs:fake_sign_phantom"
+    src_live: "eth_getBlockByNumber(0x94230d9, true) @ epoch 155332825 -> 2 transactions, block gasUsed 0x0; tx 0 from 0x00..00 to 0x86e7e8a9..8b73, gas 0x0, gasPrice 0x0, input = 64 bytes = (core tx hash, cross-space nonce); tx 1 from that mapped address onwards. Receipt of tx 0: gasUsed 0x0, gasFee 0x0, effectiveGasPrice 0x0, status 0x1, NO `type` key."
+    note: >-
+      CONFLUX'S PROTOCOL-DRIVEN STATE CHANGES ARE NOT A TRANSACTION TYPE AND NOT
+      UNSIGNED-BY-CONVENTION. They are LEGACY (0x00) transactions manufactured by
+      the RPC layer by REPLAYING THE LOGS of a successful Core-Space transaction.
+      For each `CallEvent`/`CreateEvent` emitted by the CrossSpaceCall internal
+      contract, `recover_phantom` emits a PAIR: first a transfer FROM THE ZERO
+      ADDRESS to the mapped sender carrying `abi.encode(coreTxHash, crossSpaceNonce)`
+      as calldata, then the actual call. A `WithdrawEvent` emits a single transfer
+      from the mapped address TO the zero address. All carry `gas: 0` and
+      `gasPrice: 0` and consume no gas, so a block can contain transactions and
+      still report `gasUsed: 0x0` — observed live.
+
+      HOW A TOOL GETS THIS WRONG. There is no type byte to filter on. `from` is a
+      normal-looking 20-byte address (or the zero address). The transaction has a
+      hash, a receipt, a log set, an index, and appears in `eth_getTransactionByHash`.
+      An indexer counts them as user activity, books value transfers with a zero
+      gas price as organic, and — because the receipt for a legacy transaction
+      omits the `type` key entirely here — may fail a schema check that mainnet
+      passes.
+
+      WHAT IS INVISIBLE. A Core-Space transaction that FAILS produces NO phantom
+      transactions at all ("failing transactions will not produce any phantom txs
+      or traces"), so a reverted cross-space call leaves no trace in eSpace even
+      though it was ordered, executed and charged. A phantom transaction's status
+      CAN be 0 (the `ReturnEvent` carries the success flag), so the eSpace view
+      shows failures of the inner call but never failures of the outer one.
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+    - {op: "0x44", name: PREVRANDAO, severity: high,
+       src: "crates/execution/vm-interpreter/src/interpreter/mod.rs:DIFFICULTY",
+       note: "always zero; see eips.4399"}
+    - {op: "0x40", name: BLOCKHASH, severity: high,
+       src: "crates/execution/executor/src/context.rs:blockhash_from_state",
+       note: "65536-block window instead of 256, inclusive of the current block; different answer under eth_call. See non_eip_specs.CIP-133."}
+    - {op: "0x49", name: BLOBHASH,
+       src: "crates/execution/vm-interpreter/src/interpreter/mod.rs:BLOBHASH",
+       note: "present, pops the index and pushes zero unconditionally"}
+    - {op: "0x4a", name: BLOBBASEFEE,
+       src: "crates/execution/vm-interpreter/src/interpreter/mod.rs:BLOBBASEFEE",
+       note: "present, pushes zero unconditionally on mainnet builds"}
+    - {op: "0x55", name: SSTORE, severity: high,
+       src: "crates/execution/vm-interpreter/src/interpreter/gasometer.rs:sstore_set_gas",
+       note: "zero->non-zero costs 40000, not 20000; see eips.2200"}
+    - {op: "0xf1", name: CALL,
+       src: "crates/execution/vm-interpreter/src/interpreter/gasometer.rs:call_new_account_gas",
+       note: "value transfer to a non-existent account costs 50000 extra, not 25000 (evm_gas_ratio)"}
+    - {op: "0xff", name: SELFDESTRUCT,
+       src: "crates/execution/executor/src/internal_contract/impls/admin.rs:soft_suicide",
+       note: "EIP-6780 semantics from V3.0 via CIP-151; the extra transfer-to-new-account cost is also doubled"}
+  note: >-
+    ZERO opcode-set divergence: no added opcodes, none removed, and the Osaka jump
+    table is complete since 2026-08-25 (CLZ verified live). Every entry above is a
+    PRICE or a RETURNED VALUE, none of which an opcode diff can see — which is
+    exactly the trap. `Instruction::from_u8_versioned` gates only PUSH0, BASEFEE
+    and CLZ on forks; everything else is unconditional.
+  src: "crates/execution/vm-interpreter/src/instructions.rs:from_u8_versioned"
+
+fee_model:
+  metering: gas
+  fee_market: "CIP-1559 with two independent per-space base fees, per-DAG-block updates driven by packed gas LIMITS, a 20 gwei eSpace floor, and a DAO-adjustable burn share"
+  extra_components:
+    - name: "evm_gas_ratio = 2"
+      severity: high
+      src: "crates/execution/vm-types/src/spec.rs:evm_gas_ratio"
+      src_live: "eth_call @ 155333000: code deposit measured at 400.1 gas/byte (453194 gas for 1000 bytes, 853292 for 2000); SSTORE set measured at 42174 = 40000 + 2100"
+      note: >-
+        A SINGLE MULTIPLIER, APPLIED ONLY IN eSPACE, THAT DOUBLES EVERY
+        STATE-GROWTH PRICE: `sstore_set_gas` 20000 -> 40000, `create_data_gas`
+        200 -> 400 per byte, `call_new_account_gas` 25000 -> 50000,
+        `suicide_to_new_account_cost` 25000 -> 50000, and the EIP-7702
+        `per_empty_account_cost` 25000 -> 50000. Core Space uses 1. The comment
+        calls it "the magnification of gas storage occupying related operations"
+        — it is Conflux charging eSpace for the storage collateral eSpace does not
+        post. `align_evm` sets it to 1 and is devnet-only.
+    - name: "two base fees, one block"
+      severity: high
+      src: "crates/primitives/src/block_header.rs:base_price"
+      src_live: "eth_getBlockByNumber @ 155333000 -> 0x4a817c800 (20 gwei); cfx_getBlockByEpochNumber @ 155333000 -> 0x3b9aca00 (1 gwei)"
+      note: "see eips.1559"
+    - name: "base fee floor"
+      src: "crates/parameters/src/lib.rs:INITIAL_1559_ETH_BASE_PRICE"
+      note: "eSpace's minimum base price is 20 gdrip (20 gwei); mainnet eSpace has sat on the floor at every block sampled"
+    - name: "most of the base fee is not burnt"
+      severity: high
+      src: "crates/execution/executor/src/state/state_object/reward.rs:burnt_gas_price"
+      src_live: "eth_getTransactionReceipt(0x8afdf9bd..0205) @ 155332908 -> burntGasFee / gasFee = 0.3684"
+      note: "63% of the base fee goes to the miner at the current DAO parameter, and the inclusion threshold is the burnt 37% — see eips.1559 and non_eip_specs.CIP-137"
+    - name: "eSpace gets 50% of the block gas limit, Core gets 90%"
+      src: "crates/parameters/src/lib.rs:CIP1559_ESPACE_TRANSACTION_GAS_RATIO"
+      src_live: "eth_getBlockByNumber @ 155333000 -> gasLimit 0x1c9c380 (30,000,000) with the underlying block limit 60,000,000; the Core RPC reports 0x337f980 (54,000,000) for the same block"
+      note: >-
+        The two shares sum to 140%, so they are per-space CAPS on a shared budget,
+        not a partition. `gasLimit` in the eSpace header is eSpace's cap for ONE
+        block; the non-standard `espaceGasLimit` key is the SUM over every
+        eSpace-eligible block in the epoch, so it varies between 30M and 60M+
+        depending on how many such blocks the epoch contained.
+    - name: "only 1 block in 5 may carry eSpace transactions"
+      severity: high
+      src: "crates/parameters/src/lib.rs:EVM_TRANSACTION_BLOCK_RATIO, crates/execution/executor/src/spec.rs:can_pack_evm_transaction"
+      note: >-
+        `can_pack_evm_transaction(height) = height % 5 == 0`. Only DAG blocks
+        whose HEIGHT is a multiple of five may contain eSpace transactions at all;
+        every other block's eSpace gas limit is zero. So eSpace throughput is
+        gated on a property of the block's position in the Core-Space chain, and
+        an epoch whose pivot height is not a multiple of five can still contain
+        eSpace transactions only if some non-pivot block in it qualifies. There is
+        no mainnet analogue for "this block is not allowed to contain your
+        transaction".
+    - name: "CIP-130 gas floor tied to calldata length"
+      src: "crates/cfxcore/core/src/verification.rs:check_gas_limit_with_calldata"
+      note: "gas limit >= 100 x calldata bytes or the transaction is invalid; see non_eip_specs.CIP-130"
+    - name: "cross-space gas retention 9/10"
+      src: "crates/parameters/src/lib.rs:CROSS_SPACE_GAS_RATIO"
+      note: "a cross-space call forwards gas_left/10 into eSpace, against the EVM's 63/64"
+    - name: nonce on failure
+      severity: high
+      src: "crates/execution/executor/src/executive/fresh_executive.rs:check_all, crates/execution/executor/src/executive/fresh_executive.rs:check_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:inc_sender_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas"
+      note: >-
+        NONCE ON FAILURE: SPLIT WITHIN ONE CHAIN, and the two halves are decided
+        by whether `FreshExecutive::check_all` rejects the transaction before
+        `into_pre_checked` or after. This is the only row in the dataset where
+        both answers are live at once.
+
+        PRESERVED, NO RECEIPT, NO CHARGE — everything `check_all` rejects becomes
+        `TransactionStatus::Skipped`: nonce-too-low (`check_nonce` →
+        `TxDropError::OldNonce`), nonce-too-high, gas price below the base-fee
+        threshold at the pivot block, sender-does-not-exist, sender-has-code,
+        gas limit below the intrinsic/EIP-7623 floor, and for Core Space an
+        expired epoch window. Execution never starts, so `inc_sender_nonce` is
+        never reached: the account nonce is UNTOUCHED, no gas is charged, and the
+        eSpace RPC erases the transaction outright — the phantom-block builder
+        skips it ("we do not return non-executed transaction"), no transaction
+        index is written, and `eth_getTransactionReceipt` returns null. This is
+        the friendly half: the sender can resubmit at the same nonce freely, and
+        it is what makes duplicate DAG packing harmless — the second copy hits
+        `OldNonce` and is Skipped.
+
+        BURNED, WITH A RECEIPT, BALANCE CONFISCATED — insufficient balance is NOT
+        one of those checks on mainnet. `check_enough_balance` is called only
+        `if self.context.spec.align_evm`, which is devnet-only, so an underfunded
+        transaction passes into `PreCheckedExecutive`, where `inc_sender_nonce`
+        bumps the nonce and `charge_gas` takes `min(gas_cost, balance)` — the
+        sender's entire remaining balance. `gasUsed` is reported as the FULL GAS
+        LIMIT and the receipt says `status: 0`. NONCE BURNED.
+
+        SO THE SAME QUESTION HAS TWO ANSWERS DEPENDING ON WHICH VALIDITY RULE
+        BROKE, and the observable signal is inverted from what a mainnet client
+        expects: no receipt means the nonce SURVIVED, a receipt means it was
+        spent along with the balance. Compare Taraxa, which took the opposite
+        design and gives every one of these cases a status-0 receipt with the
+        nonce burned; and Sei, which gates the nonce bump and the receipt on the
+        same condition so the two always agree.
+    - name: "insufficient balance takes the whole balance"
+      severity: high
+      src: "crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas, crates/execution/executor/src/executive/executed.rs:not_enough_balance_fee_charged"
+      note: >-
+        `actual_gas_cost = min(gas_cost, sender_balance)`. A transaction whose
+        balance cannot cover `gas_limit * gas_price + value` is NOT skipped on
+        mainnet Conflux — the EVM-style precheck runs only when `align_evm` is on.
+        It is executed: the nonce is bumped, the sender's ENTIRE REMAINING BALANCE
+        is confiscated as a partial fee, `gas_used` is recorded as the FULL GAS
+        LIMIT, and the receipt says `status: 0`. This is the "charged a
+        partial/penalty fee" outcome, and it is reachable on mainnet.
+  note: >-
+    Conflux is the second row in this dataset (after Monad) whose fee market is
+    driven by gas LIMITS rather than gas used, and the first whose base fee is
+    a per-space vector. It is also the only row where the number an EIP-1559
+    client reads as `baseFeePerGas` is twice the actual inclusion threshold.
+
+header_fields:
+  added:
+    - name: espaceGasLimit
+      src: "crates/rpc/rpc-eth-types/src/block.rs:espace_gas_limit"
+      src_live: "eth_getBlockByNumber @ 155333000 -> espaceGasLimit 0x1c9c380; @ 155332832 -> 0x3938700"
+      note: >-
+        A non-standard key, documented in-source as "the real gas limit of the
+        block". It is the SUM of the eSpace gas limits of every eSpace-eligible
+        block in the epoch, while `gasLimit` is the pivot block's own eSpace
+        share. The two are equal in an epoch with one eSpace-eligible block and
+        differ otherwise. A generic Ethereum client ignores it and therefore
+        misreports block capacity.
+  removed:
+    - {name: withdrawalsRoot, note: "no withdrawals"}
+    - {name: blobGasUsed, note: "key absent, not zeroed — contrast Monad"}
+    - {name: excessBlobGas, note: "key absent"}
+    - {name: parentBeaconBlockRoot, note: "key absent"}
+    - {name: requestsHash, note: "key absent"}
+  modified:
+    - name: stateRoot
+      severity: high
+      src: "crates/rpc/rpc-eth-types/src/block.rs:deferred_state_root"
+      src_live: "eth_getBlockByNumber(0x94230d0) @ 155332816 -> stateRoot 0x24f37b5a..9109, byte-identical to cfx_getBlockByEpochNumber(0x94230d0).deferredStateRoot"
+      note: >-
+        NOT THIS BLOCK'S STATE ROOT. It is `pivot_header.deferred_state_root()` —
+        the root of the state after epoch N-5, republished under the Ethereum key
+        for epoch N. `DEFERRED_STATE_EPOCH_COUNT = 5`. A light client or bridge
+        that proves an account against `eth_getBlockByNumber(N).stateRoot` is
+        proving against state five epochs stale, and will fail against any account
+        touched in the last five epochs. Nothing in the JSON says so.
+    - name: receiptsRoot
+      severity: high
+      src: "crates/rpc/rpc-eth-types/src/block.rs:deferred_receipts_root"
+      src_live: "eth_getBlockByNumber(0x94230d0) @ 155332816 -> receiptsRoot 0x57e0321f..d87a = cfx_getBlockByEpochNumber(0x94230d0).deferredReceiptsRoot; blocks with no eSpace transactions instead report the constant 0x56e81f17..b421"
+      note: >-
+        The DEFERRED receipts root of epoch N-5, covering BOTH SPACES, and it does
+        not commit to the receipts this response returns. When the epoch has no
+        eSpace transactions the RPC substitutes the empty-trie hash outright — a
+        value fabricated by the serialiser rather than read from any header.
+    - name: transactionsRoot
+      severity: high
+      src: "crates/rpc/rpc-eth-types/src/block.rs:from_phantom"
+      src_live: "eth_getBlockByNumber(0x94230d0, true) @ 155332816 -> ONE transaction and transactionsRoot 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 = keccak256(\"\")"
+      note: >-
+        THE ROOT DOES NOT COMMIT TO THE TRANSACTIONS IN THE SAME RESPONSE. It is
+        the PIVOT BLOCK's own `transactionsRoot`, which covers only the pivot
+        block's body — while the eSpace transaction list is gathered from EVERY
+        block in the epoch. Verified live at the strongest possible boundary: a
+        block reporting one transaction reports the keccak of the empty string as
+        its transactions root. When there are no transactions the RPC substitutes
+        the empty-trie hash instead. There is no value of `transactionsRoot` from
+        which the returned transaction list can be verified.
+    - name: mixHash
+      severity: high
+      src: "crates/rpc/rpc-eth-types/src/block.rs:mix_hash"
+      note: "hardcoded H256::default(). See eips.4399 — opcode 0x44 also returns zero."
+    - name: nonce
+      src: "crates/rpc/rpc-eth-types/src/block.rs:nonce"
+      note: >-
+        Conflux's PoW nonce is a U256; the eSpace header TRUNCATES it to its low
+        64 bits to fit Ethereum's H64. The value is real and lossy — it cannot be
+        used to re-verify the block's proof of work.
+    - name: difficulty
+      note: "a real PoW difficulty (0x417b1f0be9 at the pinned block), unlike post-Merge mainnet's 0"
+    - name: totalDifficulty
+      src: "crates/rpc/rpc-eth-types/src/block.rs:total_difficulty"
+      note: "hardcoded to 0 on every block"
+    - name: size
+      src: "crates/rpc/rpc-eth-types/src/block.rs:size"
+      note: "the sum of the eSpace transactions' RLP sizes, not the block's encoded size; 0 for an empty epoch"
+    - name: number
+      severity: high
+      src: "crates/rpc/rpc-eth-types/src/block.rs:from_phantom"
+      src_live: "cfx_getStatus @ 155333043 -> epochNumber 155333043 while blockNumber (DAG block count) was 376125885, a ratio of 2.42"
+      note: >-
+        `block.number` IS THE EPOCH NUMBER — the pivot-chain height — not a count
+        of blocks. Conflux's own `blockNumber` (the number of blocks in the DAG)
+        is 2.42x larger and is what several CIP activation heights are expressed
+        in. Three distinct height spaces coexist: DAG block number, epoch height
+        (= eSpace block.number), and PoS view.
+    - name: extraData
+      note: "always empty; Conflux's `custom` header field is not surfaced"
+    - name: sha3Uncles
+      note: "hardcoded to the empty-uncles constant; there are no uncles, there are referee blocks, and they are not exposed"
+  src: "crates/rpc/rpc-eth-types/src/block.rs:Header"
+  note: >-
+    Four of the eSpace header's five roots are wrong, stale, or invented, and
+    none of them announces it. This is the densest concentration of
+    silently-misleading header fields in the dataset.
+
+gotchas:
+  - >-
+    `eth_getBlockByNumber(N).stateRoot` IS THE STATE ROOT OF EPOCH N-5. Conflux
+    defers execution by DEFERRED_STATE_EPOCH_COUNT = 5 epochs and the eSpace RPC
+    republishes the pivot header's `deferred_state_root` under Ethereum's
+    `stateRoot` key. `receiptsRoot` is likewise the deferred receipts root, and
+    covers Core Space as well. Same invariant break as Monad, opposite direction:
+    Monad's header carries a true root that no quorum has voted on yet; Conflux's
+    carries a voted-on root that belongs to a different block.
+  - >-
+    `transactionsRoot` DOES NOT COMMIT TO THE TRANSACTIONS IN THE SAME RESPONSE.
+    It is the pivot block's own transaction root, while the transaction LIST is
+    assembled from every block in the epoch. Live at block 155332816: one
+    transaction returned, `transactionsRoot` = keccak256("") = the empty root.
+    For an empty epoch the RPC substitutes the empty-trie constant. No consumer
+    can verify an eSpace block's transaction list against its own header.
+  - >-
+    `eth_blockNumber` IS NOT THE TIP. `BlockId::Latest` maps to
+    `EpochNumber::LatestState`, so it reports the last EXECUTED epoch — four to
+    five behind the chain's actual height. `eth_getBlockByNumber` at the real tip
+    returns null for a block that is mined, ordered and final-ish. `pending` maps
+    to the same executed epoch, so it is not pending at all. `safe` maps to
+    latestConfirmed (~46 epochs back) and `finalized` to the PoS-finalised epoch
+    (~200-240 back).
+  - >-
+    A TRANSACTION THAT IS ORDERED BUT INVALID AT EXECUTION IS ERASED. Conflux has
+    a third receipt outcome, `TransactionStatus::Skipped`, distinct from Failure.
+    It is produced by nonce-too-low (permanently dropped), nonce-too-high
+    (repackable), gas price below the base-fee threshold AT THE PIVOT BLOCK,
+    sender-does-not-exist, sender-has-code, and — for Core-Space transactions —
+    an expired `epoch_height` window. The eSpace RPC then removes every trace:
+    the phantom-block builder skips it ("we do not return non-executed
+    transaction"), no transaction index is written, and
+    `eth_getTransactionReceipt` returns null with the in-source comment "a skipped
+    transaction is not available to clients if accessed by its hash". No gas is
+    charged, the nonce is not bumped, no state changes. From outside it is
+    indistinguishable from a transaction that was never submitted.
+  - >-
+    THE SAME TRANSACTION CAN BE PACKED BY TWO MINERS INTO TWO DAG BLOCKS. Both
+    blocks can be in the ordered set. The first occurrence executes; the second
+    hits `check_nonce`, gets `TxDropError::OldNonce`, and is Skipped — so it is in
+    the Core-Space block body, is not charged, is not in the eSpace block, has no
+    receipt, and has no transaction index. Duplicate inclusion is normal and
+    invisible.
+  - >-
+    A TRANSACTION CAN LOSE ITS ENTIRE BALANCE TO FEES. The EVM's
+    "balance must cover gas + value" precheck runs ONLY under the devnet-only
+    `align_evm` flag. On mainnet an underfunded transaction is executed:
+    `actual_gas_cost = min(gas_cost, balance)` takes everything the sender has,
+    the nonce is bumped, `gasUsed` is reported as the full GAS LIMIT, and the
+    receipt is `status: 0`. Mainnet's validity rules make this state unreachable.
+  - >-
+    `blockhash(block.number)` RETURNS A NON-ZERO HASH, AND WHICH ONE DEPENDS ON
+    WHERE YOU RUN IT. In a mined transaction it is the hash of the block the
+    transaction is in (the pivot hash is written to state BEFORE the epoch
+    executes). Under `eth_call` it is the hash of the block 65,536 epochs earlier
+    — confirmed live: `BLOCKHASH(155333001)` returned the hash of block
+    155267465. On mainnet it is zero. Any commit-reveal or "unpredictable
+    randomness" pattern built on that identity is broken here in a way testing
+    against a local Ethereum node will never show.
+  - >-
+    BLOCKHASH REACHES 65,536 BLOCKS BACK, NOT 256 (CIP-133), verified live at both
+    ends of the range. `blockhash(n) == 0` does not mean "too old" for about 18
+    hours.
+  - >-
+    `block.prevrandao` IS ALWAYS ZERO while the header reports a real PoW
+    `difficulty` and a real `nonce`. eSpace exposes no randomness of any kind.
+  - >-
+    SSTORE zero-to-non-zero COSTS 40,000 GAS AND CODE DEPOSIT COSTS 400 GAS PER
+    BYTE — both exactly 2x mainnet, from a single `evm_gas_ratio = 2` multiplier
+    that also doubles new-account transfer and EIP-7702 authorization costs. Both
+    measured live by binary search over `eth_call` gas limits.
+  - >-
+    CONTRACTS CAN BE 48 KiB (49,152 bytes), twice EIP-170, and the failure at
+    49,153 is `OutOfGas` rather than a distinct size error. Verified live at the
+    exact boundary.
+  - >-
+    THERE ARE TWO BASE FEES IN EVERY BLOCK, and the one `eth_getBlockByNumber`
+    reports is not the inclusion threshold. CIP-137 burns only part of the base
+    fee — 36.84% at the current DAO parameter, measured from a live receipt's
+    non-standard `burntGasFee` key — and a transaction is valid if its gas price
+    covers the BURNT part. At the pinned block `baseFeePerGas` was 20 gwei and
+    the real minimum was about 7.37 gwei. The split is governance-controlled and
+    can change without a fork.
+  - >-
+    A TRANSACTION'S GAS LIMIT MUST BE AT LEAST 100 x ITS CALLDATA LENGTH (CIP-130)
+    or the transaction is invalid. This is a validity rule, not a price. No
+    Ethereum wallet computes a gas limit this way.
+  - >-
+    ONLY DAG BLOCKS AT A HEIGHT DIVISIBLE BY 5 MAY CARRY eSPACE TRANSACTIONS
+    (EVM_TRANSACTION_BLOCK_RATIO). eSpace capacity is a function of the Core-Space
+    chain's shape.
+  - >-
+    BLOCKS CONTAIN TRANSACTIONS NOBODY SIGNED. Cross-space calls from Core Space
+    are surfaced as pairs of legacy (0x00) transactions with `gas: 0`,
+    `gasPrice: 0` and a fabricated signature — the first `from` the ZERO ADDRESS
+    with `nonce: 0` (so the zero address has unboundedly many nonce-0
+    transactions), the second from a mapped address `keccak256(coreAddress)[12..]`
+    whose key nobody holds. They have hashes, receipts and log entries. A block
+    can report `gasUsed: 0x0` and still contain two transactions — observed live
+    at epoch 155332825.
+  - >-
+    THE JSON `r` AND `s` OF A PHANTOM TRANSACTION ARE THE CHAIN ID, DELIBERATELY.
+    The RPC substitutes `chain_id` whenever the real r or s is zero, because zero
+    "is not valid in some ethereum tools". The `raw` field in the same object
+    still encodes zeros. Re-deriving the hash or running ecrecover on the JSON
+    fields gives an answer that contradicts the response.
+  - >-
+    CONFLUX'S INTERNAL CONTRACTS ARE NOT VISIBLE FROM eSPACE AT ALL.
+    `InternalContractMap::contract` returns None for any non-Native address, so
+    0x0888..0000-0007 and ..000a are ordinary empty accounts here: no code, empty
+    output on call. Storage collateral and gas sponsorship — Conflux's two most
+    distinctive economic mechanisms — are Core-Space only, asserted in one line
+    (`assert_eq!(storage_cost, U256::zero())` for every Ethereum-space sender).
+    Nothing an eSpace contract can do touches either.
+  - >-
+    THE EIP-2935 HISTORY ADDRESS IS A TRAP. The client writes epoch hashes into
+    0x0000F908..2935 on every epoch — but only `if` that address has code, and it
+    has none. Deploying any contract there would activate a client-side writer
+    into its storage.
+  - >-
+    CORE-SPACE TRANSACTIONS SHARE THE BLOCK BODY AND USE A `cfx`-PREFIXED
+    ENVELOPE. Typed Core transactions begin with the ASCII bytes `cfx`
+    (0x63 0x66 0x78) plus 0x01/0x02, so an EIP-2718 decoder reads them as an
+    unknown type-0x63 transaction. Legacy Core transactions are an untyped
+    nine-field RLP list carrying `storage_limit` and `epoch_height`.
+  - >-
+    TWO FORK LADDERS IN TWO DIFFERENT UNITS. Some CIPs activate on DAG BLOCK
+    NUMBER and some on EPOCH HEIGHT, and the two differ by a factor of ~2.42.
+    "Which fork is Conflux on" needs both numbers to answer.

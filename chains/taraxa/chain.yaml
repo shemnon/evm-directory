@@ -1,0 +1,978 @@
+schema_version: 2
+
+chain:
+  name: Taraxa
+  slug: taraxa
+  chain_id: 841
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: "taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:chain_id"
+  note: >-
+    A block-DAG L1 whose EVM is a VENDORED go-ethereum 1.8 (2018), carried as a git
+    submodule (`Taraxa-Project/taraxa-evm`) and linked into a C++ node through cgo.
+    Two facts dominate this row. First, the gas schedule and instruction set are
+    CONSTANTINOPLE-era with three Istanbul EIPs cherry-picked and everything after
+    Istanbul refused, plus four opcodes and eleven precompiles hand-added out of
+    order — so "supports MCOPY" and "supports EIP-2929" are completely independent
+    here. Second, THIS ROW HAS NO LIVE EVIDENCE AT ALL. Every endpoint the chain's
+    own documentation names — `rpc.mainnet.taraxa.io`, `ws.mainnet.taraxa.io`,
+    `rpc.testnet.taraxa.io`, `explorer.mainnet.taraxa.io` — fails to resolve in DNS
+    (SERVFAIL / NXDOMAIN from 1.1.1.1, 8.8.8.8 and 9.9.9.9 on 2026-08-27), and every
+    third-party proxy that advertises chain 841 answers `eth_chainId` from its own
+    static config while failing every method that requires an upstream node
+    (thirdweb returns 0x349 for `eth_chainId` and an internal error for
+    `eth_blockNumber`; BlockPI returns `unknown host`). The row is therefore
+    `evidence: source` in the strict sense: 100% `src:`, 0% `src_live:`. Nothing
+    below has been confirmed against a running network, and where source and
+    network could disagree, this row cannot tell you. `live: true` is therefore an
+    ASSERTION FROM ABSENCE OF EVIDENCE, not an observation: the chain demonstrably
+    produced mainnet blocks (Cacti activates at period 24,350,801 and shipped in
+    v1.14.0, January 2026), and nothing found says it stopped — but no probe of chain
+    841 succeeded, so this row cannot demonstrate that it is still producing blocks
+    today. It is not `prelaunch`, and calling it `halted` would claim more than the
+    evidence supports.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  note: >-
+    `taraxa-evm` is go-ethereum forked at the v1.8 line. `git describe --tags` on the
+    pinned submodule commit returns `v1.8.21-1195-g6c7e5338`: the newest ancestor tag
+    is go-ethereum **v1.8.21** (November 2018), and 1,195 commits of Taraxa work sit
+    on top. The 1.8 shape is still visible everywhere — a `GasTable` struct (deleted
+    from geth in 1.9), a `jump_table.go` whose operations carry `gasCost` and
+    `validateStack` function pointers, `Precompiles` as a plain map, `opSuicide`
+    rather than `opSelfdestruct`. Fork state was then RE-ROOTED rather than tracked:
+    the base instruction set is named `Californicum`, not `Constantinople`, and later
+    Ethereum features were added one at a time by hand, at Taraxa's own fork names,
+    in an order that does not match mainnet's.
+  sync_point: >-
+    STOPS AT CONSTANTINOPLE, then diverges by cherry-pick. Never adopted: EIP-1108
+    (bn256 repricing), EIP-2028 (calldata 16), EIP-2200/1706 (SSTORE sentry),
+    EIP-2929/2930 (warm-cold access), EIP-3529 (refund reduction), EIP-3541 (0xEF
+    ban), EIP-3860, EIP-1559/3198, EIP-4399, EIP-4895, EIP-4844, EIP-6780, EIP-2935,
+    EIP-4788, EIP-7702, EIP-2718 in its entirety. Adopted out of order: EIP-1344 and
+    EIP-1884 (Istanbul) in the base set, EIP-152 and EIP-2537 at Ficus, EIP-3855
+    (Shanghai) in the base set, EIP-5656 (Cancun) at Ficus, EIP-1153 (Cancun) at
+    Californicum on DRAFT opcode numbers and again at Cacti on the final ones,
+    EIP-7951 (Osaka) at Cacti. Reading this chain as "an old geth, therefore
+    Constantinople" over-states it in one direction and under-states it in the other.
+  src: "taraxa-evm/core/vm/gas_table.go:GasTableCalifornicum, taraxa-evm/core/vm/jump_table.go:newCalifornicumInstructionSet"
+
+client:
+  name: taraxa-node
+  repo: https://github.com/Taraxa-Project/taraxa-node
+  version: v1.14.1
+  commit: a0e85fe31eb03573cd92c165a5f81035cec9907e
+  language: cpp
+  built_on: go-ethereum v1.8.21 (vendored as the taraxa-evm submodule) + boost::graph + PBFT
+  note: >-
+    THE CONSENSUS NODE AND THE EVM ARE DIFFERENT LANGUAGES IN DIFFERENT REPOS. The
+    C++ node owns the DAG, PBFT, the mempool, block production and the JSON-RPC
+    surface; the Go library owns the state transition, the instruction set, the
+    precompiles and the DPoS/slashing contracts. They are joined by cgo through
+    `taraxa-evm/taraxa/C`, and the Go side is pinned as a git SUBMODULE of the node
+    rather than released independently — so the correct pin for the EVM is not a
+    taraxa-evm tag but the submodule commit recorded in the node's tree at the
+    node's release tag. v1.14.1 (2026-02-16) is the newest non-prerelease GitHub
+    release; v1.14.0 shipped the Cacti hardfork ("dynamic lambda").
+  companion_repos:
+  - {name: taraxa-evm, repo: "https://github.com/Taraxa-Project/taraxa-evm",
+     version: "submodule @ v1.14.1 (git describe: v1.8.21-1195-g6c7e5338)",
+     commit: 6c7e5338b22d5e596cc2365a88d1f94840e1ee1b, language: go,
+     provides: "the entire state transition: instruction set, gas schedule, precompiles, the DPoS and slashing contracts, the Cornus predeploy installer"}
+  submodule_pin_src: "taraxa-node/.gitmodules:taraxa-evm"
+
+live_probe:
+  endpoint: "NONE REACHABLE — every documented endpoint's DNS fails to resolve"
+  chain_id: 841
+  observed_at_block: "n/a — no live claim on this row"
+  attempted:
+  - "https://rpc.mainnet.taraxa.io/ (the endpoint docs.taraxa.io still publishes) — SERVFAIL at 1.1.1.1 / 8.8.8.8 / 9.9.9.9, 2026-08-27"
+  - "https://ws.mainnet.taraxa.io, https://rpc.testnet.taraxa.io/, https://explorer.mainnet.taraxa.io/ — same, the whole *.mainnet.taraxa.io and *.testnet.taraxa.io space is gone while taraxa.io itself resolves to Squarespace"
+  - "https://841.rpc.thirdweb.com — answers eth_chainId 0x349 and net_version 841 from its own chain registry, then fails eth_blockNumber, eth_gasPrice and eth_getBlockByNumber with an internal error: it has no upstream"
+  - "https://taraxa.blockpi.network/v1/rpc/public -> {\"error\":\"unknown host\"}; https://taraxa.drpc.org -> 404; https://rpc.ankr.com/taraxa -> 403; https://1rpc.io/tara -> 'unknown network'"
+  - "https://tara.to (the block explorer the project's own materials point at) resolves to 162.255.119.21 and answers HTTP 301 with `X-Served-By: Namecheap URL Forward` and `Location: https://yield.reviews` — a parked redirect to an unrelated site; its HTTPS port does not accept connections at all"
+  note: >-
+    A CAVEAT THAT IS ITSELF THE FINDING, and a new failure mode for this dataset.
+    Hyperliquid fails the SOURCE gate and is answered with live probes; Taraxa is the
+    mirror image — full source at a released tag, and no reachable network. The
+    chain's public RPC and explorer infrastructure was volunteer-funded and has been
+    shut down for cost; the documentation was never updated. So this row cannot do
+    what `src_live:` exists to do: catch the gap between the pinned tag and what
+    validators actually run. Treat every claim below as "what taraxa-node v1.14.1
+    would do", not as "what chain 841 did at block N". Nothing here should be
+    promoted to a live claim without a node.
+
+consensus:
+  engine: block-DAG with a GHOST pivot chain, finalized by a PBFT committee that periodically commits an ANCHOR
+  finality: >-
+    single-slot BFT finality on the PBFT block; the anchor it names retroactively
+    finalizes every DAG block below it. There is no probabilistic phase and no
+    reorg of finalized periods.
+  block_time: >-
+    lambda-driven, 1500 ms at genesis; Cacti makes lambda dynamic between 500 ms and
+    1500 ms (default 2000 ms, adjusted by 10 ms every 300 periods)
+  src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
+  note: >-
+    TWO LAYERS, AND THE EXECUTED CHAIN IS NEITHER OF THEM. Twenty eligible proposers
+    (`number_of_proposers: 0x14`) produce DAG blocks concurrently; each names one
+    PIVOT parent and up to sixteen TIPS. `PivotTree::getGhostPath` walks the pivot
+    tree by heaviest subtree, ties broken by the smaller block hash, producing a
+    deterministic pivot chain. A PBFT proposer picks an ANCHOR from that path —
+    `ghost[ghost.size() - 1 - ghost_path_move_back]`, or `ghost[dag_blocks_size - 1]`
+    when the path is longer than 50 blocks — and `Dag::computeOrder` then produces a
+    total order over every non-finalized DAG block that can reach the anchor, by
+    reverse-post-order DFS with children sorted by hash. That ordered list is
+    committed as a single 32-byte `order_hash` (the sha3 of the RLP list of DAG block
+    hashes) inside the PBFT block. A third, LINEAR chain — the "final chain" — is
+    then derived: one Ethereum-shaped block per PBFT period, whose transactions are
+    the deduplicated concatenation of the ordered DAG blocks' transaction lists.
+    `block.number` counts PBFT PERIODS, not DAG blocks: a period that anchors 40 DAG
+    blocks carrying 900 transactions is one `block.number`, and a period whose anchor
+    is null (no new DAG blocks) is also one `block.number`, with zero transactions.
+
+baseline_fork: constantinople
+
+baseline_note: >-
+  MEASURED FROM THE INSTRUCTION TABLE AND THE GAS CONSTANTS, not from the chain's
+  fork names, which are botanical (Magnolia, Phalaenopsis, Aspen, Ficus, Cornus,
+  Soleirolia, Cacti) and map to no Ethereum fork. `newCalifornicumInstructionSet` is
+  a flat 144-entry table containing SHL/SHR/SAR, EXTCODEHASH, CREATE2 and STATICCALL
+  (Constantinople), plus CHAINID and SELFBALANCE (Istanbul EIP-1344/1884) and PUSH0
+  (Shanghai). `gasSStore` implements EIP-1283 net gas metering — an EIP that
+  Ethereum mainnet NEVER SHIPPED, having removed it in Petersburg before
+  Constantinople activated — with no EIP-1706 sentry. `GasTableCalifornicum` sets
+  SLOAD 800 and BALANCE/EXTCODEHASH/EXTCODESIZE/CALL 700, which is post-EIP-1884 and
+  pre-EIP-2929, and `constants.go` keeps `TxDataNonZeroGas = 68` and the BYZANTIUM
+  bn256 prices (500 / 40,000 / 100,000 + 80,000 per point), so neither EIP-2028 nor
+  EIP-1108 was ever taken. Everything from Berlin onward is absent except four
+  opcodes and eleven precompile addresses added by hand. There is no mainnet fork
+  that describes this set; `constantinople` is the closest true statement, and every
+  `added` below means "not on mainnet at Constantinople", with the note naming the
+  mainnet fork it really belongs to.
+
+forks:
+  src: "taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:cacti_hf"
+  rules_src: "taraxa-evm/taraxa/state/chain_config/chain_config.go:Rules"
+  src_doc: https://docs.taraxa.io
+  note: >-
+    Forks activate at a PBFT PERIOD number (the mainnet genesis calls the field
+    `block_num`), not at a timestamp — the one activation style this dataset has
+    otherwise only seen on pre-merge chains. Only six of the names reach the EVM at
+    all: `vm.Rules` carries exactly `IsMagnolia`, `IsAspenPartOne`, `IsAspenPartTwo`,
+    `IsFicus`, `IsCornus`, `IsCacti`, and the instruction set switch in
+    `EVM.SetBlock` reads only `IsCacti` and `IsFicus`. Everything else is a
+    consensus- or economics-level change invisible to a contract.
+  timeline:
+  - {name: genesis (Californicum), activation_condition: "period 0", mainnet_equivalent: constantinople,
+     note: "flat instruction table incl. PUSH0, CHAINID, SELFBALANCE and TLOAD/TSTORE at the DRAFT opcodes 0xb3/0xb4; precompiles 0x01-0x08 only"}
+  - {name: fix_redelegate, activation_condition: "period 3091000", mainnet_equivalent: null,
+     note: "DPoS redelegation bug fix, plus a hard-coded one-off redelegation of 0x3e8 from one named validator to one named delegator, written into the genesis config"}
+  - {name: Magnolia, activation_condition: "period 5730000", mainnet_equivalent: null,
+     note: "slashing contract registered at 0xEE; validator jail time 163,459 periods; rewards distribution frequency drops to once per 100 periods"}
+  - {name: Phalaenopsis, activation_condition: "period 6943000", mainnet_equivalent: null, note: "consensus fix, no EVM effect"}
+  - {name: fix_claim_all, activation_condition: "period 7600000", mainnet_equivalent: null, note: "DPoS claim-all fix"}
+  - {name: Aspen part one, activation_condition: "period 8118000", mainnet_equivalent: null,
+     note: "DPoS gains real EVM bytecode at 0xFE (which the precompile shadows and never runs); DAG block reward switches from 'included a unique transaction' to 'matched the minimum VDF difficulty in the period'"}
+  - {name: Aspen part two, activation_condition: "period 8572000", mainnet_equivalent: null,
+     note: "hard supply cap 0x26C62AD77DC602DAE0000000 (12e27 wei = 12e9 TARA) and a yield curve replacing the flat 20% yield"}
+  - {name: Ficus, activation_condition: "period 11616000", mainnet_equivalent: null,
+     note: "MCOPY (EIP-5656); BLAKE2F at 0x09 (EIP-152, six years late); BLS12-381 at the DRAFT EIP-2537 addresses 0x0b-0x13; pillar blocks every 4000 periods and a bridge contract at 0xe126E0Ba..b763a1 driven by a protocol-generated system transaction"}
+  - {name: Cornus, activation_condition: "period 15610000", mainnet_equivalent: null,
+     note: "13 well-known ecosystem contracts installed as protocol bytecode; PBFT gas limit raised 315M -> 2.1B and DAG gas limit 31.5M -> 420M WITHOUT changing the header's reported gasLimit; intrinsic-gas check added to tx admission; underfunded and malformed transactions start bumping the sender nonce; the PBFT block's committed final-chain field switches from a state root to a block hash"}
+  - {name: Soleirolia, activation_condition: "period 17380000", mainnet_equivalent: null,
+     note: "minimum gas price 1 gwei and maximum per-transaction gas 31,500,000 — both enforced at the NETWORK admission layer, not inside the state transition"}
+  - {name: Cacti, activation_condition: "period 24350801", mainnet_equivalent: null,
+     note: "TLOAD/TSTORE re-added at the FINAL opcodes 0x5c/0x5d without removing the draft ones; BLS12-381 renumbered to the final EIP-2537 layout; P256VERIFY at 0x0100; FALCON-512 at 0xfa1c; dynamic lambda 500-1500 ms; jail time 252,000 periods"}
+
+eips:
+  1283:
+    status: added
+    severity: high
+    note: >-
+      THE HEADLINE EVM FINDING, AND IT IS AN EIP MAINNET NEVER SHIPPED. `gasSStore`
+      is EIP-1283 net gas metering verbatim, including the comment block from geth
+      1.8: a no-op SSTORE costs 200, a write to an already-dirty slot costs 200, and
+      the refund constants are 15,000 / 4,800 / 19,800. Ethereum removed EIP-1283 in
+      the Petersburg emergency fork (EIP-1716) two days before Constantinople was due,
+      precisely because 200-gas SSTOREs make the 2,300-gas CALL stipend
+      state-modifying, and replaced it at Istanbul with EIP-2200, which adds the
+      `gas <= SSTORE_SENTRY (2300)` out-of-gas guard. THAT GUARD IS NOT HERE. Search
+      `gasSStore` for the sentry and there is none, and `CallStipend` is still 2,300.
+      So on Taraxa the invariant every Solidity audit rests on — "a `transfer()` or
+      `send()` recipient cannot change state" — is FALSE: a fallback function reached
+      with 2,300 gas can write to a dirty storage slot. Reentrancy patterns that are
+      unexploitable on mainnet are exploitable here, silently, with no revert and no
+      signal.
+    src: "taraxa-evm/core/vm/gas.go:gasSStore, taraxa-evm/core/vm/constants.go:NetSstoreDirtyGas"
+  2200:
+    status: removed
+    note: "superseded EIP-1283 on mainnet at Istanbul; Taraxa kept 1283. The consequence is EIP-1706's missing sentry — see 1283 and 1706."
+    src: "taraxa-evm/core/vm/gas.go:gasSStore"
+  1706:
+    status: removed
+    severity: high
+    note: "the SSTORE_SENTRY guard that makes a 2,300-gas stipend non-state-modifying does not exist in `gasSStore`."
+    src: "taraxa-evm/core/vm/gas.go:gasSStore"
+  1153:
+    status: modified
+    severity: high
+    note: >-
+      TRANSIENT STORAGE EXISTS AT FOUR OPCODES, TWO OF WHICH ARE UNDEFINED ON MAINNET.
+      The base Californicum table binds `opTload`/`opTstore` to `TLOAD_OLD = 0xb3` and
+      `TSTORE_OLD = 0xb4` — the numbers from the 2020 draft of EIP-1153, abandoned
+      before the EIP was finalised at 0x5c/0x5d. Cacti's `fixEIP1153` ADDS 0x5c and
+      0x5d; it does not remove 0xb3 and 0xb4, and `opcodes.go` still lists both pairs
+      under the display names "TLOAD"/"TSTORE". So from Cacti onward all four are
+      live, aliased onto the same transient store. On mainnet 0xb3 and 0xb4 are
+      invalid opcodes: a disassembler prints `INVALID`, a static analyser treats the
+      basic block as unreachable, and a contract compiled for mainnet that happens to
+      contain 0xb3 in a data region behaves differently here. Both TLOAD and TSTORE
+      are priced by `gasTLoad` (100, the warm-storage-read cost) — TSTORE's gas
+      function is literally `gasTLoad`.
+    src: "taraxa-evm/core/vm/eips.go:fixEIP1153, taraxa-evm/core/vm/opcodes.go:TSTORE_OLD, taraxa-evm/core/vm/jump_table.go:TLOAD_OLD"
+  5656:
+    status: added
+    note: "MCOPY at 0x5e, added at Ficus by `enable5656`, priced with the standard memory-copier gas. Independent of EIP-1153 here, unlike mainnet where both arrived at Cancun."
+    src: "taraxa-evm/core/vm/eips.go:enable5656"
+  3855:
+    status: added
+    note: "PUSH0 at 0x5f is in the BASE Californicum table — it has been live since genesis, years before Shanghai, and does not correspond to any Taraxa fork."
+    src: "taraxa-evm/core/vm/jump_table.go:newCalifornicumInstructionSet"
+  1344:
+    status: added
+    note: "CHAINID at 0x46 in the base table; returns 841."
+    src: "taraxa-evm/core/vm/opcodes.go:CHAINID"
+  1884:
+    status: added
+    note: >-
+      the only Istanbul EIP taken whole: SELFBALANCE at 0x47, SLOAD 800, BALANCE and
+      EXTCODEHASH 700. Its Istanbul siblings EIP-1108 and EIP-2028 were not taken, so
+      the Istanbul gas schedule is present in exactly one of its three halves.
+    src: "taraxa-evm/core/vm/gas_table.go:GasTableCalifornicum"
+  152:
+    status: added
+    activation_condition: "Ficus, period 11616000"
+    note: "BLAKE2F at 0x09 did not exist on this chain until Ficus (2025). Before that, calling 0x09 hit an empty account and returned success with no output — the classic 'absent precompile succeeds' trap, live for four years."
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsFicus"
+  2537:
+    status: modified
+    severity: high
+    note: >-
+      BLS12-381 IS PRESENT AT BOTH THE DRAFT AND THE FINAL ADDRESS LAYOUTS, AND CACTI
+      MOVED FIVE OF THEM. Ficus installed the pre-2024 draft layout: 0x0b G1ADD,
+      0x0c G1MUL, 0x0d G1MULTIEXP, 0x0e G2ADD, 0x0f G2MUL, 0x10 G2MULTIEXP,
+      0x11 PAIRING, 0x12 MAP_FP_TO_G1, 0x13 MAP_FP2_TO_G2. Cacti replaced it with the
+      final layout: 0x0b G1ADD, 0x0c G1MSM, 0x0d G2ADD, 0x0e G2MSM, 0x0f PAIRING,
+      0x10 MAP_FP_TO_G1, 0x11 MAP_FP2_TO_G2 — and dropped 0x12 and 0x13 entirely. A
+      contract deployed before Cacti that calls 0x0f expecting G2MUL (a 288-byte
+      input) now reaches PAIRING_CHECK; one calling 0x11 expecting PAIRING now
+      reaches MAP_FP2_TO_G2; 0x12 and 0x13 became empty accounts, so calls to them
+      SUCCEED WITH NO OUTPUT. Gas is the DRAFT schedule throughout, not the Prague
+      one: G1ADD 600 (mainnet 375), pairing 115,000 + 23,000/pair (mainnet 37,700 +
+      32,600/pair), MAP_FP2_TO_G2 110,000 (mainnet 23,800).
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsCacti, taraxa-evm/core/vm/constants.go:Bls12381PairingPerPairGas"
+  7951:
+    status: added
+    activation_condition: "Cacti, period 24350801"
+    note: "P256VERIFY at 0x0100, 6,900 gas (the EIP-7951 price, not RIP-7212's 3,450). Requires exactly 160 bytes; any other length returns EMPTY with no error, and a failed verification also returns empty. Mainnet-compatible semantics."
+    src: "taraxa-evm/core/vm/contracts.go:p256Verify"
+  1108:
+    status: removed
+    divergence: gas
+    note: "bn256 is at BYZANTIUM prices: ADD 500 (mainnet 150), MUL 40,000 (mainnet 6,000), PAIRING 100,000 + 80,000/point (mainnet 45,000 + 34,000). A Groth16 verifier costs roughly 2.4x its mainnet gas. Results are identical; only the price differs."
+    src: "taraxa-evm/core/vm/constants.go:Bn256PairingPerPointGas"
+  2028:
+    status: removed
+    divergence: gas
+    note: "a non-zero calldata byte costs 68 gas, not 16 — the pre-Istanbul price, confirmed on both sides of the cgo boundary (`vm.TxDataNonZeroGas` in Go, `kTxDataNonZeroGas` in C++). Calldata-heavy transactions cost 4.25x their mainnet intrinsic gas."
+    src: "taraxa-evm/core/vm/constants.go:TxDataNonZeroGas, taraxa-node/libraries/common/include/common/constants.hpp:kTxDataNonZeroGas"
+  2929:
+    status: removed
+    severity: high
+    note: >-
+      THERE IS NO WARM/COLD ACCOUNT OR SLOT TRACKING ANYWHERE IN THIS EVM. `gasSLoad`
+      returns the constant `evm.gas_table.SLoad` and nothing else; there is no access
+      list, no `AddressInAccessList`, no `SlotInAccessList`. Every SLOAD costs 800,
+      every EXTCODESIZE/EXTCODECOPY/EXTCODEHASH/BALANCE 700, every CALL 700 —
+      first touch and hundredth alike. Gas estimates calibrated on mainnet are wrong
+      in BOTH directions: a first touch is much cheaper here (800 vs 2,100), a
+      repeated touch much dearer (800 vs 100). Contracts that budget a fixed gas
+      stipend for a repeated SLOAD loop can run out of gas here and nowhere else.
+    src: "taraxa-evm/core/vm/gas.go:gasSLoad, taraxa-evm/core/vm/gas_table.go:GasTableCalifornicum"
+  2930:
+    status: removed
+    note: "no access-list transaction type, because there is no EIP-2718 envelope at all. See tx_types."
+    src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"
+  3529:
+    status: removed
+    note: >-
+      the refund cap is `gas_used / 2`, the pre-London quotient, not `gas_used / 5`;
+      `NetSstoreClearRefund` is 15,000, not 4,800; and `SuicideRefundGas` is still
+      24,000 — SELFDESTRUCT refunds, deleted from mainnet at London, are alive here.
+      Gas-token contracts (GST2/CHI) work on Taraxa.
+    src: "taraxa-evm/core/vm/evm.go:Main, taraxa-evm/core/vm/gas.go:gasSuicide"
+  6780:
+    status: removed
+    note: "`opSuicide` calls `Account().Suicide(&beneficiary)` unconditionally; there is no same-transaction-creation test. SELFDESTRUCT still deletes the account, its code and its storage, from any transaction."
+    src: "taraxa-evm/core/vm/instructions.go:opSuicide"
+  3541:
+    status: removed
+    note: "no 0xEF prefix check in `create`. Runtime code beginning with 0xEF DEPLOYS on Taraxa and does not on mainnet — the only such row in this dataset so far."
+    src: "taraxa-evm/core/vm/evm.go:create"
+  3860:
+    status: removed
+    note: "no initcode size limit and no per-word initcode gas. Only the 24,576-byte deployed-code cap is enforced, via `ErrMaxCodeSizeExceeded`."
+    src: "taraxa-evm/core/vm/evm.go:create, taraxa-evm/core/vm/constants.go:MaxCodeSize"
+  170:
+    status: inherited
+    note: "MaxCodeSize is 24,576."
+    src: "taraxa-evm/core/vm/constants.go:MaxCodeSize"
+  1559:
+    status: removed
+    severity: high
+    note: >-
+      NO BASE FEE ANYWHERE. There is no `baseFeePerGas` in the header struct, in
+      `ethereumRlp`, or in the RPC block JSON; there is no BASEFEE opcode; the
+      transaction has a single `gas_price` field. The floor is a flat 1 gwei
+      (`soleirolia_hf.trx_min_gas_price`) enforced by `verifyTransaction` at the
+      NETWORK layer, not by the state transition. `eth_gasPrice` is a 60th-percentile
+      estimate over the last 200 blocks. Any tool that reads `baseFeePerGas` to build
+      a transaction gets `undefined` here.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp, taraxa-node/libraries/core_libs/consensus/src/transaction/transaction_manager.cpp:verifyTransaction"
+  3198:
+    status: removed
+    note: "BASEFEE (0x48) is not in the opcode list and not in any instruction set. Executing it is an invalid-opcode halt."
+    src: "taraxa-evm/core/vm/opcodes.go:SELFBALANCE"
+  4399:
+    status: removed
+    severity: high
+    note: >-
+      DIFFICULTY (0x44) IS LIVE AND ALWAYS RETURNS ZERO. `BlockHeader::difficulty()`
+      is a static `ZeroU256` and is what `finalize_` passes into the EVM's
+      `BlockInfo.Difficulty`. Solidity's `block.prevrandao` compiles to 0x44, so any
+      contract using it as an entropy source reads a constant 0 on Taraxa, with no
+      revert and no way for the caller to tell. `mixHash` in the RPC block JSON is
+      likewise a hard-coded zero hash.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:difficulty, taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:finalize_"
+  4895:
+    status: removed
+    note: "no withdrawals, no `withdrawalsRoot`. The chain is DPoS; staking rewards are credited inside the DPoS contract, not by a beacon-layer withdrawal."
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"
+  4844:
+    status: removed
+    note: "no blobs, no BLOBHASH (0x49), no BLOBBASEFEE (0x4a), no blob header fields, and the KZG point-evaluation precompile at 0x0a is present in the source only as a COMMENTED-OUT map entry in all three precompile sets."
+    src: "taraxa-evm/core/vm/contracts.go:kzgPointEvaluation"
+  2935:
+    status: removed
+    note: "no history-storage contract at 0x0000F90827F1C53a10cb7A02335B175320002935; BLOCKHASH's window is the plain 256-block one."
+    src: "taraxa-evm/core/vm/instructions.go:opBlockhash"
+  4788:
+    status: removed
+    note: "no beacon chain, no beacon-roots contract at 0x000F3df6...Beac02, no `parentBeaconBlockRoot` header field."
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"
+  7702:
+    status: removed
+    note: "no EIP-2718 envelope, so no 0x04 SetCode transaction and no delegation designator."
+    src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"
+  2718:
+    status: removed
+    severity: high
+    note: >-
+      THE ENVELOPE IS LEGACY-ONLY AND THE SOURCE SAYS SO. `Transaction::fromRLP`
+      decodes exactly nine RLP items (nonce, gasPrice, gas, to, value, data, v, r, s)
+      with no type-byte branch, and the RLP parse failure message reads verbatim:
+      "Use legacy transactions because typed transactions aren't supported yet."
+      Every typed-transaction feature therefore fails at the door, not at execution.
+    src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP, taraxa-node/libraries/types/transaction/src/system_transaction.cpp:SystemTransaction"
+  7623:
+    status: removed
+    note: "no calldata gas floor; intrinsic gas is 21,000/53,000 plus 68/4 per byte and nothing else."
+    src: "taraxa-evm/core/vm/gas.go:IntrinsicGas"
+  3651:
+    status: removed
+    note: "no warm-coinbase rule, because there is no access set. COINBASE reads the PBFT block's beneficiary and a CALL to it costs the same 700 as any other."
+    src: "taraxa-evm/core/vm/gas_table.go:GasTableCalifornicum"
+non_eip_specs: {}
+
+tx_types:
+  "0x00":
+    name: Legacy (EIP-155)
+    status: modified
+    severity: high
+    note: >-
+      The ONLY transaction shape the chain accepts, and its RPC representation is
+      wrong in a way that breaks re-signing. `Transaction::toJSON` emits `v` as the
+      RAW recovery id — `vrs_.v` is computed as `v - (chain_id*2 + 35)` at decode
+      time and never re-encoded — so `eth_getTransactionByHash` returns `"v":"0x0"`
+      or `"v":"0x1"` where the signed RLP carries 1717 or 1718. Any client that
+      rebuilds the transaction from the RPC fields and re-hashes it gets a DIFFERENT
+      transaction hash. The JSON also carries a non-standard `sig` field and a
+      `chainId` field, and carries NO `type` field at all.
+    src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:toJSON, taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"
+  "0x01": {name: EIP-2930 access list, status: removed, note: "no EIP-2718 envelope", src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"}
+  "0x02": {name: EIP-1559 dynamic fee, status: removed, note: "no EIP-2718 envelope and no base fee", src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"}
+  "0x03": {name: EIP-4844 blob, status: removed, src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"}
+  "0x04": {name: EIP-7702 set code, status: removed, src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"}
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Ordinary secp256k1, with one asterisk that matters: `SystemTransaction` overrides
+    `getSender()` to return the constant `kTaraxaSystemAccount` and serialises with
+    `r = 0, s = 0`, so a protocol-generated transaction is authorized by its
+    PRESENCE in the block rather than by a signature. Those transactions get real
+    hashes, real receipts, real positions in the transactions trie, and wear the same
+    legacy shape as user transactions — there is no type byte to tell them apart. The
+    only discriminator is the sender address.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x0000000000000000000000000000000000000001"
+      src: "taraxa-node/libraries/types/transaction/src/transaction.cpp:fromRLP"
+    secp256r1:
+      status: added
+      authorizes: never
+      precompile: "0x0000000000000000000000000000000000000100"
+      note: "P256VERIFY exists from Cacti; a P-256 key still cannot move a wei."
+      src: "taraxa-evm/core/vm/contracts.go:p256Verify"
+    falcon512:
+      status: added
+      authorizes: never
+      precompile: "0x000000000000000000000000000000000000fa1c"
+      note: >-
+        FN-DSA-512 (Falcon-512), NIST's post-quantum lattice signature. The only
+        post-quantum signature verifier in this dataset. Contracts can verify it;
+        it cannot authorize a transaction.
+      src: "taraxa-evm/core/vm/contracts.go:falcon512"
+    system_unsigned:
+      status: added
+      availability: optional
+      activation_condition: "sender == kTaraxaSystemAccount; only the protocol can construct one"
+      authorizes: protocol
+      precompile: none
+      note: >-
+        A transaction with r = 0 and s = 0 whose sender is the constant
+        0x0054617261786153797374656d4163636f756e74 — which is ASCII for
+        \x00 followed by 'TaraxaSystemAccount'. `authorizes: protocol` with
+        `precompile: none` is the pairing SCHEMA.md flags: an on-chain contract has
+        no way to check the authority behind a system transaction, because there is
+        nothing to check.
+      src: "taraxa-node/libraries/common/include/common/constants.hpp:kTaraxaSystemAccount, taraxa-node/libraries/types/transaction/src/system_transaction.cpp:SystemTransaction"
+
+non_evm_transactions:
+  entries:
+  - id: dag_block
+    name: DAG block
+    status: added
+    note: 'Not a transaction, but the only object a validator actually produces, and it carries consensus-relevant
+      fields no EVM structure exposes: a pivot parent, up to 16 tips, a VDF proof, a VRF sortition
+      proof, a level, and a `gas_estimation`. DAG blocks are never returned by any `eth_*` method;
+      they have their own `taraxa_getDagBlockByHash` namespace. The final chain''s blocks are DERIVED
+      from them and do not name them.'
+    src: taraxa-node/libraries/core_libs/consensus/src/dag/dag_manager.cpp:IncorrectTransactionsEstimation
+  - id: pillar_block
+    name: Pillar block
+    status: added
+    activation_condition: Ficus, period 11616000; every 4000 periods
+    note: A separate, bridge-facing chain of blocks produced every 4,000 periods and voted on with
+      its own signature scheme (`pillar votes`, carried in the PBFT block's extra data). Invisible
+      to the EVM except through the bridge contract at 0xe126E0BaeAE904b8Cfd619Be1A8667A173b763a1,
+      which a system transaction pokes.
+    src: taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:makeSystemTransactions
+precompiles:
+  "0x0000000000000000000000000000000000000005":
+    name: MODEXP
+    status: modified
+    divergence: gas
+    note: "the ORIGINAL EIP-198 pricing, with `ModExpQuadCoeffDiv = 20`. Neither EIP-2565 (Berlin, divisor 3 and a 200-gas floor) nor EIP-7883 (Osaka) was taken."
+    src: "taraxa-evm/core/vm/constants.go:ModExpQuadCoeffDiv"
+  "0x0000000000000000000000000000000000000006":
+    name: BN256_ADD
+    status: modified
+    divergence: gas
+    note: "500 gas, the Byzantium price. Mainnet has charged 150 since Istanbul."
+    src: "taraxa-evm/core/vm/constants.go:Bn256AddGas"
+  "0x0000000000000000000000000000000000000007":
+    name: BN256_MUL
+    status: modified
+    divergence: gas
+    note: "40,000 gas, the Byzantium price. Mainnet: 6,000."
+    src: "taraxa-evm/core/vm/constants.go:Bn256ScalarMulGas"
+  "0x0000000000000000000000000000000000000008":
+    name: BN256_PAIRING
+    status: modified
+    divergence: gas
+    note: "100,000 + 80,000 per point, the Byzantium price. Mainnet: 45,000 + 34,000."
+    src: "taraxa-evm/core/vm/constants.go:Bn256PairingPerPointGas"
+  "0x0000000000000000000000000000000000000009":
+    name: BLAKE2F
+    status: added
+    activation_condition: "Ficus, period 11616000"
+    note: "absent from the Californicum set entirely; a call to 0x09 before Ficus hit an empty account and returned SUCCESS with empty output."
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsFicus"
+  "0x000000000000000000000000000000000000000a":
+    name: KZG point evaluation
+    status: removed
+    note: "present in the source as a commented-out map entry in all three precompile sets — the author wrote the line and disabled it. Calling 0x0a succeeds with empty output."
+    src: "taraxa-evm/core/vm/contracts.go:kzgPointEvaluation"
+  "0x000000000000000000000000000000000000000b":
+    name: BLS12_G1ADD
+    status: modified
+    divergence: gas
+    availability: optional
+    activation_condition: "Ficus, period 11616000"
+    note: "600 gas (EIP-2537 draft) instead of mainnet's 375. Address is stable across Ficus and Cacti; 0x0c-0x13 are NOT — see 0x0c."
+    src: "taraxa-evm/core/vm/constants.go:Bls12381G1AddGas"
+  "0x000000000000000000000000000000000000000c":
+    name: BLS12_G1MUL (Ficus) -> BLS12_G1MSM (Cacti)
+    status: modified
+    severity: high
+    availability: optional
+    activation_condition: "Ficus, period 11616000; MEANING CHANGED at Cacti, period 24350801"
+    note: >-
+      THE SAME ADDRESS COMPUTES A DIFFERENT FUNCTION BEFORE AND AFTER CACTI. Ficus
+      bound 0x0c to G1MUL, which takes exactly 160 bytes; Cacti binds it to
+      G1MULTIEXP, which takes a multiple of 160. A 160-byte call still succeeds and
+      still returns a G1 point, because a one-term multi-exponentiation IS a
+      multiplication — so the migration is invisible for the common case and only the
+      GAS changes. 0x0d, 0x0e, 0x0f, 0x10 and 0x11 were remapped the same way and are
+      NOT benign: 0x0f moved from G2MUL to PAIRING_CHECK and 0x11 from PAIRING_CHECK
+      to MAP_FP2_TO_G2, which take different input lengths and return different
+      shapes.
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsCacti, taraxa-evm/core/vm/contracts.go:PrecompiledContractsFicus"
+  "0x0000000000000000000000000000000000000012":
+    name: BLS12_MAP_FP_TO_G1 (Ficus only)
+    status: removed
+    note: >-
+      REMOVED, NOT TOMBSTONED, AND THAT IS THE DANGEROUS DIRECTION. Ficus installed
+      MAP_FP_TO_G1 at 0x12 and Cacti deleted it. Calling 0x12 now reaches an empty
+      account, so the CALL SUCCEEDS and returns zero bytes; a caller that checks only
+      the success flag reads a 'mapped point' of length zero. Same for 0x13
+      (MAP_FP2_TO_G2).
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsFicus"
+  "0x0000000000000000000000000000000000000013":
+    name: BLS12_MAP_FP2_TO_G2 (Ficus only)
+    status: removed
+    note: "see 0x12. Deleted at Cacti; calls now succeed with empty output."
+    src: "taraxa-evm/core/vm/contracts.go:PrecompiledContractsFicus"
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY
+    status: added
+    activation_condition: "Cacti, period 24350801"
+    spec: EIP-7951 / RIP-7212
+    note: "6,900 gas. 160-byte input required; wrong length and failed verification both return EMPTY. Mainnet-compatible."
+    src: "taraxa-evm/core/vm/contracts.go:p256Verify"
+  "0x000000000000000000000000000000000000fa1c":
+    name: FALCON512 / FN-DSA-512 verify
+    status: added
+    severity: high
+    activation_condition: "Cacti, period 24350801"
+    note: >-
+      A POST-QUANTUM SIGNATURE PRECOMPILE WITH AN INVERTED RETURN VALUE AND AN ABI
+      SELECTOR. Two things make it unlike every other precompile in this dataset.
+      (1) IT RETURNS bytes32(0) FOR A VALID SIGNATURE AND bytes32(1) FOR AN INVALID
+      ONE — the source comment says so — which is the exact opposite of ecrecover,
+      P256VERIFY and every other verifier. `success && result != 0` accepts forgeries
+      and rejects valid signatures. (2) It requires a 4-BYTE FUNCTION SELECTOR,
+      0xde8f50a1 for `verify(bytes,bytes,bytes)`, followed by standard ABI head/tail
+      encoding — no mainnet precompile parses a selector. A call with the wrong
+      selector ERRORS (the CALL returns 0); a call with the right selector and a
+      broken signature SUCCEEDS and returns 1. So failure is signalled two different
+      ways depending on how you got it wrong. Gas is 1,465 + 6 per word, which prices
+      a 666-byte signature plus an 897-byte key at roughly 1,760 gas — cheaper than
+      ecrecover, for a lattice verification.
+    src: "taraxa-evm/core/vm/contracts.go:falcon512, taraxa-evm/core/vm/constants.go:Falcon512BaseGas"
+  "0x00000000000000000000000000000000000000fe":
+    name: DPoS (delegation, undelegation, rewards, validator registry)
+    status: added
+    severity: high
+    note: >-
+      A PRECOMPILE AND A SYSTEM CONTRACT AT THE SAME ADDRESS, AND THE BYTECODE NEVER
+      RUNS. `dpos_contract_address` is 0x...00FE and the DPoS logic is native Go
+      registered through `RegisterPrecompiledContract`. From Aspen part one,
+      `applyHFChanges` ALSO writes real EVM bytecode into that account
+      (`AspenDposImplBytecode`, replaced by `CornusDposImplBytecode` at Cornus), so
+      `EXTCODESIZE(0xFE)` is non-zero and `EXTCODEHASH(0xFE)` is a real hash. But
+      `EVM.Call` dispatches `if precompiled != nil {...} else if len(code) != 0
+      {...}` — the precompile always wins and the bytecode is dead weight, present
+      only so that block explorers and ABI tooling see a contract. This is a direct
+      counterexample to SCHEMA.md's precompile/system-contract boundary: the usual
+      test, "does EXTCODESIZE return non-zero", gives the WRONG answer here. It is
+      recorded under `precompiles` because that is what executes.
+    src: "taraxa-evm/taraxa/state/contracts/dpos/precompiled/dpos_contract.go:dpos_contract_address, taraxa-evm/taraxa/state/state_transition/state_hardforks.go:applyHFChanges, taraxa-evm/core/vm/evm.go:RegisterPrecompiledContract"
+  "0x00000000000000000000000000000000000000ee":
+    name: Slashing (double-voting proofs, jail state)
+    status: added
+    activation_condition: "Magnolia, period 5730000"
+    note: >-
+      Native Go, no bytecode — unlike 0xFE, this one really is code-free.
+      `commitDoubleVotingProof` (20,000 gas) takes two conflicting PBFT votes from
+      one validator and JAILS it for `jail_time` periods (163,459 at Magnolia,
+      252,000 from Cacti); `getJailBlock` and `getJailedValidators` are readable from
+      any contract for 5,000 gas. So consensus misbehaviour is an EVM-VISIBLE fact on
+      Taraxa, queryable by a contract — which is unusual, and is the opposite end of
+      the spectrum from Autonomys, where slashing is automatic and invisible to the
+      EVM. Jailing here suspends block production and reward eligibility; it is not a
+      stake burn.
+    src: "taraxa-evm/taraxa/state/contracts/slashing/precompiled/slashing_contract.go:slashing_contract_address, taraxa-evm/taraxa/state/contracts/slashing/precompiled/slashing_contract.go:field_validators_jail_block"
+
+system_contracts:
+  "0x69f4D1788e39c87893C980c06EdF4b7f686e2938":
+    name: Safe (Gnosis Safe singleton) — and twelve more, see note
+    status: added
+    activation_condition: "Cornus, period 15610000"
+    note: >-
+      CORNUS INSTALLED THIRTEEN THIRD-PARTY CONTRACTS AS PROTOCOL BYTECODE, at their
+      canonical cross-chain addresses, in one hardfork. `OpPrecompiles` (the file's
+      own comment calls it "OP Stack Specification", borrowed from OP's preinstalls
+      list) maps address to hex bytecode and `applyHFChanges` does `SetCode` on each:
+      Safe 0x69f4D178..2938, SafeL2 0xfb1bffC9..91EA, MultiSend 0x998739BF..9EDa,
+      MultiSendCallOnly 0xA1dabEF3..102B, SafeSingletonFactory 0x914d7Fec..43d7,
+      Multicall3 0xcA11bde0..CA11, Create2Deployer 0x13b0D85C..beF2, CreateX
+      0xba5Ed099..ba5Ed, Arachnid's deterministic deployment proxy 0x4e59b448..956C,
+      Permit2 0x00000000..8BA3, and ERC-4337 v0.6.0 and v0.7.0 EntryPoint +
+      SenderCreator. These are normally deployed BY USERS through a deterministic
+      factory; here their code is a consensus fact that no transaction paid for and
+      no receipt records. Their nonces are not set, so unlike OP's preinstalls they
+      remain nonce-0 accounts with code.
+    src: "taraxa-evm/taraxa/state/state_transition/op_stack/precompiles.go:OpPrecompiles, taraxa-evm/taraxa/state/state_transition/state_hardforks.go:applyHFChanges"
+  "0xe126E0BaeAE904b8Cfd619Be1A8667A173b763a1":
+    name: Pillar-block bridge contract
+    status: added
+    activation_condition: "Ficus, period 11616000"
+    note: >-
+      A genesis-configured address (`ficus_hf.bridge_contract_address`) that the
+      protocol CALLS on its own behalf. Five periods before each pillar block,
+      `makeSystemTransactions` calls `shouldFinalizeEpoch()` on it via `eth_call`,
+      and if the answer is true injects a `finalizeEpoch()` transaction into the
+      block. Ordinary EVM bytecode, ordinary storage — but its state is read by the
+      block builder, so a change to it changes what transactions the protocol emits.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:makeBridgeFinalizationTransaction, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:bridge_contract_address"
+
+system_transactions:
+  bridge_finalize_epoch:
+    name: "finalizeEpoch() on the pillar bridge"
+    status: added
+    activation_condition: "Ficus, period 11616000; at period P where P + 5 is a multiple of 4000"
+    note: >-
+      A PROTOCOL TRANSACTION THAT IS INDISTINGUISHABLE FROM A USER TRANSACTION BY
+      TYPE. `makeSystemTransactions` builds a `SystemTransaction` with gas price 0,
+      value 0, gas = the block gas limit, sender `kTaraxaSystemAccount`, and appends
+      it AFTER all user transactions. It is then executed by the same
+      `execute_transactions` call, gets a receipt, and is written into the
+      transactions trie and the block's transaction list — so it occupies a real
+      transaction index and shifts nothing. Because it pays gas price 0, its fee
+      contribution to the reward stats is zero. Because it has no type byte, the only
+      way to recognise it is the sender address; the node's own database keeps it in
+      a SEPARATE column and flags its location with `is_system`, but no RPC field
+      exposes that flag.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:makeSystemTransactions, taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:finalize_"
+  reward_distribution:
+    name: "per-period DPoS reward minting"
+    status: added
+    severity: high
+    note: >-
+      EVM-VISIBLE BALANCE AND STORAGE CHANGES WITH NO TRANSACTION AT ALL. After the
+      last transaction of every period, `finalize_` calls
+      `state_api_.distribute_rewards(rewards_stats)`, which credits every DAG
+      proposer, every cert voter and the block author inside the DPoS contract's
+      storage and returns the state root that goes into the header. There is no
+      transaction, no receipt, no log and no trace for it. The amount is exposed as a
+      NON-STANDARD header field, `totalReward`, in the RPC block JSON — a field no
+      other chain in this dataset has. An indexer reconstructing balances from
+      receipts and traces will drift from `eth_getBalance` every single block.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:finalize_, taraxa-node/libraries/core_libs/network/rpc/eth/Eth.cpp:totalReward"
+
+opcodes:
+  added:
+  - {op: "0xb3", name: TLOAD (draft numbering), severity: high,
+     note: "EIP-1153's abandoned draft opcode, live since genesis and still live after Cacti added the final 0x5c. Invalid on mainnet.",
+     src: "taraxa-evm/core/vm/jump_table.go:TLOAD_OLD"}
+  - {op: "0xb4", name: TSTORE (draft numbering), severity: high,
+     note: "as 0xb3. Priced by `gasTLoad` (100).",
+     src: "taraxa-evm/core/vm/jump_table.go:TSTORE_OLD"}
+  removed:
+  - {op: "0x48", name: BASEFEE, note: "no EIP-1559 and no base fee to report.", src: "taraxa-evm/core/vm/opcodes.go:SELFBALANCE"}
+  - {op: "0x49", name: BLOBHASH, note: "no blobs.", src: "taraxa-evm/core/vm/opcodes.go:MCOPY"}
+  - {op: "0x4a", name: BLOBBASEFEE, note: "no blobs.", src: "taraxa-evm/core/vm/opcodes.go:MCOPY"}
+  modified:
+  - {op: "0x44", name: "DIFFICULTY (not PREVRANDAO)", severity: high,
+     note: "always returns 0. `block.prevrandao` is a constant zero on this chain.",
+     src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:difficulty"}
+  - op: "0x45"
+    name: GASLIMIT
+    severity: high
+    note: >-
+       REPORTS A NUMBER THAT HAS NOT BEEN THE REAL LIMIT SINCE CORNUS. `finalize_`
+       passes `kBlockGasLimit`, initialised once from `genesis.pbft.gas_limit` =
+       0x12C684C0 = 315,000,000, into the EVM's `BlockInfo.GasLimit` and into
+       `header->gas_limit`. But block packing since Cornus uses
+       `getGasLimits(period).second` = `cornus_hf.pbft_gas_limit` = 0x7d2b7500 =
+       2,100,000,000. So `block.gaslimit` and the RPC `gasLimit` under-report the
+       real limit by 6.7x, and `gasUsed > gasLimit` is a REACHABLE state in a
+       Taraxa header.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:appendBlock, taraxa-node/libraries/config/src/genesis.cpp:getGasLimits"
+  - {op: "0x55", name: SSTORE, severity: high,
+     note: "EIP-1283 net metering with no sentry. See eips.1283 — this is the row's most dangerous single fact.",
+     src: "taraxa-evm/core/vm/gas.go:gasSStore"}
+  - {op: "0xff", name: SELFDESTRUCT,
+     note: "pre-Cancun semantics: unconditional account deletion, plus the 24,000-gas refund that London removed.",
+     src: "taraxa-evm/core/vm/instructions.go:opSuicide"}
+
+fee_model:
+  metering: single gas dimension, Constantinople schedule with EIP-1884's three prices
+  fee_market: >-
+    NONE. Flat gas price set by the sender, floor 1 gwei enforced at network
+    admission (Soleirolia), no base fee, no burn, no priority fee, no elasticity.
+  src: "taraxa-node/libraries/core_libs/consensus/src/transaction/transaction_manager.cpp:verifyTransaction"
+  extra_components:
+  - name: "fees go to the FIRST DAG INCLUDER, not to the block producer"
+    severity: high
+    note: >-
+      `BlockStats::initFeeByTrxHash` builds a map from transaction hash to
+      `gasPrice * gasUsed`, and `addTransaction(hash, validator)` credits that fee to
+      the validator whose DAG block is the first, in the period's DAG order, to
+      contain the hash — then ERASES the map entry, so no second claimant exists. The
+      PBFT block's `beneficiary` (what COINBASE returns) receives at most
+      `max_block_author_reward` = 5% of the block reward and NONE of the transaction
+      fees. `block.coinbase` therefore does not identify who was paid, which is the
+      opposite of every fork-of-geth row in this dataset.
+    src: "taraxa-node/libraries/core_libs/consensus/src/rewards/block_stats.cpp:initFeeByTrxHash, taraxa-node/libraries/core_libs/consensus/src/rewards/block_stats.cpp:addTransaction"
+  - name: nonce on failure
+    severity: high
+    src: "taraxa-evm/core/vm/evm.go:ErrInsufficientBalanceForGas, taraxa-evm/core/vm/evm.go:ErrNonceTooLow, taraxa-evm/core/vm/evm.go:ErrIntrinsicGas, taraxa-evm/core/vm/evm.go:consensusErr"
+    note: >-
+      NONCE ON FAILURE: BURNED — and from Cornus it is SET, not incremented, so
+      one failing transaction can burn an unbounded range of nonces. Every case
+      below produces a `status: 0` RECEIPT: `EVM.Main` returns a `ConsensusErr`,
+      `finalize_` turns that into the status bit, and the transaction is in the
+      block, the transactions trie and the receipts trie. There is no skip path
+      and no erasure, which is the opposite pole from Conflux.
+
+      CANNOT AFFORD `gas_limit * gas_price` — the transaction is NOT rejected.
+      `available_funds_gas = balance / gas_price` is computed, that much is
+      subtracted (everything but sub-gas-price dust), and from Cornus, if
+      `tx.nonce >= account.nonce`, `caller.SetNonce(tx.Nonce + 1)`. Balance
+      confiscated, NONCE BURNED, receipt with `gasUsed = available_funds_gas`.
+
+      INTRINSIC GAS NOT COVERED, or `gas_cap < gas_intrinsic` — from Cornus both
+      arms call `caller.SetNonce(tx.Nonce + 1)` before returning. FULL GAS LIMIT
+      charged, NONCE BURNED, receipt.
+
+      NONCE TOO LOW — the fee is already subtracted, then
+      `consensusErr(ret, gas_cap, ErrNonceTooLow)` returns WITHOUT touching the
+      nonce (it is already ahead). Full gas limit charged, account nonce
+      unchanged, receipt.
+
+      THE SET-NOT-INCREMENT IS THE DANGEROUS PART. Nonce skipping is permanently
+      enabled — the `tx.nonce > sender_nonce + 1` check is commented out above
+      the line "Nonce skipping is permanently enabled now" — and every write is
+      `SetNonce(tx.Nonce + 1)`, on the success path as well as the failure paths.
+      So a transaction with nonce 1,000,000 from an account at nonce 3 burns
+      nonces 3 through 999,999 in one shot, whether it succeeds or dies
+      underfunded. `eth_getTransactionCount` is a next-nonce oracle here and
+      nothing else.
+  - name: "a failed PRECOMPILE keeps its remaining gas"
+    note: >-
+      `EVM.Call` zeroes the remaining gas on error only when `precompiled == nil`.
+      Upstream geth zeroes it for any non-revert error, precompiles included. So a
+      BLS12-381 call with a bad input length costs its `RequiredGas` and returns the
+      rest, where mainnet consumes everything forwarded.
+    src: "taraxa-evm/core/vm/evm.go:ErrExecutionReverted"
+  - name: "block gas limits are TWO numbers, and neither is in the header correctly"
+    note: >-
+      DAG blocks are capped at `dag_gas_limit` (31.5M, 420M from Cornus) by their own
+      declared `gas_estimation`; the period is capped at `pbft_gas_limit` (315M, 2.1B
+      from Cornus) by the sum of those estimations. The header reports the genesis
+      315M for all periods.
+    src: "taraxa-node/libraries/config/src/genesis.cpp:getGasLimits"
+
+header_fields:
+  added:
+  - {name: totalReward, note: "u256, the total reward minted to validators for this period. Not in the RLP the block hash is computed over — an RPC-only field.",
+     src: "taraxa-node/libraries/core_libs/network/rpc/eth/Eth.cpp:totalReward"}
+  - {name: author, note: "alias for `miner`; both return the PBFT block's beneficiary.",
+     src: "taraxa-node/libraries/core_libs/network/rpc/eth/Eth.cpp:author"}
+  removed:
+  - {name: baseFeePerGas, note: "no EIP-1559.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  - {name: withdrawalsRoot, note: "no EIP-4895.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  - {name: blobGasUsed, note: "no EIP-4844.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  - {name: excessBlobGas, note: "no EIP-4844.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  - {name: parentBeaconBlockRoot, note: "no EIP-4788.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  - {name: requestsHash, note: "no EIP-7685.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp"}
+  modified:
+  - name: hash
+    severity: high
+    note: >-
+       THE BLOCK HASH IS SYNTHESISED, NOT CONSENSUS. `appendBlock` computes
+       `sha3(header->ethereumRlp())` over a fabricated 15-field pre-London Ethereum
+       header. The object consensus actually agreed on is the PBFT block, whose hash
+       is a different value over different fields and which the `eth_*` namespace
+       never returns. Two different hashes name the same height, and only one of them
+       is voted on.
+    src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:ethereumRlp, taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:appendBlock"
+  - {name: difficulty, note: "hard-coded 0; `totalDifficulty` is the string \"0x0\" for every block.",
+     src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:difficulty"}
+  - {name: mixHash, note: "hard-coded zero hash.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:mixHash"}
+  - {name: nonce, note: "hard-coded empty nonce.", src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:nonce"}
+  - {name: extraData, note: "from Ficus, carries the PBFT block's extra data (pillar votes / pillar block hash), not free text.",
+     src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:setFromPbft"}
+  - {name: gasLimit, severity: high, note: "stale since Cornus; see opcodes.modified 0x45.",
+     src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:appendBlock"}
+
+gotchas:
+  - >-
+    THE RECEIPT IS MISSING `effectiveGasPrice` AND `type`. `toJson(const
+    LocalisedTransactionReceipt&)` emits exactly blockNumber, blockHash,
+    transactionIndex, transactionHash, from, to, status, gasUsed,
+    cumulativeGasUsed, contractAddress, logsBloom and logs — and nothing else. A
+    consumer computing what a transaction actually cost has to join the receipt back
+    to the transaction to recover its gas price. `src:
+    taraxa-node/libraries/core_libs/network/rpc/eth/Eth.cpp:cumulativeGasUsed`
+  - >-
+    ORDERING COMMITS BEFORE EXECUTION, AND THE BLOCK THAT COMMITS IT CARRIES THE
+    STATE OF FIVE PERIODS AGO. A PBFT block for period N contains: the previous PBFT
+    block hash, the anchor DAG block hash, `order_hash` (sha3 of the RLP list of
+    ordered DAG block hashes), and `final_chain_hash`. That last field is
+    `blockHeader(N - delegationDelay)->hash` — with `delegation_delay: 0x5` on
+    mainnet, THE HEADER OF PERIOD N-5. So the object the committee votes on commits
+    to an ORDERING for period N and to the EXECUTED RESULT of period N-5, and to
+    nothing about period N's own state. Deferred execution, like Monad — but Monad's
+    lag is 3 heights and is a stated design; Taraxa's is 5 and falls out of the DPoS
+    delegation delay, so the same constant that decides when a delegation becomes
+    effective also decides how stale the state commitment is. Before Cornus the field
+    was the STATE ROOT of N-5; Cornus changed it to the block HASH of N-5.
+  - >-
+    THE SAME TRANSACTION IS ROUTINELY IN MANY DAG BLOCKS, AND DEDUPLICATION HAPPENS
+    BEFORE EXECUTION, NOT DURING IT. Twenty proposers draw from their own mempools
+    with no coordination — `packTrxs` just takes the top of the local pool — so
+    duplicate inclusion is the normal case, not an edge case. When the anchor is
+    fixed, `pushCertVotedPbftBlockIntoChain_` walks the ordered DAG blocks and builds
+    the period's transaction list through `std::unordered_set<trx_hash_t> trx_set`,
+    keeping only the FIRST occurrence. The duplicate is therefore never a candidate
+    for execution: it is not skipped, not charged, not given a receipt, and does not
+    appear twice in the transactions trie. THIS IS A THIRD ANSWER, DISTINCT FROM
+    CONFLUX'S. Conflux executes the duplicate, hits `OldNonce`, marks it
+    `TransactionStatus::Skipped` and then erases every trace of it; Taraxa never
+    orders it in the first place. The observable difference: on Conflux the duplicate
+    is in the Core-Space block body and invisible to eSpace, while on Taraxa the DAG
+    block that contained the duplicate is fully present in the period data — you can
+    see the duplicate in the DAG, just not in the executed list.
+  - >-
+    DUPLICATE INCLUSION IS PAID FOR IN REWARDS, NOT IN SLASHING, AND THE RULE CHANGED
+    AT ASPEN. Before Aspen part one, `processDagBlocks` credited a DAG block with a
+    `dag_blocks_count_` share of the block reward ONLY IF it contributed at least one
+    unique transaction: a block full of duplicates earned nothing at all. From Aspen
+    part one, `processDagBlocksAspen` replaced that with a different test — the block
+    reward goes to every DAG block whose VDF difficulty equals the MINIMUM difficulty
+    among the period's DAG blocks — while transaction fees still go strictly to the
+    first includer. So the penalty for losing a race moved from "you get nothing" to
+    "you get the block share but no fees". Nobody is slashed and nobody is charged.
+    Against Autonomys, where an invalid bundle slashes the operator automatically,
+    Taraxa sits at the far mild end: the worst outcome of racing is forgone revenue.
+  - >-
+    A TRANSACTION THAT IS ORDERED BUT INVALID WHEN IT EXECUTES IS INCLUDED, CHARGED,
+    AND GIVEN A RECEIPT WITH status 0. There is no skip path. `EVM.Main` returns a
+    `ConsensusErr` for nonce-too-low, insufficient balance for gas, intrinsic gas not
+    covered, and insufficient balance for the top-level transfer, and `finalize_`
+    turns `r.code_err.empty() && r.consensus_err.empty()` straight into the receipt's
+    status bit. Every one of those transactions is in the block, in the transactions
+    trie, in the receipts trie, and returned by `eth_getTransactionReceipt`. The gas
+    charged is the FULL GAS LIMIT (`consensusErr(ret, gas_cap, err)`) for
+    nonce-too-low, intrinsic-gas and transfer-underflow. This is the opposite pole
+    from Conflux, which erases the same transaction entirely, and from Autonomys,
+    which drops the whole bundle.
+  - >-
+    AN UNDERFUNDED TRANSACTION IS EXECUTED AND TAKES ESSENTIALLY THE SENDER'S ENTIRE
+    BALANCE. If the sender cannot cover `gas_limit * gas_price`, `EVM.Main` does not
+    reject: it computes `available_funds_gas = balance / gas_price`, subtracts
+    `available_funds_gas * gas_price` — everything but sub-gas-price dust — and
+    reports `gasUsed = available_funds_gas` with a status-0 receipt. From Cornus it
+    also bumps the nonce to `tx.nonce + 1`. Mainnet's validity rules make this state
+    unreachable, because a transaction that cannot pay is never includable. Conflux
+    does the same thing by a different route (`min(gas_cost, balance)`), so this is
+    now a two-chain class: DAG chains where inclusion is decided before balances are
+    known end up confiscating rather than rejecting.
+  - >-
+    NONCE SKIPPING IS PERMANENT AND THE ACCOUNT NONCE JUMPS. The nonce-too-high check
+    is present in the source but COMMENTED OUT, above the line "Nonce skipping is
+    permanently enabled now. Uncomment this part to have strict nonce ordering". Only
+    `tx.nonce < account.nonce` is rejected. On success the account nonce is set to
+    `tx.nonce + 1`, NOT incremented — so a transaction with nonce 1,000,000 from an
+    account at nonce 3 executes, and nonces 3 through 999,999 are burned forever. The
+    mainnet invariant "an account's nonce equals the number of transactions it has
+    sent" is false here; `eth_getTransactionCount` is a next-nonce oracle and nothing
+    more. Contract addresses from CREATE derive from `tx.Nonce`, not from a
+    sequential counter, so a deployer can choose its own contract address by choosing
+    a nonce.
+  - >-
+    THERE IS NO EARLY RECEIPT, BUT `eth_getTransactionByHash` IS BROKEN FOR EXACTLY
+    THE TRANSACTIONS THAT WOULD NEED ONE. `get_transaction_receipt` looks up
+    `transactionLocation` first and returns null when there is none, so a transaction
+    sitting in a DAG block that has not yet been anchored has NO receipt — correct,
+    and the opposite of MegaETH's 0xffff..ff sentinel. But `get_transaction` calls
+    `get_trx(h)` FIRST, which reads the `transactions` column where DAG-included and
+    pooled transactions live, and on a hit dereferences `*loc` and
+    `*final_chain->blockHash(loc->period)` with NO null check. `transactionLocation`
+    returns `std::nullopt` for anything not yet finalized. So the one query a user
+    makes about a transaction that is in the DAG but not yet in a period —
+    "where is my transaction?" — reads through a disengaged `std::optional`. This is
+    a source reading; with no reachable RPC it could not be confirmed against a
+    running node, and what a release build actually returns is unspecified.
+  - >-
+    `block.number` COUNTS PBFT PERIODS. It is not the DAG block count, not the
+    transaction count, and not a wall-clock tick: `setFromPbft` sets
+    `number = pbft.getPeriod()` and `appendBlock` independently sets it to
+    `last_block->number + 1`. A period that anchors 50 DAG blocks and 900
+    transactions is ONE block.number; a period whose PBFT proposer found no new DAG
+    blocks proposes a NULL ANCHOR and still produces a block, with zero transactions
+    and an unchanged state root. So empty blocks on Taraxa mean "the DAG produced
+    nothing new", not "nobody transacted".
+  - >-
+    BLOCKHASH IS HONEST — the negative result. `opBlockhash` is unmodified geth 1.8
+    (256-block window, `lower = upper - 256`) and its `get_hash` is
+    `FinalChain::blockHash`, which returns the same synthesised header hash that
+    `appendBlock` stored and that `eth_getBlockByNumber` reports as `hash` and
+    `parentHash`. So `BLOCKHASH(number-1) == parentHash` holds. The DAG is entirely
+    invisible to BLOCKHASH: DAG block hashes are not addressable, do not consume
+    block numbers, and never appear in the 256-block window. After Polygon zkEVM
+    (returns a state root) and Conflux, this is worth stating explicitly rather than
+    assuming.
+  - >-
+    A GAS ESTIMATE IS A BLOCK-VALIDITY RULE. A DAG block carries a `gas_estimation`
+    field, and `DagManager::verifyBlock` rejects the block unless that field EXACTLY
+    equals `trx_mgr_->estimateTransactions(block_txs, proposal_period)`. For any
+    transaction whose gas limit is at most `kEstimateGasLimit` (200,000) the estimate
+    is just its declared gas limit; above that, it is the `gas_used` of a
+    SPECULATIVE EXECUTION of that transaction against the state at the proposal
+    period. So the output of an `eth_call`-style dry run is consensus-critical: two
+    implementations that disagree about how much gas a speculative execution consumes
+    reject each other's DAG blocks. This is the strongest coupling between the
+    estimation path and consensus in this dataset — most chains treat estimation as a
+    convenience API with no consensus weight whatsoever.
+  - >-
+    THE 2,300-GAS STIPEND CAN WRITE STORAGE. Repeated here because it is the finding
+    most likely to cost someone money: Taraxa ships EIP-1283 without EIP-1706's
+    sentry, so a `transfer()` recipient's fallback can SSTORE a dirty slot for 200
+    gas. Ethereum delayed Constantinople by an emergency fork to avoid exactly this.
+    Every reentrancy audit that reasons "only 2,300 gas, so no state change" is
+    invalid on this chain.
+  - >-
+    THE FALCON-512 PRECOMPILE RETURNS ZERO FOR VALID. `0x...fa1c` returns
+    `bytes32(0)` when the signature verifies and `bytes32(1)` when it does not, and
+    it wants an ABI selector (0xde8f50a1) in front of its arguments. Both conventions
+    are inverted or unprecedented relative to every other signature precompile on
+    every chain in this dataset.
+  - >-
+    THIS ROW HAS NO LIVE EVIDENCE. Every RPC endpoint the chain's documentation still
+    publishes fails DNS resolution, and every third-party proxy advertising chain 841
+    answers `eth_chainId` from static config and fails everything else. That is the
+    inverse of the Hyperliquid problem — full source, no reachable network — and it
+    means nothing here has been checked against what validators run. Where the pinned
+    tag and the live chain could differ, this row cannot tell you which is right.

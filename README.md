@@ -38,25 +38,48 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 
 | Chain | Client | Pinned | Baseline |
 |---|---|---|---|
-| [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.5` | Osaka (baseline) |
-| [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.7.8` | Osaka |
-| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.0` | Prague |
-| [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | Cancun |
-| [Avalanche subnet-evm](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | Cancun |
-| [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.11.3` | Osaka (ArbOS 50) |
-| [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.2` | Osaka |
-| [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.2` | Osaka |
-| [Base](chains/base/SUMMARY.md) | base-reth-node | `v1.2.0` | Osaka |
-| [World Chain](chains/worldchain/SUMMARY.md) | world-chain builder | `v2.4.2` | Osaka |
-| [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB fork) | `v0.5.10` | Cancun |
-| [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | Cancun (opcodes only) |
-| [Hyperliquid](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | live @ block `43436288` | pre-Prague (probed) |
-| [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | Prague |
-| [Kaia](chains/kaia/SUMMARY.md) | kaia | `v2.2.2` | Osaka |
-| [Linea](chains/linea/SUMMARY.md) | besu + Linea plugins | `linea-besu-package/v2.1.1` | Osaka |
-| [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.0` | Osaka |
-| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.6.1` | Prague |
-| [zkSync Era](chains/zksync-era/SUMMARY.md) | zksync-era | `core-v31.5.0` | Osaka |
+| [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.5` | osaka (baseline) |
+| [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.7.8` | osaka |
+| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.0` | prague |
+| [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | cancun |
+| [Avalanche subnet-evm (L1s / Subnets)](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | cancun |
+| [Kaia](chains/kaia/SUMMARY.md) | kaia | `v2.2.2` | osaka |
+| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.6.1` | prague |
+| [Gnosis Chain](chains/gnosis/SUMMARY.md) | Nethermind | `1.39.3` | osaka |
+| [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.1` | prague |
+| [Berachain](chains/berachain/SUMMARY.md) | bera-reth | `v1.4.4` | osaka |
+| [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.14.0` | cancun |
+| [Conflux eSpace](chains/conflux/SUMMARY.md) | conflux-rust | `v3.1.0` | osaka |
+| [Taraxa](chains/taraxa/SUMMARY.md) *(no reachable RPC)* | taraxa-node | `v1.14.1` | constantinople |
+| [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.11.3` | osaka |
+| [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.2` | osaka |
+| [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.2` | osaka |
+| [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.2.0` | osaka |
+| [World Chain](chains/worldchain/SUMMARY.md) | world-chain (builder) | `v2.4.2` | osaka |
+| [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB Chain fork) | `v0.5.10` | cancun |
+| [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | prague |
+| [Mantle](chains/mantle/SUMMARY.md) | op-geth (Mantle fork) | `v1.6.1` | osaka |
+| [MegaETH](chains/megaeth/SUMMARY.md) | mega-evm (MegaEVM) | `v1.7.0` | prague |
+| [RISE](chains/rise/SUMMARY.md) | rise-node (config only; execution client closed) | `v0.6.0` | prague |
+| [Linea](chains/linea/SUMMARY.md) | lineth-monorepo (Linea Besu package + plugins + tracer) | `releases/linea-besu-package/v2.1.1` | osaka |
+| [Scroll](chains/scroll/SUMMARY.md) | scroll-tech/go-ethereum (l2geth) | `scroll-v5.10.2` | shanghai |
+| [Taiko Alethia](chains/taiko/SUMMARY.md) | taiko-geth | `v2.6.0` | osaka |
+| [Polygon zkEVM](chains/polygon-zkevm/SUMMARY.md) *(halted)* | cdk-erigon | `v2.64.2` | berlin |
+| [zkSync Era](chains/zksync-era/SUMMARY.md) | zksync-era | `core-v31.5.0` | osaka |
+| [Rollkit / Evolve](chains/rollkit/SUMMARY.md) *(template)* | ev-node (Evolve) + ev-reth | `v1.2.3` | prague |
+| [Cosmos EVM (evmd)](chains/cosmos-evm/SUMMARY.md) *(template)* | cosmos/evm (evmd reference node) | `v0.7.2` | prague |
+| [Injective](chains/injective/SUMMARY.md) | injective-core (injectived) | `v1.20.3` | prague |
+| [Artela](chains/artela/SUMMARY.md) *(unreachable)* | artela (artelad) | `v0.4.9-rc9` | cancun |
+| [Moonbeam](chains/moonbeam/SUMMARY.md) | moonbeam (runtime) | `runtime-4401` | osaka |
+| [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | cancun |
+| [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.0` | osaka |
+| [Hyperliquid (HyperEVM)](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | `—` | cancun |
+| [Hedera](chains/hedera/SUMMARY.md) | hiero-consensus-node (Besu EVM as a library) | `v0.76.1` | cancun |
+| [Autonomys (Auto EVM)](chains/autonomys/SUMMARY.md) | subspace (Auto EVM domain runtime) | `runtime-mainnet-2026-jul-29` | osaka |
+| [IOTA EVM](chains/iota-evm/SUMMARY.md) | wasp (ISC) | `v2.0.3` | cancun |
+| [Tempo](chains/tempo/SUMMARY.md) | tempo (reth-based execution + Simplex consensus) | `v1.13.1` | osaka |
+| [Arc](chains/arc/SUMMARY.md) *(pre-launch)* | arc-node (reth execution + Malachite consensus) | `v0.7.3` | osaka |
+| [Plasma](chains/plasma/SUMMARY.md) | reth (upstream, unmodified) | `v1.11.3` | prague |
 
 ## What the data shows
 
@@ -84,15 +107,25 @@ Rust, adds five fixed precompiles plus the dynamic range, native account abstrac
 (EIP-8130) with its own tx type `0x79`, and four bespoke forks. opBNB, also on the OP
 Stack, carries BSC's precompiles and is frozen three fork-generations back.
 
-**Same-address divergence comes in four flavours,** each harder to detect than
+**Same-address divergence has at least six flavours,** each harder to detect than
 enumeration: OP Stack **caps inputs** (call reverts), Avalanche **omits** (feature
 absent), Polygon **reprices** (identical result, up to 22× the gas), Tron **replaces**
-(`0x03` returns something that is not RIPEMD160).
+(`0x03` returns something that is not RIPEMD160), Taiko and Gnosis leave the canonical
+address **empty** (succeeds, returns nothing, reports no error), and Scroll puts OP's
+GasPriceOracle **ABI at a different address** while OP's own is an empty account — so
+OP-derived code reads an L1 fee of zero and never learns it was wrong.
 
-**Fork activation has four incompatible mechanisms.** OP Stack enforces timestamp
-equality at startup; Avalanche assigns timestamps; Arbitrum gates on ArbOS version and
-ignores timestamps entirely; Polygon uses block numbers. "Read the fork timestamp"
-fails on half the dataset.
+**Fork activation has at least thirteen incompatible mechanisms.** OP Stack enforces
+timestamp equality at startup; Avalanche aliases mainnet names onto its own timestamps;
+Arbitrum gates on an ArbOS version counter and ignores timestamps entirely; Polygon and
+Kaia use block numbers; Monad gates on the consensus round; Sonic uses boolean flags in
+on-chain governance state; Moonbeam has no fork gate at all — the ruleset is a constant
+inside a WASM blob that governance replaces in state; Polygon zkEVM's `forkID` is
+announced by an **event on Ethereum L1** and applies from a batch number, so it is not
+in the client at all; zkSync ships upgrades as a transaction carrying new system
+bytecode hashes; Tron activates by governance proposal; and Hyperliquid publishes no
+schedule whatsoever. "Read the fork timestamp" is not a method — on much of this dataset
+there is no timestamp, and on some of it no client-side schedule exists to read.
 
 **The schema keeps meeting axes it doesn't have.** Arbitrum's Stylus runs WebAssembly
 beside the EVM — "no custom opcodes" is true and misses an entire second VM. Base's
@@ -127,13 +160,18 @@ Establishing this needs a **valid** signature plus a mainnet control on identica
 calldata. The obvious probe — call the address, check for output — cannot tell the two
 cases apart, which is why an address-diff survey reports both chains as fine.
 
-**Proof-system constraints leak into consensus — and it is a law, not an anecdote.**
-Three chains, three unrelated mechanisms, same cause. OP Stack caps precompile *input
+**Proof-system constraints leak into consensus — and they expire.**
+Four chains, four unrelated mechanisms, same cause. OP Stack caps precompile *input
 size* (call reverts). Linea budgets prover *work per block* — `RIPEMD_BLOCKS=0`,
 `BLAKE_ROUNDS=0` — so those precompiles execute in `eth_call` and can never be mined.
 zkSync caps modexp *operand width* at 32 bytes, 32× tighter than EIP-7823, making
 2048-bit RSA impossible; its source says so outright: *"violates EVM equivalence… comes
-from circuit limitations."* No single detection strategy finds all three.
+from circuit limitations."* Scroll had the identical 32-byte cap — and **lifted it** at
+Galileo (2025-12-16), along with its SHA256 and BN256 restrictions, retiring the
+block-level checker while keeping two hash precompiles tombstoned. Polygon zkEVM runs
+the arc backwards, disabling MODEXP at forkID 8 and never restoring it. So the claim
+needs a **date**, not just a chain name. No single detection strategy finds all four,
+and the leak is visible to `eth_call` on Scroll and Polygon zkEVM but not on Linea.
 
 **"Runs the OP Stack" does not mean it inherits the envelope.** Celo carries its own
 transaction type `0x7b` (CIP-64, gas paid in an ERC-20) *on top of* OP Stack — and it is
@@ -215,7 +253,9 @@ python3 -m http.server -d website 8000
 
 Findings live in [`findings.yaml`](findings.yaml), the one content file in the pipeline:
 a finding is written once and surfaces on the home page, on its axis page, and on the
-page of every chain it names. See [SITE.md](SITE.md) for the full build model.
+page of every chain it names — as the full cross-chain survey on the first two, and as
+that chain's own slice of it on the third. See [SITE.md](SITE.md) for the full build
+model.
 
 The site's *structure* has its own source: [`prompts/website/`](prompts/website/)
 specifies the information architecture, the grid semantics, the data-model contract and

@@ -30,8 +30,15 @@ is why it exists and why nothing else discusses it.
 `findings.yaml` is the interpretive layer — the one place a human says what a set of rows
 adds up to. Notes are **descriptive**: state what the data shows, cite the rows, stop.
 
-A note is written once and appears in three places: the Overview index, its `axis:` page,
-and the page of every chain in its `chains:` list.
+A note is written once and appears in three places, in **two voices**. The Overview index
+and its `axis:` page carry the full cross-chain survey — that is what an axis page is for.
+A chain page carries only that chain's slice: the note's `lede:`, then the gloss written
+against that slug in `chains:`, then a link to the survey. A chain page never discusses
+another chain in the site's own voice; the reader came to look up one chain.
+
+That is why `chains:` is a mapping rather than a list. A bare list routes a note to a page
+without saying what the chain contributes, and the build refuses one on any note naming
+more than one chain.
 
 Prefer computing a number to writing one. A note claiming "only `0x7a` and `0x7d` remain"
 goes stale the moment a chain claims `0x7d`; a page that derives occupancy from the data

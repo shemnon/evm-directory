@@ -275,12 +275,39 @@ def render_md(text, depth):
 # notes (findings.yaml)
 # --------------------------------------------------------------------------
 
-def load_notes():
+def load_notes(chains=None):
+    """`chains:` is either a list of slugs or a slug -> gloss mapping. The mapping
+    form is what a chain page renders: that chain's slice of the note and nothing
+    else. Both forms normalize to `slugs` (routing) plus `gloss` (per-chain prose).
+
+    A note naming more than one chain must use the mapping form — otherwise its
+    chain pages would carry a survey of other chains, which is what the axis page
+    is for."""
     fs = yaml.safe_load((ROOT / "findings.yaml").read_text()) or []
+    for f in fs:
+        ch = f.get("chains")
+        if isinstance(ch, dict):
+            f["slugs"], f["gloss"] = list(ch), dict(ch)
+        else:
+            f["slugs"], f["gloss"] = list(ch or []), {}
+        if chains is not None:
+            bad = [s for s in f["slugs"] if s not in chains]
+            if bad:
+                sys.exit(f"findings.yaml: {f['id']}: no such chain: {', '.join(bad)}")
+        if len(f["slugs"]) > 1 and not f["gloss"]:
+            sys.exit(f"findings.yaml: {f['id']}: names {len(f['slugs'])} chains, so "
+                     f"`chains:` must map each slug to that chain's slice of the note")
     return sorted(fs, key=lambda f: (f.get("rank", 999), f["id"]))
 
 
+def axis_href(f, depth):
+    r = rel(depth)
+    return ((f'{r}method.html' if f["axis"] == "method"
+             else f'{r}axes/{esc(f["axis"])}.html') + f'#f-{esc(f["id"])}')
+
+
 def note_html(f, chains, depth, show_axis=True):
+    """The full cross-chain reading. Home index and axis pages only."""
     r = rel(depth)
     tags = []
     if show_axis:
@@ -288,7 +315,7 @@ def note_html(f, chains, depth, show_axis=True):
             tags.append(f'<a href="{r}axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>')
         elif f.get("axis") == "method":
             tags.append(f'<a href="{r}method.html">Reference</a>')
-    for s in f.get("chains") or []:
+    for s in f["slugs"]:
         if s in chains:
             tags.append(f'<a href="{r}chains/{esc(s)}.html">{esc(short(s))}</a>')
     tag = f'<p class="tags">{" · ".join(tags)}</p>' if tags else ""
@@ -297,8 +324,31 @@ def note_html(f, chains, depth, show_axis=True):
             f'{relink(markdown(flat(f["body"])), depth)}{tag}</div>')
 
 
+def note_scoped_html(f, chains, slug, depth=1):
+    """One chain's slice of a note: the shared premise, then what THIS chain does.
+    The cross-chain body stays on the axis page, one link away. Same `f-<id>`
+    anchor as the axis page, so published note URLs keep working."""
+    r = rel(depth)
+    B = [h3(inline_md(f["title"]), "f-" + f["id"])]
+    if f.get("lede"):
+        B.append(f'<p class="lede">{relink(inline_md(flat(f["lede"])), depth)}</p>')
+    if f["gloss"].get(slug):
+        B.append(relink(markdown(flat(f["gloss"][slug])), depth))
+    elif not f["gloss"]:
+        B.append(relink(markdown(flat(f["body"])), depth))   # single-chain note
+    axis = AXIS_TITLE.get(f["axis"], "Reference")
+    tags = [f'<a href="{axis_href(f, depth)}">Full note · {esc(axis)}</a>']
+    others = [s for s in f["slugs"] if s != slug and s in chains]
+    if others:
+        tags.append("also on " + " · ".join(
+            f'<a href="{r}chains/{esc(s)}.html#f-{esc(f["id"])}">{esc(short(s))}</a>'
+            for s in others))
+    B.append(f'<p class="tags">{" · ".join(tags)}</p>')
+    return f'<div class="finding">{"".join(B)}</div>'
+
+
 def axis_notes(chains, key, depth=1):
-    fs = [f for f in load_notes() if f.get("axis") == key]
+    fs = [f for f in load_notes(chains) if f.get("axis") == key]
     if not fs:
         return ""
     return (h2(f'Notes <span class="pill">{len(fs)}</span>', "notes")
@@ -463,10 +513,10 @@ def page_chain(chains, slug):
     ]))
 
     # --- findings + silent divergences -----------------------------------
-    fs = [f for f in load_notes() if slug in (f.get("chains") or [])]
+    fs = [f for f in load_notes(chains) if slug in f["slugs"]]
     if fs:
         B.append(h2(f'Notes <span class="pill">{len(fs)}</span>', "notes"))
-        B += [note_html(f, chains, 1) for f in fs]
+        B += [note_scoped_html(f, chains, slug, 1) for f in fs]
 
     sil = [s for s in model.silent(chains) if s["slug"] == slug]
     if sil:
@@ -1285,8 +1335,8 @@ def page_index(chains):
           else f'<a href="axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>'),
          f'<div class="wrap">' + (", ".join(
              f'<a href="chains/{esc(s)}.html">{esc(short(s))}</a>'
-             for s in f.get("chains") or [] if s in chains) or "—") + "</div>"]
-        for f in load_notes()]))
+             for s in f["slugs"] if s in chains) or "—") + "</div>"]
+        for f in load_notes(chains)]))
     return layout("index.html", "EVM-intel",
                   "EVM differences across major EVM chains, stated as deltas against "
                   "Ethereum Mainnet.", "\n".join(B))

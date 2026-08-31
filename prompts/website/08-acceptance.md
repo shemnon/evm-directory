@@ -91,7 +91,44 @@ grep -ril "principal findings\|collision course\|the interesting cell\|not an an
 Hits inside rendered `SUMMARY.md` or `chain.yaml` notes are the author's own prose and are
 fine ([07-voice.md](07-voice.md)). Hits in the site's own framing are not.
 
-## 6. Portability
+## 6. Notes are chain-scoped
+
+A chain page carries one chain's slice of a note, never a survey of the others
+([07-voice.md](07-voice.md#notes)). The build already refuses a multi-chain note that has
+no per-chain glosses; this catches the softer regression, a gloss written in survey voice.
+It reads `findings.yaml` rather than the HTML, and asks one question per gloss: does it
+name another chain *in the same note*?
+
+```bash
+tools/.venv/bin/python - <<'EOF'
+import yaml, re, sys, pathlib
+sys.path.insert(0, "tools"); import model
+names = {}
+for d in sorted(pathlib.Path("chains").iterdir()):
+    if (d/"chain.yaml").exists():
+        n = yaml.safe_load((d/"chain.yaml").read_text())["chain"].get("name") or d.name
+        names[d.name] = {x for x in {n, model.short(d.name)} if len(x) > 3}
+hits = 0
+for f in yaml.safe_load(open("findings.yaml")):
+    ch = f["chains"]
+    if not isinstance(ch, dict): continue
+    for slug, gloss in ch.items():
+        for other in ch:
+            if other == slug: continue
+            if any(re.search(rf"\b{re.escape(a)}\b", gloss, re.I) for a in names.get(other, ())):
+                print(f"{f['id']:<32} {slug:<14} -> {other}"); hits += 1; break
+print(f"\nsibling mentions inside a gloss: {hits}")
+EOF
+```
+
+**Every hit must be one where naming the other chain IS the fact about this one** — an
+address collision (`address-collisions`, `type-byte-frontiers`), a lineage statement
+(`getcode-proves-nothing` on Injective naming Cosmos EVM), or the reference deployment a
+divergence is measured against (`op-stack-constrains-little` naming OP Mainnet). Nine such
+hits stand today. Anything else is survey voice that belongs in `body:`, or material that
+belongs in the other chain's own gloss.
+
+## 7. Portability
 
 Open `website/index.html` over `file://`. Navigation, assets and grids must work with no
 server and no network.

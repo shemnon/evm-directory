@@ -47,7 +47,7 @@ A per-chain merge graph belongs on the chain page, not here. *(Not yet built.)*
 
 ## Chain pages — `chains/<slug>.html`
 
-Identity · evidence · notes naming this chain · silent divergences · forks · EIP deltas ·
+Identity · evidence · notes naming this chain, scoped to it · silent divergences · forks · EIP deltas ·
 transaction types · transactions outside EIP-2718 · transaction authorization · repriced
 precompiles · precompiles · system contracts · system transactions · opcodes · fee model ·
 header fields · own spec series · gotchas · full write-up (rendered `SUMMARY.md`) ·

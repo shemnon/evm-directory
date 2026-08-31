@@ -1,0 +1,945 @@
+schema_version: 2
+
+chain:
+  name: Autonomys Auto EVM
+  slug: autonomys
+  chain_id: 870
+  role: independent
+  equivalence: behavioural
+  live: true
+  chain_id_src: "domains/runtime/evm/src/lib.rs:EVMChainId"
+  note: >-
+    NOT A CHAIN OF ITS OWN. Auto EVM is domain 0 — a Substrate/FRAME *domain*
+    runtime — on the Autonomys consensus chain. It has no consensus of its own,
+    no block producer of its own, and no mempool that decides ordering: the
+    consensus chain's farmers order transactions into BUNDLES without executing
+    them, and domain OPERATORS execute the already-ordered bundles afterwards.
+    Everything below is a behavioural comparison against Ethereum mainnet, not a
+    code diff: the EVM is `rust-ethereum/evm` (SputnikVM) driven by Frontier's
+    `pallet-evm` / `pallet-ethereum`, which is an independent Rust
+    reimplementation, not a fork of any Ethereum client.
+
+lineage:
+  upstream: null
+  ancestry: []
+  fork_of: null
+  inspired_by: "polkadot-evm/frontier (pallet-evm, pallet-ethereum) over rust-ethereum/evm"
+  note: >-
+    THE FRONTIER QUESTION, ANSWERED IN THE OPPOSITE DIRECTION FROM MOONBEAM.
+    Autonomys consumes UPSTREAM Frontier as an unmodified git dependency pinned
+    to a single revision — every one of the twelve Frontier crates
+    (`fc-*`, `fp-*`, `pallet-ethereum`, `pallet-evm`, `pallet-evm-chain-id`,
+    the modexp/sha3fips/simple precompiles, `precompile-utils`) is pulled from
+    `https://github.com/polkadot-evm/frontier` at
+    `rev = 9d49e36ed5bac38241594f8ba055fdb94991483a`, with no `[patch]` entry
+    redirecting any of them. Moonbeam, by contrast, forks every Frontier crate
+    into its own tree, which is why this repository declined to write a Frontier
+    framework row. Autonomys is the counter-example: it is the first row here
+    that runs stock Frontier. The `[patch]` block in the workspace redirects
+    only the *polkadot-sdk* crates underneath Frontier (to
+    `autonomys/polkadot-sdk`), which is a Substrate fork, not a Frontier fork —
+    so the EVM semantics really are upstream Frontier's, and a second stock-
+    Frontier chain would share them.
+  sync_point: >-
+    frontier @ 9d49e36 (2026-01-13, "Update to polkadot-sdk stable2512"),
+    rust-ethereum/evm @ a656db9 (crate `evm` 0.43.4). Anything Frontier or
+    SputnikVM gained after those commits is absent here.
+  src: "Cargo.toml:polkadot-evm/frontier"
+
+client:
+  name: subspace (Auto EVM domain runtime)
+  repo: https://github.com/autonomys/subspace
+  version: runtime-mainnet-2026-jul-29
+  commit: f76e41c2ddcca4828c4a955ac44c7816b1bccd1b
+  language: rust
+  note: >-
+    A monorepo holding both halves: `crates/` is the consensus chain
+    (`subspace-node`, `pallet-domains`, `sp-domains`, `sp-domains-fraud-proof`)
+    and `domains/` is the domain side (`domains/runtime/evm` is the Auto EVM
+    runtime, `domains/client/*` the operator). Pinned at the newest RUNTIME tag
+    rather than the newest node tag because the runtime is what is enacted in
+    state: `state_getRuntimeVersion` on mainnet Auto EVM returns
+    `specVersion: 4`, byte-identical to `VERSION` in this tag. The node tag the
+    public RPC actually runs (`mainnet-2026-jun-14`, b3f2859) is reported by
+    `system_version` as `0.1.11-b3f2859d528`.
+  companion_repos:
+  - {name: frontier, repo: "https://github.com/polkadot-evm/frontier",
+     version: "rev 9d49e36 (no tag; the exact pinned dependency revision)",
+     commit: 9d49e36ed5bac38241594f8ba055fdb94991483a, language: rust,
+     provides: "pallet-evm, pallet-ethereum, the EVM_CONFIG fork selection, the precompile crates, the fc-rpc Ethereum RPC layer"}
+  - {name: rust-evm, repo: "https://github.com/rust-ethereum/evm",
+     version: "rev a656db9 (crate evm 0.43.4, branch v0.x)",
+     commit: a656db9050c65170b050360c3fa66c0fd8bf226a, language: rust,
+     provides: "the interpreter itself — opcode table, gas schedule, Config::osaka()"}
+
+live_probe:
+  endpoint: https://auto-evm.mainnet.autonomys.xyz/ws
+  chain_id: 870
+  observed_at_block: 4577685      # 0x45d995, timestamp 1787845102 = 2026-08-27T15:38:22Z
+  note: >-
+    The endpoint path is `/ws` and it answers plain HTTP JSON-RPC POSTs; the
+    bare host 404s. `web3_clientVersion` returns
+    `subspace-evm-domain/v4.0/fc-rpc-2.0.0-dev`. The same endpoint also answers
+    SUBSTRATE RPC (`system_chain` -> "Autonomys Mainnet Domain 0",
+    `state_getRuntimeVersion`), which is how the enacted runtime version was
+    pinned to the clone.
+
+consensus:
+  engine: >-
+    Subspace PoAS (proof-of-archival-storage) on the consensus chain +
+    decoupled execution by domain operators
+  finality: >-
+    probabilistic on the consensus chain (confirmation_depth_k = 100 consensus
+    blocks); domain execution receipts are optimistic and become irreversible
+    only after domain_block_pruning_depth = 14,400 domain blocks
+  block_time: "6s consensus slot; one domain block per consensus block that carries at least one bundle"
+  src: "crates/subspace-runtime-primitives/src/lib.rs:production_params, crates/subspace-runtime/src/lib.rs:BlockTreePruningDepth"
+  src_live: 'eth_getBlockByNumber(finalized) @ 4580360 -> block 4565366; latest was 4580360, i.e. 14,994 domain blocks of lag'
+  note: >-
+    DECOUPLED EXECUTION, AND IT IS NOT MONAD'S KIND. Monad defers the state root
+    by three blocks inside one chain. Autonomys splits the two roles across two
+    chains. (a) ORDERING: a domain operator wins a bundle slot by VRF
+    (`bundle_producer_election`), packs signed domain extrinsics into a
+    `Bundle`, and submits it to the CONSENSUS chain as
+    `pallet_domains::submit_bundle`. The consensus chain does not execute a
+    single one of them; it records the bundle's `extrinsics_root` in
+    `ExecutionInbox` and the ordering is then fixed by the consensus chain's own
+    fork choice. (b) EXECUTION: operators later derive domain block N
+    deterministically from consensus block C — `preprocess_consensus_block`
+    concatenates the bundles in consensus order — execute it, and commit to the
+    result by attaching an `ExecutionReceipt` (post-state root plus a per-
+    extrinsic `execution_traces` vector) to a LATER bundle. (c) DISPUTE: an
+    `ExecutionReceipt` sits in a block tree for `domain_block_pruning_depth`
+    domain blocks (14,400, ~24h at 6s) during which anyone may unseat it with a
+    `FraudProof`; only then is it confirmed and the domain block pruned from the
+    tree. So "the transactions are ordered", "the state root is claimed" and
+    "the state root can no longer be challenged" are three different events, up
+    to a day apart.
+
+baseline_fork: osaka
+baseline_note: >-
+  `fp_evm::EVM_CONFIG = Config::osaka()` — a single compile-time constant, no
+  fork schedule, no timestamps, no block numbers, no activation gate of any kind
+  (the same shape as Moonbeam: the ruleset is a constant inside a WASM runtime
+  that governance replaces wholesale). CLZ (EIP-7939) is live, confirmed by
+  probe. But "Osaka" here names ONLY what the SputnikVM interpreter's Config
+  struct covers, and that struct has no field for precompiles, no field for
+  system contracts and no field for the block envelope. Measured against
+  mainnet Osaka this row is missing TWELVE of the seventeen standard
+  precompiles, both blob opcodes, all four post-Merge system contracts,
+  withdrawals, requests, and EIP-1559 itself. Read the `eips:` map, not the
+  fork name.
+
+forks:
+  src: "frontier/primitives/evm/src/lib.rs:EVM_CONFIG"
+  note: >-
+    There is no fork timeline. The EVM ruleset is `Config::osaka()`, a `const fn`
+    baked into the domain runtime WASM. It changes only when the domain runtime
+    is upgraded — an on-chain event scheduled by the CONSENSUS chain
+    (`pallet_domains::upgrade_domain_runtime`, applied after
+    `DomainRuntimeUpgradeDelay`), announced by a runtime `spec_version` bump and
+    nothing else. There is no name to grep for and no timestamp to read.
+  timeline:
+  - {name: "domain runtime spec_version 4", activation_condition: "enacted domain runtime upgrade; observed live via state_getRuntimeVersion",
+     mainnet_equivalent: osaka,
+     note: "the version running on mainnet Auto EVM at the probed block, and the version in the pinned tag"}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    src: "domains/pallets/evm-tracker/src/fees.rs:EvmGasPriceCalculator, domains/runtime/evm/src/lib.rs:EvmGasPriceCalculator"
+    src_live: 'eth_feeHistory blockCount 2 @ 4580343 -> baseFeePerGas 0x2c1bfedd4, 0x2c1bfee06, 0x26987f045 with gasUsedRatio 0.0, 0.0'
+    note: >-
+      THE 1559 MECHANISM IS ABSENT AND THE FIELD IS STILL THERE. Frontier ships
+      `pallet-base-fee`, which implements EIP-1559's elasticity; this runtime
+      does not include it (see `construct_runtime!` — Ethereum 80, EVM 81,
+      EVMChainId 82, EVMNoncetracker 84, and no base-fee pallet). What fills
+      `baseFeePerGas` is `pallet_evm::FeeCalculator::min_gas_price()`, here
+      `EvmGasPriceCalculator`: Substrate's `TransactionWeightFee` x
+      WEIGHT_PER_GAS, scaled by `pallet_transaction_payment`'s
+      `next_fee_multiplier` (a `SlowAdjustingFeeUpdate` over domain-block WEIGHT
+      fullness), plus a storage component derived from the CONSENSUS chain's
+      per-byte fee. So: the target is not 50% of gas, the step is not capped at
+      12.5%, the input is not gas used, and part of the price is set by a
+      different chain. Two consecutive empty blocks moved the base fee UP
+      (0x2c1bfedd4 -> 0x2c1bfee06) where 1559 mandates -12.5%. Worse for
+      tooling: `eth_feeHistory`'s trailing element is computed by `fc-rpc` with
+      the 1559 formula, so it reports a next-block base fee (0x26987f045, a 12.5%
+      drop) that this chain will never adopt. Every 1559 fee estimator is wrong
+      here in both directions, silently.
+  4844:
+    status: removed
+    severity: high
+    src: "frontier/frame/ethereum/src/lib.rs:TransactionV3"
+    src_live: "eth_call @ 4577685 with bytecode 0x5f49... -> evm error: InvalidCode(Opcode(73)); eth_getBlockByNumber @ 4577685 has no blobGasUsed and no excessBlobGas keys"
+    note: >-
+      No type-0x03 transaction (`pallet_ethereum::Transaction` has Legacy,
+      EIP2930, EIP1559, EIP7702 and nothing else), no `blobGasUsed`, no
+      `excessBlobGas`, and — the part that bites — BLOBHASH (0x49) is not in the
+      interpreter's opcode table at all, so it fails with
+      `InvalidCode(Opcode(73))` rather than returning zero. Contrast Monad,
+      which keeps the header fields pinned to zero.
+  7516:
+    status: removed
+    severity: high
+    src_live: "eth_call @ 4577685 with bytecode 0x4a... -> evm error: InvalidCode(Opcode(74))"
+    src: "rust-evm/runtime/src/lib.rs:Config"
+    note: >-
+      BLOBBASEFEE (0x4a) is likewise absent from the opcode table. This is the
+      trap in claiming `Config::osaka()`: the SputnikVM Config struct has flags
+      for PUSH0, MCOPY, TLOAD/TSTORE, EIP-6780, EIP-7702, EIP-7623 and EIP-7939,
+      and NO flag for the two blob opcodes because that interpreter never
+      implemented them. A contract compiled for Cancun+ that reads
+      `block.blobbasefee` does not revert — it is undeployable, because the
+      opcode is invalid.
+  4895:
+    status: removed
+    src_live: "eth_getBlockByNumber @ 4577685 -> no withdrawalsRoot key in the header"
+    note: "no beacon chain, no withdrawals; the header field is absent, not zero"
+  4788:
+    status: removed
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 4577685 -> 0x"
+    note: "beacon-roots contract is an empty account; calls to it succeed and return nothing"
+  2935:
+    status: removed
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 4577685 -> 0x"
+    note: "historical-block-hashes contract absent — see opcodes.modified for what BLOCKHASH does instead"
+  7685:
+    status: removed
+    src_live: "eth_getBlockByNumber @ 4577685 -> no requestsHash key"
+    note: "no execution-layer requests; unlike Monad the field is absent rather than a wrong hash"
+  7002:
+    status: removed
+    src_live: "eth_getCode 0x00000961Ef480Eb55e80D19ad83579A64c007002 @ 4577685 -> 0x"
+  4399:
+    status: modified
+    severity: high
+    src: "frontier/frame/evm/src/runner/stack.rs:block_randomness"
+    src_live: "eth_call @ 4577685 with bytecode 0x44... -> 0x00..00"
+    note: >-
+      PREVRANDAO (0x44) is a valid opcode and returns the ZERO WORD on every
+      block. There is no beacon randomness and Frontier's `T::Randomness` hook is
+      not wired to anything here. This is the silent kind: a contract sampling
+      `block.prevrandao` gets a constant, no revert, no error. On mainnet the
+      same code gets 256 bits of entropy. Any lottery, shuffle or commit-reveal
+      tiebreak ported here is deterministic and free to grind.
+  3198:
+    status: modified
+    src_live: "eth_call @ 4577685 with bytecode 0x48... -> 0x2c1bfe804 (11.84 gwei), identical to eth_gasPrice at the same block"
+    note: >-
+      BASEFEE (0x48) works, but what it returns is the weight-fee conversion of
+      eips.1559 above, not a 1559 base fee. It also equals GASPRICE (0x3a) in a
+      zero-tip block because `eth_maxPriorityFeePerGas` is 0x0.
+  3651:
+    status: modified
+    severity: high
+    src: "domains/runtime/evm/src/lib.rs:FindAuthorTruncated"
+    src_live: "eth_call @ 4577685 with bytecode 0x41... -> 0x00..00; every block header's author/miner is 0x0000...0000"
+    note: >-
+      COINBASE is permanently the zero address. `FindAuthorTruncated::find_author`
+      returns `None` unconditionally, with an in-source TODO to return the
+      executor reward address "once we start collecting them". Warm-coinbase
+      pricing is active (it is in `Config::osaka()`), so the zero address is the
+      warm one. Fee-splitting or block-builder-tipping contracts that
+      `transfer(block.coinbase, x)` burn to the zero address here.
+  7702:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:pectra, frontier/frame/ethereum/src/lib.rs:EIP7702"
+    note: >-
+      Set-code transactions are implemented — `pallet_ethereum::Transaction`
+      carries an `EIP7702` variant with `AuthorizationList`, and the interpreter
+      Config sets `has_eip_7702: true` with PER_AUTH_BASE_COST 12500 /
+      PER_EMPTY_ACCOUNT_COST 25000. Not observed live: the probed range carried
+      no transactions of any type.
+  7623:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:osaka"
+    note: "calldata floor pricing active (gas_calldata_zero_floor 10, non_zero_floor 40)"
+  7939:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:osaka"
+    src_live: "eth_call @ 4577685 with bytecode 0x60011e... -> 0xff (CLZ(1) == 255)"
+    note: "CLZ is live — this is the one thing that makes the Osaka claim more than a Prague claim"
+  6780:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:cancun"
+    note: "has_eip_6780: true — SELFDESTRUCT only deletes within the creating transaction"
+  1153:
+    status: inherited
+    src_live: "eth_call @ 4577685 with bytecode 0x5f5c... -> 0x00..00 (TLOAD executes)"
+  5656:
+    status: inherited
+    src_live: "eth_call @ 4577685 with bytecode 0x5f5f5f5e... -> StackUnderflow on the following MSTORE, i.e. MCOPY consumed its three operands"
+  170:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:Config"
+    note: "create_contract_limit Some(0x6000) = 24576 bytes, mainnet's value"
+  3860:
+    status: inherited
+    src: "rust-evm/runtime/src/lib.rs:osaka"
+    note: "max_initcode_size Some(0xC000) = 49152"
+  2565:
+    status: unrecorded
+    note: >-
+      MODEXP is Frontier's `pallet-evm-precompile-modexp`, a separate
+      implementation from geth's. Which of EIP-198 / 2565 / 7823 / 7883 pricing
+      and bounds it matches was not established; see "Not established here".
+  152:
+    status: removed
+    note: "BLAKE2F — 0x09 is not in the precompile set; see precompiles"
+  196:
+    status: removed
+    severity: high
+    note: "BN256ADD / BN256MUL — 0x06 and 0x07 are not in the precompile set"
+  197:
+    status: removed
+    severity: high
+    note: "BN256PAIRING — 0x08 is not in the precompile set. No Groth16/PLONK verifier can work here."
+  2537:
+    status: removed
+    severity: high
+    note: "BLS12-381 — 0x0b-0x11 are not in the precompile set"
+  7951:
+    status: removed
+    severity: high
+    note: "P256VERIFY — 0x0100 is not in the precompile set; joins the five-chain empty-0x0100 class"
+  161:
+    status: modified
+    severity: high
+    src: "domains/primitives/runtime/src/lib.rs:EXISTENTIAL_DEPOSIT, domains/runtime/evm/src/lib.rs:DustRemovalHandler"
+    note: >-
+      Substrate's existential deposit sits underneath the EVM's account model and
+      the EVM has no way to express it. `EXISTENTIAL_DEPOSIT = 1_000_000_000_000`
+      wei (10^-6 AI3). An account whose balance falls below it is REAPED by
+      `pallet-balances`: the remaining balance is handed to `DustRemovalHandler`,
+      which burns it (`BlockFees::note_burned_balance`). EIP-161's rule is that
+      an account is deleted only when it is empty AND touched; here it is deleted
+      for being merely poor, and the residue is destroyed rather than kept. The
+      mirror-image consequence is on the receiving side: `pallet-balances` refuses
+      a transfer that would leave the RECIPIENT below the deposit, so a
+      `CALL` with `value` under 10^12 wei to a fresh address fails where mainnet
+      succeeds.
+
+non_eip_specs:
+  note: >-
+    Autonomys publishes no numbered chain-spec series (no ACP/BEP/TIP analogue).
+    Protocol changes arrive as domain runtime upgrades voted through the
+    consensus chain's council/democracy pallets.
+
+tx_types:
+  "0x00": {name: Legacy, status: inherited, src: "frontier/frame/ethereum/src/lib.rs:TransactionV3"}
+  "0x01": {name: EIP-2930 access list, status: inherited, src: "frontier/primitives/ethereum/src/lib.rs:EIP2930"}
+  "0x02": {name: EIP-1559, status: modified, src: "frontier/primitives/ethereum/src/lib.rs:EIP1559",
+           note: "accepted and encoded normally, but the base fee it prices against is not a 1559 base fee — see eips.1559"}
+  "0x03": {name: EIP-4844 blob, status: removed, src: "frontier/frame/ethereum/src/lib.rs:TransactionV3",
+           note: "not a variant of the transaction enum; submission is rejected at decode"}
+  "0x04": {name: EIP-7702 set code, status: inherited, src: "frontier/frame/ethereum/src/lib.rs:EIP7702"}
+  note: >-
+    No custom type byte — Auto EVM adds nothing to the EIP-2718 space. The
+    divergence is one layer down: every Ethereum transaction is WRAPPED as a
+    Substrate extrinsic (`fp_self_contained::UncheckedExtrinsic` carrying
+    `pallet_ethereum::Call::transact`) before it reaches consensus, and that
+    wrapper is what farmers order. The RLP a wallet signs is never what the
+    ordering layer sees, which is why `eth_getTransactionByHash` and the
+    consensus chain's bundle contents are not the same object.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Auto EVM uses `AccountId20` — the Substrate account id IS the 20-byte
+    Ethereum address (`IdentityAddressMapping`, `EthereumAccountId`,
+    `EthereumSignature`), so unlike most Substrate chains there is no
+    SS58<->H160 mapping to get wrong and no second address space. Consequence
+    worth naming: a Substrate-native call on this domain (an XDM, a sudo call)
+    is authorized by a secp256k1 signature over the SCALE extrinsic, not over
+    RLP, so the same key authorizes two different message formats and only one
+    of them is visible to `eth_*`.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "domains/primitives/runtime/src/lib.rs:EthereumSignature"
+      note: >-
+        Ordinary pairing: secp256k1 authorizes transactions and ECRecover is
+        present at 0x01, so a contract can check what the protocol accepted.
+        The one wrinkle is the digest — the SAME key also authorizes SCALE-encoded
+        Substrate extrinsics on this domain (XDM, sudo), signed over a preimage
+        no EVM contract can reconstruct, so `ecrecover` can verify the Ethereum
+        half of what this key is allowed to do and not the other half.
+    secp256r1:
+      status: removed
+      authorizes: never
+      precompile: none
+      src_live: "eth_call 0x0100 with 160 zero bytes @ 4577685 -> 0x (empty)"
+      note: "no P256VERIFY anywhere; passkey wallets have no on-chain verifier"
+
+non_evm_transactions:
+  entries:
+  - id: xdm_inbound
+    name: Cross-Domain Message (XDM) inbound relay
+    status: added
+    severity: high
+    src: domains/runtime/evm/src/lib.rs:pallet_messenger, domains/pallets/messenger/src/lib.rs:relay_message
+    encoding: SCALE-encoded Substrate extrinsic (pallet_messenger::relay_message / relay_message_response)
+    note: AI3 arriving on Auto EVM from the consensus chain or another domain does NOT arrive as
+      an Ethereum transaction. It arrives as a `pallet_messenger` extrinsic in the same domain block,
+      is executed by `pallet_transporter`'s endpoint handler, and credits the recipient through `pallet-balances`.
+      `eth_getBlockByNumber` returns only the transactions `pallet_ethereum` recorded, so the block
+      shows an EVM balance change with NO transaction, NO receipt and NO log. Every indexer that
+      reconstructs balances from `eth_*` transactions is wrong about every cross-domain deposit —
+      the same failure mode Avalanche's atomic UTXO transactions produce, reached by a completely
+      different route.
+  - id: domain_sudo
+    name: domain sudo call injected by the consensus chain
+    status: added
+    src: domains/pallets/domain-sudo/src/lib.rs, domains/runtime/evm/src/lib.rs:IntoRuntimeCall
+    encoding: SCALE-encoded Substrate extrinsic, inherent-validated
+    note: The consensus chain can inject an arbitrary domain `RuntimeCall` into a domain block (`pallet_domain_sudo`),
+      including calls that mutate EVM state. It carries no Ethereum envelope and is invisible to
+      `eth_*`.
+  - id: evm_tracker_inherent
+    name: set_contract_creation_allowed_by inherent
+    status: added
+    src: domains/pallets/evm-tracker/src/lib.rs:set_contract_creation_allowed_by, domains/primitives/evm-tracker/src/lib.rs:INHERENT_IDENTIFIER
+    encoding: SCALE inherent, identifier b"dmnevmtr"
+    note: Flips the domain between permissionless and permissioned contract deployment (see system_transactions).
+      Also outside the EVM envelope.
+precompiles:
+  "0x0000000000000000000000000000000000000001":
+    name: ECRecover
+    status: modified
+    divergence: gas
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_getCode @ 4577685 -> 0x60006000fd (5-byte revert stub)"
+    note: >-
+      Frontier's own implementation, not geth's. Present, and — unusually —
+      backed by a five-byte REVERT stub in state, so `EXTCODESIZE(0x01) == 5`
+      here against 0 on mainnet. See the note on the precompiles map.
+  "0x0000000000000000000000000000000000000002":
+    name: SHA256
+    status: modified
+    divergence: gas
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with input 0x00 -> 0x6e340b9c...afa01d (sha256 of one zero byte), eth_getCode -> 0x60006000fd"
+  "0x0000000000000000000000000000000000000003":
+    name: RIPEMD160
+    status: modified
+    divergence: gas
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with input 0x00 -> 0x...c81b94933420221a7ac004a90242d8b1d3e5070d (correct RIPEMD160), eth_getCode -> 0x60006000fd"
+  "0x0000000000000000000000000000000000000004":
+    name: Identity
+    status: modified
+    divergence: gas
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with input 0xdeadbeef -> 0xdeadbeef, eth_getCode -> 0x60006000fd"
+  "0x0000000000000000000000000000000000000005":
+    name: MODEXP
+    status: modified
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_getCode @ 4577685 -> 0x60006000fd"
+    note: "Frontier's `pallet-evm-precompile-modexp`; bounds and pricing not established"
+  "0x0000000000000000000000000000000000000006":
+    name: BN256ADD
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with 128 zero bytes -> 0x (success, empty); eth_getCode -> 0x"
+    note: >-
+      Not in the set and not stubbed, so the address is an ordinary empty
+      account: the CALL SUCCEEDS and returns nothing. Mainnet returns the point
+      at infinity as 64 zero bytes.
+  "0x0000000000000000000000000000000000000007":
+    name: BN256MUL
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_getCode @ 4577685 -> 0x"
+  "0x0000000000000000000000000000000000000008":
+    name: BN256PAIRING
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> 0x (success, empty); mainnet returns 32 bytes ending 0x01"
+    note: >-
+      THE WORST ONE. Every deployed Groth16/PLONK verifier ends with a pairing
+      check whose success path is `returndata == 1`. Here the call succeeds with
+      zero-length return data, so a verifier built on `staticcall` + `mload`
+      reads 0 and rejects every valid proof, while one that only checks the
+      `success` flag ACCEPTS EVERY PROOF, valid or not. Both failure directions
+      exist in shipped verifier code. Nothing reverts and nothing errors.
+  "0x0000000000000000000000000000000000000009":
+    name: BLAKE2F
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> 0x (mainnet REVERTS on malformed input)"
+    note: "on mainnet a malformed BLAKE2F call reverts; here it succeeds"
+  "0x000000000000000000000000000000000000000a":
+    name: KZG point evaluation
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> 0x; eth_getCode -> 0x"
+  "0x000000000000000000000000000000000000000b":
+    name: BLS12_G1ADD
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 -> 0x; eth_getCode -> 0x"
+    note: "0x0b through 0x11 (the whole EIP-2537 block) are all absent and all empty accounts; 0x0c-0x11 verified by eth_getCode @ 4577685 -> 0x"
+  "0x000000000000000000000000000000000000000c":
+    {name: BLS12_G1MSM, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x000000000000000000000000000000000000000d":
+    {name: BLS12_G2ADD, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x000000000000000000000000000000000000000e":
+    {name: BLS12_G2MSM, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x000000000000000000000000000000000000000f":
+    {name: BLS12_PAIRING_CHECK, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x0000000000000000000000000000000000000010":
+    {name: BLS12_MAP_FP_TO_G1, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x0000000000000000000000000000000000000011":
+    {name: BLS12_MAP_FP2_TO_G2, status: removed, severity: high, src_live: "eth_getCode @ 4577685 -> 0x"}
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY
+    status: removed
+    severity: high
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with 160 zero bytes -> 0x; eth_getCode -> 0x"
+    note: >-
+      Empty account. EIP-7951 signals an invalid signature with empty output, so
+      every P-256 verification against this address reports "invalid" forever
+      with no revert and no error — the sixth row in this dataset with that
+      property, and the fifth distinct cause: here the precompile set simply
+      stops at 0x05 and jumps to 0x0400.
+  "0x0000000000000000000000000000000000000400":
+    name: Sha3FIPS256
+    status: added
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> 0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a (SHA3-256 of the empty string); eth_getCode -> 0x60006000fd"
+    note: >-
+      NIST SHA3-256, which is NOT keccak256 — different padding, different
+      digest for the same input. Frontier's `pallet-evm-precompile-sha3fips`.
+      Does NOT accept DELEGATECALL (its checks are `CallableByContract,
+      CallableByPrecompile` only), unlike 0x01-0x05.
+  "0x0000000000000000000000000000000000000401":
+    name: ECRecoverPublicKey
+    status: added
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> evm error: Other(\"Public key recover failed\"); eth_getCode -> 0x60006000fd"
+    note: >-
+      Returns the 64-byte uncompressed public key rather than the address
+      ECRECOVER gives. Rejects DELEGATECALL.
+  "0x0000000000000000000000000000000000000800":
+    name: TransporterPrecompile
+    status: added
+    src: "domains/evm-precompiles/transporter/src/lib.rs:transfer_to_consensus_v1, domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
+    src_live: "eth_call @ 4577685 with empty input -> revert \"Tried to read selector out of bounds\"; eth_getCode -> 0x (NO stub, unlike 0x01-0x05/0x400/0x401)"
+    note: >-
+      Autonomys' own precompile: ABI-dispatched by 4-byte selector, moves AI3
+      OUT of the domain to the consensus chain or another domain. Reverts on
+      short calldata rather than returning empty, which makes it the one added
+      address a caller can positively detect. The absent code stub is a dating
+      artefact — the genesis alloc stubbed the precompiles that existed when the
+      domain was instantiated and this one was added later.
+  note: >-
+    The set is `sp_evm_precompiles::Precompiles<Runtime>` =
+    `PrecompilesInRangeInclusive<(0x01, 0x0FFF)>` over eight entries, with a
+    declared allocation policy in the source: 0x001-0x3FF mainnet precompiles,
+    0x400-0x7FF non-mainnet-but-not-Autonomys, 0x800-0xFFF Autonomys-specific.
+    Mainnet Osaka has seventeen precompiles; this row implements FIVE of them.
+    Everything from 0x06 up (BN254, BLAKE2F, KZG, all seven BLS12-381 addresses)
+    and 0x0100 is simply absent, and absent here means EMPTY ACCOUNT — the call
+    succeeds and returns nothing. That is the quietest failure mode in
+    `four-flavours`, applied to twelve addresses at once.
+
+    The `eth_getCode` probe behaves in a way no other row does: the genesis
+    allocation writes a five-byte `0x60006000fd` (PUSH1 0 PUSH1 0 REVERT) stub at
+    exactly 0x01-0x05, 0x0400 and 0x0401, and nowhere else. So on THIS chain
+    `EXTCODESIZE != 0` happens to be a correct test for "is this a live
+    precompile" for seven of the eight — and gives the wrong answer for the
+    eighth (0x0800, code 0x), while also making `EXTCODESIZE(0x01) == 5` where
+    mainnet says 0. It is the Moonbeam revert-stub pattern arriving from stock
+    Frontier tooling rather than from a Moonbeam-specific registry.
+
+system_contracts:
+  note: >-
+    None. The mainnet Auto EVM genesis contains no predeploys: 0x4788's
+    beacon-roots contract, 0x2935's history contract and the 0x7002/0x7251
+    request contracts are all empty accounts (verified live @ 4577685), and
+    Autonomys installs nothing of its own. Its two extension points are the
+    precompiles above and Substrate pallets that have no address at all.
+
+system_transactions:
+  contract_creation_permission:
+    name: "EVM contract-creation allowlist (inherent-driven)"
+    status: added
+    severity: high
+    src: "domains/pallets/evm-tracker/src/create_contract.rs:is_create_contract_allowed, domains/pallets/evm-tracker/src/lib.rs:ContractCreationAllowedBy"
+    note: >-
+      A domain can be switched between permissionless and permissioned CONTRACT
+      DEPLOYMENT by an inherent injected from the consensus chain
+      (`pallet_domains::send_evm_domain_set_contract_creation_allowed_by_call`,
+      callable by the domain owner or root). `ContractCreationAllowedBy` defaults
+      to `Anyone`; set to `Accounts(vec![..])` it makes every CREATE from any
+      other signer fail at TRANSACTION VALIDATION with
+      `InvalidTransaction::Custom(ERR_CONTRACT_CREATION_NOT_ALLOWED)` — the
+      transaction is refused entry, so there is no receipt and no revert reason,
+      just a rejected send. The check runs in BOTH `validate_self_contained` and
+      `pre_dispatch_self_contained`, and it walks NESTED calls
+      (`maybe_nested_call` over `pallet_utility` batches) to catch a CREATE
+      hidden inside a batch. This is a state-transition rule that can be turned
+      on by the parent chain without a runtime upgrade and without any EVM-
+      visible signal. Auto EVM (domain 0) is a `Public` EVM domain and the
+      allowlist is at its default; a `Private` domain instance of the same
+      runtime is a different chain in this respect.
+  domain_runtime_upgrade:
+    name: "domain runtime upgrade injected by the consensus chain"
+    status: added
+    src: "crates/pallet-domains/src/runtime_registry.rs, domains/runtime/evm/src/lib.rs:VERSION"
+    note: >-
+      The domain's entire ruleset — EVM config, precompile set, gas mapping — is
+      a WASM blob in consensus-chain state. Governance replaces it wholesale
+      after `DomainRuntimeUpgradeDelay`. A domain block is produced for the
+      upgrade even when no bundle was submitted. No fork name, no timestamp, no
+      client-side gate: the same shape as Moonbeam, one level more indirect
+      because the blob lives on a different chain.
+
+opcodes:
+  added: []
+  removed:
+  - {op: "0x49", name: BLOBHASH, severity: high,
+     src_live: "eth_call @ 4577685 -> evm error: InvalidCode(Opcode(73))",
+     note: "not in the interpreter's opcode table; invalid, not zero-returning"}
+  - {op: "0x4a", name: BLOBBASEFEE, severity: high,
+     src_live: "eth_call @ 4577685 -> evm error: InvalidCode(Opcode(74))",
+     note: "same — code containing it cannot be deployed or executed"}
+  modified:
+  - op: "0x40"
+    name: BLOCKHASH
+    severity: high
+    src: "frontier/frame/ethereum/src/lib.rs:EthereumBlockHashMapping, domains/runtime/evm/src/lib.rs:BlockHashCount"
+    src_live: "eth_call @ 4577685: BLOCKHASH(n-256) -> 0x6fc65707..., BLOCKHASH(n-257) -> 0x29ecca7b..., BLOCKHASH(n-2400) -> 0xa8f0a15f..., BLOCKHASH(n-2401) -> 0x00..00"
+    note: >-
+      THE WINDOW IS 2400 BLOCKS, NOT 256. Frontier resolves BLOCKHASH through
+      `pallet_ethereum::BlockHash`, a storage map pruned in `on_finalize` at
+      `frame_system::BlockHashCount`, which this runtime sets to 2400 — and
+      Frontier's `SubstrateStackState::block_hash` applies no 256-block clamp of
+      its own. Probed to the exact boundary: n-2400 returns a hash, n-2401
+      returns zero. Contracts that use `blockhash(n) == 0` as a proxy for "older
+      than 256 blocks" — a common freshness guard and the standard cheap-
+      randomness idiom — get the wrong answer for 2144 blocks' worth of history.
+      No mainnet chain in this dataset widens this window.
+  - op: "0x44"
+    name: PREVRANDAO
+    severity: high
+    note: "always zero; see eips.4399"
+  - op: "0x41"
+    name: COINBASE
+    severity: high
+    note: "always the zero address; see eips.3651"
+  - op: "0xff"
+    name: SELFDESTRUCT
+    src: "rust-evm/runtime/src/lib.rs:osaka"
+    note: >-
+      EIP-6780 semantics (`has_eip_6780: true`), i.e. mainnet Cancun+: deletion
+      only inside the creating transaction. The interesting part is what the
+      balance transfer runs into — see fee_model, existential deposit.
+  note: >-
+    The opcode TABLE is otherwise mainnet Osaka's, including PUSH0, MCOPY,
+    TLOAD/TSTORE and CLZ, verified by probe. What differs is not the instruction
+    set but what four environment opcodes RETURN, and two blob opcodes that were
+    never implemented by this interpreter.
+  src: "rust-evm/runtime/src/lib.rs:osaka"
+
+fee_model:
+  metering: "gas, converted to Substrate Weight at a fixed 25,000 ps/gas"
+  fee_market: "Substrate SlowAdjustingFeeUpdate over domain-block WEIGHT fullness, plus a consensus-chain storage fee — not EIP-1559"
+  extra_components:
+  - name: nonce on failure
+    severity: high
+    src: "domains/client/block-preprocessor/src/lib.rs:batch_check_bundle_validity, domains/client/block-preprocessor/src/lib.rs:BundleValidity, domains/client/block-preprocessor/src/lib.rs:InvalidBundleType"
+    note: >-
+      NONCE ON FAILURE: PRESERVED — FOR THE OFFENDER AND FOR EVERY CO-PASSENGER
+      — BECAUSE NOTHING IN THE BUNDLE EVER EXECUTES. Established from
+      Autonomys' own source, not inferred from a sibling row.
+
+      `batch_check_bundle_validity` returns a `BundleValidity`, and the caller
+      handles the two arms very differently. `ValidWithSigner(..)` pushes an
+      `InboxedBundle::valid` AND does `valid_extrinsics.extend(..)`.
+      `Invalid(invalid_bundle_type)` pushes ONLY an `InboxedBundle::invalid`
+      marker and never touches `valid_extrinsics`. So a bundle classified
+      `UndecodableTx`, `OutOfRangeTx`, `IllegalTx` (the fee/nonce/balance case),
+      `InvalidXDM`, `InherentExtrinsic` or `InvalidBundleWeight` contributes ZERO
+      extrinsics to the domain block. No transaction in it is executed, so no
+      account nonce anywhere in that bundle advances, no fee is charged, and no
+      receipt exists: `eth_getTransactionReceipt` is null forever for all of
+      them and they can be resubmitted at the same nonces.
+
+      THE BLAST RADIUS IS THE UNUSUAL PART, NOT THE NONCE. One stale-nonce
+      transaction discards every valid, correctly-signed, already-ordered
+      transaction packed beside it — but discards them harmlessly, in the sense
+      that the axis measures: nothing was consumed. Compare Conflux, which erases
+      only the offending transaction, and Artela, where the transaction is
+      executed far enough to spend the nonce and take the fee and is then hidden.
+      Autonomys is the widest erasure in the dataset and simultaneously one of
+      the safest for the sender's nonce.
+
+      THE COST FALLS ON THE OPERATOR INSTEAD. `pallet_domains` collects
+      `invalid_bundle_authors` from the receipt's `InboxedBundle` entries and
+      slashes them automatically on confirmation. "Your transaction had a stale
+      nonce" is not an outcome a transaction can have here; it is a protocol
+      violation attributed to whoever bundled it.
+  - name: duplicate inclusion
+    severity: high
+    src: "crates/sp-domains/src/extrinsics.rs:deduplicate_and_shuffle_extrinsics, domains/client/block-preprocessor/src/lib.rs:preprocess_consensus_block, domains/client/block-preprocessor/src/lib.rs:check_extrinsics_and_do_pre_dispatch, crates/sp-domains/src/bundle.rs:InvalidBundleType, crates/pallet-domains/src/bundle_storage_fund.rs:refund_storage_fee"
+    note: >-
+      DUPLICATE INCLUSION: BENIGN, AND EXPLICITLY NOT A SLASHABLE OFFENCE.
+      Established from Autonomys' own source at the pinned commit, not inferred
+      from a sibling row.
+
+      Operators build bundles independently from their own view of the pool, so
+      two of them bundling the same transaction into one consensus block is a
+      normal race. It is resolved AFTER bundle validity, not during it, and that
+      ordering is the whole finding. `preprocess_consensus_block` first calls
+      `compile_bundles_to_extrinsics`, which classifies each bundle on its own —
+      `check_extrinsics_and_do_pre_dispatch` runs against the PARENT DOMAIN
+      BLOCK state and maintains its storage-buffer side effects only WITHIN one
+      bundle — so both bundles see the same parent nonce, both pass, and both are
+      recorded as `InboxedBundle::valid`. Only then is
+      `deduplicate_and_shuffle_extrinsics` applied to the concatenation of every
+      valid bundle's extrinsics: it walks them in bundle order with a `seen`
+      list, drops any extrinsic equal to one already kept, and shuffles what
+      survives with the consensus-block randomness. The FIRST occurrence in
+      bundle order executes; the second never enters the domain block's extrinsic
+      list at all.
+
+      A DUPLICATE IS NOT AN `InvalidBundleType`. The enum has exactly six
+      variants — `UndecodableTx`, `OutOfRangeTx`, `IllegalTx`, `InvalidXDM`,
+      `InherentExtrinsic`, `InvalidBundleWeight` — and none of them is
+      duplication. Since the bundle is never marked invalid, its author never
+      reaches `invalid_bundle_authors` and `do_mark_operators_as_slashed` is
+      never called with `SlashedReason::InvalidBundle` for it. This is the
+      important negative: on this chain a stale nonce inside a bundle IS a
+      slashable protocol violation (see `nonce on failure` above), so it would
+      have been entirely consistent for a duplicate to be one too. It is not.
+
+      WHAT A CLIENT OBSERVES: the losing copy is indistinguishable from never
+      submitted — same shape as Conflux and Sonic — but for a different reason.
+      It is not executed-then-erased and not nonce-rejected; it is removed by a
+      byte-equality filter before the domain block exists. There is exactly one
+      receipt, under the one transaction hash, for the surviving copy, and the
+      sender pays exactly one fee.
+
+      WHO PAYS: the operator that bundled the loser, a little, and only in
+      storage. `charge_bundle_storage_fee` burns from the operator's bundle
+      storage fund in proportion to `bundle.size()` at submission time, before
+      any deduplication has happened, so the duplicate's bytes are paid for.
+      `refund_storage_fee` then returns each operator a share of the domain
+      block's collected storage fees in proportion to BYTES SUBMITTED rather
+      than extrinsics that survived, and `do_reward_operators` pays the set of
+      operators that submitted bundles for the confirmed domain block without
+      reference to how much of their payload was deduplicated. So the duplicate
+      is close to cost-neutral for its author and mildly dilutive for everyone
+      else. Contrast Taraxa, where pre-Aspen a DAG block earned NOTHING unless it
+      contributed a unique transaction: Autonomys pays for the bundle, not for
+      the contribution.
+
+      LIMIT OF THE MECHANISM: the filter is `seen.contains(uxt)` on the encoded
+      extrinsic, so it catches only BYTE-IDENTICAL repeats. Two different
+      transactions from the same sender at the same nonce, bundled by two
+      operators, are not duplicates by this test and both survive into the
+      domain block; what the domain runtime then does with the second is
+      unrecorded here.
+  - name: gas is a conversion, not a meter
+    severity: high
+    src: "domains/primitives/evm-tracker/src/lib.rs:WEIGHT_PER_GAS, domains/runtime/evm/src/lib.rs:GasWeightMapping"
+    note: >-
+      `GAS_PER_SECOND = 40_000_000` and `WEIGHT_PER_GAS =
+      WEIGHT_REF_TIME_PER_SECOND / GAS_PER_SECOND = 25,000` picosec/gas, applied
+      by `pallet_evm::FixedGasWeightMapping`. Gas here is a unit of ACCOUNTED
+      TIME with a fixed exchange rate, and the resource actually limited is
+      Weight. Every gas number in an Auto EVM receipt is a Weight number divided
+      by 25,000.
+  - name: PoV proof-size as a second meter
+    severity: high
+    src: "domains/primitives/evm-tracker/src/lib.rs:GasLimitPovSizeRatio"
+    note: >-
+      `GasLimitPovSizeRatio = 4`: a transaction's gas limit also buys it
+      gas_limit/4 BYTES of proof-of-validity, and exceeding that budget fails the
+      transaction as OutOfGas WITH EVM GAS REMAINING (Frontier's
+      `handle_storage_oog`). Joins the `second-meter-failures` class — Moonbeam's
+      ratio is 8 (tighter) and Moonbeam also meters storage growth, which this
+      row explicitly does not: `type GasLimitStorageGrowthRatio = ()` with an
+      in-source "TODO: re-check this value mostly from moonbeam".
+  - name: the fee is split between two chains
+    src: "domains/runtime/evm/src/lib.rs:EVMCurrencyAdapter, domains/pallets/evm-tracker/src/fees.rs:split_fee_into_storage_and_execution"
+    note: >-
+      `StorageFeeRatio = 30%`: 30% of every gas fee is booked as a CONSENSUS
+      STORAGE fee (the consensus chain is a DA layer and charges for the bytes),
+      70% as domain execution fee. The gas price itself carries the consensus
+      chain's `final_domain_transaction_byte_fee / GasPerByte` (GasPerByte =
+      625) as an additive term, so a change on the consensus chain moves Auto
+      EVM's `eth_gasPrice` with no domain-side event.
+  - name: block gas limit is advisory
+    severity: high
+    src: "domains/primitives/runtime/src/lib.rs:block_weights, domains/primitives/evm-tracker/src/lib.rs:BlockGasLimit"
+    src_live: "eth_getBlockByNumber @ 4577685 -> gasLimit 0x3197500 (52,000,000) on every block"
+    note: >-
+      `BlockGasLimit = maximum_domain_block_weight().ref_time() /
+      WEIGHT_PER_GAS = (65% x 2s) / 25,000 ps = 52,000,000`, and it is the same
+      constant in every header. But the source says outright that this value
+      "does not serve as a limit of the total weight of a domain block, which is
+      `max_bundle_weight * number_of_bundle` and bundle production is
+      probabilistic." A domain block's real capacity is set by how many bundles
+      the VRF happened to elect for that consensus block. `block.gaslimit` and
+      the header's `gasLimit` are therefore a fixed number that neither bounds
+      nor describes the block they appear in.
+  - name: no burn accounting a user can see
+    src: "domains/runtime/evm/src/lib.rs:UnbalancedHandler"
+    note: >-
+      Fees are withdrawn, noted into `pallet_block_fees` for the operator-reward
+      accounting the execution receipt carries back to the consensus chain, and
+      the imbalance is then dropped (burned). Priority fee is handled
+      identically to the base fee. `eth_maxPriorityFeePerGas` returns 0x0.
+  note: >-
+    Nothing in this fee model is EIP-1559 and nothing in it is denominated in
+    the resource the EVM thinks it is metering.
+
+header_fields:
+  added: []
+  removed:
+  - {name: withdrawalsRoot, src_live: "eth_getBlockByNumber @ 4577685 -> key absent"}
+  - {name: blobGasUsed, src_live: "eth_getBlockByNumber @ 4577685 -> key absent"}
+  - {name: excessBlobGas, src_live: "eth_getBlockByNumber @ 4577685 -> key absent"}
+  - {name: parentBeaconBlockRoot, src_live: "eth_getBlockByNumber @ 4577685 -> key absent"}
+  - {name: requestsHash, src_live: "eth_getBlockByNumber @ 4577685 -> key absent"}
+  - {name: mixHash, src_live: "eth_getBlockByNumber @ 4577685 -> key absent (difficulty is present and zero)",
+     note: "a post-Merge header with no mixHash at all — PREVRANDAO's zero comes from nowhere in the header"}
+  modified:
+  - {name: miner, severity: high, src_live: "eth_getBlockByNumber @ 4577685 -> author and miner both 0x0000...0000 on every block",
+     note: "there is no block producer to name; see eips.3651"}
+  - {name: gasLimit, severity: high,
+     note: "a constant 52,000,000 that does not bound the block; see fee_model"}
+  - {name: baseFeePerGas, severity: high,
+     note: "present, and not a 1559 base fee; see eips.1559"}
+  - {name: extraData, src: "domains/runtime/evm/src/lib.rs:ExtraDataLength",
+     src_live: "eth_getBlockByNumber @ 4577685 -> 0x",
+     note: "capped at 30 bytes by `type ExtraDataLength = ConstU32<30>`; empty in practice"}
+  - name: stateRoot
+    severity: high
+    note: >-
+      This is the EVM-shaped state root `pallet_ethereum::IntermediateStateRoot`
+      computes, NOT the domain block's Substrate state root, and NOT the value
+      the consensus chain checks. What consensus disputes is the Substrate root
+      inside the `ExecutionReceipt` — a different hash of a different trie. Two
+      distinct "state roots" exist per domain block and only one of them is
+      reachable over `eth_*`.
+  note: >-
+    The header is a synthetic Ethereum header manufactured by `pallet-ethereum`
+    on top of a Substrate header, so it is Ethereum-shaped without being an
+    Ethereum header: fields Ethereum added after the Merge are absent rather
+    than zeroed, `sha3Uncles` is the empty-list constant, `nonce` is zero and
+    `totalDifficulty` is zero. The Substrate header underneath carries the
+    consensus-block-info digest that actually links this block to its parent
+    chain, and no `eth_*` method exposes it.
+
+gotchas:
+- >-
+  ORDERING COMMITS BEFORE EXECUTION, ON A DIFFERENT CHAIN. Auto EVM has no block
+  producer. Consensus-chain farmers order operator-submitted BUNDLES of
+  already-signed domain extrinsics without executing any of them; domain
+  operators execute the ordered result afterwards and commit to it with an
+  `ExecutionReceipt` attached to a later bundle. Fraud proofs, not re-execution
+  by consensus, are the correctness mechanism.
+- >-
+  A SINGLE INVALID TRANSACTION DESTROYS ITS ENTIRE BUNDLE. This is the answer to
+  "what happens to a transaction that is validly ordered but invalid when it
+  executes", and it is not any of the usual answers.
+  `batch_check_bundle_validity` classifies a bundle with `InvalidBundleType`
+  — `UndecodableTx`, `OutOfRangeTx`, `IllegalTx` (the fee/nonce/balance case),
+  `InvalidXDM`, `InherentExtrinsic`, `InvalidBundleWeight` — and a bundle so
+  classified contributes ZERO extrinsics to the domain block. Not the offending
+  transaction: the whole bundle. Every other transaction packed alongside it —
+  valid, correctly signed, already ordered by consensus — is discarded with no
+  receipt, no log, no trace and no block position. `eth_getTransactionReceipt`
+  returns null forever for all of them. Compare Conflux, which erases the single
+  offending transaction; here the blast radius is every co-passenger.
+- >-
+  AND IT IS A SLASHABLE OPERATOR FAULT, NOT A TRANSACTION FAILURE. When the
+  domain block is confirmed, `pallet_domains` collects `invalid_bundle_authors`
+  from the receipt's `InboxedBundle` entries and calls
+  `do_mark_operators_as_slashed(.., SlashedReason::InvalidBundle(..))` — the
+  enum variant's own doc comment reads "Operator produced bad bundle". Slashing
+  is automatic on confirmation; no fraud proof is needed for it, because the
+  receipt itself records which bundles were invalid. So on this chain "your
+  transaction had a stale nonce" is not an outcome the transaction can have. It
+  is a protocol violation attributed to the operator who accepted it, priced in
+  staked AI3. No other row in this dataset makes an ordinary EVM validity
+  failure a slashable offence.
+- >-
+  `eth_getBlockByNumber("finalized")` IS ABOUT A DAY BEHIND `"latest"`. Measured
+  live: latest 4,580,360, finalized 4,565,366 — 14,994 blocks. That is
+  `domain_block_pruning_depth = 14,400` domain blocks (the fraud-proof challenge
+  window) plus the consensus chain's own confirmation depth. `"safe"` returns
+  the same block as `"finalized"`. Any bridge, exchange or indexer that waits
+  for `finalized` on this chain waits ~24 hours; any that treats `latest` as
+  settled is inside an open dispute window.
+- >-
+  Twelve of mainnet's seventeen precompiles are missing, and missing means the
+  CALL SUCCEEDS WITH EMPTY OUTPUT. The precompile set is 0x01-0x05 plus 0x0400,
+  0x0401, 0x0800. BN254 (0x06-0x08), BLAKE2F (0x09), KZG (0x0a), the entire
+  BLS12-381 block (0x0b-0x11) and P256VERIFY (0x0100) are ordinary empty
+  accounts. A Groth16 verifier's final pairing check returns zero-length data:
+  implementations that read the returned word reject every valid proof;
+  implementations that only check the `success` flag accept every proof.
+- >-
+  BLOCKHASH reaches back 2400 blocks, not 256. Probed to the boundary: n-2400
+  returns a hash, n-2401 returns zero. `blockhash(n) == 0` is not a test for
+  "older than 256 blocks" here.
+- >-
+  BLOBHASH (0x49) and BLOBBASEFEE (0x4a) are INVALID OPCODES, not zero-returning
+  ones, even though the runtime installs `Config::osaka()`. Bytecode containing
+  either cannot execute.
+- >-
+  PREVRANDAO is always 0 and COINBASE is always the zero address, on every block,
+  silently. `FindAuthorTruncated` returns `None` by construction and no
+  randomness source is wired in.
+- >-
+  There is no EIP-1559 base fee. `baseFeePerGas` is a Substrate weight-fee
+  conversion whose input is domain-block Weight fullness and part of whose value
+  is set by the CONSENSUS chain's byte fee. Two consecutive empty blocks raised
+  it. `eth_feeHistory`'s projected next-block base fee is computed by `fc-rpc`
+  with the 1559 formula and is fiction.
+- >-
+  An account can be REAPED. Balances live in Substrate's `pallet-balances` under
+  an existential deposit of 10^12 wei (10^-6 AI3); a balance that falls below it
+  is deleted and the residue BURNED by `DustRemovalHandler`. Symmetrically, a
+  transfer that would leave the RECIPIENT under the deposit is refused — so
+  sending 1 wei to a fresh address fails here and succeeds on mainnet. The EVM's
+  account model cannot express either rule.
+- >-
+  Cross-domain AI3 arrives with no transaction. XDM deposits execute as
+  `pallet_messenger` Substrate extrinsics in the same domain block; the balance
+  moves and `eth_getBlockByNumber` shows an empty transaction list. Reconstructing
+  balances from `eth_*` transactions misses every inbound bridge transfer.
+- >-
+  The domain's whole ruleset can be replaced from the consensus chain, and so can
+  the right to deploy a contract. `ContractCreationAllowedBy` is flipped by an
+  inherent injected by the domain owner or root; when it is not `Anyone`, a
+  CREATE from a non-allowlisted signer is rejected at admission with a custom
+  invalid-transaction code — no receipt, no revert string. Auto EVM is currently
+  a `Public` domain at the default, but the rule is one consensus-chain call
+  away and leaves no EVM-visible trace.
+- >-
+  `eth_getProof` is not implemented (`Method not found`). Any light client,
+  storage-proof bridge or account-proof verifier that needs it has no path here,
+  and the Substrate trie underneath is not an Ethereum MPT anyway.
+- >-
+  `EXTCODESIZE(0x01) == 5`. Genesis writes a five-byte `0x60006000fd` revert stub
+  at 0x01-0x05, 0x0400 and 0x0401 — but not at 0x0800, which is a live
+  precompile with no code. `eth_getCode` classifies seven of eight correctly here
+  and the eighth wrongly, in both directions from mainnet.

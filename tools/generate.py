@@ -101,7 +101,11 @@ def gen_txtypes(chains):
     for s in slugs:
         n = chains[s].get("non_evm_transactions")
         if n:
-            L.append(f"**{name(chains[s])}** — " + " ".join(n.get("note", "").split()))
+            # `note:` is optional — a row may carry only entries, and a dangling
+            # em dash with nothing after it reads as a missing fact rather than
+            # an absent one.
+            note = " ".join((n.get("note") or "").split())
+            L.append(f"**{name(chains[s])}**" + (f" — {note}" if note else ""))
             for e in n.get("entries", []):
                 L.append(f"  - `{e.get('id', '')}` {e['name']}")
             L.append("")

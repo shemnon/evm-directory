@@ -12,21 +12,42 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHAINS = ROOT / "chains"
 
 # Display order: baseline first, then geth-line forks, then the OP Stack node ahead
-# of its descendants, then the independents. The original twelve keep their relative
-# order; later rows are inserted next to their family rather than appended.
+# of its descendants, the rollups by proof system, the framework rows ahead of their
+# descendants, then the independents and the stablecoin-gas chains. The original
+# twelve keep their relative order; later rows are inserted next to their family
+# rather than appended, so a column's neighbours are the rows it should be read
+# against.
 ORDER = ["ethereum",
-         "bnb", "polygon", "avalanche-c", "avalanche-subnet", "kaia", "sei", "linea",
+         "bnb", "polygon", "avalanche-c", "avalanche-subnet", "kaia", "sei",
+         "gnosis", "sonic", "berachain", "flare",
          "arbitrum",
-         "op-stack", "optimism", "base", "worldchain", "opbnb", "celo",
-         "tron", "monad", "hyperliquid", "zksync-era"]
+         "op-stack", "optimism", "base", "worldchain", "opbnb", "celo", "mantle",
+         "megaeth", "rise",
+         "linea", "scroll", "taiko", "polygon-zkevm", "zksync-era",
+         "rollkit",
+         "cosmos-evm", "injective", "artela", "moonbeam",
+         "tron", "monad", "hyperliquid", "hedera", "conflux", "taraxa",
+         "autonomys",
+         "iota-evm",
+         "tempo", "arc", "plasma"]
 
 SHORT = {"ethereum": "Ethereum", "bnb": "BNB", "polygon": "Polygon",
          "avalanche-c": "Avax C", "avalanche-subnet": "Avax subnet", "kaia": "Kaia",
-         "sei": "Sei", "linea": "Linea", "arbitrum": "Arbitrum",
+         "sei": "Sei", "gnosis": "Gnosis", "sonic": "Sonic", "berachain": "Bera",
+         "flare": "Flare", "arbitrum": "Arbitrum",
          "op-stack": "OP Stack", "optimism": "OP Mainnet", "base": "Base",
-         "worldchain": "World", "opbnb": "opBNB", "celo": "Celo",
+         "worldchain": "World", "opbnb": "opBNB", "celo": "Celo", "mantle": "Mantle",
+         "megaeth": "MegaETH", "rise": "RISE",
+         "linea": "Linea", "scroll": "Scroll", "taiko": "Taiko",
+         "polygon-zkevm": "zkEVM", "zksync-era": "zkSync",
+         "rollkit": "Rollkit",
+         "cosmos-evm": "Cosmos EVM", "injective": "Injective", "artela": "Artela",
+         "moonbeam": "Moonbeam",
          "tron": "Tron", "monad": "Monad", "hyperliquid": "Hyperliquid",
-         "zksync-era": "zkSync"}
+         "hedera": "Hedera", "conflux": "Conflux", "taraxa": "Taraxa",
+         "autonomys": "Auto EVM",
+         "iota-evm": "IOTA EVM",
+         "tempo": "Tempo", "arc": "Arc", "plasma": "Plasma"}
 
 MARK = {"added": "➕", "removed": "➖", "modified": "⚠️",
         "inherited": "=", "pending": "◌", "tombstoned": "⊘"}

@@ -1,9 +1,10 @@
 # Notes — the interpretive layer over chains/*/chain.yaml.
 #
 # This file is CONTENT, not derived data: it is the one place in the pipeline where a
-# human states what a set of rows adds up to. `tools/site.py` renders each note on its
-# axis page and on the page of every chain it names, and indexes them all on the home
-# page, so a note is written once and reachable from everywhere it applies.
+# human states what a set of rows adds up to. A note is written once and reaches the
+# reader in two voices: the full cross-chain survey on its axis page, and one chain's
+# own slice of it on that chain's page. `tools/site.py` renders both, and indexes
+# every note on the home page.
 #
 # Keep these descriptive. State what the data shows, cite the rows, and stop; the
 # reader is looking something up, not being persuaded.
@@ -11,14 +12,45 @@
 #   id      stable anchor — do not rename once published, it is a URL
 #   axis    which axis page carries it: precompiles | tx-types | cryptography |
 #           eips | opcodes | system-contracts | fees-envelope | lineage | method
-#   chains  slugs this note is about; they carry it on their chain page
 #   rank    listing order on the home-page index
+#   lede    the shared premise, chain-neutral. Chain pages only — on the axis page the
+#           body already opens with it.
+#   chains  slug -> what THIS chain contributes, and nothing about any other. That
+#           gloss is the whole of what the chain's page says; the survey stays one
+#           link away on the axis page. A note naming more than one chain MUST use
+#           this mapping form — the build refuses a bare list — because the list
+#           form routes a chain page to prose about other chains. Single-chain notes
+#           keep the list form: there the body IS that chain's slice.
+#   body    the cross-chain reading. Axis page and home-page index only.
 
 - id: address-collisions
   title: Address collisions at 0x64–0x69 and 0x…1000
   axis: precompiles
   rank: 1
-  chains: [arbitrum, bnb, opbnb, polygon]
+  lede: >-
+    Unrelated chains have independently claimed the same precompile addresses, so a
+    single global address-keyed map is incorrect for at least one major chain whichever
+    way it is populated.
+  chains:
+    arbitrum: >-
+      ArbSys, ArbInfo, ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy
+      `0x64`–`0x69` — the same six addresses BSC uses for its cross-chain and consensus
+      precompiles, and two of them, `0x66` and `0x67`, are opBNB's as well. The sets
+      share no code and serve unrelated functions.
+    bnb: >-
+      BSC's cross-chain and consensus precompiles occupy `0x64`–`0x69`, the same six
+      addresses Arbitrum uses for its Arb* precompiles; `0x66` and `0x67` are opBNB's
+      too, making those two three-way. BSC also places a `ValidatorContract` at
+      `0x…1000`, a name and address it shares with Polygon's, with different code and a
+      different ABI.
+    opbnb: >-
+      opBNB occupies `0x66` and `0x67`, which are also Arbitrum's ArbAddressTable and
+      ArbBLS and BSC's cross-chain precompiles — the only three-way address collisions
+      in the dataset.
+    polygon: >-
+      Polygon places a contract named `ValidatorContract` at `0x…1000`. BSC places one
+      there too, with different code and a different ABI, so the name is not a usable
+      discriminator either.
   body: >-
     Arbitrum's ArbSys, ArbInfo, ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest
     occupy `0x64`–`0x69`, the same six addresses BSC uses for its cross-chain and
@@ -32,7 +64,31 @@
   title: Type-byte allocation from both ends of the range
   axis: tx-types
   rank: 2
-  chains: [arbitrum, base, op-stack, polygon, celo, kaia, zksync-era]
+  lede: >-
+    EIP-2718 permits `0x00`–`0x7f`. Mainnet allocates upward from `0x00`; other chains
+    allocate downward from the ceiling, and there is no registry between the two
+    frontiers. Current occupancy is computed from the data on the [transaction types
+    axis](axes/tx-types.html#frontier).
+  chains:
+    arbitrum: >-
+      Allocates downward from the ceiling at `0x78` — a byte Kaia also took.
+    base: >-
+      Allocates downward from the ceiling at `0x79`.
+    op-stack: >-
+      The OP family allocates downward from the ceiling at `0x7d` and `0x7e`.
+    polygon: >-
+      Takes `0x7f`, the last byte the envelope permits.
+    celo: >-
+      Allocates downward from the ceiling at `0x7b` and `0x7c`.
+    kaia: >-
+      Allocates downward from the ceiling at `0x78`, a byte Arbitrum also took — and
+      Kaia's type numbers do not fit in a byte at all. They are `uint16`
+      (`0x7801`–`0x7804`), and Ethereum transactions are re-wrapped as `0x78 || ethType
+      || rlp`, so the RPC representation is standard while the consensus encoding is
+      not.
+    zksync-era: >-
+      Allocates downward from the ceiling at `0x71`, the lowest of the downward
+      allocations in the dataset.
   body: >-
     EIP-2718 permits `0x00`–`0x7f`. Mainnet allocates upward from `0x00`; other chains
     allocate downward from the ceiling — zkSync `0x71`, Arbitrum and Kaia both `0x78`,
@@ -68,36 +124,136 @@
     that diffs address lists finds no difference here.
 
 - id: four-flavours
-  title: Four forms of same-address divergence
+  title: Same-address divergence, and every flavour is quieter than enumeration
   axis: precompiles
   rank: 5
-  chains: [op-stack, avalanche-c, polygon, tron]
+  lede: >-
+    An address that exists on two chains can differ in ways no address diff sees, and
+    every one of those flavours is quieter than adding or removing the address.
+  chains:
+    op-stack: >-
+      **Caps inputs** to BN256 and BLS12-381 — a fault-proof constraint expressed in
+      consensus rules — so an oversized call reverts at an address that is present and
+      otherwise mainnet's.
+    avalanche-c: >-
+      **Omits** the feature at an address mainnet has allocated.
+    polygon: >-
+      **Reprices** — an identical result, at up to 22× mainnet's gas.
+    tron: >-
+      **Replaces**: `0x03` returns something that is not RIPEMD160.
+    taiko: >-
+      The quietest flavour — the address is **canonical and empty**, so the call
+      succeeds with no data and no error. It holds for all five Cancun/Prague system
+      contracts, which were never deployed because three forks activated at one
+      timestamp.
+    gnosis: >-
+      **Canonical and empty** at Ethereum's own deposit contract: the call succeeds with
+      no data and no error.
+    scroll: >-
+      The mirror image — OP's GasPriceOracle **ABI at a different address**, while OP's
+      own `0x42..0F` is an empty account, so OP-derived code reads an L1 fee of zero and
+      reports no error.
+    polygon-zkevm: >-
+      Supplies a detection channel the other flavours lack: disabled precompiles stay in
+      the map and so stay WARM (122 gas) while genuinely absent addresses are COLD
+      (2622), which separates the two cases by gas alone.
   body: >-
-    A precompile at a mainnet address can diverge without the address set changing.
-    OP Stack **caps input size**, so an oversized call reverts. Avalanche **omits** the
-    feature. Polygon **reprices**: identical result, up to 22× the gas. Tron
-    **replaces**: `0x03` returns a value that is not RIPEMD160. Each requires a
-    different test to detect.
+    An address that exists on two chains can differ in ways no address diff sees. OP
+    Stack **caps inputs**, so the call reverts. Avalanche **omits** the feature.
+    Polygon **reprices** — identical result, up to 22× the gas. Tron **replaces**:
+    `0x03` returns something that is not RIPEMD160. Taiko and Gnosis add a quieter one:
+    the address is **canonical and empty**, so the call succeeds with no data and no
+    error — on Taiko for all five Cancun/Prague system contracts, which were never
+    deployed because three forks activated at one timestamp; on Gnosis for Ethereum's
+    own deposit contract. Scroll adds the mirror image: OP's GasPriceOracle **ABI at a
+    different address**, while OP's own `0x42..0F` is an empty account, so OP-derived
+    code reads an L1 fee of zero and reports no error. Polygon zkEVM supplies a
+    detection channel the others lack — disabled precompiles stay in the map and so
+    stay WARM (122 gas) while genuinely absent addresses are COLD (2622), which
+    separates the cases by gas alone.
 
 - id: proof-constraints-leak
-  title: Proof-system limits expressed as consensus rules
+  title: Proof-system constraints leak into consensus — and they expire
   axis: precompiles
   rank: 6
-  chains: [op-stack, linea, zksync-era]
+  lede: >-
+    A proof system's constraints leak into consensus rules by unrelated mechanisms — and
+    they are not permanent, so the claim needs a DATE, not just a chain name.
+  chains:
+    op-stack: >-
+      Caps precompile *input size*, so an oversized call reverts. The leak is visible to
+      `eth_call`.
+    linea: >-
+      Budgets prover *work per block* — `RIPEMD_BLOCKS=0`, `BLAKE_ROUNDS=0` — so those
+      precompiles execute in `eth_call` and can never be mined. This is the one row here
+      where `eth_call` cannot see the constraint.
+    zksync-era: >-
+      Caps modexp *operand width* at 32 bytes, 32× tighter than EIP-7823.
+    scroll: >-
+      Disabled `0x03`/`0x09` outright and capped MODEXP the same 32-byte way — then
+      lifted that cap at Galileo (2025-12-16) for EIP-7823's 1024 bytes, lifted its
+      SHA256 and BN256 restrictions earlier, and retired the block-level checker
+      entirely, keeping the two hash tombstones. Scroll is the proof that these
+      constraints expire.
+    polygon-zkevm: >-
+      Runs the arc backwards: MODEXP disabled at forkID 8 and never restored. The leak
+      is visible to `eth_call`.
+    taiko: >-
+      The modern form — prover cost as a metered resource (`zk gas`) rather than a
+      prohibition.
   body: >-
-    Three chains constrain precompiles for proving reasons, by three different
-    mechanisms. OP Stack caps precompile *input size*, and an oversized call reverts.
-    Linea budgets prover *work per block* — `RIPEMD_BLOCKS=0`, `BLAKE_ROUNDS=0` — so
-    those precompiles execute under `eth_call` but no transaction reaching them can be
-    included in a block. zkSync caps modexp *operand width* at 32 bytes, 32× tighter
-    than EIP-7823, which rules out 2048-bit RSA; the source attributes this to circuit
-    limitations directly. Detecting one of the three does not detect the others.
+    Four chains, four unrelated mechanisms, one cause. OP Stack caps precompile *input
+    size*, so the call reverts. Linea budgets prover *work per block* —
+    `RIPEMD_BLOCKS=0`, `BLAKE_ROUNDS=0` — so those precompiles execute in `eth_call` and
+    can never be mined. zkSync caps modexp *operand width* at 32 bytes, 32× tighter than
+    EIP-7823. Scroll disabled `0x03`/`0x09` outright and capped MODEXP the same way.
+    But Scroll also shows the constraints are **not permanent**: it lifted the 32-byte
+    MODEXP cap at Galileo (2025-12-16) for EIP-7823's 1024 bytes, lifted its SHA256 and
+    BN256 restrictions earlier, and retired the block-level checker entirely — while
+    keeping the two hash tombstones. Polygon zkEVM runs the arc backwards, disabling
+    MODEXP at forkID 8 and never restoring it. So the claim needs a DATE, not just a
+    chain name, and the leak is visible to `eth_call` on Scroll and Polygon zkEVM but
+    not on Linea. Taiko is the modern form: prover cost as a metered resource
+    (`zk gas`) rather than a prohibition.
 
 - id: universal-address-broke
   title: 0x0100 across the dataset
   axis: cryptography
   rank: 7
-  chains: [ethereum, bnb, avalanche-c, op-stack, tron, kaia, sei, hyperliquid]
+  lede: >-
+    Eleven rows carry P256VERIFY at `0x0100`, reached through five unrelated forks.
+    Presence at this address indicates neither shared lineage nor a particular fork
+    level, and absence from it does not mean the chain cannot verify P-256.
+  chains:
+    ethereum: >-
+      Reaches `0x0100` through Osaka, and is the semantics and gas the other ten rows
+      are compared against. Mainnet's own note anticipates the problem: the precompile
+      shipped on L2s as RIP-7212 years earlier, at the same address under an earlier
+      fork name.
+    bnb: >-
+      Carries P256VERIFY at `0x0100` with mainnet semantics and mainnet gas, but reaches
+      it at its own Osaka — five months after mainnet activated the fork of that name.
+    avalanche-c: >-
+      Reaches `0x0100` through Granite, out of Ethereum's fork order entirely — an Osaka
+      feature on a chain with no Osaka.
+    op-stack: >-
+      Reaches `0x0100` through Fjord as RIP-7212, long before mainnet Osaka, and
+      diverges on gas: 3450 against mainnet's 6900.
+    tron: >-
+      Reaches `0x0100` by SR governance proposal rather than a client fork — the fourth
+      independent arrival at the address.
+    kaia: >-
+      The control case: mainnet address, mainnet gas, reached through mainnet's own
+      Osaka, with no RIP-7212 early adoption. One of the few rows where `0x0100` is
+      genuinely equivalent rather than merely present.
+    sei: >-
+      The counter-example in one direction: `0x0100` is an ordinary empty account, while
+      Sei's P-256 verifier is at `0x1011` behind an ABI method selector. Reading the
+      address alone puts Sei in the wrong column twice over.
+    hyperliquid: >-
+      The counter-example in the other direction: `0x0100` is absent and behaves exactly
+      like the unallocated `0x0101` — empty success, 21000 gas — with a mainnet control
+      on identical calldata returning `0x00..01`.
   body: >-
     Eleven rows carry P256VERIFY at `0x0100`, reached through five unrelated forks:
     mainnet Osaka, OP Stack Fjord/RIP-7212, Avalanche Granite, Tron, and Kaia. Most
@@ -105,25 +261,85 @@
     indicates neither shared lineage nor a particular fork level.
 
 - id: p256-silent-invalid
-  title: P-256 verification returns empty output on Hyperliquid and Sei
+  title: P-256 verification returns empty output on five chains, for five reasons
   axis: cryptography
   rank: 8
-  chains: [hyperliquid, sei]
+  lede: >-
+    EIP-7951 signals an invalid signature by returning empty output — byte-identical to
+    what a call to an absent precompile returns. Where `0x0100` is empty, every P-256
+    verification against it reports "invalid" with no revert and no error, and a passkey
+    wallet ported there is broken but looks merely strict.
+  chains:
+    hyperliquid: >-
+      `0x0100` is simply an empty account: no P256VERIFY, and nothing to distinguish
+      that from a signature the precompile rejected.
+    sei: >-
+      `0x0100` is empty even though Sei DOES implement P256VERIFY — at `0x1011`,
+      ABI-dispatched as `verify(bytes)` with per-byte gas, where a raw 160-byte RIP-7212
+      call reverts. Code written against `0x0100` finds nothing and is told "invalid";
+      code written against `0x1011` runs.
+    sonic: >-
+      `0x0100` is empty because the precompile map is Prague's and Osaka never
+      activated.
+    injective: >-
+      `0x0100` is empty because the fork level cannot reach Osaka at all, overriding the
+      Cosmos EVM framework's entry, which does carry it. Proven live with a known-valid
+      vector rather than an absence test: geth's own `CallP256Verify` fixture returns
+      `0x` while sha256 at `0x02` on the same call batch returns the correct digest.
+    polygon-zkevm: >-
+      P256VERIFY is implemented as `p256Verify_zkevm` and present only in a forkID that
+      has never activated, so `0x0100` answers empty.
   body: >-
-    On Hyperliquid, `0x0100` is an empty account. On Sei, `0x0100` is also empty even
-    though the chain does implement P256VERIFY — at `0x1011`, ABI-dispatched as
-    `verify(bytes)`, where a raw 160-byte call reverts. EIP-7951 signals an invalid
-    signature by returning empty output, which is byte-identical to what a call to an
-    absent precompile returns. Every P256 verification against `0x0100` on either chain
-    therefore reports "invalid" with no revert and no error. Distinguishing the two
-    cases requires a **valid** signature plus a mainnet control on identical calldata;
-    calling the address and checking for output cannot separate them.
+    EIP-7951 signals an invalid signature by returning empty output — byte-identical to
+    what a call to an absent precompile returns. On five rows here `0x0100` is empty, so
+    every P-256 verification against it reports "invalid" with no revert and no error,
+    and each row gets there differently. On Hyperliquid the address is simply an empty
+    account. On Sei it is empty even though the chain DOES implement P256VERIFY, at
+    `0x1011`, ABI-dispatched as `verify(bytes)`, where a raw 160-byte call reverts. On
+    Sonic the precompile map is Prague's and Osaka never activated. On Injective the
+    fork level cannot reach Osaka at all, overriding the Cosmos EVM framework's entry,
+    which does carry it. On Polygon zkEVM it is implemented as `p256Verify_zkevm` and
+    present in a forkID that has never activated. A passkey wallet ported to any of them
+    is broken and looks merely strict. Distinguishing the cases requires a **valid**
+    signature plus a mainnet control on identical calldata; calling the address and
+    checking for output cannot separate them — which is why an address-diff survey
+    reports all five as fine.
 
 - id: verify-is-not-sign
   title: Precompile verification and transaction authorization are independent
   axis: cryptography
   rank: 9
-  chains: [base, sei, kaia, zksync-era]
+  lede: >-
+    Whether a precompile can verify a signature scheme and whether that scheme can
+    authorize a transaction are separate properties. Eleven rows carry P256VERIFY; on
+    almost all of them a P-256 key cannot authorize a transfer, because the precompile
+    is callable by contracts and is not an authentication method for senders.
+    `tx_authorization` records the two separately.
+  chains:
+    base: >-
+      The sharpest counter-example in the dataset. EIP-8130 enshrines a CLOSED set of
+      authenticators in the client — `AuthenticatorDispatch` routes a 20-byte selector
+      through a hardcoded chain over four canonical values — so on Base a P-256 or
+      WebAuthn key really can move a wei, and it is the CLIENT verifying the signature,
+      not account code. The same curve that is a contract tool elsewhere is a
+      first-class transaction signer here.
+    sei: >-
+      Sei has two authorization surfaces and only one is Ethereum's. An Ethereum
+      transaction is secp256k1, recovered and stamped with no alternative branch — so
+      `0x1011`'s P-256 verifier is a tool for contracts and nothing more. The Cosmos
+      ante chain beside it admits a different key set entirely.
+    kaia: >-
+      Kaia closes the usual gap in one direction and not the other: the `validateSender`
+      precompile at `0x03ff` runs the exact same `ValidateAccountKey` the consensus path
+      runs, weighted-multisig arithmetic included, so bytecode CAN check the chain's own
+      authorization scheme — but it hardcodes `RoleTransaction`, leaving two of three
+      roles unreachable.
+    zksync-era: >-
+      The opposite pole: there is NO protocol-level signature check at all. The
+      bootloader accepts a transaction if the sender's own account returns the
+      validation magic, so the account's CODE is the authentication rule and the scheme
+      set is open and unbounded. Which precompiles exist says nothing about what can
+      authorize.
   body: >-
     Whether a precompile can verify a signature scheme and whether that scheme can
     authorize a transaction are separate properties. Eleven rows carry P256VERIFY; on
@@ -135,7 +351,26 @@
   title: Schemes that authorize transactions with no precompile able to verify them
   axis: cryptography
   rank: 10
-  chains: [sei, kaia]
+  lede: >-
+    `authorizes: protocol` together with `precompile: none` is the pairing to look for:
+    the chain accepts transaction signatures that its own contracts cannot check, so an
+    on-chain multisig, verifier or recovery contract cannot validate what the protocol
+    accepted.
+  chains:
+    sei: >-
+      Two of the three unpaired schemes in the dataset are Sei's: **sr25519**
+      (Schnorrkel over Ristretto255, a curve family this chain's EVM cannot compute) and
+      its Cosmos **multisig**. A bank send authorized by an sr25519 signature moves a
+      balance the EVM reads directly — `GetBalance` byte-casts the address — yet nothing
+      on the chain, not Sei's `0x1001`–`0x1011` block nor the geth fork's `0x01`–`0x11`,
+      can verify that signature.
+    kaia: >-
+      Kaia's **role-based keys** are unpaired for two of their three roles.
+      `validateSender` at `0x03ff` hardcodes `accountkey.RoleTransaction`, while a
+      RoleBased account indexes its key list BY ROLE — so the `RoleFeePayer` and
+      `RoleAccountUpdate` keys authorize at the protocol level and no precompile on the
+      chain can check either. A query about a fee-payer authorization returns an
+      incorrect answer without reverting.
   body: >-
     Three schemes have `authorizes: protocol` with `precompile: none`: the chain
     accepts transaction signatures that its own contracts cannot check, so an on-chain
@@ -164,7 +399,30 @@
   title: Variation among OP Stack descendants
   axis: lineage
   rank: 12
-  chains: [optimism, base, opbnb, celo, worldchain]
+  lede: >-
+    Resolving `ethereum → op-stack → X` does not determine X's type-byte set, its
+    precompiles, or even its fork schedule.
+  chains:
+    optimism: >-
+      OP Mainnet's delta file is empty — it is the stack itself, with nothing added on
+      top.
+    base: >-
+      On the same stack and the same client version as OP Mainnet, Base reimplements the
+      EVM layer in Rust and adds five fixed precompiles, a dynamic precompile range,
+      native account abstraction (EIP-8130) with its own type byte `0x79`, and four
+      chain-specific forks.
+    opbnb: >-
+      opBNB carries BSC's precompiles rather than the stack's, and is pinned three fork
+      generations back.
+    celo: >-
+      Celo adds type `0x7b` (CIP-64, gas paid in an ERC-20), which accounts for 61% of
+      transactions in the blocks sampled.
+    worldchain: >-
+      World Chain adds no type byte and no precompile, and diverges on the schedule
+      instead: Isthmus landed 2025-11-25, over six months after mainnet Prague and after
+      OP Mainnet's own Isthmus, and there is no `karst_time` in the registry at all
+      while OP Mainnet activated Karst on 2026-07-08. Two chains on one stack are not on
+      one fork level.
   body: >-
     OP Mainnet's delta file is empty. Base, on the same stack and client version,
     reimplements the EVM layer in Rust and adds five fixed precompiles, a dynamic
@@ -178,7 +436,19 @@
   title: Fork names and EIP sets diverge in both directions
   axis: eips
   rank: 13
-  chains: [bnb, avalanche-c, op-stack]
+  lede: >-
+    Fork names are recorded as claims; the `eips:` map is the measurement. The two
+    diverge in both directions.
+  chains:
+    bnb: >-
+      BSC activated Prague seven weeks BEFORE mainnet and Osaka five months AFTER — the
+      same two names, on both sides of mainnet's own dates.
+    avalanche-c: >-
+      Avalanche has P256VERIFY (an Osaka feature) without BLS12-381 (a Prague feature),
+      so no mainnet fork name describes its EIP set.
+    op-stack: >-
+      The precompile switch tests `IsOptimismJovian` before `IsOsaka`, so activating
+      Osaka does not restore mainnet semantics.
   body: >-
     BSC activated Prague seven weeks before mainnet and Osaka five months after.
     Avalanche has P256VERIFY (an Osaka feature) without BLS12-381 (a Prague feature).
@@ -186,21 +456,103 @@
     activating Osaka does not restore mainnet semantics. Fork names are recorded as
     claims; the `eips:` map is the measurement.
 
-- id: four-activation-mechanisms
-  title: Four fork-activation mechanisms
+- id: fork-activation-mechanisms
+  title: At least thirteen ways a chain decides a feature is active
   axis: eips
   rank: 14
-  chains: [op-stack, avalanche-c, arbitrum, polygon]
+  lede: >-
+    "When does feature X become active on chain Y" has no general answer. Mainnet uses a
+    timestamp; reading a fork timestamp is not a portable method, because on much of
+    this dataset there is no timestamp and on some of it no client-side schedule to read
+    at all.
+  chains:
+    op-stack: >-
+      A timestamp — whose equality with its own fork name is ENFORCED at startup.
+    avalanche-c: >-
+      Aliases mainnet fork names onto its own timestamps (`ShanghaiTime = durango`), so
+      the mainnet name is a label, not a schedule.
+    arbitrum: >-
+      Gates on an ArbOS version counter and short-circuits the timestamp path entirely.
+    polygon: >-
+      Uses block numbers (`CancunBlock`), so a tool grepping for `cancunTime` finds
+      nothing.
+    kaia: >-
+      Uses block numbers too, spelled `<Fork>CompatibleBlock` — so a tool grepping for
+      either `cancunTime` or `CancunBlock` finds nothing.
+    sonic: >-
+      Boolean flags in on-chain network rules, changed by a governed call and effective
+      at the next epoch, with the block height recorded only after the fact.
+    moonbeam: >-
+      No fork names, times, block numbers or client-side gate at all: the EVM ruleset is
+      a constant inside a WASM runtime that governance replaces wholesale in state.
+    polygon-zkevm: >-
+      The `forkID` is not in the client. It is announced by an EVENT ON ETHEREUM L1,
+      applies from a BATCH number, and is translated to an L2 block only at sync time —
+      and forkID 10 covered zero batches while still changing two consensus rules.
+    zksync-era: >-
+      Ships upgrades as transaction type `0xfe` carrying new system bytecode hashes,
+      with no fork name or timestamp anywhere.
+    cosmos-evm: >-
+      Keeps the fork level in module state, movable by governance, with the real upgrade
+      axis being named SDK upgrade handlers scheduled at a height.
+    monad: >-
+      Gates its params ladder on the consensus ROUND — a different axis from its own
+      timestamped EVM ladder, so the chain has two schedules at once.
+    tron: >-
+      Activates features by SR governance proposal, not by client release.
+    hyperliquid: >-
+      Publishes no schedule at all: no fork names, no timestamps over RPC. Its
+      small-block gas limit changed somewhere between block 10,000,000 and 20,000,000,
+      with no fork to name.
   body: >-
-    OP Stack enforces timestamp equality at startup. Avalanche assigns timestamps.
-    Arbitrum gates on ArbOS version and ignores timestamps. Polygon uses block numbers.
-    Reading a fork timestamp is not a general method across this dataset.
+    "When does feature X become active on chain Y" has no general answer. Mainnet uses
+    a timestamp. Polygon and Kaia use block numbers (`CancunBlock`, and Kaia's
+    `<Fork>CompatibleBlock`, so a tool grepping for `cancunTime` finds nothing). OP
+    Stack uses a timestamp whose equality with its own fork is ENFORCED at startup.
+    Avalanche and Flare alias mainnet fork names onto their own timestamps
+    (`ShanghaiTime = durango`). Arbitrum gates on an ArbOS version counter and
+    short-circuits the timestamp path entirely. Monad gates its params ladder on the
+    consensus ROUND, on a different axis from its timestamped EVM ladder. Sonic uses
+    boolean flags in on-chain network rules, changed by a governed call and effective
+    at the next epoch, with the block height recorded only after the fact. The Cosmos
+    EVM family keeps the fork level in module state, movable by governance, with the
+    real upgrade axis being named SDK upgrade handlers scheduled at a height. Moonbeam
+    has no fork names, times, block numbers or client-side gate at all: the EVM ruleset
+    is a constant inside a WASM runtime that governance replaces wholesale in state.
+    Polygon zkEVM's `forkID` is not in the client — it is announced by an EVENT ON
+    ETHEREUM L1, applies from a BATCH number, and is translated to an L2 block only at
+    sync time; forkID 10 covered zero batches and still changed two consensus rules.
+    zkSync Era ships upgrades as transaction type `0xfe` carrying new system bytecode
+    hashes, with no fork name or timestamp anywhere. Tron activates features by SR
+    governance proposal. And Hyperliquid publishes no schedule at all — its small-block
+    gas limit changed between block 10,000,000 and 20,000,000 with no fork to name.
+    Reading a fork timestamp is not a general method; on much of this dataset there is
+    no timestamp, and on some of it there is no client-side schedule to read.
 
 - id: no-type-byte
   title: Transactions outside the EIP-2718 envelope
   axis: tx-types
   rank: 15
-  chains: [avalanche-c, tron, sei]
+  lede: >-
+    Not every transaction a chain executes carries an EIP-2718 type byte. The ones that
+    do not need their own `non_evm_transactions` section, and an indexer enumerating
+    through the EVM envelope does not see them.
+  chains:
+    avalanche-c: >-
+      The atomic import and export transactions (UTXO, Avalanche codec) carry no type
+      byte, so an indexer reading the EVM envelope does not see the chain's cross-chain
+      value movement at all.
+    tron: >-
+      All 43 protobuf contract types carry no type byte — the whole transaction set sits
+      outside the envelope.
+    sei: >-
+      Two populations sit outside the envelope: Sei's own EVM-module Cosmos messages,
+      which change EVM-visible state without ever being an Ethereum transaction, and a
+      synthetic receipt kind emitted for Cosmos/CosmWasm transactions that produced
+      EVM-shaped logs. `AssociateTx` is the sharp case — no type byte (`TxType()`
+      panics), no nonce, no gas limit, no gas price, no recipient, no value, and free: a
+      state-changing, zero-fee, nonce-less transaction no Ethereum tooling can
+      construct, decode or account for.
   body: >-
     Avalanche's atomic import and export transactions (UTXO, Avalanche codec) and all
     43 of Tron's protobuf contract types carry no EIP-2718 type byte. Two chains with
@@ -212,7 +564,18 @@
   title: Opcode placement and semantic fidelity vary independently
   axis: opcodes
   rank: 16
-  chains: [tron, bnb]
+  lede: >-
+    Where a chain puts its custom opcodes and precompiles, and how faithful the
+    semantics at mainnet's own addresses are, vary independently.
+  chains:
+    tron: >-
+      The most divergent chain here is disciplined about placement — 16 custom opcodes
+      at `0xd0`–`0xdf`, a range mainnet has never allocated — and undisciplined about
+      fidelity: `batchValidateSign` sits on BLAKE2F's `0x09`, and `0x03` returns a value
+      that is not RIPEMD160.
+    bnb: >-
+      The most mainnet-faithful EVM here placed its custom precompiles at `0x64`–`0x69`,
+      leaving `0x12`–`0x63` as headroom before mainnet's upward allocation reaches them.
   body: >-
     Tron, the most divergent chain here, placed its 16 custom opcodes at `0xd0`–`0xdf`,
     a range mainnet has never allocated. The same chain placed `batchValidateSign` on
@@ -224,7 +587,17 @@
   title: Tombstoned precompile addresses
   axis: precompiles
   rank: 17
-  chains: [avalanche-c, bnb]
+  lede: >-
+    A tombstoned address is kept alive as an always-reverting stub rather than removed,
+    so it is permanently consumed — and it fails differently from an absent one, which
+    returns success with empty output. Two chains adopted the pattern independently.
+  chains:
+    avalanche-c: >-
+      The native-asset trio at `0x0100..00-02` is the clearest example in the dataset of
+      precompile addresses being permanently consumed: they cannot be reused and cannot
+      be removed, only made to revert.
+    bnb: >-
+      BSC tombstoned `0x64` and `0x65` at Pasteur rather than removing them.
   body: >-
     Avalanche's native-asset trio and BSC's `0x64` and `0x65` (at Pasteur) are kept
     alive as always-reverting stubs rather than removed. The addresses are permanently
@@ -232,22 +605,731 @@
     differently from an absent one, which returns success with empty output.
 
 - id: fields-outlive-features
-  title: Header fields reused after the feature behind them
+  title: Header fields carrying something other than their Ethereum meaning
   axis: fees-envelope
   rank: 18
-  chains: [op-stack, avalanche-c]
+  lede: >-
+    A header field's name is not its meaning. Reading a header by JSON key name is not a
+    portable operation.
+  chains:
+    op-stack: >-
+      `blobGasUsed` carries the DA footprint, not blob gas.
+    avalanche-c: >-
+      `blobGasUsed` is a pinned zero that REJECTS any other value.
+    linea: >-
+      `extraData` carries Linea's own payload rather than anything mainnet defines.
+    scroll: >-
+      `extraData` carries Scroll's payload — and the block seal rides inside it, is
+      stripped over RPC, and is excluded from `Header.Hash()`, so the block hash does
+      not commit to the signature authorising the block.
+    taiko: >-
+      The block's zk gas goes in `difficulty` and is recomputed at import, breaking the
+      near-universal post-merge `difficulty == 0` test.
+    sonic: >-
+      Three at once: `blobGasUsed` is a pinned zero from which `BLOBBASEFEE = 1` is
+      derived, `extraData` carries block timing that feeds the next block's base fee,
+      and the header is a 19-item RLP list with no `parentBeaconBlockRoot` and no
+      `requestsHash` while the EVM is Prague — a changed field COUNT, not just a changed
+      meaning.
+    mantle: >-
+      `blobGasUsed` is the DA footprint and — uniquely in this dataset — DRIVES THE BASE
+      FEE; `extraData` carries 17 bytes of 1559 parameters.
+    berachain: >-
+      The header is a 22-item RLP list. The extra field is a 48-byte proposer public
+      key, proven by reconstructing the block hash.
+    arc: >-
+      `extraData` carries an 8-byte required child base fee.
   body: >-
-    OP Stack repurposed `blobGasUsed` to carry the DA footprint. Avalanche pins the
-    same field to zero and rejects any other value. One field name, one JSON key, three
-    meanings across the dataset.
+    A header field's name is not its meaning. `blobGasUsed` alone has five: mainnet's
+    blob gas, OP Stack's DA footprint, Avalanche's pinned zero that rejects any other
+    value, Sonic's pinned zero from which `BLOBBASEFEE = 1` is derived, and Mantle's DA
+    footprint which — uniquely — DRIVES THE BASE FEE. `extraData` carries Linea's and
+    Scroll's data, Sonic's block timing (feeding the next block's base fee), Arc's
+    8-byte required child base fee, and Mantle's 17-byte 1559 parameters. Taiko puts the
+    block's zk gas in `difficulty` and recomputes it at import, breaking the
+    near-universal post-merge `difficulty == 0` test. Two rows change the field COUNT:
+    Sonic's header is a 19-item RLP list with no `parentBeaconBlockRoot` and no
+    `requestsHash` while its EVM is Prague, and Berachain's is 22 items — the extra one
+    a 48-byte proposer public key, proven by reconstructing the block hash. Scroll's
+    seal rides inside `extraData`, is stripped over RPC, and is excluded from
+    `Header.Hash()`, so the block hash does not commit to the signature authorising the
+    block. Reading a header by JSON key name is not a portable operation.
 
 - id: schema-meets-new-axes
   title: Axes the schema does not model
   axis: method
   rank: 19
-  chains: [arbitrum, base, opbnb]
+  lede: >-
+    Some rows do not fit the schema's axes. Each is recorded explicitly rather than
+    reduced to a zero the schema can hold.
+  chains:
+    arbitrum: >-
+      Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and
+      omits a second virtual machine.
+    base: >-
+      Base's precompiles are resolved by predicate and are not enumerable, so no
+      address-keyed column can hold them.
+    opbnb: >-
+      opBNB has two parents — the OP Stack and BSC — and the lineage axis models one
+      ancestry per kind.
   body: >-
     Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is
     accurate and omits a second virtual machine. Base's precompiles are not enumerable.
     opBNB has two parents. Each is recorded explicitly rather than reduced to a zero
     the schema can hold.
+
+- id: getcode-proves-nothing
+  title: eth_getCode cannot tell a precompile from a contract
+  axis: precompiles
+  rank: 20
+  lede: >-
+    SCHEMA.md distinguishes a precompile (native code, no bytecode in state) from a
+    system contract (real bytecode at a fixed address), and the obvious test is
+    `eth_getCode`: empty means precompile. That test fails on eight rows here, in six
+    shapes, in BOTH directions. Classification has to come from the client's precompile
+    map; a probe can only corroborate it.
+  chains:
+    flare: >-
+      Fails in both directions on one chain. The Warp precompile answers `0x01`,
+      inherited from Avalanche's deliberate `extcodesize` stub — while Flare's
+      `0x1000…0001–0007`, cited elsewhere as custom precompiles, are ordinary system
+      contracts with real genesis bytecode.
+    sonic: >-
+      Writes a 1-byte `0x00` stub at EvmWriter, so the probe reports a contract.
+    cosmos-evm: >-
+      Writes a **full ~24KB ERC-20 runtime** at its dynamic token precompiles that is
+      never executed and decompiles into the contract it impersonates.
+    moonbeam: >-
+      Breaks it the other way. `PrecompileRegistry.updateAccountCode` at `0x0815` writes
+      a 5-byte revert stub into any precompile's account and **anyone may call it**, so
+      36 of 47 addresses carry code — including all nine of mainnet's, making
+      `EXTCODESIZE(0x01) == 5` — while several genuine precompiles return `0x`.
+    tempo: >-
+      Writes `0xef`, giving `EXTCODESIZE == 1` — indistinguishable by size from a real
+      one-byte contract.
+    arc: >-
+      Writes `0x01`, giving `EXTCODESIZE == 1` — indistinguishable by size from a real
+      one-byte contract.
+    avalanche-c: >-
+      `ApplyPrecompileActivations` deliberately writes `nonce=1, code=0x01` at its
+      precompiles so Solidity's `extcodesize` guard passes — the origin of the pattern
+      several rows here inherit.
+    injective: >-
+      The family counter-example: Injective vendors the Cosmos EVM module but writes NO
+      code stub, so `eth_getCode` at its precompiles returns `0x` live where the
+      framework it derives from returns a 24KB ERC-20 runtime. Same family, opposite
+      answer from the same probe — which is why the probe cannot be the classifier.
+  body: >-
+    SCHEMA.md distinguishes a precompile (native code, no bytecode in state) from a
+    system contract (real bytecode at a fixed address), and the obvious test is
+    `eth_getCode`: empty means precompile. That test fails on eight rows here, in six
+    different shapes, and it fails in BOTH directions. Avalanche's `ApplyPrecompileActivations`
+    deliberately writes `nonce=1, code=0x01` at its precompiles so Solidity's
+    `extcodesize` guard passes — so Flare's Warp precompile answers `0x01`. Sonic writes
+    a 1-byte `0x00` stub at EvmWriter. Tempo writes `0xef`; Arc writes `0x01`; both give
+    `EXTCODESIZE == 1`, indistinguishable by size from a real one-byte contract. Cosmos
+    EVM writes a **full ~24KB ERC-20 runtime** at its dynamic token precompiles that is
+    never executed and decompiles into the contract it impersonates. Moonbeam breaks it
+    the other way too: `PrecompileRegistry.updateAccountCode` at `0x0815` writes a
+    5-byte revert stub into any precompile's account and **anyone may call it**, so 36
+    of 47 addresses carry code — including all nine of mainnet's, making
+    `EXTCODESIZE(0x01) == 5` — while several genuine precompiles return `0x`. Conversely
+    Flare's `0x1000…0001–0007`, cited elsewhere as custom precompiles, are ordinary
+    system contracts with real genesis bytecode. Classification has to come from the
+    client's precompile map; a probe can only corroborate it.
+
+- id: second-meter-failures
+  title: A second resource meter, and five ways it fails your transaction
+  axis: fees-envelope
+  rank: 21
+  lede: >-
+    Gas is no longer the only thing a transaction can run out of, and the failure modes
+    share nothing. A transaction can be rejected, truncated away, silently dropped, or
+    charged for work it never did, and only one of those is visible as an ordinary
+    revert.
+  chains:
+    taiko: >-
+      zk gas (100M per block) **truncates the block**: the offending transaction and
+      every one after it are dropped and the block stays valid — with no
+      `eth_estimateZkGas` to predict it.
+    linea: >-
+      **Discards with no receipt** — no revert, and no charge.
+    polygon-zkevm: >-
+      **Discards with no receipt** — no revert, no charge, and the hash is blacklisted
+      from the pool afterwards.
+    moonbeam: >-
+      Meters four resources — gas, Weight ref_time at a compile-time 25,000 ps/gas, PoV
+      proof size at gas/8, and storage growth at gas/366 — and the last two fail as
+      **OutOfGas with EVM gas remaining**.
+    megaeth: >-
+      Halts, **refunds the remaining gas**, and mines a `status: 0` receipt.
+    sonic: >-
+      Inverts the idea: it charges 10% of the gas you did NOT use, verified live to the
+      wei, while `eth_estimateGas` returns the true figure — so padding an estimate
+      transfers value.
+  body: >-
+    Gas is no longer the only thing a transaction can run out of, and the failure modes
+    share nothing. Taiko's zk gas (100M per block) **truncates the block**: the offending
+    transaction and every one after it are dropped and the block stays valid, with no
+    `eth_estimateZkGas` to predict it. Linea and Polygon zkEVM **discard with no
+    receipt** — no revert, no charge, and on Polygon the hash is blacklisted from the
+    pool. Moonbeam meters four resources (gas, Weight ref_time at a compile-time 25,000
+    ps/gas, PoV proof size at gas/8, storage growth at gas/366) and the last two fail as
+    **OutOfGas with EVM gas remaining**. MegaETH halts, **refunds the remaining gas**,
+    and mines a `status: 0` receipt. Sonic inverts the idea: it charges 10% of the gas
+    you did NOT use, verified live to the wei, while `eth_estimateGas` returns the true
+    figure — so padding an estimate transfers value. A transaction can be rejected,
+    truncated away, silently dropped, or charged for work it never did, and only one of
+    those five is visible as an ordinary revert.
+
+- id: no-native-asset
+  title: What the EVM does when the gas token is not a native 18-decimal asset
+  axis: fees-envelope
+  rank: 22
+  lede: >-
+    `msg.value`, `BALANCE`, `SELFBALANCE`, `CALL`'s value argument and `eth_getBalance`
+    all assume one native 18-decimal asset. The rows here break that assumption in
+    different places.
+  chains:
+    tempo: >-
+      **Deletes the native asset outright.** `value != 0` is rejected at admission,
+      `BALANCE` and `SELFBALANCE` return 0, and the base fee is denominated in
+      attodollars rather than any token — while `eth_getBalance` returns a FABRICATED
+      CONSTANT for every address at every block, ignoring both arguments, so the RPC and
+      the EVM contradict each other about the same account in the same block.
+    arc: >-
+      Makes USDC native at the cost of a duplicated unit: `USDC.balanceOf(a) ==
+      eth_getBalance(a) // 10**12`, integer division — so every account carries
+      sub-microdollar dust the token interface can neither see nor move, and one
+      transfer emits two `Transfer` logs with two different amounts.
+    celo: >-
+      Keeps a native token and pays gas in an ERC-20, through a custom transaction type.
+    mantle: >-
+      Makes an ERC-20 the native token, needing no new transaction type at all.
+    gnosis: >-
+      The control at the other end: a different gas token, mainnet's 1559 parameters to
+      the digit, and the base fee credited to a collector rather than burned.
+    plasma: >-
+      The null result — the zero-fee stablecoin path is ERC-4337, not consensus, and 0
+      of 274 sampled transactions paid a zero gas price.
+  body: >-
+    `msg.value`, `BALANCE`, `SELFBALANCE`, `CALL`'s value argument and `eth_getBalance`
+    all assume one native 18-decimal asset, and four rows here break that assumption
+    four ways. Celo keeps a native token and pays gas in an ERC-20 via a custom tx type.
+    Mantle makes an ERC-20 the native token, needing no new type at all. **Arc** makes
+    USDC native at the cost of a duplicated unit — `USDC.balanceOf(a) ==
+    eth_getBalance(a) // 10**12`, integer division, so every account carries
+    sub-microdollar dust the token interface can neither see nor move, and one transfer
+    emits two `Transfer` logs with two different amounts. **Tempo deletes the native
+    asset outright**: `value != 0` is rejected at admission, `BALANCE` and `SELFBALANCE`
+    return 0, the base fee is denominated in attodollars rather than any token — and
+    `eth_getBalance` returns a FABRICATED CONSTANT for every address at every block,
+    ignoring both arguments, so the RPC and the EVM contradict each other about the same
+    account in the same block. Gnosis is the control at the other end: a different gas
+    token, mainnet's 1559 parameters to the digit, and the base fee credited to a
+    collector rather than burned. Plasma is the null result — its zero-fee stablecoin
+    path is ERC-4337, not consensus, and 0 of 274 sampled transactions paid a zero gas
+    price.
+
+- id: stale-coordinates
+  title: Four of fifteen candidate clients were at the wrong address
+  axis: method
+  rank: 23
+  lede: >-
+    The repository coordinates a chain publishes are not durable, and the drift is
+    invisible until a clone fails. Of fifteen chains scheduled in one pass, four were
+    not where the backlog said. Pinning a commit protects a fact once found; it does not
+    help you find the client.
+  chains:
+    gnosis: >-
+      `gnosischain/gnosis` **404s**. The live chainspec is inside Nethermind, while
+      `gnosischain/configs`' genesis is frozen pre-Merge.
+    injective: >-
+      `InjectiveLabs/injective-core` **moved orgs**, to `InjectiveFoundation`.
+    mantle: >-
+      `mantlenetworkio` **redirects** to `mantle-xyz`.
+    polygon-zkevm: >-
+      `0xPolygonHermez/zkevm-node` is **archived** and replaced by a different client,
+      `0xPolygon/cdk-erigon`, whose contracts moved to a third org.
+    linea: >-
+      Linea had already shown the pattern before this pass: Consensys → LFDT-Lineth,
+      hyperledger/besu → besu-eth. Here as on three of the four others, the running
+      network was identified by asking it — `web3_clientVersion` — rather than by
+      reading a document.
+  body: >-
+    The repository coordinates a chain publishes are not durable, and the drift is
+    invisible until a clone fails. Of fifteen chains scheduled in one pass, four were
+    not where the backlog said: `gnosischain/gnosis` **404s** (the live chainspec is
+    inside Nethermind, while `gnosischain/configs`' genesis is frozen pre-Merge),
+    `InjectiveLabs/injective-core` **moved orgs** to `InjectiveFoundation`,
+    `mantlenetworkio` **redirects** to `mantle-xyz`, and `0xPolygonHermez/zkevm-node` is
+    **archived** and replaced by a different client (`0xPolygon/cdk-erigon`) whose
+    contracts moved to a third org. Linea had already shown the pattern: Consensys →
+    LFDT-Lineth, hyperledger/besu → besu-eth. In three of the five cases the running
+    network was identified only by asking it — `web3_clientVersion` — rather than by
+    reading a document. Pinning a commit protects a fact once found; it does not help
+    you find the client.
+
+- id: ordered-then-invalid
+  title: A transaction ordered before it is executed has seven different fates
+  axis: method
+  rank: 24
+  lede: >-
+    Mainnet checks nonce, balance and gas price *before* a transaction is ordered, so
+    "ordered but invalid" is not a state it can reach. Every chain that separates
+    ordering from execution has to invent an answer, and the rows here have invented
+    seven. There is no portable answer to "was my transaction included".
+  chains:
+    conflux: >-
+      **Erases it.** A third receipt outcome, `TransactionStatus::Skipped`, then deletes
+      the transaction from the block, the transaction index and
+      `eth_getTransactionReceipt` alike — so it is indistinguishable from a transaction
+      never submitted, forever.
+    iota-evm: >-
+      **Erases it.** Rejection happens at the ISC request layer before the EVM is
+      entered, so there is no receipt to write and none ever appears.
+    artela: >-
+      **Erases it.** The indexing event is emitted from the *last* ante decorator, so an
+      ante failure leaves the CometBFT index with no entry while the transaction sits
+      provably in the block.
+    rollkit: >-
+      **Erases it.** The builder logs a `warn!` and does not append;
+      `eth_getTransactionReceipt` returns null forever.
+    taraxa: >-
+      **The counter-pole:** no skip path at all. The transaction is included, charged
+      the full gas limit, and gets a `status: 0` receipt.
+    autonomys: >-
+      **Escalates.** The offending transaction poisons its whole `Bundle`, every valid
+      co-passenger is dropped, and the operator is automatically slashed under
+      `SlashedReason::InvalidBundle`.
+    berachain: >-
+      **Rejects the block.** The EVM sits behind the Engine API, whose `newPayload`
+      verdict has no per-transaction skip, so `ProcessProposal` returns REJECT and the
+      client sees nothing at all.
+    rise: >-
+      **Makes the state unreachable** — it admits synchronously and publishes only after
+      executing, so the ordered-but-invalid state never exists to be observed.
+    megaeth: >-
+      **Makes the state unreachable** by the opposite route — the state is created
+      inside the builder and resolved before publication.
+    monad: >-
+      **Charges it**, inside execution.
+    hedera: >-
+      **Bills it without ever executing it, and the bill may land on the node.** Fees
+      are charged before the handler is reached, and the split is by *who was negligent*
+      rather than by what failed: a due-diligence failure (expiry re-checked against the
+      consensus clock, a bad payer signature) debits the submitting **node's** account
+      and the payer nothing, while a duplicate or an unaffordable service fee debits the
+      **payer** and never calls the handler. It is the only row where the node pays for
+      the sender's invalid transaction. A record always exists, because Hedera cannot
+      drop something that reached consensus — but for a wrapped Ethereum transaction the
+      Ethereum hash is written only inside the handler, so the `eth_*` view is null
+      forever anyway.
+  body: >-
+    Mainnet checks nonce, balance and gas price *before* a transaction is ordered, so
+    "ordered but invalid" is not a state it can reach. Every chain that separates
+    ordering from execution has to invent an answer, and ten rows here have invented
+    seven. **Erasure, by four unrelated mechanisms:** Conflux defines a third receipt
+    outcome, `TransactionStatus::Skipped`, then deletes the transaction from the block,
+    the transaction index and `eth_getTransactionReceipt` alike; IOTA EVM rejects at the
+    ISC request layer before the EVM is entered, so there is no receipt to write; Artela
+    emits its indexing event from the *last* ante decorator, so an ante failure leaves
+    the CometBFT index with no entry while the transaction sits provably in the block;
+    Rollkit's builder logs a `warn!` and does not append. In all four,
+    `eth_getTransactionReceipt` returns null forever and the transaction is
+    indistinguishable from one never submitted. **Taraxa is the counter-pole:** no skip
+    path at all — included, charged the full gas limit, `status: 0`. **Autonomys
+    escalates:** the offending transaction poisons its whole `Bundle`, every valid
+    co-passenger is dropped, and the operator is automatically slashed under
+    `SlashedReason::InvalidBundle`. **Berachain rejects the block:** the EVM sits behind
+    the Engine API, whose `newPayload` verdict has no per-transaction skip, so
+    `ProcessProposal` returns REJECT and the client sees nothing at all. **RISE and
+    MegaETH make the state unreachable**, by opposite routes — RISE admits synchronously
+    and publishes only after executing, MegaETH creates the state inside the builder and
+    resolves it before publication. **Monad charges it**, inside execution. **Hedera bills
+    it without ever executing it, and the bill may land on the node**: fees are charged
+    before the handler is reached, and the split is by *who was negligent* rather than by
+    what failed — a due-diligence failure (expiry re-checked against the consensus clock, a
+    bad payer signature) debits the submitting **node's** account and the payer nothing,
+    while a duplicate or an unaffordable service fee debits the **payer** and never calls
+    the handler. It is the only row where the node pays for the sender's invalid
+    transaction. A record always exists, because Hedera cannot drop something that reached
+    consensus — but for a wrapped Ethereum transaction the Ethereum hash is written only
+    inside the handler, so the `eth_*` view is null forever anyway. There is no portable
+    answer to "was my transaction included", and a null receipt means "still pending" on
+    some of these chains, "gone forever" on others, and "gone, and you were charged" on
+    one.
+
+- id: cometbft-el-boundary
+  title: Same consensus engine, opposite failure mode — the Engine API is the discriminator
+  axis: lineage
+  rank: 25
+  lede: >-
+    Two chains run the same consensus engine, CometBFT, and must answer the same
+    question — what happens to a transaction that is in a proposal but invalid when it
+    executes. They answer oppositely, and the discriminator is not the consensus engine
+    but whether the EVM is inside the ABCI application or behind the Engine API.
+  chains:
+    berachain: >-
+      The EVM is a separate process reached over the Engine API, whose
+      `engine_newPayload` verdict covers the whole payload with no per-transaction skip
+      — so failure is **per-block**. `ProcessProposal` returns
+      `PROCESS_PROPOSAL_STATUS_REJECT`, CometBFT re-proposes the height, and an RPC
+      client observes nothing at all. Berachain goes further: CometBFT never orders EVM
+      transactions in the first place, since `prepareProposal` ignores `req.Txs` and
+      returns exactly two entries, the SSZ beacon block and its blob sidecars.
+    artela: >-
+      The EVM is in-process behind an ante-handler chain, so failure is
+      **per-transaction**: the transaction is erased, provably in the CometBFT block yet
+      with no index entry and a permanently null receipt.
+  body: >-
+    Berachain and Artela both run CometBFT and both must answer what happens to a
+    transaction that is in a proposal but invalid when it executes. They answer
+    oppositely, and the discriminator is not the consensus engine but **where the EVM
+    runs**. Artela's EVM is in-process behind an ante-handler chain, so failure is
+    per-transaction: the transaction is erased, provably in the CometBFT block yet with
+    no index entry and a permanently null receipt. Berachain's EVM is a separate process
+    reached over the Engine API, whose `engine_newPayload` verdict covers the whole
+    payload with no per-transaction skip, so failure is per-block — `ProcessProposal`
+    returns `PROCESS_PROPOSAL_STATUS_REJECT`, CometBFT re-proposes the height, and an
+    RPC client observes nothing at all. Berachain goes further: CometBFT never orders
+    EVM transactions in the first place, since `prepareProposal` ignores `req.Txs` and
+    returns exactly two entries, the SSZ beacon block and its blob sidecars. Any
+    generalisation of the form "Cosmos/CometBFT chains behave like X" is wrong in one of
+    the two directions; the question to ask is whether the EVM is inside the ABCI
+    application or behind the Engine API.
+
+- id: finality-tag-is-not-finality
+  title: The `finalized` block tag means something different on every chain that has one
+  axis: fees-envelope
+  rank: 26
+  lede: >-
+    Any chain speaking the Engine API inherits Ethereum's `safe` and `finalized` block
+    tags whether or not it has anything to put behind them, and the rows here fill them
+    with incompatible meanings — with nothing in the RPC response to tell the cases
+    apart.
+  chains:
+    autonomys: >-
+      Honest and extreme: `finalized` sits 14,994 blocks — roughly twenty-four hours —
+      behind `latest`, the optimistic execution challenge window plus the consensus
+      chain's confirmation depth. `safe` returns the identical block, so there is no
+      intermediate tier. A bridge waiting for `finalized` waits a day.
+    iota-evm: >-
+      Maps every negative tag to latest, so `finalized`, `safe` and `pending` return
+      byte-identical head blocks — while the RPC serves a state its own source documents
+      as "can be ahead of ConfirmedState".
+    rollkit: >-
+      Fills them by arithmetic — `safe = head-2`, `finalized = head-3` — under a source
+      comment calling it "a temporary mock value until proper DA-based finalization is
+      wired up". The DA-driven update that would make them meaningful is overwritten by
+      the next block, ten times a second, leaving `finalized` 0.7 s behind head on a
+      chain whose data layer settles every 6 s: strictly weaker than `latest` plus a
+      fixed wall-clock delay.
+    rise: >-
+      Publishes full receipts for blocks that do not exist yet, so the tags sit above a
+      chain whose head is itself provisional.
+    megaeth: >-
+      Publishes full receipts for blocks that do not exist yet, so the tags sit above a
+      chain whose head is itself provisional.
+  body: >-
+    Any chain speaking the Engine API inherits Ethereum's `safe` and `finalized` block
+    tags whether or not it has anything to put behind them, and four rows here fill them
+    with four incompatible meanings. **Autonomys** is honest and extreme: `finalized`
+    sits 14,994 blocks — roughly twenty-four hours — behind `latest`, the optimistic
+    execution challenge window plus the consensus chain's confirmation depth, and `safe`
+    returns the identical block, so there is no intermediate tier. **Rollkit** fills them
+    by arithmetic — `safe = head-2`, `finalized = head-3` — under a source comment
+    calling it "a temporary mock value until proper DA-based finalization is wired up";
+    the DA-driven update that would make them meaningful is overwritten by the next
+    block, ten times a second, leaving `finalized` 0.7 s behind head on a chain whose
+    data layer settles every 6 s. **IOTA EVM** maps every negative tag to latest, so
+    `finalized`, `safe` and `pending` return byte-identical head blocks while the RPC
+    serves a state its own source documents as "can be ahead of ConfirmedState".
+    **RISE and MegaETH** publish full receipts for blocks that do not exist yet. A bridge
+    that waits for `finalized` waits a day on one chain and gets a strictly weaker
+    guarantee than `latest` plus a fixed wall-clock delay on another, with nothing in the
+    RPC response to distinguish the cases.
+
+- id: preconfirmation-sentinels
+  title: Three sentinels for "this block does not exist yet", and one reaches unmodified clients
+  axis: fees-envelope
+  rank: 27
+  lede: >-
+    A chain that publishes a transaction's result before its enclosing block is sealed
+    must name a block hash it does not yet have. Both rows here also contradict
+    themselves inside one payload: the streamed receipt and the streamed transaction
+    disagree about the same missing hash.
+  chains:
+    rise: >-
+      The preconfirmed receipt comes back over ordinary `eth_getTransactionReceipt` with
+      `blockHash: 0x0000…0000`, and `eth_subscribe(["logs"])` is *replaced* rather than
+      extended, so that channel silently carries shred logs with `blockHash: null` — two
+      sentinels on one chain. An integrator who changed nothing is already consuming
+      preconfirmations, storing a valid-looking zero `bytes32` that will never match a
+      real block. RISE's shreds are unsigned, so a contradicted preconfirmation cannot
+      be proven.
+    megaeth: >-
+      The sentinel is `blockHash: 0xffff…ff`, and the blast radius is small: it is
+      confined to an opt-in WebSocket stream — a mini-block receipt carries it, while
+      plain HTTP returns null — so a standard client is safe by default. MegaETH's
+      mini-blocks are signed, so a contradicted preconfirmation can be proven.
+  body: >-
+    MegaETH and RISE both publish a transaction's result before its enclosing block is
+    sealed, and both must name a block hash they do not yet have. They chose different
+    sentinels and, more importantly, different blast radii. MegaETH confines it to an
+    opt-in WebSocket stream — a mini-block receipt carries
+    `blockHash: 0xffff…ff`, while plain HTTP returns null — so a standard client is safe
+    by default. RISE returns the preconfirmed receipt over ordinary
+    `eth_getTransactionReceipt` with `blockHash: 0x0000…0000`, and additionally
+    *replaces* rather than extends `eth_subscribe(["logs"])` so that channel silently
+    carries shred logs with `blockHash: null`. On RISE an integrator who changed nothing
+    is already consuming preconfirmations, storing a valid-looking zero `bytes32` that
+    will never match a real block. Both chains also contradict themselves within one
+    payload: the streamed receipt and the streamed transaction disagree about the same
+    missing hash. RISE's shreds are unsigned, so a contradicted preconfirmation cannot be
+    proven; MegaETH's mini-blocks are signed. A defence written for one chain fails on
+    the other, and RISE uses two sentinels itself.
+
+- id: dag-ordering-confiscates
+  title: Chains that fix inclusion before balances are known confiscate rather than reject
+  axis: fees-envelope
+  rank: 28
+  lede: >-
+    On mainnet a transaction that cannot cover `gas_limit * gas_price` is simply not
+    includable — the check runs before ordering. Where proposers fix an order without
+    knowing the balance it will execute against, the state transition has to do
+    *something*, and two chains with no shared ancestry independently chose to take
+    whatever the sender has. Two independent arrivals make it a property of the ordering
+    model rather than a quirk of either client.
+  chains:
+    taraxa: >-
+      Computes `available_funds_gas = balance / gas_price` and subtracts all but
+      sub-gas-price dust. The nonce is bumped, a `status: 0` receipt is emitted, and the
+      reported `gasUsed` is a function of the sender's BALANCE rather than of work
+      performed — so the field every explorer and cost model reads as "work done" is,
+      here, a measure of how poor the sender was.
+    conflux: >-
+      Takes `min(gas_cost, balance)`. The nonce is bumped, a `status: 0` receipt is
+      emitted, and the reported `gasUsed` is a function of the sender's BALANCE rather
+      than of work performed — so the field every explorer and cost model reads as "work
+      done" is, here, a measure of how poor the sender was.
+  body: >-
+    On mainnet a transaction that cannot cover `gas_limit * gas_price` is simply not
+    includable — the check runs before ordering. Where proposers fix an order without
+    knowing the balance it will execute against, the state transition has to do
+    *something*, and two chains with no shared ancestry independently chose to take
+    whatever the sender has. Taraxa computes `available_funds_gas = balance / gas_price`
+    and subtracts all but sub-gas-price dust; Conflux takes `min(gas_cost, balance)`.
+    Both bump the nonce, both emit a `status: 0` receipt, and both report a `gasUsed`
+    that is a function of the sender's *balance* rather than of work performed — so the
+    receipt field that every explorer and cost model reads as "work done" is, in this
+    case, a measure of how poor the sender was. Two independent arrivals at the same
+    design make it a property of the ordering model rather than a quirk of either client.
+
+- id: duplicate-transactions
+  title: What counts as "the same transaction" is not the same question on every chain
+  axis: tx-types
+  rank: 29
+  lede: >-
+    Where many proposers build blocks at once, the same transaction landing in more than
+    one block is the normal case rather than an edge case. WHERE deduplication happens —
+    before ordering, after execution, or not at all — determines what a client can
+    observe.
+  chains:
+    taraxa: >-
+      Deduplicates at period assembly, BEFORE the ordered block set becomes a
+      transaction list: the duplicate never executes, but the DAG block carrying it
+      stays in the period data, so it remains visible in the DAG and is absent only from
+      the executed list. Fees are credited strictly to the first includer, and before
+      the Aspen fork a DAG block got no reward at all unless it contributed a unique
+      transaction — nobody is charged and nobody is slashed, and the only cost of losing
+      the race is forgone revenue.
+    conflux: >-
+      Executes it, gets `OldNonce`, marks it `Skipped`, then erases every trace — from
+      the block body, the transaction index and `eth_getTransactionReceipt` alike — so
+      the duplicate is indistinguishable from a transaction never submitted.
+    hedera: >-
+      **Makes the identity model itself the divergence.** A transaction is keyed by
+      `TransactionID` = *(payer account, valid-start timestamp)*; nothing about the
+      contents enters the key, so two byte-identical submissions with different
+      valid-starts are different transactions, two unrelated bodies sharing a payer and
+      timestamp are the same one, and uniqueness holds only inside a 180-second window
+      after which an ID may be reused. Duplicates are the designed-for case, because the
+      SDKs submit to several nodes for reliability — and Hedera does what no other row
+      does: it **charges for them**. A duplicate first seen from another node debits the
+      payer the node and network fees with the service fee waived and never executes; a
+      duplicate from the same node debits that node instead; and the node that LOST the
+      race is paid the node fee, so losing is revenue. None of it is visible to Ethereum
+      tooling — the Ethereum hash is recorded only inside the handler a duplicate never
+      reaches — so an operator sees an HBAR debit with no `eth_*` object to attribute it
+      to.
+    sonic: >-
+      **Dedupes in four layers, and the layer that applies depends on an on-chain
+      toggle**: an emitter-side stake lottery, a `seenHashes` pass over the confirmed
+      event set during block derivation, and a nonce precheck at execution — but
+      `SingleProposerBlockFormation` mode bypasses the hash dedup entirely, leaving only
+      trial-execution at the proposer. The duplicate vanishes from `eth_*` entirely, yet
+      `dag_getEventPayload` still lists it one level down — erased at one layer and
+      visible at another. The whole fee is credited to the first ordered event's creator
+      and the losing emitter is unrewarded but not slashed.
+    monad: >-
+      **The strong negative**: no deduplication anywhere, because a block containing a
+      duplicate is REJECTED. Two consensus checks do it — a within-block `nonce_usages`
+      set, and a cross-block coherency check that reconstructs expected nonces from the
+      triedb at N-3 plus the `NonceUsageMap` of every uncommitted ancestor, which is
+      what deferred execution forces.
+    autonomys: >-
+      **Deduplicates by byte equality** across the concatenation of every valid bundle,
+      AFTER per-bundle validity classification — so an ordinary duplicate is explicitly
+      NOT one of `InvalidBundleType`'s six variants and its author is never slashed.
+      That is the inversion worth noting: on the one chain where a stale nonce inside a
+      bundle is a slashable protocol violation, submitting the same transaction twice is
+      not.
+  body: >-
+    Where many proposers build blocks at once, the same transaction landing in more than
+    one block is the normal case rather than an edge case, and the dataset holds three
+    mechanisms operating at three different layers. **Taraxa** deduplicates at period
+    assembly, before the ordered block set becomes a transaction list: the duplicate never
+    executes, but the DAG block carrying it stays in the period data, so it remains visible
+    in the DAG and is absent only from the executed list. **Conflux** executes it, gets
+    `OldNonce`, marks it `Skipped`, and then erases every trace — from the block body, the
+    transaction index and `eth_getTransactionReceipt` alike, so the duplicate is
+    indistinguishable from a transaction never submitted. Taraxa credits fees strictly to
+    the first includer and, before its Aspen fork, gave a DAG block no reward at all unless
+    it contributed a unique transaction: nobody is charged and nobody is slashed, and the
+    only cost of losing the race is forgone revenue. Where deduplication happens — before
+    ordering, or after execution — determines what a client can observe, and the two are
+    not interchangeable. **Hedera makes the identity model itself the divergence.** A
+    transaction there is keyed by `TransactionID` = *(payer account, valid-start
+    timestamp)* — nothing about the contents enters the key, so two byte-identical
+    submissions with different valid-starts are different transactions and two unrelated
+    bodies sharing a payer and timestamp are the same one — and uniqueness holds only
+    inside a 180-second window, after which an ID may be reused. Duplicates are the
+    designed-for case, because the SDKs submit to several nodes for reliability. Hedera
+    then does what no other row does: it **charges for them**. A duplicate first seen from
+    another node debits the payer the node and network fees with the service fee waived
+    and never executes; a duplicate from the same node debits that node instead; and the
+    node that *lost* the race is paid the node fee, so losing is revenue. None of it is
+    visible to Ethereum tooling — the Ethereum hash is recorded only inside the handler a
+    duplicate never reaches — so an operator sees an HBAR debit with no `eth_*` object to
+    attribute it to. Taraxa charges nobody, Conflux erases everything, Hedera bills
+    silently. **Sonic dedupes in four layers and the layer that applies depends on an
+    on-chain toggle**: an emitter-side stake lottery, a `seenHashes` pass over the
+    confirmed event set during block derivation, and a nonce precheck at execution — but
+    its `SingleProposerBlockFormation` mode bypasses the hash dedup entirely, leaving only
+    trial-execution at the proposer. The duplicate vanishes from `eth_*` exactly as on
+    Conflux, yet `dag_getEventPayload` still lists it one level down, exactly as on
+    Taraxa; the whole fee is credited to the first ordered event's creator and the losing
+    emitter is unrewarded but not slashed. **Monad is the strong negative**: no
+    deduplication anywhere, because a block containing a duplicate is *rejected*. Two
+    consensus checks do it — a within-block `nonce_usages` set, and a cross-block
+    coherency check that reconstructs expected nonces from the triedb at N-3 plus the
+    `NonceUsageMap` of every uncommitted ancestor, which is what deferred execution
+    forces. **Autonomys deduplicates by byte equality** across the concatenation of every
+    valid bundle, *after* per-bundle validity classification — so an ordinary duplicate is
+    explicitly **not** one of `InvalidBundleType`'s six variants and its author is never
+    slashed. That is the inversion worth noting: on the one chain where a stale nonce
+    inside a bundle is a slashable protocol violation, submitting the same transaction
+    twice is not.
+
+- id: nonce-burned-without-execution
+  title: A failed transaction may spend your nonce and show you nothing
+  axis: fees-envelope
+  rank: 30
+  lede: >-
+    On mainnet the question cannot arise: an invalid transaction is never included, so
+    the nonce is always preserved and the sender resubmits freely. Where ordering is
+    separated from execution, the nonce may be spent by a transaction that did no work —
+    so "no receipt" does not mean "nothing happened", and the sender cannot tell the two
+    apart from the Ethereum RPC alone.
+  chains:
+    artela: >-
+      **The dangerous instance.** Same shape as the framework, but Artela's `PREVRANDAO`
+      nil-dereference makes the state reachable from ordinary bytecode rather than from
+      an internal error, and its `queryCosmosTxIndexer` is stricter still. A sender sees
+      no receipt, concludes nothing happened, resubmits at the same nonce, and is
+      permanently behind a gap no RPC call will reveal.
+    cosmos-evm: >-
+      **The ancestor case, and it is deliberate.** `MonoDecorator` commits the fee
+      deduction and `IncrementNonce`, and the Cosmos SDK commits ante writes before
+      running the message; then `TxSucessOrExpectedFailure` — `res.Code == 0 ||
+      TxExceedBlockGasLimit(res)` — drops everything else out of
+      `EthMsgsFromCometBlock`. A post-ante error (`failed to commit stateDB`, refund
+      gas-overflow, any recovered panic) takes the fee, burns the nonce, and erases the
+      transaction from the block, the hash lookup and the receipt store alike. The
+      framework's own test `TestEthMsgsFromCometBlockSkipStateDBCommitFailure` pins it
+      with a literal `{Code: 4, Log: "failed to commit stateDB"}`, and the one escape
+      hatch is a **substring match** on the block-gas-limit error string — applied to
+      exactly one of the several ways a fee can be taken.
+    injective: >-
+      **Inherits only half of it** — verified against Injective's own tree rather than
+      assumed. It replaces the framework ante chain with `CheckEthSenderNonce` and
+      applies NO result filter in `EthMsgsFromTendermintBlock`, so the nonce is burned
+      and the receipt is lost, but the transaction still appears in the block and the
+      gap is observable.
+    sonic: >-
+      Burns the nonce and emits a `status: 0` receipt, off a fee-only balance check
+      reached independently of the other rows here. The axis splits without danger: the
+      spent nonce is always visible.
+    monad: >-
+      Burns the nonce and emits a `status: 0` receipt, off a fee-only balance check
+      reached independently of the other rows here. The axis splits without danger: the
+      spent nonce is always visible.
+    taraxa: >-
+      SETS the nonce rather than incrementing it, so one transaction can burn an
+      unbounded range of nonces.
+    conflux: >-
+      Preserves the nonce on one path and burns it on another.
+    iota-evm: >-
+      Preserves the nonce on one path and burns it on another.
+    sei: >-
+      **The deliberate counter-example.** The nonce bump and the stub receipt are gated
+      on the same condition, so a spent nonce always has a receipt and a missing receipt
+      always means a preserved nonce.
+    megaeth: >-
+      **The other deliberate counter-example.** The nonce is BURNED on the
+      failed-receipt path and PRESERVED on the erasure path, and the two are told apart
+      exactly the way a mainnet client expects — by whether a receipt exists. A
+      block-level limit lost to a race re-runs `pre_execution_check` inside
+      `commit_transaction_outcome` and returns before the commit, discarding the entire
+      state delta including revm's nonce increment, so the transaction is freely
+      resubmittable at the same nonce. The erasure happens BECAUSE nothing was
+      committed, rather than after the nonce and fee were already taken — so here "no
+      receipt" honestly means "nothing happened".
+    hedera: >-
+      Preserves the nonce in both its failure modes — while taking HBAR anyway.
+  body: >-
+    On mainnet the question cannot arise: an invalid transaction is never included, so
+    the nonce is always preserved and the sender resubmits freely. Where ordering is
+    separated from execution, the nonce may be spent by a transaction that did no work —
+    and on three rows it is spent by a transaction the RPC will not admit exists.
+    **`cosmos-evm` is the ancestor case, and it is deliberate.** `MonoDecorator` commits
+    the fee deduction and `IncrementNonce`, and the Cosmos SDK commits ante writes before
+    running the message; then `TxSucessOrExpectedFailure` — `res.Code == 0 ||
+    TxExceedBlockGasLimit(res)` — drops everything else out of `EthMsgsFromCometBlock`.
+    So a post-ante error (`failed to commit stateDB`, refund gas-overflow, any recovered
+    panic) takes the fee, burns the nonce, and erases the transaction from the block, the
+    hash lookup and the receipt store alike. The framework's own test
+    `TestEthMsgsFromCometBlockSkipStateDBCommitFailure` pins it with a literal
+    `{Code: 4, Log: "failed to commit stateDB"}`, and the one escape hatch is a
+    **substring match** on the block-gas-limit error string, whitelisted back into
+    visibility with the in-source reason that a fee-taken transaction must stay visible —
+    applied to exactly one of the several ways a fee can be taken. **`artela` is the
+    dangerous instance**: same shape, but its `PREVRANDAO` nil-dereference makes the state
+    reachable from ordinary bytecode rather than from an internal error, and its
+    `queryCosmosTxIndexer` is stricter still. A sender sees no receipt, concludes nothing
+    happened, resubmits at the same nonce, and is permanently behind a gap no RPC call
+    will reveal. **`injective` inherits only half of it** — verified against its own tree
+    rather than assumed: it replaces the framework ante chain with `CheckEthSenderNonce`
+    and applies *no* result filter in `EthMsgsFromTendermintBlock`, so the nonce is burned
+    and the receipt is lost, but the transaction still appears in the block and the gap is
+    observable. **`sei` is the deliberate counter-example**: the nonce bump and the stub
+    receipt are gated on the same condition, so a spent nonce always has a receipt and a
+    missing receipt always means a preserved nonce. Elsewhere the axis splits without
+    danger: `sonic` and `monad` reached the same fee-only balance check from unrelated
+    directions and burn the nonce with a `status: 0` receipt; `taraxa` *sets* rather than
+    increments, so one transaction can burn an unbounded range of nonces; `conflux` and
+    `iota-evm` each preserve on one path and burn on another; and `hedera` preserves the
+    nonce in both its failure modes while taking HBAR anyway. The portable lesson is that
+    "no receipt" does not mean "nothing happened", and the sender cannot tell the two
+    apart from the Ethereum RPC alone.

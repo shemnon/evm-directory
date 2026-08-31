@@ -31,7 +31,7 @@ Expected scope, and worth asserting after changes:
 | one `chains/<slug>/chain.yaml` | that chain page, all axis pages, Overview, both indexes, Reference — **not** the other 18 chain pages |
 | one `chains/<slug>/SUMMARY.md` | that chain page only |
 | `chains/op-stack/chain.yaml` | the above, plus its five descendants |
-| `findings.yaml` | Overview, axis pages, and every chain page |
+| `findings.yaml` | Overview, axis pages, and every chain page (chain-scoped there) |
 | `SCHEMA.md` / `SITE.md` | `method.html` only |
 | generator or assets | everything |
 

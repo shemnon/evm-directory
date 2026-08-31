@@ -38,8 +38,9 @@ python3 -m http.server -d website 8000     # then http://localhost:8000
 
 `findings.yaml` is the one **content** file in the pipeline — the place where a human
 says what the dataset means. Everything else on the site is derived. A finding is
-written once and surfaces in three places: the home page, its `axis:` page, and the page
-of every chain in its `chains:` list.
+written once and surfaces in three places, in two voices: the home page and its `axis:`
+page carry the full cross-chain survey, while each chain in its `chains:` mapping gets
+only its own slice — the note's `lede`, that chain's gloss, and a link to the survey.
 
 ## Regenerating after a change
 

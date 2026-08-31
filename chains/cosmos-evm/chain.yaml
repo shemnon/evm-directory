@@ -1,0 +1,1079 @@
+schema_version: 2
+
+chain:
+  name: Cosmos EVM (evmd)
+  slug: cosmos-evm
+  role: template
+  live: true
+  evidence: source
+  note: >-
+    NOT A CHAIN. `cosmos/evm` is the Cosmos SDK's EVM framework — three modules
+    (x/vm, x/erc20, x/feemarket), an ante chain, a precompile kit and a JSON-RPC
+    shim — plus `evmd`, which the repo itself calls "the example chain
+    implementation" (evmd/genesis.go). Every fact here is what a DEPLOYMENT MAY
+    HAVE, not what any given one does.
+
+    Why `template` and not `stack`: SCHEMA.md separates the two on whether
+    descendants inherit wholesale. Here they cannot. The module default
+    `x/vm/types/params.go:DefaultStaticPrecompiles` is a `[]string` declared with
+    NO value — nil — so out of the box ZERO custom precompiles are active; it is
+    each deployment's genesis that assigns
+    `Params.ActiveStaticPrecompiles`, and evmd assigns the full
+    `AvailableStaticPrecompiles` only as an example. The same is true of the EVM
+    denom and its decimals, the EVM chain id, the opcode access-control policy,
+    the extra-EIP opcode repricings and the fee-market parameters: all are
+    per-deployment configuration, most of them subsequently changeable by
+    governance without a client release. There is no shared canonical mainnet
+    whose deltas a descendant simply inherits, which is exactly the distinction
+    SCHEMA.md draws against `stack` (OP Stack). Hence `template`, and hence
+    nearly every entry below carries `availability: optional`.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum (as a dependency, via cosmos/go-ethereum)
+  sync_point: >-
+    The EVM is NOT vendored. go.mod requires github.com/ethereum/go-ethereum
+    v1.16.8 and then REPLACES it with github.com/cosmos/go-ethereum
+    v1.17.2-cosmos-0 (go.mod, the `replace` block). So the interpreter, the
+    jump table, the 0x01-0x11 precompile implementations, the gas table and
+    params.ChainConfig all come from a geth at 1.17.2 — which has Osaka — while
+    the framework only ever installs the PRAGUE precompile map
+    (precompiles/types/static_precompiles.go:WithPraguePrecompiles) and
+    DefaultChainConfig leaves OsakaTime nil. Osaka is therefore REACHABLE by
+    configuration here (the field exists and the dependency implements it),
+    unlike Sei, whose geth fork has no Osaka branch at all. That distinction —
+    "not activated" vs "not representable" — is the one SCHEMA.md's sync_point
+    note is about, and Cosmos EVM sits on the good side of it.
+  note: >-
+    Descends from Evmos/Ethermint by code lineage — x/erc20's shipped ERC-20
+    runtime is commented "got from a query previous to the Evmos v19 upgrade"
+    (x/erc20/types/constants.go:Erc20Bytecode) and GetHashFn still carries an
+    "implements vm.GetHashFunc for Ethermint" comment
+    (x/vm/keeper/state_transition.go:GetHashFn). Sei is a SIBLING idea, not a
+    descendant: same Cosmos-SDK-module-EVM shape, entirely separate code, and it
+    solves the address problem differently (see tx_authorization).
+
+client:
+  name: cosmos/evm (evmd reference node)
+  repo: https://github.com/cosmos/evm
+  version: v0.7.2
+  commit: ef11f63c087b4c859b1e8eddc823f7cf2113a50a
+  language: go
+  built_on: cosmos/go-ethereum v1.17.2-cosmos-0, Cosmos SDK, CometBFT, ibc-go v11
+  note: >-
+    v0.7.2 is the newest non-prerelease tag; v1.0.0-rc0/rc1/rc2 exist and are
+    release candidates, so they are not pinned here.
+  companion_repos:
+  - {name: go-ethereum, repo: "https://github.com/cosmos/go-ethereum",
+     version: v1.17.2-cosmos-0, commit: d99d6fa2c8d98b7cd653de4a9386d2da3db8f25c,
+     provides: "the EVM interpreter, the 0x01-0x11 precompiles, the jump table, params.ChainConfig and the EIP-2935 history contract's address and bytecode"}
+
+consensus:
+  engine: CometBFT (Tendermint BFT), Cosmos SDK ABCI application
+  finality: single-block instant finality; no reorgs, NO UNCLES
+  block_time: per deployment
+  note: >-
+    There is no Ethereum block and no Ethereum header anywhere in consensus. The
+    block eth_getBlockByNumber returns is assembled at RPC time from a CometBFT
+    block — see header_fields.
+
+baseline_fork: prague
+baseline_note: >-
+  DefaultChainConfig sets every block-numbered fork to 0 and ShanghaiTime,
+  CancunTime and PragueTime to 0, with OsakaTime and VerkleTime nil
+  (x/vm/types/chain_config.go:DefaultChainConfig). A deployment is therefore
+  Prague-equivalent from genesis and has never run a named Ethereum hard fork.
+  The precompile set is pinned to Prague independently of the config, by
+  WithPraguePrecompiles(), so activating OsakaTime would move the opcode rules
+  WITHOUT moving the precompile map — the two are wired separately.
+
+forks:
+  src: x/vm/types/chain_config.go:DefaultChainConfig
+  note: >-
+    Two upgrade axes that do not line up, and neither is a timestamp fork in the
+    Ethereum sense. (1) The Ethereum fork level is a per-deployment ChainConfig
+    stored as x/vm module state; it is genesis data, not client constants, and
+    can be moved by a governance MsgUpdateParams. (2) The chain's real upgrade
+    mechanism is Cosmos SDK named upgrade handlers (evmd/upgrades.go), scheduled
+    by governance and applied at a height. "Which fork is this chain on" has no
+    client-level answer; it must be read from live module state.
+  timeline:
+  - {name: "homestead..prague", activation_time: 0, mainnet_equivalent: prague,
+     activation_condition: "genesis ChainConfig — all block forks 0, Shanghai/Cancun/PragueTime 0",
+     src: "x/vm/types/chain_config.go:DefaultChainConfig"}
+  - {name: osaka, status: pending, mainnet_equivalent: osaka,
+     activation_condition: "set OsakaTime in the x/vm ChainConfig (field exists, defaults nil)",
+     note: "the pinned cosmos/go-ethereum v1.17.2 implements Osaka, but the framework's precompile map is hard-wired to Prague, so activation would be partial",
+     src: "x/vm/types/chain_config.go:DefaultChainConfig, precompiles/types/static_precompiles.go:WithPraguePrecompiles"}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    availability: optional
+    activation_condition: "x/feemarket params NoBaseFee / EnableHeight"
+    note: >-
+      Four independent divergences. (a) THE BASE FEE IS NOT BURNED — the whole
+      fee, base fee plus tip, is moved to the Cosmos FeeCollector module account
+      by a bank send; nothing is destroyed. (b) The base fee is recomputed from
+      the parent block's GAS WANTED, not gas used — the sum of transaction gas
+      LIMITS — so a block full of over-estimated transactions raises the base fee
+      even if they burn almost nothing. (c) The gas target is the CometBFT
+      consensus-params Block.MaxGas divided by a governance ElasticityMultiplier,
+      so it moves when governance moves the consensus params, with no Ethereum-
+      visible fork. (d) The base fee is a decimal (LegacyDec) clamped at a
+      governance MinGasPrice floor, and the whole mechanism can be switched off
+      per deployment. eth_getBlockByNumber still reports `baseFeePerGas`.
+    src: "x/feemarket/keeper/eip1559.go:CalculateBaseFee, x/vm/keeper/fees.go:DeductFees"
+  2935:
+    status: modified
+    severity: high
+    note: >-
+      THE SHARPEST BUG IN THIS ROW. Both halves of EIP-2935 exist and they
+      disagree by one. The framework PREINSTALLS the stock geth history contract
+      — same address 0x0000F908..2935, same bytecode
+      (x/vm/types/preinstall.go:DefaultPreinstalls copies
+      params.HistoryStorageAddress and params.HistoryStorageCode) — whose runtime
+      indexes the ring buffer with the constant 0x1fff = 8191. It is never
+      invoked as a system call: instead BeginBlock writes the slot directly with
+      SetState at `blockHeight % HistoryServeWindow`, and HistoryServeWindow is a
+      governance param whose default is 8192, carrying an in-source comment that
+      says "same as EIP-2935". It is not the same. Geth's own constant is 8191
+      (go-ethereum/params/protocol_params.go:HistoryServeWindow). BLOCKHASH is
+      consistent because GetHashFn reads back through the same 8192 window, but a
+      CONTRACT that calls the history contract at 0x0000F908..2935 — the portable
+      way to read block hashes deeper than 256 — computes slot n % 8191 and reads
+      a slot that was written for a different height. It returns a real, wrong
+      32-byte hash with no revert. Two further deltas: the value stored is the
+      CometBFT header hash, not an Ethereum block hash, and the window is
+      governance-mutable.
+    src: "x/vm/keeper/keeper.go:SetHeaderHash, x/vm/keeper/keeper.go:GetHeaderHash, x/vm/types/params.go:DefaultHistoryServeWindow, x/vm/types/preinstall.go:DefaultPreinstalls, go-ethereum/params/protocol_params.go:HistoryServeWindow"
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO IS THE CONSTANT 0xffff..ff. BlockContext.Random is set to
+      `&common.MaxHash` with the comment that it only needs to be non-nil to
+      signal post-merge opcode selection. It is not a randomness source, it is
+      not even a per-block value: every block, every transaction, the same 32
+      bytes. A contract ported from mainnet that uses PREVRANDAO for randomness
+      is not merely predictable here, it is constant, and it gives no outward
+      sign. Compare Sei, where the same opcode is at least a function of the
+      block timestamp.
+    src: x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles
+  4844:
+    status: removed
+    note: >-
+      No blob market. BlobTx (0x03) is excluded from the ante handler's accepted
+      type mask, so a blob transaction is refused before execution. The KZG
+      precompile at 0x0a is present, inherited from the Prague map. Note also
+      that BlockContext.BlobBaseFee is never assigned in
+      NewEVMWithOverridePrecompiles — see opcodes."0x4a", recorded as unrecorded
+      rather than guessed.
+    src: "ante/evm/mono_decorator.go:AcceptedTxType, x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles"
+  4788:
+    status: removed
+    note: >-
+      No beacon chain, no beacon-root ring buffer, no system call to write one.
+      The RPC layer nonetheless emits `parentBeaconBlockRoot` as the constant
+      EmptyRootHash, so the field is present and meaningless.
+    src: rpc/types/utils.go:EthHeaderFromComet
+  7685:
+    status: removed
+    note: "no execution-layer requests; requestsHash is emitted as the constant EmptyRequestsHash"
+    src: rpc/types/utils.go:MakeHeader
+  4895:
+    status: removed
+    note: "no beacon withdrawals; withdrawalsRoot is emitted as the constant EmptyWithdrawalsHash and the block body's Withdrawals list is always empty"
+    src: "rpc/backend/comet_to_eth.go:EthBlockFromCometBlock, rpc/types/utils.go:EthHeaderFromComet"
+  7702:
+    status: inherited
+    note: >-
+      SetCodeTx (0x04) is in the accepted type mask and ValidateBasic enforces at
+      least one authorization tuple. The authorization tuple itself is stock geth
+      ecrecover, so delegation behaves as on mainnet.
+    src: "ante/evm/mono_decorator.go:AcceptedTxType, x/vm/types/msg.go:ValidateBasic"
+  7951:
+    status: added
+    availability: optional
+    activation_condition: "0x0100 listed in x/vm params ActiveStaticPrecompiles"
+    note: >-
+      P256VERIFY IS AT THE CANONICAL 0x0100, AT PRAGUE. Mainnet only gets it at
+      Osaka; this framework installs it as one of its own optional static
+      precompiles, so a deployment can have RIP-7212 semantics one fork
+      generation early — or, by leaving 0x0100 out of ActiveStaticPrecompiles,
+      not have it at all while claiming Prague. This is the opposite of Sei,
+      which has the feature and does NOT have it at 0x0100.
+    src: "x/vm/types/precompiles.go:P256PrecompileAddress, precompiles/types/static_precompiles.go:WithP256Precompile"
+  7823:
+    status: removed
+    note: "MODEXP upper bounds are an Osaka feature; DefaultChainConfig leaves OsakaTime nil and the precompile map is Prague"
+    src: "x/vm/types/chain_config.go:DefaultChainConfig, precompiles/types/static_precompiles.go:WithPraguePrecompiles"
+  7883:
+    status: removed
+    note: "MODEXP repricing is an Osaka feature; not reached. MODEXP is cheaper here than on mainnet Osaka."
+    src: precompiles/types/static_precompiles.go:WithPraguePrecompiles
+  7928:
+    status: removed
+    note: "no block access lists — there is no Ethereum header to carry the hash and the fabricated one has no field for it"
+    src: rpc/types/utils.go:MakeHeader
+  3529:
+    status: unrecorded
+    note: >-
+      Not established. The gas refund path runs through RefundGas, which credits
+      the refund as a bank send rather than through geth's returnGas, and no
+      source read was done on whether the SSTORE refund cap composes with the
+      Cosmos-side accounting or with the precompile gas meter.
+  2200:
+    status: unrecorded
+    note: >-
+      Not established per-deployment. Any deployment MAY reprice SSTORE — and
+      CREATE, CREATE2 and CALL — through the ExtraEIPs mechanism; see
+      opcodes.modified. Whether a given chain does is live module state.
+
+non_eip_specs:
+  - {id: RIP-7212, name: secp256r1 precompile, adoption: optional,
+     note: "at the canonical 0x0100 with raw RIP-7212 input, unlike Sei's ABI-dispatched 0x1011; opt-in per deployment",
+     src: precompiles/p256/p256.go:P256PrecompileAddress}
+  - {id: ICS-20, name: "IBC fungible token transfer, callable from EVM bytecode", adoption: optional,
+     src: precompiles/ics20/ics20.go:ICS20PrecompileAddress}
+  - {id: ICS-02, name: "IBC light-client update and membership proofs, callable from EVM bytecode", adoption: optional,
+     src: precompiles/ics02/ics02.go:ICS02PrecompileAddress}
+  - id: "EIP-712 (Web3Tx extension)"
+    name: "EIP-712 typed-data signing of Cosmos transactions"
+    adoption: withdrawn
+    note: >-
+      The framework carries a complete EIP-712 ante decorator with a
+      fee-payer-signature path (ExtensionOptionsWeb3Tx), and evmd's ante router
+      does not wire it: the router accepts exactly two extension-option type
+      URLs and rejects anything else with ErrUnknownExtensionOptions, so a
+      Web3Tx-extended transaction is refused. Dead code in the reference node,
+      and a real second-signer path for any deployment that re-enables it.
+    src: "ante/cosmos/eip712.go:ExtensionOptionsWeb3Tx, ante/ante.go:NewAnteHandler"
+
+tx_types:
+  "0x00": {name: LegacyTx, status: inherited, src: "ante/evm/mono_decorator.go:AcceptedTxType"}
+  "0x01": {name: AccessListTx, status: inherited, src: "ante/evm/mono_decorator.go:AcceptedTxType"}
+  "0x02": {name: DynamicFeeTx, status: inherited, src: "ante/evm/mono_decorator.go:AcceptedTxType"}
+  "0x03":
+    name: BlobTx
+    status: removed
+    note: >-
+      Decodable — MsgEthereumTx.Raw is passed straight to geth's
+      Transaction.UnmarshalBinary, which handles 0x03 — and then refused, because
+      AcceptedTxType ORs in only 0x00, 0x01, 0x02 and 0x04 and geth's
+      txpool.ValidateTransaction rejects an unaccepted type. Recorded as
+      `removed` rather than `tombstoned` to keep the distinction from Sei sharp:
+      Sei explicitly LISTS 0x03 as allowed and then rejects it in a later
+      decorator, deliberately consuming the byte; here it is simply never
+      admitted.
+    src: "ante/evm/mono_decorator.go:AcceptedTxType, x/vm/types/eth.go:EthereumTx"
+  "0x04": {name: SetCodeTx, status: inherited, note: "EIP-7702, accepted; at least one authorization tuple required",
+           src: "ante/evm/mono_decorator.go:AcceptedTxType, x/vm/types/msg.go:ValidateBasic"}
+  note: >-
+    NO NEW TYPE BYTES, AND THE ENVELOPE IS STILL NOT EIP-2718. Every Ethereum
+    transaction reaches consensus wrapped in a Cosmos SDK transaction; the thing
+    CometBFT orders and the thing the block contains is protobuf. See
+    non_evm_transactions — that inversion is the headline of this row.
+
+non_evm_transactions:
+  note: >-
+    THE INVERSION. SCHEMA.md defines this section as "protocol transactions with
+    no EIP-2718 type byte at all" — Avalanche's UTXO atomic transactions, Tron's
+    43 protobuf contract types. Cosmos EVM turns it inside out: here it is an
+    EIP-2718 transaction that is itself WRAPPED in something with no type byte.
+    A user signs an ordinary RLP 0x02 transaction; a node wraps it in
+    `MsgEthereumTx`, which is wrapped in a Cosmos SDK `TxBody`, which is what
+    CometBFT hashes and orders. Anything reading blocks at the consensus layer
+    sees protobuf; the Ethereum view is reconstructed by the rpc/ package.
+
+    HOW THIS DIFFERS FROM TRON, which is the existing protobuf precedent. Tron's
+    transactions ARE protobuf all the way down — there is no RLP envelope
+    anywhere and no Ethereum transaction to recover. Sei is closer but still
+    different: it re-encodes the Ethereum transaction's FIELDS as protobuf TxData
+    inside MsgEVMTransaction, so the RLP bytes do not survive. Cosmos EVM v0.7
+    keeps the raw envelope verbatim: `MsgEthereumTx.raw` is `bytes` with gogoproto
+    customtype EthereumTx, whose Unmarshal is literally geth's
+    Transaction.UnmarshalBinary. So the EIP-2718 envelope IS present, byte-exact,
+    one protobuf field down — and the proto file's `reserved 1, 2, 3, 4` records
+    that the older field-by-field encoding was removed to get there. The
+    transaction hash Ethereum tooling knows is the keccak of those inner bytes;
+    CometBFT's transaction hash is the sha256 of the outer protobuf, and the
+    response type says so in a comment.
+
+    A consequence worth stating plainly: the outer Cosmos transaction has its own
+    fee amount, gas limit and signer list, all of which are set from the inner
+    Ethereum transaction by BuildTx and none of which are signed by the Ethereum
+    signature. Authorization comes entirely from the inner envelope — see
+    tx_authorization.
+  entries:
+  - id: cosmos.evm.vm.v1.MsgEthereumTx
+    name: MsgEthereumTx
+    status: added
+    severity: high
+    note: >-
+      The wrapper. Two fields: `from` (the 20-byte sender, carried alongside) and
+      `raw` (the untouched EIP-2718 envelope). The ante handler re-derives the
+      sender from the signature and rejects the message if it disagrees with
+      `from`, so the redundant field cannot lie — but every indexer must know it
+      is redundant.
+    src: "proto/cosmos/evm/vm/v1/tx.proto:MsgEthereumTx, x/vm/types/eth.go:EthereumTx, x/vm/types/msg.go:VerifySender"
+  - id: cosmos.evm.vm.v1.MsgRegisterPreinstalls
+    name: MsgRegisterPreinstalls
+    status: added
+    severity: high
+    note: >-
+      A GOVERNANCE MESSAGE THAT INSTALLS ARBITRARY BYTECODE AT ARBITRARY
+      ADDRESSES. Authority is the x/gov module account. There is no EVM
+      deployment transaction, no CREATE, no deployer nonce and no receipt — code
+      simply appears. See system_contracts.
+    src: "proto/cosmos/evm/vm/v1/tx.proto:MsgRegisterPreinstalls, x/vm/types/preinstall.go:DefaultPreinstalls"
+  - id: cosmos.evm.vm.v1.MsgUpdateParams
+    name: "MsgUpdateParams (x/vm)"
+    status: added
+    severity: high
+    note: >-
+      Governance rewrites the EVM's rules: the active precompile set, the extra
+      EIP opcode repricings, the CREATE/CALL access-control policy, the EIP-2935
+      window, and the whole ChainConfig fork schedule. On this framework a fork
+      is a governance transaction.
+    src: "proto/cosmos/evm/vm/v1/tx.proto:MsgUpdateParams, x/vm/types/params.go:Params"
+  - id: cosmos.evm.erc20.v1.MsgConvertERC20
+    name: MsgConvertERC20
+    status: added
+    note: "burns an ERC-20 balance and credits the paired native bank denom; changes EVM-visible state without an Ethereum transaction"
+    src: proto/cosmos/evm/erc20/v1/tx.proto:MsgConvertERC20
+  - id: cosmos.evm.erc20.v1.MsgConvertCoin
+    name: MsgConvertCoin
+    status: added
+    note: "the reverse direction — a bank send that materialises as an ERC-20 balance"
+    src: proto/cosmos/evm/erc20/v1/tx.proto:MsgConvertCoin
+  - id: cosmos.evm.erc20.v1.MsgRegisterERC20
+    name: MsgRegisterERC20
+    status: added
+    note: "governance registers a token pair, which turns an address into a precompile and installs bytecode at it — see precompiles.dynamic_range"
+    src: proto/cosmos/evm/erc20/v1/tx.proto:MsgRegisterERC20
+  - id: "ICS-20 packet (IBC)"
+    name: inbound IBC transfer
+    status: added
+    severity: high
+    note: >-
+      Not a transaction of this chain at all — a relayed IBC packet. It credits
+      bank balances the EVM reads, and if the denom is new it CREATES A NEW
+      PRECOMPILE at a new address and installs ERC-20 bytecode there. See
+      system_transactions.
+    src: x/erc20/keeper/ibc_callbacks.go:OnRecvPacket
+  - id: "cosmos-sdk module messages"
+    name: "bank / staking / gov / distribution / slashing / authz / feegrant"
+    status: added
+    note: >-
+      The entire Cosmos SDK message set is present and is not enumerated here —
+      it is standard SDK. What matters for this dataset is that several of those
+      messages move balances the EVM reads directly, because there is one account
+      space (see tx_authorization) and no association step.
+    src: ante/cosmos.go:newCosmosAnteHandler
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    ONE ACCOUNT SPACE, TWO DERIVATIONS, AND THE bech32 FORM IS NOT A SECOND
+    ADDRESS. This is the clean contrast with Sei. Cosmos EVM's address codec is a
+    pure re-encoding: StringToBytes accepts either a 0x hex address or a bech32
+    string and returns the SAME 20 bytes; BytesToString bech32-encodes them back.
+    There is no association step, no AssociateTx, no byte-cast to a different
+    identity, and consequently none of Sei's stranded-balance hazard. `inj1...`,
+    `cosmos1...` and `0x...` are three spellings of one account.
+
+    WHAT DOES COME APART IS THE KEY, NOT THE ADDRESS. The ante chain's key switch
+    admits two secp256k1 pubkey types: `ethsecp256k1.PubKey`, whose address is
+    the keccak of the uncompressed key exactly as on mainnet, and the Cosmos
+    `secp256k1.PubKey`, whose address is ripemd160(sha256(compressed key)). Same
+    curve, same 20-byte address space, two incompatible derivations. An account
+    created from a Cosmos-style key can hold, receive and spend an EVM-visible
+    balance through Cosmos messages, and can never sign an Ethereum transaction
+    for that address, because ecrecover over the Ethereum digest will never
+    produce it. key_binding stays `derived` — the address is still a hash of the
+    public key — but which hash depends on how the account was created, and
+    nothing in the address tells you.
+
+    ed25519 IS REGISTERED AND REJECTED. The switch has an ed25519 case that
+    consumes the params' SigVerifyCostED25519 and then returns
+    ErrInvalidPubKey("ED25519 public keys are unsupported") — it charges for the
+    verification it refuses to do. There is no config or governance parameter
+    that opens it. So the answer to "can an ed25519 key authorize an EVM
+    transaction here" is `never`, and the answer to "can it authorize any
+    transaction here" is also never; the ed25519 that IS live on a Cosmos EVM
+    chain is the CometBFT validator consensus key, which is consensus signing,
+    not transaction authorization. Multisig recurses through the same switch and
+    so cannot launder it in. This matches Sei's result, reached in an independent
+    codebase.
+
+    signers_per_tx is 1 on the EVM surface and stays 1: authorization for an
+    Ethereum transaction comes ENTIRELY from the inner RLP envelope. The outer
+    Cosmos transaction's signer list, fee and gas limit are filled in from the
+    inner transaction by BuildTx and are not separately signed. The one path that
+    would make it 2 — the EIP-712 Web3Tx extension's fee-payer signature — is
+    present in the tree and unreachable in evmd (see non_eip_specs).
+  src: "ante/sigverify.go:SigVerificationGasConsumer, ante/sigverify.go:ConsumeMultisignatureVerificationGas, encoding/address/address_codec.go:evmCodec, x/vm/types/msg.go:BuildTxWithEvmParams, x/vm/types/msg.go:VerifySender"
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        The only scheme that can authorize an Ethereum transaction. Recovered by
+        geth's signer over the inner envelope and checked against MsgEthereumTx.From.
+      src: "ante/sigverify.go:SigVerificationGasConsumer, x/vm/types/msg.go:recoverSender"
+    secp256k1_cosmos:
+      status: added
+      authorizes: protocol
+      precompile: "0x01"
+      severity: high
+      note: >-
+        Same curve, different address derivation — ripemd160(sha256(pubkey))
+        instead of keccak. Accepted on the Cosmos surface only. 0x01 can verify
+        the SIGNATURE but an on-chain verifier cannot reproduce the ADDRESS, so
+        `ecrecover(sig) == from` — the identity mainnet contracts rely on — is
+        false for these accounts while the signature itself is perfectly valid.
+        Recorded as a distinct scheme because treating it as ordinary secp256k1
+        is precisely the mistake that makes it dangerous.
+      src: ante/sigverify.go:SigVerificationGasConsumer
+    ed25519:
+      status: removed
+      authorizes: never
+      precompile: none
+      note: >-
+        A registered account pubkey type with a real verifier in the SDK, refused
+        at the gate for every transaction — and charged gas on the way out. Not
+        config-switchable. Recorded rather than omitted because the ed25519 that
+        is genuinely live on these chains (CometBFT validator keys) invites the
+        opposite conclusion.
+      src: ante/sigverify.go:SigVerificationGasConsumer
+    multisig:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        Cosmos LegacyAminoPubKey k-of-n, valid on the Cosmos surface only. Unpaired:
+        no precompile on this framework reproduces the threshold arithmetic, so a
+        contract cannot audit a state change a multisig authorized. Recursion
+        through the same switch means it inherits the ed25519 refusal exactly.
+      src: ante/sigverify.go:ConsumeMultisignatureVerificationGas
+
+precompiles:
+  # The address→contract map is precompiles/types/defaults.go:DefaultStaticPrecompiles,
+  # but registration is TWO-STEP: a precompile must be BOTH built into the keeper's
+  # map at app wiring AND listed in the x/vm module param ActiveStaticPrecompiles.
+  # Everything here is therefore `optional` — that is the template property.
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY (secp256r1, RIP-7212)
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    spec: RIP-7212
+    src: "x/vm/types/precompiles.go:P256PrecompileAddress, precompiles/types/static_precompiles.go:WithP256Precompile"
+    note: >-
+      At the canonical address, with RIP-7212's raw 160-byte input — not
+      ABI-dispatched. Available at PRAGUE, a fork generation before mainnet's
+      Osaka. Governance can remove it from the active set, at which point 0x0100
+      becomes an empty account that returns empty output — which EIP-7951 defines
+      as "invalid signature". The Sei/Hyperliquid silent-failure shape is
+      reachable here by a parameter change alone.
+  "0x0000000000000000000000000000000000000400":
+    name: bech32 (address encoding)
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    src: "x/vm/types/precompiles.go:Bech32PrecompileAddress, precompiles/bech32/bech32.go:Bech32PrecompileAddress"
+    note: >-
+      hexToBech32 / bech32ToHex over the same 20 bytes. Pure, query-only, flat
+      6000 gas base. Note the address: 0x400 is alone in its own range, four
+      hundred addresses above the mainnet frontier and a full page below the
+      module block at 0x800.
+  "0x0000000000000000000000000000000000000800":
+    name: staking
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    severity: high
+    src: "x/vm/types/precompiles.go:StakingPrecompileAddress, precompiles/staking/staking.go:StakingPrecompileAddress"
+    note: >-
+      WRITES STATE. createValidator, editValidator, delegate, undelegate,
+      redelegate and cancelUnbondingDelegation all execute real Cosmos staking
+      messages through the module's msg server, bonding and unbonding native
+      balances. Refused under STATICCALL — SetupABI returns vm.ErrWriteProtection
+      when readOnly and the method is a transaction — so the read-only guarantee
+      holds. The queries stay callable in a STATICCALL.
+  "0x0000000000000000000000000000000000000801":
+    name: distribution
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    severity: high
+    src: "x/vm/types/precompiles.go:DistributionPrecompileAddress, precompiles/distribution/distribution.go:DistributionPrecompileAddress"
+    note: >-
+      WRITES STATE: claimRewards, setWithdrawAddress, withdrawDelegatorReward,
+      withdrawValidatorCommission, fundCommunityPool,
+      depositValidatorRewardsPool. Moves native balances.
+  "0x0000000000000000000000000000000000000802":
+    name: ICS-20 (IBC transfer)
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    severity: high
+    src: "x/vm/types/precompiles.go:ICS20PrecompileAddress, precompiles/ics20/ics20.go:ICS20PrecompileAddress"
+    note: >-
+      WRITES STATE and SENDS VALUE OFF-CHAIN. `transfer` escrows the caller's
+      balance and emits an IBC packet — cross-chain value movement initiated from
+      EVM bytecode, with no Ethereum-side transaction on the far end and no way
+      for a contract to observe the result except through a callback.
+  "0x0000000000000000000000000000000000000803":
+    name: vesting
+    status: tombstoned
+    availability: optional
+    severity: high
+    src: "x/vm/types/precompiles.go:VestingPrecompileAddress, precompiles/types/static_precompiles.go:NewStaticPrecompiles, evmd/genesis.go:NewEVMGenesisState"
+    note: >-
+      AN ADDRESS THAT IS ACTIVE AND EMPTY. VestingPrecompileAddress is declared,
+      is a member of AvailableStaticPrecompiles, and evmd's genesis assigns that
+      whole list to ActiveStaticPrecompiles — but there is no vesting package
+      under precompiles/ and no WithVestingPrecompile builder, so the keeper's map
+      never contains 0x803. IsAvailableStaticPrecompile then returns true for it
+      and GetStaticPrecompileInstance takes the branch that PANICS with
+      "precompiled contract not stored in memory". ValidatePrecompiles checks only
+      for duplicates, address syntax and sort order — it never cross-checks the
+      param against the registered map, so nothing catches this at genesis. Also
+      blocked as a bank recipient, because BlockedAddresses is built from the same
+      list. Recorded as tombstoned: the address is permanently consumed and a call
+      to it cannot succeed. Whether a deployment inherits the fault depends on
+      whether it copied evmd's genesis — see the injective row, which probes it.
+  "0x0000000000000000000000000000000000000804":
+    name: bank
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    src: "x/vm/types/precompiles.go:BankPrecompileAddress, precompiles/bank/bank.go:BankPrecompileAddress"
+    note: >-
+      READ-ONLY, contrary to the obvious expectation. Only balances, totalSupply
+      and supplyOf; IsTransaction returns false unconditionally. It exposes every
+      Cosmos bank denomination to EVM callers — assets with no ERC-20 anywhere —
+      but it cannot move one. The state-writing precompiles on this framework are
+      staking, distribution, gov, slashing, ICS-20, ICS-02 and the dynamic ERC-20
+      family, not bank.
+  "0x0000000000000000000000000000000000000805":
+    name: gov
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    severity: high
+    src: "x/vm/types/precompiles.go:GovPrecompileAddress, precompiles/gov/gov.go:GovPrecompileAddress"
+    note: >-
+      WRITES STATE: vote, voteWeighted, submitProposal, deposit, cancelProposal.
+      A contract can submit and vote on governance proposals — including the
+      MsgUpdateParams proposals that rewrite the EVM's own rules.
+  "0x0000000000000000000000000000000000000806":
+    name: slashing
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    src: "x/vm/types/precompiles.go:SlashingPrecompileAddress, precompiles/slashing/slashing.go:SlashingPrecompileAddress"
+    note: "WRITES STATE: unjail. Queries are getSigningInfo, getSigningInfos, getParams."
+  "0x0000000000000000000000000000000000000807":
+    name: ICS-02 (IBC light client)
+    status: added
+    availability: optional
+    activation_condition: "listed in x/vm params ActiveStaticPrecompiles"
+    severity: high
+    src: "x/vm/types/precompiles.go:ICS02PrecompileAddress, precompiles/ics02/ics02.go:ICS02PrecompileAddress"
+    note: >-
+      WRITES STATE, AND SO DO ITS "VERIFY" METHODS. updateClient advances an IBC
+      light client. verifyMembership and verifyNonMembership are also classified
+      as transactions by IsTransaction — so the two methods whose names promise a
+      pure predicate REVERT under STATICCALL. A view function that wraps them is
+      not a view function.
+  dynamic_range:
+    name: ERC-20 / WERC-20 token-pair precompiles
+    status: added
+    availability: optional
+    severity: high
+    pattern: >-
+      membership is a STATE LOOKUP, not an address predicate: any address present
+      in the x/erc20 native-precompile or dynamic-precompile prefix store is a
+      precompile. For an IBC voucher the address is the last 20 bytes of the
+      denom's sha256 hash (utils.GetIBCDenomAddress), so the set is
+      unpredictable-but-deterministic and can grow at any block.
+    src: "x/vm/keeper/precompiles.go:GetPrecompileInstance, x/erc20/keeper/precompiles.go:GetERC20PrecompileInstance, x/erc20/keeper/dynamic_precompiles.go:RegisterERC20Extension, utils/utils.go:GetIBCDenomAddress"
+    note: >-
+      A SECOND, INDEPENDENT WAY THE PRECOMPILE SET IS NOT ENUMERABLE, and unlike
+      Base's it is not a predicate over the address at all. Base's PrecompileLookup
+      answers a membership question from the address bytes; here the answer lives
+      in module state, so the only way to know whether an address is a precompile
+      is to query the chain at a height. The set grows without governance: an
+      inbound IBC packet carrying an unseen denom registers a new one.
+
+      AND `eth_getCode` CANNOT TELL YOU. RegisterERC20CodeHash writes a FULL,
+      REAL, COMPILED ERC-20 RUNTIME into state at the precompile's address —
+      x/erc20/types/constants.go:Erc20Bytecode, ~24KB, a genuine OpenZeppelin-style
+      contract — and that bytecode is NEVER EXECUTED, because the call hook installs
+      the native Go precompile for that address first. This is the same trap the
+      Flare and Sonic rows found, one step worse: those chains write a 1-byte stub
+      to satisfy `extcodesize > 0`, so a careful reader still sees something
+      implausible. Here the probe returns a plausible, verifiable, correct-looking
+      ERC-20 that has nothing to do with the code that runs. `eth_getCode == 0x`
+      proves native, but non-empty code proves nothing at all on this framework —
+      the source map is the only sound test.
+  note: >-
+    TEN declared static addresses in two blocks — 0x0100, 0x0400, and 0x0800-0x0807
+    — of which NINE are implemented and one (0x0803) is not. The 0x0800 block is a
+    new frontier for this dataset: below Sei's 0x1001, above Polygon and BSC's
+    0x1000, and far above the BSC/Arbitrum 0x64-0x69 collision zone.
+
+    THREE CATEGORY-LEVEL DIVERGENCES from mainnet precompiles, all of which break
+    generic tooling:
+
+    (1) ALL of them are ABI-dispatched Solidity interfaces implemented in Go, like
+    Sei's and unlike every mainnet precompile — except 0x0100, which is genuinely
+    raw-input. So on the same chain, in the same map, two calling conventions.
+    A precompile whose calldata is empty falls through to `receive` or `fallback`.
+
+    (2) SEVEN of them WRITE STATE, including bonding native balances, moving
+    balances into IBC escrow, and advancing IBC light clients. Mainnet has none.
+    The read-only guarantee is preserved — SetupABI returns vm.ErrWriteProtection
+    for a transaction method under STATICCALL — but the boundary is drawn by a
+    per-precompile `IsTransaction` method, and ICS-02 puts its two `verify*`
+    methods on the writing side, so STATICCALL-safety is not inferable from the
+    ABI.
+
+    (3) THEY DO NOT METER IN EVM GAS. See fee_model.dual_gas_meter: a stateful
+    precompile installs a Cosmos SDK gas meter, measures Cosmos STORE gas —
+    ReadCostFlat, WriteCostPerByte and so on — and then charges that number back
+    to the EVM one-for-one as if the two units were the same. RequiredGas is
+    likewise a Cosmos gas config expression. Cost is therefore a function of how
+    many KV-store bytes the module happened to touch.
+
+system_contracts:
+  "0x0000F90827F1C53a10cb7A02335B175320002935":
+    name: EIP-2935 history storage
+    status: modified
+    severity: high
+    src: "x/vm/types/preinstall.go:DefaultPreinstalls, go-ethereum/params/protocol_params.go:HistoryStorageCode"
+    note: >-
+      Mainnet's contract, mainnet's bytecode, at mainnet's address — and it is
+      never called by the protocol. The ring buffer is written directly by the
+      keeper with a DIFFERENT modulus. See eips.2935; this is the reason that
+      entry is severity high.
+  "0x4e59b44847b379578588920ca78fbf26c0b4956c":
+    name: Create2 deterministic deployer
+    status: added
+    availability: optional
+    activation_condition: "listed in the x/vm genesis Preinstalls, or added later by MsgRegisterPreinstalls"
+    src: x/vm/types/preinstall.go:DefaultPreinstalls
+    note: "the canonical deployer, installed by genesis rather than by the usual pre-signed deployment transaction — so it exists with a zero deployer nonce and no deployment receipt"
+  "0xcA11bde05977b3631167028862bE2a173976CA11":
+    name: Multicall3
+    status: added
+    availability: optional
+    activation_condition: "listed in the x/vm genesis Preinstalls"
+    src: x/vm/types/preinstall.go:DefaultPreinstalls
+  "0x000000000022D473030F116dDEE9F6B43aC78BA3":
+    name: Permit2
+    status: added
+    availability: optional
+    activation_condition: "listed in the x/vm genesis Preinstalls"
+    src: x/vm/types/preinstall.go:DefaultPreinstalls
+    note: >-
+      Permit2's signatures are domain-separated by chain id, and the chain id
+      that matters here is the EVM chain id from the x/vm ChainConfig, not the
+      CometBFT chain-id string. Two identities, one contract.
+  "0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7":
+    name: Safe singleton factory
+    status: added
+    availability: optional
+    activation_condition: "listed in the x/vm genesis Preinstalls"
+    src: x/vm/types/preinstall.go:DefaultPreinstalls
+  note: >-
+    A PREDEPLOY SET THAT GOVERNANCE CAN EXTEND AT ANY TIME.
+    MsgRegisterPreinstalls takes a list of {name, address, code} and writes the
+    bytecode into state under the x/gov authority. Nothing about the addresses is
+    reserved or namespaced — the shipped five are ordinary mainnet ecosystem
+    addresses chosen so that mainnet tooling works — so "is there code at this
+    address" is a question with a governance-dependent answer, and a contract can
+    appear at an address a user was already using as an EOA. Distinct from the
+    dynamic ERC-20 bytecode above, which is code that exists and never runs; this
+    is code that exists and does run.
+
+system_transactions:
+  eip2935_ring_write:
+    name: "EIP-2935 history write (BeginBlock)"
+    status: modified
+    severity: high
+    src: "x/vm/keeper/abci.go:BeginBlock, x/vm/keeper/keeper.go:SetHeaderHash"
+    note: >-
+      Mainnet performs this as a system CALL from 0xffff..fffe into the history
+      contract, which is visible to a tracer as a call frame. Here BeginBlock
+      calls SetState on the contract's storage directly: no call, no frame, no
+      caller, nothing for a tracer to show — and, per eips.2935, at a different
+      modulus from the contract's own code.
+  ibc_recv_erc20_registration:
+    name: "inbound IBC packet creates a precompile and installs bytecode"
+    status: added
+    severity: high
+    src: "x/erc20/keeper/ibc_callbacks.go:OnRecvPacket, x/erc20/keeper/dynamic_precompiles.go:RegisterERC20Extension, x/erc20/keeper/dynamic_precompiles.go:RegisterERC20CodeHash"
+    note: >-
+      THE STRONGEST INSTANCE OF STATE CHANGING WITH NO EVM TRANSACTION IN THIS
+      ROW. An ICS-20 packet arriving from another chain, relayed by a third
+      party, for a denomination this chain has never seen, causes: a token pair to
+      be created, an address to be derived from the denom's sha256 hash, that
+      address to be added to the precompile set, and ~24KB of ERC-20 bytecode to
+      be written into state there. No Ethereum transaction exists. No EVM receipt
+      is produced. No log is emitted that any EVM contract can observe — the
+      register event is a Cosmos event, not an EVM log. An address that returned
+      empty code and no precompile at block N returns a full ERC-20 and a
+      precompile at block N+1, and nothing in the EVM's own view records why.
+  ibc_recv_balance_credit:
+    name: "inbound IBC transfer credits an EVM-visible balance"
+    status: added
+    severity: high
+    src: x/erc20/keeper/ibc_callbacks.go:OnRecvPacket
+    note: >-
+      Value arriving over IBC lands in a bank balance that the EVM reads as the
+      account's balance, with no Ethereum transaction and no Transfer log. Same
+      class as Flare's treasury sweeps and Gnosis's withdrawal credits: an
+      accounting model built from EVM events drifts silently.
+  bank_event_reconciliation:
+    name: "precompile balance changes reconciled from Cosmos events"
+    status: added
+    severity: high
+    src: precompiles/common/balance_handler.go:AfterBalanceChange
+    note: >-
+      When a stateful precompile moves coins, the EVM's own balance view is
+      brought back into line by REPLAYING THE COSMOS EVENT LOG: the handler reads
+      the bank module's coin_spent / coin_received events emitted since the call
+      began, parses the addresses and amounts out of event attribute STRINGS, and
+      calls StateDB.AddBalance / SubBalance accordingly. Two consequences. First,
+      a module that moves coins without emitting the standard events would be
+      invisible to the EVM. Second, and by design, events involving BlockedAddr
+      accounts — every module account, and every precompile address — are
+      deliberately SKIPPED, so for those addresses the Cosmos multistore and the
+      EVM StateDB knowingly disagree.
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0x44"
+    name: PREVRANDAO
+    severity: high
+    note: "the constant common.MaxHash (0xffff..ff) in every block. Not a beacon, not even a function of the block."
+    src: x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles
+  - op: "0x40"
+    name: BLOCKHASH
+    note: >-
+      returns CometBFT block hashes, served from the EIP-2935 storage slots for
+      historical heights and from ctx.HeaderHash() for the current one. Depth is
+      the governance HistoryServeWindow (default 8192), not mainnet's 256 — so
+      BLOCKHASH reaches thirty-two times further back than a ported contract
+      expects, and the reach is a governance parameter.
+    src: "x/vm/keeper/state_transition.go:GetHashFn, x/vm/keeper/keeper.go:GetHeaderHash"
+  - op: "0x45"
+    name: GASLIMIT
+    note: "the CometBFT consensus-params Block.MaxGas, which governance can change between blocks with no Ethereum-visible fork"
+    src: x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles
+  - op: "0x44"
+    name: DIFFICULTY (pre-merge reading)
+    note: "BlockContext.Difficulty is pinned to 0 with an in-source comment that it is unused"
+    src: x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles
+  - op: "0xf0"
+    name: CREATE / CREATE2 / CALL (access control)
+    severity: high
+    availability: optional
+    activation_condition: "x/vm params AccessControl.Create / .Call set to restricted or permissioned"
+    note: >-
+      A DEPLOYMENT CAN TURN OFF CREATE OR CALL. The framework installs opcode
+      HOOKS — a geth extension point the pinned cosmos/go-ethereum provides — that
+      run before CREATE, CREATE2 and CALL and can refuse them. Three policies:
+      permissionless with a blocklist, permissioned with an allowlist, and
+      `restricted`, which returns false unconditionally. The check is on the
+      immediate CALLER, not the transaction signer, so an allowlisted EOA calling
+      through a non-allowlisted contract is refused. This is a governance-mutable
+      param, so a chain can become permissioned between two blocks.
+    src: "x/vm/types/opcodes_hooks.go:DefaultOpCodesHooks, x/vm/types/permissions.go:getCanCallFn, x/vm/types/permissions.go:getCanCreateFn, x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles"
+  - op: "0x55"
+    name: "SSTORE / CREATE / CREATE2 / CALL (ExtraEIPs repricing)"
+    severity: high
+    availability: optional
+    activation_condition: "EIP number listed in x/vm params ExtraEIPs"
+    note: >-
+      OPCODE GAS IS A GOVERNANCE PARAMETER, AND THE EIP NAMESPACE IS FAKE. The
+      x/vm params carry an `ExtraEIPs []int64`; each entry names a jump-table
+      mutator registered through vm.ExtendActivators. The three the framework
+      ships are numbered 0000, 0001 and 0002 — integers 0, 1 and 2, which are not
+      EIPs — and they multiply CREATE/CREATE2 constant gas by 10, multiply CALL
+      constant gas by 10, and set SSTORE constant gas to 500. A deployment defines
+      its own set through the EVMConfigurator, so "EIP 3 is active on this chain"
+      is a statement about a private numbering that collides with the real EIP
+      registry. `vm.ValidEip` accepts any registered number, and the registry is
+      global and per-process.
+    src: "eips/eips.go:Enable0000, eips/eips.go:Enable0002, x/vm/types/configurator.go:WithExtendedEips, x/vm/types/params.go:validateEIPs"
+  - op: "0x4a"
+    name: BLOBBASEFEE
+    note: >-
+      UNRECORDED. BlockContext.BlobBaseFee is never assigned in
+      NewEVMWithOverridePrecompiles, so it is nil, and geth's opBlobBaseFee calls
+      uint256.FromBig on it. Whether that yields zero or panics was not
+      established from source and is not asserted here; the injective row probes
+      the deployed answer.
+    src: "x/vm/keeper/state_transition.go:NewEVMWithOverridePrecompiles, go-ethereum/core/vm/eips.go:opBlobBaseFee"
+  note: >-
+    No opcode is added or removed, and every entry above is either a value fed
+    into an unmodified opcode or a hook the pinned geth exposes. But two of them —
+    access control and ExtraEIPs — are the first cases in this dataset where the
+    JUMP TABLE ITSELF is per-deployment configuration rather than a fork rule.
+    Subnet-evm's opt-in precompiles vary what exists at an address; this varies
+    what an opcode costs and whether it runs at all.
+
+fee_model:
+  metering: "EVM gas, with Cosmos SDK store gas charged into the same counter at 1:1"
+  fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, optional"
+  extra_components:
+  - name: dual gas meter
+    severity: high
+    src: "ante/evm/08_gas_consume.go:CheckBlockGasLimit, x/vm/types/gasmeter.go:NewInfiniteGasMeterWithLimit, precompiles/common/precompile.go:runNativeAction"
+    note: >-
+      TWO METERS, AND THE SECOND ONE IS DECORATIVE — until a precompile makes it
+      real. The ante chain first installs an INFINITE Cosmos gas meter, then
+      replaces it with `infiniteGasMeterWithLimit(gasWanted)`: a meter that
+      records the Ethereum gas limit as its `limit` and never enforces it,
+      because ConsumeGas cannot fail. The real metering is EVM gas, and the EVM's
+      gas used is written back as the transaction's Cosmos GasUsed afterwards.
+      Then, inside any stateful precompile, a THIRD meter appears —
+      `storetypes.NewGasMeter(contract.Gas)`, a genuine Cosmos meter seeded with
+      the EVM's REMAINING gas as if the units were interchangeable. Cosmos store
+      gas consumed during the precompile call is charged back to the EVM one for
+      one. So one number means EVM gas at the top, Cosmos store gas in the
+      middle, and EVM gas again on the way out, with no conversion factor
+      anywhere. An out-of-gas inside a precompile arrives as a Go panic and is
+      converted to vm.ErrOutOfGas by a deferred recover.
+  - name: nonce on failure
+    severity: high
+    src: "ante/evm/09_increment_sequence.go:IncrementNonce, ante/evm/mono_decorator.go:AnteHandle, x/vm/types/tx_result.go:TxSucessOrExpectedFailure, x/vm/keeper/state_transition.go:ApplyMessageWithConfig, rpc/backend/comet_to_eth.go:EthMsgsFromCometBlock"
+    note: >-
+      NONCE ON FAILURE: BURNED, and on one path burned with NO RECEIPT AT ALL.
+      The nonce lives in the AnteHandler, not in execution: `MonoDecorator.AnteHandle`
+      calls `ConsumeFeesAndEmitEvent` and then `IncrementNonce` (which itself does the
+      nonce-equality check, so `nonce != expected` is an ANTE failure, not an execution
+      failure). Cosmos SDK `runTx` commits the ante handler's writes and then runs the
+      messages in a separate cache, so once the ante chain has passed, the fee
+      deduction and `SetSequence(nonce+1)` are already committed whatever the message
+      does.
+
+      Three outcomes, which a client cannot tell apart from the receipt alone:
+
+      (1) ANTE FAILURE — wrong nonce, insufficient balance, gas price below the
+      minimum, bad signature. The ante cache is discarded, so the NONCE IS PRESERVED
+      and no fee is taken. But the transaction also has a non-zero ABCI code, and
+      `TxSucessOrExpectedFailure` returns `res.Code == 0 || TxExceedBlockGasLimit(res)`
+      — so `EthMsgsFromCometBlock` drops it and the transaction is ABSENT from
+      `eth_getBlockByNumber`, with no receipt. The sender is safe but blind.
+
+      (2) EVM REVERT / out-of-gas inside the EVM — ABCI code 0, `vmError` recorded on
+      the response, receipt with `status: 0`. NONCE BURNED, receipt exists. Normal.
+
+      (3) POST-ANTE ERROR — `ApplyMessageWithConfig` returns a Go error rather than a
+      response: `failed to commit stateDB`, `ErrGasOverflow` on the refund arithmetic,
+      or any panic converted to an error by the SDK's recovery middleware. The ante
+      writes are already committed, so the FEE IS TAKEN AND THE NONCE IS BURNED — but
+      the ABCI code is non-zero and is not the block-gas-limit sentinel, so the same
+      `TxSucessOrExpectedFailure` gate ERASES the transaction: no receipt, absent from
+      the eth block. The sender sees nothing happened, resubmits at the same nonce, and
+      is permanently behind a gap they cannot observe. Exactly Artela's shape, in the
+      ancestor, and therefore inherited by every Cosmos EVM descendant — Injective has
+      it too. `rpc/backend/tx_info_test.go:TestEthMsgsFromCometBlockSkipStateDBCommitFailure`
+      pins the erasure with a literal `{Code: 4, Log: "failed to commit stateDB"}`.
+
+      THE ONE ESCAPE HATCH IS A SUBSTRING MATCH. Block-gas-limit exhaustion is
+      whitelisted back in by `strings.Contains(res.Log, "out of gas in location: block
+      gas meter; gasWanted:")`, with the in-source reason "The tx fee is already
+      deducted in ante, so the tx is still counted toward the eth rank space" — an
+      acknowledgement that a fee-taken transaction must stay visible, applied to
+      exactly one error string.
+
+      What is NOT reachable here that is reachable on Artela: `BlockContext.Random` is
+      `&common.MaxHash` ("need to be different than nil to signal it is after the
+      merge"), so PREVRANDAO does not nil-dereference and ordinary bytecode does not
+      reach outcome (3). The structure is identical; only the trigger is narrower.
+  - name: base fee is not burned
+    severity: high
+    src: x/vm/keeper/fees.go:DeductFees
+    note: "base fee plus tip is bank-sent to the FeeCollector module account; nothing is destroyed. Every 1559 supply model is wrong here."
+  - name: base fee tracks gas WANTED
+    src: x/feemarket/keeper/eip1559.go:CalculateBaseFee
+    note: "computed from the parent block's summed transaction gas LIMITS, not gas used — over-estimation raises the price for everyone"
+  - name: sub-unit balance scaling
+    severity: high
+    src: x/vm/types/scaling.go:ConvertAmountTo18DecimalsBigInt
+    note: >-
+      The EVM insists on 18 decimals; a Cosmos denom usually has 6. The framework
+      reconciles this by defining an EXTENDED DENOM and multiplying, so the EVM
+      balance is the bank balance times a conversion factor. Deployments whose
+      base denom is not 18-decimal therefore have EVM balances that cannot
+      represent every bank amount and vice versa, and DeductFees PANICS outright
+      if virtual fee collection is enabled on a display denom whose exponent is
+      not 18.
+  - name: precompile gas is Cosmos store gas
+    src: precompiles/common/precompile.go:RequiredGas
+    note: "RequiredGas is WriteCostFlat + WriteCostPerByte*len(input) (or the read equivalents) from the Cosmos KV gas config — a storage-cost model, not an EVM one"
+  note: >-
+    The fee market is itself optional: x/feemarket params carry NoBaseFee and an
+    EnableHeight, and evmd's own example genesis DISABLES the base fee. A
+    deployment can therefore present a `baseFeePerGas` field over a chain that has
+    no base fee mechanism at all.
+  src: x/feemarket/keeper/eip1559.go:CalculateBaseFee
+
+header_fields:
+  src: "rpc/types/utils.go:MakeHeader, rpc/types/utils.go:RPCMarshalHeader, rpc/backend/comet_to_eth.go:EthBlockFromCometBlock"
+  note: >-
+    NOT A DELTA — THERE IS NO ETHEREUM HEADER. The consensus object is a CometBFT
+    block. MakeHeader fabricates an ethtypes.Header from six CometBFT fields plus
+    constants; NewBlock then recomputes transactionsRoot, receiptsRoot, logsBloom
+    and sha3Uncles over whatever the RPC layer chose to expose. Nothing hashes,
+    signs or commits to any of it.
+
+    THE HEADER DOES NOT HASH TO THE HASH. RPCMarshalHeader deliberately
+    substitutes the CometBFT block hash for the `hash` field — the comment says
+    "use cometbft header hash" — so keccak256(rlp(header)) is NOT the reported
+    hash. That is the right call, because it makes `hash` agree with BLOCKHASH,
+    and it means any light client, any header-verifying bridge, and any tool that
+    re-derives a block hash from the header fails on every block.
+  added: []
+  removed:
+  - {name: uncleHash / ommers, note: "BFT finality; reported as the constant EmptyUncleHash, uncles always []"}
+  modified:
+  - name: stateRoot
+    severity: high
+    note: >-
+      the CometBFT APP HASH — a commitment to the entire Cosmos multistore, not
+      to an Ethereum state trie. Same key, same 32-byte shape, unrelated meaning;
+      no eth_getProof result can ever verify against it.
+    src: rpc/types/utils.go:MakeHeader
+  - {name: miner, note: "the block proposer's validator address, not an EVM account that received anything — fees went to the FeeCollector module account",
+     src: "rpc/backend/comet_to_eth.go:EthBlockFromCometBlock"}
+  - {name: gasLimit, note: "the CometBFT consensus-params Block.MaxGas, governance-settable, kept deliberately equal to what GASLIMIT returns",
+     src: "rpc/types/utils.go:BlockMaxGasFromConsensusParams"}
+  - {name: mixHash, note: "the zero hash — NOT the value PREVRANDAO returned, which is 0xffff..ff", severity: high,
+     src: "rpc/types/utils.go:MakeHeader"}
+  - {name: difficulty, note: "constant 0", src: "rpc/types/utils.go:MakeHeader"}
+  - {name: extraData, note: "always empty; CometBFT consensus data is not exposed", src: "rpc/types/utils.go:EthHeaderFromComet"}
+  - {name: nonce, note: "always zero", src: "rpc/types/utils.go:MakeHeader"}
+  - {name: withdrawalsRoot, note: "constant EmptyWithdrawalsHash from Shanghai on, with no withdrawals mechanism behind it",
+     src: "rpc/types/utils.go:EthHeaderFromComet"}
+  - {name: parentBeaconBlockRoot, note: "constant EmptyRootHash from Cancun on; there is no beacon chain", severity: high,
+     src: "rpc/types/utils.go:EthHeaderFromComet"}
+  - {name: requestsHash, note: "constant EmptyRequestsHash from Prague on", src: "rpc/types/utils.go:MakeHeader"}
+  - {name: blobGasUsed / excessBlobGas, note: "both emitted as 0 from Cancun on; there is no blob market",
+     src: "rpc/types/utils.go:MakeHeader"}
+  - {name: transactionsRoot, note: "recomputed over only the EVM transactions the RPC layer surfaced, not over the CometBFT block's transaction set",
+     src: "rpc/backend/comet_to_eth.go:EthBlockFromCometBlock"}
+
+gotchas:
+- >-
+  A FAILED TRANSACTION CAN BURN YOUR NONCE, TAKE YOUR FEE, AND LEAVE NO RECEIPT.
+  The AnteHandler increments the sender's sequence and deducts the fee, and the
+  SDK commits the ante writes before running the message. If the message then
+  fails with a Cosmos-level error rather than an EVM revert — `failed to commit
+  stateDB`, a refund gas-overflow guard, any recovered panic — the tx carries a
+  non-zero ABCI code, and `TxSucessOrExpectedFailure` admits only code 0 or the
+  literal log substring "out of gas in location: block gas meter; gasWanted:".
+  Everything else is dropped by `EthMsgsFromCometBlock`: no receipt, not in
+  `eth_getBlockByNumber`. The sender sees nothing happened, resubmits at the same
+  nonce, and sits behind a gap they cannot observe. Artela shows the same
+  combination reachable from ordinary bytecode; here the trigger is narrower, but
+  the mechanism is the ancestor's and every Cosmos EVM descendant inherits it.
+- >-
+  A WRONG-NONCE TRANSACTION IS INVISIBLE, NOT REJECTED-WITH-A-RECEIPT. The nonce
+  equality check was merged into `IncrementNonce` in the ante handler, so a stale
+  or gapped nonce is an ante failure: the nonce is PRESERVED and no fee is taken
+  (the ante cache is discarded), but the tx has a non-zero code and is filtered out
+  of the eth view entirely. Safe, and completely silent.
+- >-
+  AN EIP-2718 ENVELOPE INSIDE SOMETHING WITH NO TYPE BYTE. The user signs an
+  ordinary RLP transaction; consensus orders a protobuf Cosmos transaction that
+  contains those bytes verbatim in MsgEthereumTx.raw. The Ethereum tx hash is the
+  keccak of the inner bytes, the CometBFT tx hash is the sha256 of the outer
+  wrapper, and they are different hashes for the same transaction. This inverts
+  the non_evm_transactions category rather than fitting it, and it is a different
+  phenomenon from Tron (protobuf all the way down, no RLP anywhere) and from Sei
+  (the Ethereum fields re-encoded as protobuf, RLP bytes not preserved).
+- >-
+  EIP-2935 IS WRITTEN AT 8192 AND READ AT 8191. The preinstalled history contract
+  is mainnet's, bytecode-identical, indexing at n % 8191. The keeper writes the
+  ring buffer itself at height % HistoryServeWindow, default 8192, under a comment
+  claiming that is "same as EIP-2935". BLOCKHASH is fine because it reads back
+  through the same 8192; a CONTRACT that calls the history contract gets a real
+  hash from the wrong height, with no revert.
+- >-
+  PREVRANDAO IS A CONSTANT. Not weak randomness, not predictable randomness — the
+  literal value 0xffff…ff in every block of every Cosmos EVM chain, because
+  BlockContext.Random is set to &common.MaxHash purely to signal post-merge opcode
+  selection. Meanwhile mixHash in the RPC block is the zero hash, so the two
+  places you would look disagree and neither is right.
+- >-
+  eth_getCode PROVES NOTHING ABOUT WHAT RUNS. Every ERC-20 token-pair precompile
+  has a full, real, ~24KB compiled ERC-20 runtime stored at its address, and that
+  bytecode is never executed — the native Go precompile intercepts first. The
+  Flare and Sonic rows found chains writing a 1-byte stub to satisfy
+  `extcodesize > 0`; this writes something that looks exactly like the contract it
+  is impersonating. Only the source map, or the absence of code, is evidence.
+- >-
+  THE PRECOMPILE SET IS NOT ENUMERABLE AND NOT A PREDICATE EITHER. Base's dynamic
+  range answers membership from the address bytes. Here membership is a lookup in
+  x/erc20 module state, the addresses are sha256 hashes of IBC denominations, and
+  the set GROWS ON ITS OWN — an inbound IBC packet for a new denom registers a new
+  precompile and installs its bytecode with no transaction, no receipt and no EVM
+  log.
+- >-
+  0x0000…0803 IS ACTIVE AND EMPTY IN THE REFERENCE GENESIS. VestingPrecompileAddress
+  is in AvailableStaticPrecompiles, evmd assigns that list to
+  ActiveStaticPrecompiles, and no vesting precompile exists in the tree — so the
+  availability check says yes and the map lookup says no, which is the branch that
+  panics. Param validation checks syntax, duplicates and sort order and never
+  cross-checks against the registered map.
+- >-
+  SEVEN PRECOMPILES WRITE STATE, INCLUDING TWO CALLED verify*. Staking bonds
+  balances, distribution moves rewards, gov submits proposals, ICS-20 escrows value
+  into an IBC packet, ICS-02 advances a light client. STATICCALL safety is decided
+  per-precompile by an `IsTransaction` method, and ICS-02 classifies
+  verifyMembership and verifyNonMembership as transactions — so they revert under
+  STATICCALL despite being pure-sounding reads. Conversely the BANK precompile,
+  the one everyone expects to move money, is query-only.
+- >-
+  THE GAS NUMBER CHANGES UNITS TWICE INSIDE ONE TRANSACTION. Cosmos gas at the
+  ante layer is metered by a deliberately infinite meter; the EVM does the real
+  metering; a stateful precompile then meters Cosmos STORE gas and charges the
+  count straight back to the EVM as if the units matched. There is no conversion
+  factor in the code because none is intended.
+- >-
+  GOVERNANCE IS A FORK MECHANISM. One MsgUpdateParams can change the active
+  precompile set, reprice SSTORE/CREATE/CALL through the ExtraEIPs jump-table
+  mutators, switch CREATE or CALL to permissioned or off entirely, move the
+  EIP-2935 window, and rewrite the ChainConfig fork schedule. None of it requires a
+  client release and none of it is visible as a fork in any Ethereum sense.
+- >-
+  THE "EIP" NUMBERS IN ExtraEIPs ARE NOT EIPs. The three shipped mutators are
+  numbered 0000, 0001 and 0002 — the integers 0, 1 and 2 — and each deployment
+  registers its own into the same global activator map. A chain that says "EIP 3
+  is enabled" is naming a private mutator, not a specification.
+- >-
+  TWO SECP256K1 ADDRESS DERIVATIONS SHARE ONE ADDRESS SPACE. Ethereum-style keys
+  hash with keccak, Cosmos-style keys with ripemd160(sha256(·)). Both authorize
+  Cosmos transactions and move EVM-visible balances; only the first can ever sign
+  an Ethereum transaction, and `ecrecover(sig) == from` is simply false for the
+  second. Nothing in the 20 bytes tells them apart. ed25519 is registered, charged
+  gas, and then refused for every transaction.
+- >-
+  THE BECH32 ADDRESS IS NOT A SECOND ADDRESS. Unlike Sei, there is no association
+  step and no byte-cast alias: the codec accepts hex or bech32 and returns the same
+  20 bytes. Every stranded-balance hazard in the Sei row is absent here — which is
+  worth knowing precisely because the two chains look so similar from outside.

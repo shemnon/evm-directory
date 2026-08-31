@@ -182,6 +182,52 @@ included, charged, and then fails inside execution with `EVMC_INSUFFICIENT_BALAN
 `execute_create_message` even increments the sender's nonce by hand for the depth-0 case
 Ethereum's validity rules make unreachable.
 
+## A duplicate transaction does not lose — it invalidates the block
+
+`EXECUTION_DELAY = 3` creates a problem no single-stage chain has. A leader proposing at
+height N+1 has **not executed N** and cannot ask executed state whether a nonce is spent,
+yet something must stop the same transaction being re-included at N+1, N+2 and N+3.
+Monad's answer is to reconstruct the nonce rather than read it, and to make the
+reconstruction binding.
+
+Every validated block carries a `NonceUsageMap`: per sender, either `Known(nonce)` or —
+for EIP-7702 authorities, whose nonce increments only if the authorization's behaviour
+checks pass — `Possible([nonces])`. `get_account_base_nonces` reads the executed nonce
+from triedb at `block_seq_num - execution_delay` and layers the usage maps of every
+uncommitted ancestor above that height on top of it. `nonce_check_and_update` then
+requires **exact equality** — `txn_nonce == expected_nonce` — for every transaction in the
+proposal, returning `BlockPolicyError::BlockNotCoherent` otherwise. A re-included
+transaction carries a nonce below the expectation, so the *whole proposal* fails coherency
+and is not voted for.
+
+This is a **consensus rule**, not a proposer heuristic: `check_coherency` runs on every
+validator for every proposal, and a second independent check in `monad-eth-block-validator`
+catches the within-one-block case first — `nonce_usages.add_known` returns the sender's
+previous usage and the block is rejected with `TxnError::InvalidNonce` under the comment
+"A block is invalid if we see a smaller or equal nonce after the first or if there is a
+nonce gap". The txpool sequencer seeding itself from `extending_blocks.get_nonce_usages()`
+is only an optimisation on top of that.
+
+So the cross-chain answer for Monad is the inverse of every other deferred-or-DAG row here.
+Sonic and Taraxa deduplicate and silently drop the loser; Conflux executes it and erases
+every trace; Monad refuses the block. **No occurrence executes, because no such block is
+ever accepted.**
+
+The cost is worth naming. Monad now maintains a reimplementation of EVM nonce semantics in
+**Rust, inside the BFT layer**, while the engine that actually increments nonces is a
+separate **C++** codebase. EIP-7702 is where the two models are hardest to hold together:
+the authority nonce is recorded as `Possible`, resolved later by a positional walk in
+`apply_possible_nonces_to_account_nonce` that increments only on exact match, and the
+within-block check explicitly declines to verify it — "Could be valid or invalid
+authorization, can't verify within block". `eip_7702_valid_nonce_update` is consensus's own
+re-derivation of the EIP-7702 behaviour rules. Every validator runs the same Rust, so this
+is not a validator-versus-validator split; the exposure is **consensus-versus-execution
+drift**, and because the state root for N is only agreed at N+3, a divergence surfaces as an
+`ExecutionResultMismatch` three blocks *after* the block was committed rather than as a
+rejected proposal. Any second implementation of Monad consensus would have to reproduce
+this nonce model exactly, `Possible`-resolution included, to agree on which blocks are
+coherent.
+
 ## Two fork ladders that do not line up
 
 - `monad_revision` (`MONAD_ZERO`…`MONAD_NEXT`) — **timestamp**-gated, in the C++ client.

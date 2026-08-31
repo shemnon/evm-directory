@@ -485,6 +485,79 @@ fee_model:
         so a transaction can fail because of a balance change to an account it
         merely paid, not because of anything it did wrong. The staking
         precompile is explicitly exempt.
+    - name: nonce on failure
+      severity: high
+      src: "category/execution/monad/validate_monad_transaction.cpp:InsufficientBalanceForFee, category/execution/ethereum/execute_transaction.cpp:irrevocable_change"
+      note: >-
+        NONCE ON FAILURE: BURNED, with a receipt. This is the axis that only
+        exists once ordering is separated from execution, and Monad separates
+        them by three heights. From MONAD_FOUR a transaction is admitted on
+        `balance >= gas_limit * gas_price` alone, so a transaction that cannot
+        cover `tx.value` is still ordered. At execution time
+        `irrevocable_change` — the Yellow Paper's own name for the part that
+        cannot be rolled back — does `state.set_nonce(sender, nonce + 1)` and
+        deducts the fee BEFORE the message runs; the message then fails with
+        `EVMC_INSUFFICIENT_BALANCE`. Fee charged, NONCE BURNED, receipt present.
+        The reserve-balance rule adds a second, stranger route to the same
+        outcome: `dipped_into_reserve` can revert a transaction because an
+        account it merely PAID ended below its reserve, and the nonce is gone
+        just the same. Sonic reaches the identical fee-only precheck from Opera
+        rather than from deferred execution.
+    - name: duplicate inclusion
+      severity: high
+      src: "monad-bft/monad-eth-block-policy/src/lib.rs:nonce_check_and_update, monad-bft/monad-eth-block-policy/src/lib.rs:get_account_base_nonces, monad-bft/monad-eth-block-policy/src/nonce_usage.rs:NonceUsage, monad-bft/monad-eth-block-validator/src/lib.rs:InvalidNonce, monad-bft/monad-eth-txpool/src/pool/sequencer.rs:pending_nonce_usages"
+      note: >-
+        DUPLICATE INCLUSION: CANNOT HAPPEN IN A VALID BLOCK — a block that
+        contains the same transaction twice is REJECTED WHOLE, and so is a block
+        that re-includes a transaction from any of the three uncommitted blocks
+        ahead of it. No occurrence executes, because no such block is ever
+        accepted. This is the opposite of every other DAG-or-deferred chain here:
+        Sonic and Taraxa deduplicate and drop the loser, Conflux executes and
+        erases it, Monad refuses the block.
+
+        The problem is forced by `EXECUTION_DELAY = 3`. A leader proposing at
+        height N+1 has not executed N and cannot ask executed state whether a
+        nonce is spent, so Monad reconstructs the answer instead. Every validated
+        block carries a `NonceUsageMap` — per sender, either `Known(nonce)` or
+        `Possible([nonces])` — and `get_account_base_nonces` layers the maps of
+        every uncommitted ancestor with `seq_num > block_seq_num -
+        execution_delay` on top of the executed nonce read from triedb at that
+        base height. `nonce_check_and_update` then demands EXACT EQUALITY for
+        every transaction in the proposal, `txn_nonce == expected_nonce`, and
+        returns `BlockPolicyError::BlockNotCoherent` otherwise. A re-included
+        transaction has a nonce one or more below `expected_nonce`, so the
+        proposal fails coherency and is not voted for.
+
+        THE MECHANISM IS A CONSENSUS RULE, NOT A PROPOSER HEURISTIC. It sits in
+        `check_coherency`, which every validator runs on every proposal, and a
+        second independent check in the block validator catches the within-one-
+        block case before that: `nonce_usages.add_known` returns the previous
+        usage for the sender and the block is rejected with
+        `TxnError::InvalidNonce` under the comment "A block is invalid if we see a
+        smaller or equal nonce after the first or if there is a nonce gap". The
+        proposer-side avoidance in `monad-eth-txpool` — the sequencer seeds itself
+        from `extending_blocks.get_nonce_usages()` before picking each sender's
+        next queued transaction — is only an optimisation on top; an honest
+        proposer never builds such a block, and a dishonest one has its block
+        thrown out.
+
+        NOTE THE COST OF THIS DESIGN. Monad reimplements EVM nonce semantics in
+        Rust, inside the BFT layer, where the engine that actually increments
+        nonces is a separate C++ codebase. EIP-7702 is where the two models are
+        hardest to keep aligned: an authority's nonce is recorded as
+        `Possible`, resolved later by a positional walk in
+        `apply_possible_nonces_to_account_nonce` that increments only on exact
+        match, and the within-block check explicitly declines to verify it —
+        "Could be valid or invalid authorization, can't verify within block".
+        `eip_7702_valid_nonce_update` is consensus's own re-derivation of the
+        EIP-7702 behaviour checks. All validators run the same Rust, so this is
+        not a validator-vs-validator split; the exposure is consensus-vs-execution
+        drift, and because the state root for N is only agreed at N+3 it would
+        surface as an `ExecutionResultMismatch` three blocks after the block was
+        already committed rather than as a rejected proposal. Any second
+        implementation of Monad consensus would have to reproduce this Rust nonce
+        model bit-for-bit, EIP-7702 `Possible`-resolution included, to agree on
+        which blocks are coherent.
     - name: fee-only balance precheck
       src: category/execution/monad/validate_monad_transaction.cpp:InsufficientBalanceForFee
       note: >-

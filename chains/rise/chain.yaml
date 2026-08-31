@@ -1,0 +1,610 @@
+schema_version: 2
+
+chain:
+  name: RISE
+  slug: rise
+  chain_id: 4153
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: "chain/mainnet/rollup.json:l2_chain_id, chain/mainnet/genesis.json:chainId"
+  chain_id_src_live: "eth_chainId @ 20239360 -> 0x1039 (4153); eth_call CHAINID @ 20239360 -> 0x1039"
+  note: >-
+    An OP Stack L2 at Jovian whose EVM is, as far as every probe can tell, STOCK — and
+    whose divergence is entirely in the RPC surface and the block-production path. The
+    headline is `shreds`: the sequencer publishes each transaction, with its receipt and
+    optionally its state diff, 2-10 ms after executing it and up to a second before the
+    enclosing block exists. THE EVIDENCE GATE IS SPLIT, and not the way the OP Stack
+    usually splits. `rise-node` is a released, tagged repo, but it is a DEPLOYMENT repo:
+    docker-compose plus the canonical mainnet `genesis.json` and `rollup.json` and the
+    exact container digests. The execution client it runs — `rise-exec` / `rise-replica`
+    — is CLOSED; no repo under the `risechain` org builds it, and the live RPC identifies
+    itself as `rise-replica/sha-80d9780/linux`. The two open Rust repos that look like the
+    client are not: `risechain/risechain` is a monorepo containing exactly one crate
+    (`primitives`, 353 lines) and says so, and `risechain/pevm` says on its own front page
+    that it is not production ready and lists "Integration into RISE nodes" as TODO.
+    Neither carries a tag. So: chain configuration and the RPC wire types are `src:`;
+    EVERY claim about the EVM, about shreds, and about block production is `src_live:`.
+    The row is `evidence: source` because a real released tag is pinned and every `src:`
+    below resolves inside it, not because the state transition is auditable. It is not.
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: null
+  second_heritage: null
+  note: >-
+    OP Stack by derivation, by predeploys and by envelope. `rise-op-node` is an op-node
+    fork driving a reth-derived execution client over the standard Engine API; every OP
+    fork from Regolith to Jovian is active at genesis; the L1 attributes deposit at
+    index 0 of every block calls `0x4200...15` with the STOCK Jovian selector
+    `0x3db6be2b`; `0x4200...11` is the beneficiary of every header; the Isthmus
+    `withdrawalsRoot` and Jovian 17-byte `extraData` are both present and well-formed.
+    What RISE changes is not the state transition but who gets to see it, and when.
+  sync_point: >-
+    NONE NEEDED — unusually. RISE's rollup config activates `jovian_time: 0`, and the
+    op-stack row pins a Jovian/Karst op-geth, so this descendant is at the same fork
+    level as its ancestor row and inherits it wholesale and correctly. Contrast MegaETH,
+    which stops at Isthmus and needs a sync_point to avoid being credited with Jovian.
+    Karst is NOT active here (`rollup.json` has no `karst_time`).
+  src: "chain/mainnet/rollup.json:jovian_time"
+  src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> tx[0] type 0x7e to 0x4200000000000000000000000000000000000015, input selector 0x3db6be2b (op-reth L1_BLOCK_JOVIAN_SELECTOR); miner 0x4200000000000000000000000000000000000011; withdrawalsRoot present"
+
+client:
+  name: rise-node (chain configuration and node distribution)
+  repo: https://github.com/risechain/rise-node
+  version: v0.6.0
+  commit: 27cd88b171000a08a92d2c65358a2d3b84f423d8
+  language: shell + json
+  released: 2026-06-29
+  note: >-
+    NOT AN EXECUTION CLIENT, AND THIS IS THE ROW'S CENTRAL CAVEAT. `rise-node` is the
+    official "how to run a RISE full node" distribution: a docker-compose that pins two
+    prebuilt images by digest — `rise-exec/replica:sha-bb10092` (the execution client,
+    invoked with reth's CLI grammar) and `rise-op-node:sha-b1f242d` (the op-node fork) —
+    together with the canonical mainnet and testnet `genesis.json` / `rollup.json`. That
+    makes it real, pinned, verifiable evidence for chain PARAMETERS and for the
+    deployment topology, and no evidence at all for the state transition. Neither image
+    has published source. `git ls-remote --tags` returns nothing for `risechain/pevm`,
+    `risechain/risechain` or `risechain/reth`; the only tagged repo in the org is this
+    one. The clone was tested, not estimated: the gate was probed by cloning.
+  companion_repos:
+  - name: risechain
+    repo: https://github.com/risechain/risechain
+    version: main (UNTAGGED)
+    commit: 0f53132e5a0d3589ecd3f8fb78fdd290c891a14d
+    language: rust
+    provides: >-
+      the only published RISE Rust code: `crates/primitives`, which defines the RPC and
+      IPC wire types — `RiseRpcTransactionReceipt`, `RiseRpcLog`, `RiseIpcRequest`. Its
+      README says "We're in a gradual process of open-sourcing the whole stack", and the
+      workspace has exactly one member. It supplies the shape of what the node returns,
+      not what the node computes.
+  - name: pevm
+    repo: https://github.com/risechain/pevm
+    version: main (UNTAGGED)
+    commit: e94b0e3df9c0c1b983ed3e4d78b3aefb0b5b7cc0
+    language: rust
+    provides: >-
+      the parallel EVM engine RISE intends to run, and the design statement that
+      parallel execution must be observationally identical to sequential execution. Its
+      README opens "This repository is a work in progress and is not production ready",
+      and its TODO list still contains "Committing and broadcasting shreds", "Implement
+      an inline parallel-optimal EVM to replace revm" and "Integration into RISE nodes".
+      Cited for INTENT, and explicitly not as a description of the live network.
+  note_closed_client: >-
+    The gap between what is published and what runs is larger here than on MegaETH.
+    MegaETH publishes its EVM under tags and closes only the sequencer; RISE publishes
+    neither the EVM nor the sequencer, and closes both behind two container digests.
+
+live_probe:
+  endpoint: https://rpc.risechain.com
+  ws_endpoint: wss://rpc.risechain.com/ws
+  chain_id: 4153
+  observed_at_block: 20239360
+  observed_at: 2026-08-27
+  client_version_src_live: "web3_clientVersion @ 20239360 -> rise-replica/sha-80d9780/linux"
+  note: >-
+    Block 20239360 (0x134d400) has timestamp 1787845119 (2026-08-27 15:38:39 UTC).
+    Historical state IS served: `eth_call` and `eth_getCode` honour the block parameter
+    at that height. Shred-stream observations necessarily carry their own, later block
+    numbers — a shred cannot be replayed at a past height because no archive method
+    exposes shreds at all — and each is pinned individually below. The WebSocket path is
+    `wss://rpc.risechain.com/ws`; `wss://rpc.risechain.com` (no path) returns HTTP 403.
+
+consensus:
+  engine: >-
+    OP Stack derivation with a single sequencer, driven by a fork of op-node
+    (`rise-op-node`) over the Engine API; AltDA (plasma) rather than L1 blobs
+  finality: >-
+    shred-level preconfirmation at 2-10 ms (sequencer's word, unsigned), L2 block at
+    1 s, DA commitment posted to an AltDA server, batch inbox on Ethereum L1, then the
+    OP fault-proof dispute window
+  block_time: 1s (L2 blocks) / 2-10ms (shreds)
+  src: "chain/mainnet/rollup.json:block_time, docker-compose.yml:rise-op-node"
+  src_doc: https://docs.risechain.com/rise-chain/shreds.html
+  src_live: "eth_subscribe newHeads @ 20277529 -> blocks 20277529..20277548, exactly one per second, no gaps; eth_subscribe shreds @ 20277530 -> 98 shreds for block 20277530, shredIdx 0..97; @ 20277533 -> 478 shreds, shredIdx 0..477; mean inter-shred gap 5.1-18.3ms over three blocks @ 20277659"
+  note: >-
+    ORDERING IS NOT SEPARATED FROM EXECUTION HERE — that is the whole point, and it is
+    the opposite of Monad. A shred is emitted only AFTER its transaction has executed:
+    the payload carries a receipt with a `status` field, the gas used, the logs, and
+    optionally the post-state diff. So the sequencer never publishes an order it has not
+    yet run, and there is no window in which a transaction is committed-but-unevaluated.
+    What the sequencer publishes early is the RESULT; what it withholds is the BLOCK.
+    See `gotchas.shreds` and `gotchas.preconfirmed_receipt`.
+
+baseline_fork: prague
+
+baseline_note: >-
+  Prague, reached through OP Jovian, exactly as the op-stack row's client is. Confirmed
+  live at 20239360: the EIP-2935 history contract at 0x0000F90827F1C53a10cb7A02335B175320002935
+  has code, the EIP-4788 beacon-roots contract at 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02
+  has code, `requestsHash` is present in the header (EIP-7685), BLS12-381 at 0x0b answers,
+  and P256VERIFY at 0x0100 returns empty output for an invalid signature. NOT Osaka: an
+  `eth_call` executing CLZ (0x1e) fails with `EVM error: NotActivated`, and neither the
+  genesis nor the rollup config schedules an Osaka or Karst time.
+
+forks:
+  src: "chain/mainnet/rollup.json:isthmus_time, chain/mainnet/genesis.json:pragueTime"
+  note: >-
+    There is no RISE fork ladder. Every Ethereum fork through Prague and every OP fork
+    through Jovian is at time 0, and the chain has shipped no named upgrade of its own —
+    a striking contrast with MegaETH's eleven-step MiniRex..Rex6 ladder over nine months.
+    Whatever RISE changes, it does not change through consensus forks. The `rise-node`
+    branch names (`chain-upgrade-24`, `ship-upgrade-31`) suggest the upgrades are
+    container-digest rollouts of the closed client, which is a fork schedule nobody
+    outside the team can read.
+  timeline:
+  - name: "genesis (shanghai..prague + bedrock..jovian, all at time 0)"
+    activation_time: 1767605759
+    mainnet_equivalent: prague
+    note: >-
+      RISE mainnet genesis, 2026-01-05, from Ethereum L1 block 24167604. `genesis.json`
+      sets shanghaiTime/cancunTime/pragueTime and regolithTime..jovianTime all to 0;
+      `rollup.json` mirrors that with regolith_time..jovian_time all 0.
+  - name: karst
+    status: pending
+    mainnet_equivalent: null
+    note: "not scheduled: `rollup.json` contains no karst_time, so RISE stops at Jovian"
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      Same formula, parameters set so that the base fee is a CONSTANT in practice, and
+      the constant is the Jovian minimum. The live `extraData` decodes to denominator 1,
+      elasticity 1, minBaseFee 415300 wei — elasticity 1 means the target equals the
+      gas limit, so with blocks running at 24-44% of a 1,500,000,000 gas limit the base
+      fee always wants to fall, and Jovian's floor catches it. Six consecutive blocks at
+      the pinned height all carry `baseFeePerGas: 0x65644` = 415,300 wei = exactly
+      chain_id x 100. Genesis shipped the OP defaults (denominator 250, elasticity 6,
+      minBaseFee 0) in `extraData` and in the `optimism` genesis block; the live values
+      are different, so they were changed on L1 through SystemConfig after launch — a
+      parameter change invisible to anyone reading the repo.
+    src: "chain/mainnet/genesis.json:eip1559Denominator, chain/mainnet/rollup.json:chain_op_config"
+    src_live: "eth_getBlockByNumber 20239360-20239365 @ 20239360 -> baseFeePerGas 0x65644 in all six, gasUsed 360369728..658537939, gasLimit 1500000000, extraData 0x0100000001000000010000000000065644 (version 1, denominator 1, elasticity 1, minBaseFee 415300)"
+  4844:
+    status: removed
+    note: >-
+      Inherited from op-stack (no blob transactions on an L2), but doubly true here:
+      RISE does not use L1 blobs for DA at all. `blobGasUsed` and `excessBlobGas` are 0
+      in every header sampled and `daFootprintGasScalar` is 0, so Jovian's repurposing
+      of `blobGasUsed` as a DA footprint is present in the code path and inert in
+      practice.
+    src: "chain/mainnet/rollup.json:alt_da"
+    src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_blobBaseFee @ 20239360 -> 0x1"
+  7951:
+    status: inherited
+    note: >-
+      P256VERIFY is present at 0x0100 with the empty-output-on-failure convention,
+      inherited from OP Fjord's RIP-7212 rather than from Osaka. Recorded because it is
+      the one precompile whose presence is easy to misattribute to the baseline fork.
+    src_live: "eth_call 0x0000000000000000000000000000000000000100 with 160 zero bytes @ 20239360 -> 0x (empty); same with 160 bytes of 0x11 @ 20239360 -> 0x"
+  7939:
+    status: removed
+    note: "CLZ is not activated — the chain is at Prague, not Osaka"
+    src_live: "eth_call PUSH1 0x01 CLZ MSTORE RETURN (0x60011e5f5260205ff3) @ 20239360 -> error -32003 'EVM error: NotActivated'"
+  7002:
+    status: removed
+    note: "no withdrawal-request predeploy; standard for an OP L2 at Isthmus, recorded because Prague as a BASELINE implies it"
+    src_live: "eth_getCode 0x00000961Ef480Eb55e80D19ad83579A64c007002 @ 20239360 -> 0x"
+  7251:
+    status: removed
+    note: "no consolidation-request predeploy, same reasoning as 7002"
+    src_live: "eth_getCode 0x0000BBdDc7CE488642fb579F8B00f3a590007251 @ 20239360 -> 0x"
+  2935:
+    status: inherited
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 20239360 -> 84 bytes of the standard ring-buffer bytecode"
+  4788:
+    status: inherited
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 20239360 -> the standard beacon-roots bytecode; header parentBeaconBlockRoot present"
+  170:
+    status: unrecorded
+    note: >-
+      Whether the 24,576-byte deployed-code limit is raised could not be established.
+      With no client source and no funded key, neither a deploy nor a constant lookup is
+      available. MegaETH raises it to 512 KiB, so the question is live for a chain
+      chasing gigagas; RISE's silence on it is not evidence either way.
+
+non_eip_specs: {}
+
+tx_types:
+  "0x00": {status: inherited}
+  "0x01": {status: inherited}
+  "0x02": {status: inherited}
+  "0x03":
+    status: removed
+    note: "no blob transactions on the L2; inherited from op-stack"
+  "0x04":
+    status: inherited
+    note: >-
+      EIP-7702 set-code transactions are accepted — Prague is active and the RISE shred
+      formatter carries an explicit `0x4` branch producing an `authorizationList`. Not
+      observed in a block at the pinned height; the type-byte census there was 379 of
+      type 0x00, 2 of type 0x02 and 1 of type 0x7e.
+    src: "risechain/crates/primitives/src/rpc.rs:OpReceipt"
+  "0x7e":
+    status: inherited
+    note: >-
+      OP deposit, inherited unchanged from op-stack, and used only for the L1 attributes
+      call: exactly one per block at index 0, from 0xdeaddead...dead0001 to 0x4200..15,
+      `depositReceiptVersion: 0x1`. Its receipt carries `depositNonce` and
+      `depositReceiptVersion` and, like every other RISE receipt, NO L1 fee fields.
+    src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> 382 transactions, exactly one 0x7e at index 0, nonce 0x134d3ff (= block number - 1); eth_getTransactionReceipt @ 20239360 -> keys include depositNonce, depositReceiptVersion"
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Unchanged from mainnet. `v` on the observed legacy transactions is 0x2095/0x2096,
+    i.e. EIP-155 with chain id 4153, and an EIP-155 signature with the wrong chain id is
+    rejected at admission with `invalid chain ID`. Recorded as a deliberate negative:
+    nothing about shreds changes what may sign.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src_live: "eth_sendRawTransactionSync with a legacy tx signed for chainId 1 @ 20277800 -> error -32000 'invalid chain ID'; the same tx signed for 4153 is rejected only on balance"
+    p256:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: "P256VERIFY exists for contracts; a P-256 key cannot authorize a transaction"
+
+precompiles:
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY
+    status: inherited
+    note: "from OP Fjord (RIP-7212), not from Osaka; empty output on an invalid signature"
+    src_live: "eth_call @ 20239360 with 160 zero bytes -> 0x"
+  note: >-
+    NO PRECOMPILE DIVERGENCE FOUND, and the search was made: 0x01-0x0a answer, 0x0b
+    (BLS12-381 G1ADD) answers with the point at infinity for 256 zero bytes, 0x0a (KZG)
+    rejects a malformed input with `PrecompileError` rather than being absent, and
+    0x0100 behaves as RIP-7212. No `added` address was found, and none is documented.
+    The caveat that matters: precompile GAS could not be measured. `eth_estimateGas`
+    binary-searches and adds a buffer, so it cannot resolve a repricing, and with no
+    client source and no funded key there is no other instrument. Repricing is therefore
+    `unrecorded` for every address rather than asserted inherited.
+  gas_schedule:
+    status: unrecorded
+    note: "see the note above — no instrument available to measure precompile gas from outside"
+
+system_contracts:
+  "0x4200000000000000000000000000000000000015":
+    name: L1Block
+    status: inherited
+    note: >-
+      Stock Jovian. The per-block attributes call uses selector 0x3db6be2b, which is
+      op-reth's `L1_BLOCK_JOVIAN_SELECTOR` verbatim, and the deployed code is 2,059
+      bytes. This is the clean negative that settles "does RISE diverge in derivation":
+      it does not.
+    src_live: "eth_getCode @ 20239360 -> 2059 bytes; eth_getBlockByNumber 20239360 @ 20239360 -> tx[0].input starts 0x3db6be2b"
+  "0x420000000000000000000000000000000000000F":
+    name: GasPriceOracle
+    status: inherited
+    note: >-
+      `version()` returns "1.6.0", the Isthmus/Jovian release. It is present and
+      answering, but its L1-fee outputs never reach a receipt on this chain — see
+      `fee_model`.
+    src_live: "eth_call version() (0x54fd4d50) @ 20239360 -> \"1.6.0\""
+
+system_transactions:
+  l1_attributes:
+    status: inherited
+    note: >-
+      One OP deposit per block at index 0. Recorded here only because of what the shred
+      stream does with it: see `gotchas.stale_deposit_shred`. This transaction is the
+      single case observed where a shred's payload contradicts the block the shred
+      names.
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    None found. `BLOCKHASH(number-1)` executed by `eth_call` at 20239360 returned
+    0x381b2539b4e614c13c5c787fa2eeacd62e038e5450030295cdcb17f112b2dfac, which is that
+    block's `parentHash` exactly — so shreds do NOT consume block numbers and are not
+    addressable by BLOCKHASH, the same negative MegaETH's mini-blocks produce. CHAINID
+    returns 0x1039 and PREVRANDAO returns the header's `mixHash`
+    (0x9a8c0359fcfa01f70b1225285a47b347ab58383a6a6df718b190aad93cbcef1d). No opcode was
+    found to behave differently, but note that with no client source this is a
+    behavioural sample, not an enumeration.
+  src_live: "eth_call 0x4360019003405f5260205ff3 (BLOCKHASH(number-1)) @ 20239360 -> 0x381b2539b4e614c13c5c787fa2eeacd62e038e5450030295cdcb17f112b2dfac == eth_getBlockByNumber(20239360).parentHash; eth_call 0x465f5260205ff3 (CHAINID) @ 20239360 -> 0x1039; eth_call 0x445f5260205ff3 (PREVRANDAO) @ 20239360 -> the header mixHash"
+
+fee_model:
+  metering: "standard EVM gas, one dimension"
+  fee_market: "EIP-1559 with elasticity 1 and denominator 1, floored by Jovian minBaseFee; base fee is constant at 415,300 wei in practice"
+  block_gas_limit: 1500000000
+  extra_components:
+  - name: nonce on failure
+    src_live: "eth_sendRawTransactionSync from a fresh empty account @ 20277800 -> -32003 'insufficient funds for gas * price + value: have 0 want 1000009876132000'; gasPrice 1 wei -> -32000 'max fee per gas less than block base fee'; chainId 1 -> -32000 'invalid chain ID'; eth_getTransactionReceipt for all three @ 20277800 -> null; eth_getTransactionCount for that account @ 20277800 -> 0x0"
+    note: >-
+      NONCE ON FAILURE: PRESERVED, because the ordered-but-invalid state cannot
+      arise. RISE does not separate ordering from execution: a shred is published
+      only AFTER execution, and admission is synchronous, so an invalid
+      transaction is rejected at `eth_sendRawTransaction` /
+      `eth_sendRawTransactionSync` and never enters an ordering. Probed live from
+      a freshly generated, correctly signed, empty account — insufficient
+      balance, gas price below the base fee, and wrong chain id each returned a
+      JSON-RPC error, produced no receipt and emitted no shred; the account's
+      nonce stayed at 0. This is the mainnet answer reached by a different route,
+      and the opposite pole from Conflux, IOTA EVM and Artela, which order first
+      and erase afterwards. A transaction that IS admitted and then reverts is
+      ordinary: `status: 0x0`, gas charged, nonce burned, receipt present (103 of
+      2,452 sampled shred receipts).
+  - name: L1 data fee
+    status: removed
+    severity: high
+    note: >-
+      THE OP FEE COMPONENT IS GONE, AND SO ARE ITS RECEIPT FIELDS. Every other OP Stack
+      chain returns `l1Fee`, `l1GasPrice`, `l1GasUsed` and `l1FeeScalar` (and, from
+      Isthmus, `operatorFeeScalar`/`operatorFeeConstant`) on every receipt. RISE returns
+      none of them: the receipt key set at the pinned block is exactly blockHash,
+      blockNumber, contractAddress, cumulativeGasUsed, effectiveGasPrice, from, gasUsed,
+      logs, logsBloom, status, to, transactionHash, transactionIndex, type — plus
+      depositNonce/depositReceiptVersion on deposits. The published wire type says why:
+      `RiseRpcTransactionReceipt` is documented as "RISE transaction receipt without OP
+      L1 fee fields (always zero on RISE)". Marked `severity: high` because it fails
+      silently in the direction accounting code does not check: an OP-aware indexer
+      computing `gasUsed * effectiveGasPrice + l1Fee` reads `undefined`/`nil` for the
+      last term rather than an error, and any cost model that sums it gets NaN, zero, or
+      a throw depending on the language — none of which is a signal that the field was
+      never there.
+    src: "risechain/crates/primitives/src/rpc.rs:RiseRpcTransactionReceipt"
+    src_live: "eth_getTransactionReceipt for a type-0x00 tx in block 20239360 @ 20239360 -> key set has no l1Fee/l1GasPrice/l1GasUsed/l1FeeScalar/operatorFee*; same for the type-0x7e deposit receipt"
+  note: >-
+    The reason the L1 fee is zero is structural, not a scalar set to 0: RISE posts data
+    to an AltDA server, so there is no L1 blob cost to pass through to the user. The
+    OP-standard `overhead`/`scalar` in the system config are the identity values and
+    `daFootprintGasScalar` is 0.
+  src: "chain/mainnet/rollup.json:system_config"
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+  - name: extraData
+    note: >-
+      Non-empty, 17 bytes, and load-bearing: the Jovian encoding of version(1) ||
+      eip1559Denominator(4) || eip1559Elasticity(4) || minBaseFee(8). At the pinned
+      block it decodes to 1 / 1 / 1 / 415300. Stock Jovian format, non-stock values.
+    src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> extraData 0x0100000001000000010000000000065644"
+  - name: gasLimit
+    note: >-
+      1,500,000,000 per 1-second block — 1.5 gigagas per second, 50x Ethereum's rate and
+      6x the 250,000,000 the chain launched with in `genesis.json`. Blocks are genuinely
+      full-ish: 360-658 Mgas used across six consecutive blocks, 382 transactions in the
+      pinned block.
+    src: "chain/mainnet/genesis.json:gasLimit"
+    src_live: "eth_getBlockByNumber 20239360-20239365 @ 20239360 -> gasLimit 0x59682f00 (1500000000) in all six"
+  note: >-
+    Otherwise the header is a stock OP Jovian header: withdrawalsRoot (the
+    L2ToL1MessagePasser storage root, Isthmus), requestsHash = the empty-list hash,
+    parentBeaconBlockRoot present, blobGasUsed and excessBlobGas zero, miner
+    0x4200..0011, difficulty 0, nonce 0.
+
+gotchas:
+  shreds:
+    title: "A shred is one transaction, not a mini-block"
+    severity: high
+    note: >-
+      RISE's sub-block unit is finer than any other in this dataset and, unlike
+      MegaETH's mini-blocks, it has NO IDENTITY OF ITS OWN. The payload is
+      `{blockNumber, shredIdx, blockTimestamp, startingLogIndex, transactions[],
+      stateChanges?}`, and every field of it lives in BLOCK coordinates:
+      `blockNumber` is the enclosing L2 block, `startingLogIndex` is the log index
+      within that block, and `shredIdx` was measured to be the transaction's index in
+      that block — for block 20277530 the stream delivered 98 shreds with shredIdx
+      0..97 for a block that sealed with exactly 98 transactions, and the receipts for
+      shredIdx 0, 1, 2 carried transactionIndex 0, 1, 2. Every shred observed over four
+      capture runs carried exactly ONE transaction. So there is no second height space
+      to reconcile (MegaETH's mini_block_number was 2.4 billion at EVM block 24.8
+      million); a shred is a per-transaction publication event numbered inside its
+      block, and the counter resets to 0 every second. Between 55 and 478 shreds per
+      block were observed, 2-18 ms apart.
+    src: "risechain/crates/primitives/src/rpc.rs:RiseRpcLog"
+    src_doc: https://docs.risechain.com/rise-chain/shreds.html
+    src_live: "eth_subscribe [shreds, false] @ 20277530 -> 98 shreds, shredIdx 0..97, ntx=1 each; eth_getBlockByNumber 20277530 @ 20277530 -> 98 transactions; eth_getTransactionReceipt for shredIdx 0/1/2 @ 20277530 -> transactionIndex 0/1/2"
+  shred_delivery:
+    title: "Delivered only over WebSocket, and unsigned"
+    severity: high
+    note: >-
+      There is no way to fetch a shred. `eth_subscribe(["shreds", <bool>])` over
+      WebSocket is the only channel — the bool asks for the state diff — and the
+      parameter is plural: `["shred"]` is rejected with "data did not match any variant
+      of untagged enum AllSubscriptionKind". There is no `rise_` namespace
+      (`rise_getShred` -> method not found), no `eth_getShredByNumber`, no archive
+      access, and no way to ask for a shred you missed. AND THE SHRED IS NOT SIGNED:
+      the payload has no signature, no sequencer key, no hash of its own. MegaETH signs
+      each mini-block with secp256k1 over `keccak256(rlp(header))` precisely so that a
+      contradicted preconfirmation is provable by a third party; RISE's preconfirmation
+      is the sequencer's unattributable word over a socket. A client that acts on a
+      shred and is later contradicted has nothing to show anyone.
+    src_live: "eth_subscribe @ 20277378 with the singular kind shred -> error -32602 data did not match any variant of untagged enum AllSubscriptionKind; eth_subscribe shreds,true @ 20277378 -> 200 OK, payload keys blockNumber/shredIdx/blockTimestamp/startingLogIndex/transactions/stateChanges, NO signature field; rise_getShred @ 20277378 -> -32601 Method not found"
+  preconfirmed_receipt:
+    title: "eth_getTransactionReceipt over plain HTTP returns a receipt for a block that does not exist, with blockHash 0x00..00"
+    severity: high
+    note: >-
+      THIS IS THE FINDING. MegaETH's `0xffff..ff` sentinel only ever reaches you if you
+      opt into the WebSocket mini-block stream; over plain HTTP, MegaETH returns null
+      until the block exists. RISE returns the preconfirmed receipt to an UNMODIFIED
+      HTTP client. Racing the shred stream against the HTTP endpoint at block 20239693:
+      the instant the shred arrived, `eth_blockNumber` returned 20239692 while
+      `eth_getTransactionReceipt` returned a fully populated receipt naming
+      blockNumber 20239693 with `blockHash: 0x0000000000000000000000000000000000000000000000000000000000000000`,
+      `status: 0x1`, real `gasUsed`, real `effectiveGasPrice` and real
+      `transactionIndex`. At the same instant `eth_getTransactionByHash` for the SAME
+      hash returned `blockHash: null, blockNumber: null`. Repeated at block 20277529.
+      Consequences: (1) every "wait for N confirmations" loop that keys off a non-null
+      receipt fires one block early, before any block exists; (2) `blockHash` is the
+      zero hash, which is a valid-looking bytes32 that indexers will happily store,
+      join on, and never match; (3) the receipt and the transaction disagree with each
+      other in the same instant, so code that cross-checks them sees an inconsistency
+      that is not an error. The published wire type intends `null` here
+      (`RiseRpcTransactionReceipt.block_hash: Option<BlockHash>`, commented "None for
+      pending / shred receipts") — so source and live network disagree about which
+      sentinel is used, and the live one is the more dangerous of the two.
+    src: "risechain/crates/primitives/src/rpc.rs:RiseRpcTransactionReceipt"
+    src_live: "eth_subscribe shreds + eth_getTransactionReceipt over HTTP @ 20239693 -> eth_blockNumber 20239692, receipt blockNumber 0x134d51a (20239693) blockHash 0x00..00 status 0x1 transactionIndex 0x58, eth_getTransactionByHash blockHash null; repeated @ 20277529 -> receipt blockHash 0x00..00, transactionIndex 0xda"
+  two_sentinels:
+    title: "The same node uses two different sentinels for the same missing block hash"
+    severity: high
+    note: >-
+      The `logs` subscription and the receipt disagree. A log delivered by
+      `eth_subscribe(["logs", {}])` for a not-yet-sealed transaction carries
+      `blockHash: null` with a real `blockNumber`, `logIndex` and `transactionIndex`.
+      The SAME log, read back inside `eth_getTransactionReceipt` at the same moment,
+      carries `blockHash: 0x00..00`. Either value defeats a consumer that treats
+      blockHash as a key, and having both means a consumer that special-cases one still
+      breaks on the other.
+    src_live: "eth_subscribe [logs, {}] @ 20277529 -> four logs with blockHash null, blockNumber 0x1356919, logIndex 0x2be..0x2c1, removed false; eth_getTransactionReceipt for the same transaction @ 20277529 -> logs[0].blockHash 0x00..00, logs[0].blockNumber 0x1356919"
+  logs_subscription_repurposed:
+    title: "eth_subscribe(['logs']) silently delivers shred logs, not block logs"
+    severity: high
+    note: >-
+      RISE does not add a parallel log channel; it REPLACES the standard one. The
+      chain's own client library documents this — "the standard `[\"logs\"]`
+      subscription is patched to broadcast events from shreds instead of blocks" — and
+      it was confirmed live. So a stock viem/ethers/web3 application, written for
+      Ethereum, deployed unmodified against RISE, is already consuming
+      preconfirmations: it receives events for transactions whose block does not exist,
+      with `blockHash: null` and `removed: false`, and there is no flag to turn it off.
+      Nothing in the subscription request distinguishes the two behaviours. This is the
+      widest blast radius of any divergence on this row, because it requires the
+      integrator to have done nothing at all.
+    src_doc: https://github.com/risechain/shred-api
+    src_live: "eth_subscribe [logs, {}] @ 20277529 -> logs delivered with blockHash null while eth_blockNumber still reported the previous block"
+  stale_deposit_shred:
+    title: "The shred at index 0 is systematically the PREVIOUS block's L1 attributes transaction"
+    severity: high
+    note: >-
+      A shred whose content is contradicted by the block it names — and it happens every
+      second, on the one transaction that writes L1 state. Collecting every shred for 24
+      consecutive complete blocks and comparing hash-by-hash against the sealed blocks:
+      the transaction lists have the SAME LENGTH and match exactly at every position
+      except 0, and at position 0 the streamed transaction is the type-0x7e deposit that
+      the canonical chain placed in block N-1. 22 of 24 blocks showed it; the streamed
+      deposit hash for block N equals the sealed deposit hash for block N-1 in every
+      mismatching case, ten consecutive blocks checked by hand. Every user transaction
+      (positions 1..n-1) matched in hash AND order, so shred ordering is otherwise
+      faithful. The practical consequence: a consumer replaying `stateChanges` to build
+      state applies the wrong `L1Block` update — stale L1 block number, timestamp,
+      basefee and batcherHash — one block late, forever. This is the concrete instance
+      of "can a shred-level result be contradicted": yes, routinely, on the deposit.
+      Whether it is a labelling bug in the broadcaster or a real mid-flight replacement
+      of the payload attributes cannot be told from outside.
+    src_live: "eth_subscribe shreds + eth_getBlockByNumber over 24 blocks @ 20277746 -> 22 blocks mismatch at position 0 only; e.g. streamed shredIdx 0 of block 20277749 = 0x1feaa47071.. which is sealed[0] of block 20277748; block 20277711 streamed 231 txs identical in hash and order to the sealed block"
+  ordered_but_invalid:
+    title: "There is no ordered-but-invalid state — every check happens at admission"
+    note: >-
+      RISE lands at the opposite pole from Conflux, IOTA EVM and Artela. Those three
+      order a transaction and then erase it, leaving a null receipt indistinguishable
+      from never having submitted. RISE never orders an invalid transaction in the first
+      place, because a shred is published only after execution and admission is
+      synchronous. Tested live with freshly generated, correctly signed transactions
+      from an empty account: insufficient balance -> JSON-RPC error -32003 "insufficient
+      funds for gas * price + value: have 0 want ...", identical from
+      `eth_sendRawTransaction` and `eth_sendRawTransactionSync`; gas price below the base
+      fee -> -32000 "max fee per gas less than block base fee"; wrong chain id -> -32000
+      "invalid chain ID"; a nonce gap on a funded-check failure -> the balance error
+      first. No receipt is ever created for any of them, and no shred is emitted. A
+      transaction that IS admitted and then reverts gets the ordinary treatment: 103 of
+      2,452 shred receipts sampled carried `status: 0x0` with gas charged. So the answer
+      to "ordered but invalid at execution" is that the state cannot arise — which is
+      the mainnet answer, arrived at by a different route.
+    src_live: "eth_sendRawTransactionSync from a fresh empty account @ 20277800 -> -32003 'insufficient funds for gas * price + value: have 0 want 1000009876132000'; gasPrice 1 wei -> -32000 'max fee per gas less than block base fee'; chainId 1 -> -32000 'invalid chain ID'; eth_getTransactionReceipt for all three @ 20277800 -> null; shred receipt status census over ~14s @ 20277659 -> 2349 status 0x1, 103 status 0x0"
+  parallel_execution_is_not_consensus_visible:
+    title: "The parallel EVM is a node-local speedup by design, and is not yet shipped"
+    note: >-
+      Two separate claims, both worth stating. (1) BY DESIGN, RISE's parallelism cannot
+      make two implementations disagree: pevm's own design section states that
+      "blockchain execution must be deterministic... parallel execution must arrive at
+      the same outcome as sequential execution. Having race conditions that affect
+      execution results would break consensus." It is Block-STM lineage — optimistic
+      execution, multi-version memory, conflict detection, re-execution — with EVM-specific
+      lazy handling of the beneficiary balance and of raw transfers, and the resolution
+      is a re-run, invisible outside the node. That puts RISE with Sei and Monad rather
+      than anywhere new. (2) IT IS NOT RUNNING YET: pevm's README says "This repository
+      is a work in progress and is not production ready", and its TODO list still
+      contains "Implement an inline parallel-optimal EVM to replace revm", "Committing
+      and broadcasting shreds" and "Integration into RISE nodes". The lead that RISE's
+      live execution is pevm is REFUTED for the pinned commit. What the closed
+      `rise-exec` binary actually does is not established.
+    src: "pevm/README.md:Block-STM"
+    src_doc: https://github.com/risechain/pevm
+  sync_submission:
+    title: "eth_sendRawTransactionSync exists and returns a receipt, not a hash"
+    note: >-
+      A custom method that submits a signed transaction and blocks until the shred
+      carrying it is produced, returning the full receipt instead of the hash — the
+      chain's docs claim 5 ms when close to the sequencer. It exists on the public
+      endpoint: garbage input is answered "failed to decode signed transaction"
+      (-32602), not "Method not found", and validity errors come back with the same
+      codes as `eth_sendRawTransaction`. It was not exercised with a valid, funded
+      transaction. The receipt it returns is by construction a preconfirmed one, so it
+      inherits the `0x00..00` blockHash above.
+    src_doc: https://github.com/risechain/shred-api
+    src_live: "eth_sendRawTransactionSync @ 20277800 with param 0xdeadbeef -> -32602 failed to decode signed transaction (the method EXISTS); rise_getShred @ 20277800 -> -32601 Method not found (no custom namespace)"
+  ipc_side_channel:
+    title: "A bincode Unix-socket API for co-located services"
+    note: >-
+      The published primitives crate defines an IPC protocol — "RISE nodes can expose a
+      Unix-socket for co-located services to read chain state and submit transactions
+      rapidly without paying JSON and network costs" — with three requests: `GetBaseFee`,
+      `GetPendingNonce(address)` and `SubmitRawTx(bytes)` returning a compact receipt
+      (block_number, success, gas_used, logs). It is length-delimited bincode, not
+      JSON-RPC, and it is not reachable from outside the host. Recorded because it means
+      the fastest path onto this chain is one only a co-located party can take, which is
+      a latency asymmetry the public RPC does not reveal.
+    src: "risechain/crates/primitives/src/ipc.rs:RiseIpcRequest"
+  alt_da:
+    title: "DA is an AltDA server, not Ethereum blobs"
+    note: >-
+      `rollup.json` carries an `alt_da` section with `da_commitment_type:
+      GenericCommitment`, and the node distribution points op-node at
+      `--altda.da-server=https://da.risechain.com`. The `da_challenge_contract_address`
+      is the zero address and both the challenge and resolve windows are 1, i.e. the
+      on-chain challenge mechanism is not configured. Data availability therefore rests
+      on a single HTTPS endpoint operated by the chain, with the commitment batched to
+      the L1 inbox at 0x00bb2bf8245e13498af31fb3647e26694cdc9d4a. This is the reason the
+      L1 data fee is structurally zero, and it is the one place where RISE's derivation
+      pipeline is NOT stock: everything else in the pipeline — fork schedule, attributes
+      selector, batch inbox, deposit contract, system config — is ordinary OP Stack.
+    src: "chain/mainnet/rollup.json:alt_da, docker-compose.yml:altda"
+  no_evm_divergence:
+    title: "The EVM itself looks stock, and that is the finding"
+    note: >-
+      Everything probed at the pinned block behaved exactly as OP Jovian / Ethereum
+      Prague: BLOCKHASH honest, CHAINID correct, PREVRANDAO = mixHash, 2935 and 4788
+      installed, BLS and KZG present, P256VERIFY at 0x0100 with RIP-7212 semantics, CLZ
+      not activated, no added precompile address, no fork of RISE's own ever scheduled.
+      Compare MegaETH, which is nominally the same shape of chain — OP Stack L2, closed
+      sequencer, sub-block stream — and has a second gas meter, a 98/100 gas-forwarding
+      rule, a 512 KiB code limit and eleven of its own forks. Two chains chasing the
+      same latency target made opposite choices about where to spend divergence: MegaETH
+      rewrote the EVM and kept the RPC recognisable; RISE kept the EVM and rewrote the
+      RPC. The caveat is that with no client source this is a behavioural sample rather
+      than an enumeration, and gas schedules in particular could not be measured.

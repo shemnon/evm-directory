@@ -1,0 +1,669 @@
+schema_version: 2
+
+chain:
+  name: Mantle
+  slug: mantle
+  chain_id: 5000
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: params/mantle.go:MantleMainnetChainId
+  note: >-
+    An OP Stack descendant whose gas asset is MNT rather than ETH — and which did
+    NOT add a transaction type to do it. This file states only Mantle's own deltas;
+    everything else comes from chains/op-stack/. The surprise is how much of that
+    inheritance Mantle CANCELS: it carries none of OP Stack's six precompile
+    divergences, because it deleted OP's precompile overlays and falls straight
+    through to mainnet's own maps.
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: op-geth
+  sync_point: >-
+    op-geth v1.6.1 is a rebase onto go-ethereum v1.17.3 (version/version.go: Major
+    1, Minor 17, Patch 3) against the op-stack row's op-geth v1.101702.2 (geth
+    v1.17.5) — two geth patch releases, not fork generations. Mantle therefore
+    BREAKS the pattern opBNB and Celo established: it does not lag the stack row,
+    it is level with it on the Ethereum axis and reaches OSAKA (confirmed live:
+    CLZ, EIP-7939, executes). Its header struct even carries EIP-7928
+    BlockAccessListHash and EIP-7843 SlotNumber, both of which the op-stack row
+    records as ABSENT from its pinned op-geth.
+
+    On the OP axis the question does not apply, because Mantle does not run OP's
+    fork ladder at all. params/config.go still declares CanyonTime..JovianTime, but
+    nothing in core/vm or the fee path reads them: there is no
+    PrecompiledContractsFjord / Granite / Isthmus / Jovian map in this tree, and
+    activePrecompiledContracts switches on IsMantleArsia / IsMantleLimb /
+    IsMantleSkadi / IsMantleEverest before falling through to mainnet's sets. The
+    companion repo states the collapse outright — ForkToMantleFork maps Canyon,
+    Delta, Ecotone, Fjord, Granite, Holocene, Isthmus AND Jovian all onto the
+    single Mantle fork ARSIA, Bedrock and Regolith onto Skadi, and Interop onto
+    MantleNoSupport. Eight OP forks, one Mantle fork, 2026-04-22.
+  note: >-
+    THE ORG MOVED. Every repo under github.com/mantlenetworkio now 301-redirects to
+    github.com/mantle-xyz; mantlenetworkio still exists but its newest code repo
+    (`mantle`, the v1 monorepo) was last pushed 2024-12-04. CANDIDATES.md's
+    coordinates resolve only via redirect.
+
+client:
+  name: op-geth (Mantle fork)
+  repo: https://github.com/mantle-xyz/op-geth
+  version: v1.6.1
+  commit: 11fa8109ad7eb177c05c4007f0bd410b93edcbdb
+  language: go
+  built_on: op-geth / go-ethereum v1.17.3
+  note: >-
+    v1.6.1 is a TAG with no GitHub Release attached — the newest published Release
+    is v1.5.5 (2026-04-21, "Patch for Arsia"). It is pinned anyway because the
+    public RPC identifies itself as exactly this commit: web3_clientVersion returns
+    "Geth/v1.17.3-stable-11fa8109/linux-amd64/go1.26.6". That is the strongest pin
+    evidence in this dataset — the running network and the pinned tree are the same
+    build, so no gap between "what a client would do" and "what validators run"
+    needs to be assumed.
+  companion_repos:
+  - {name: mantle-v2, repo: "https://github.com/mantle-xyz/mantle-v2",
+     version: v1.6.0, commit: 710dbc40b295a93e0c7eb474615faa1c3b8ae368,
+     provides: "op-node/op-batcher fork, Mantle fork registry (op-core/forks/mantle_forks.go), predeploy definitions (Predeploys.sol)"}
+
+live_probe:
+  endpoint: https://rpc.mantle.xyz
+  chain_id: 5000
+  observed_at_block: 99672064      # 0x5f16800
+
+consensus:
+  engine: OP Stack (single sequencer), with a preconfirmation path in the EL
+  finality: inherits L1 finality after challenge window
+  block_time: 2s
+  note: >-
+    The client carries a `preconf/` package (FIFO tx set, preconf deposit sources,
+    a preconf miner config and a separate preconf_checker in miner/) that upstream
+    op-geth does not have. Not exercised here; its consensus effect is unrecorded.
+
+baseline_fork: osaka
+baseline_note: >-
+  Established behaviourally, not from a blog post. CLZ (EIP-7939, Osaka) returns
+  0xf8 for CLZ(0xff) in eth_call at block 99672064, while an undefined opcode in
+  the same probe fails with "invalid opcode". The source ladder agrees: the
+  MantleLimb fork's comment in params/mantle.go reads "ensuring osaka upgrade",
+  and PrecompiledContractsMantleLimb is mainnet Osaka's map.
+
+forks:
+  src: params/mantle.go:MantleMainnetUpgradeConfig
+  mapping_src: "mantle-v2/op-core/forks/mantle_forks.go:ForkToMantleFork"
+  note: >-
+    ONE fork axis, not two. Unlike the op-stack row — where CheckConfigForkOrder
+    ENFORCES ShanghaiTime == CanyonTime and PragueTime == IsthmusTime, making the
+    mapping a verified fact — Mantle's CheckConfigForkOrder contains NO OP forks at
+    all and returns nil for any chain with `Optimism != nil` as soon as the blob
+    schedule check passes. The Ethereum<->Mantle fork correspondence is therefore a
+    CLAIM carried in Go comments (MantleSkadiTime "ensuring prague upgrade",
+    MantleLimbTime "ensuring osaka upgrade"), not something the client refuses to
+    start over. Timestamps below are mainnet's, hardcoded in the client rather than
+    read from a registry.
+  timeline:
+  - {name: basefee, activation_time: 0, mainnet_equivalent: shanghai,
+     note: "genesis-active on mainnet. Also selects the SHANGHAI instruction set directly (core/vm/evm.go IsMantleBaseFee branch), and pins the base fee — see eips.1559."}
+  - {name: bvm_eth_mint, activation_time: 0, mainnet_equivalent: null,
+     note: "BVM_ETH mint credited to msg.From instead of msg.To"}
+  - {name: metatx_v2, activation_time: 0, mainnet_equivalent: null}
+  - {name: metatx_v3, activation_time: 1742367600, mainnet_equivalent: null,
+     note: "sponsor must not equal sender"}
+  - {name: proxy_owner, activation_time: 1742367600, mainnet_equivalent: null}
+  - {name: everest, activation_time: 1742367600, mainnet_equivalent: null,
+     note: "2025-03-19. Adds P256VERIFY at 3450 gas (RIP-7212) and DISABLES MetaTx."}
+  - {name: skadi, activation_time: 1756278000, mainnet_equivalent: prague,
+     note: "2025-08-27. Claimed equal to Prague by the config comment; not enforced."}
+  - {name: limb, activation_time: 1768374000, mainnet_equivalent: osaka,
+     note: "2026-01-14. Restores mainnet Osaka's MODEXP bounds/pricing and mainnet's 6900-gas P256VERIFY."}
+  - {name: arsia, activation_time: 1776841200, mainnet_equivalent: null,
+     note: "2026-04-22. The big one: real EIP-1559, Holocene-style extraData params, Jovian-style DA footprint in blobGasUsed, operator fee switched on, and the tokenRatio gas multiplier REMOVED."}
+  - {name: elysium, status: pending, activation_time: null,
+     src: params/config.go:IsMantleElysium}
+  - name: euboea
+    status: pending
+    activation_time: null
+    src: "mantle-v2/op-core/forks/mantle_forks.go:MantleEuboea"
+    note: >-
+      Declared in the CL's fork registry and in Config.IsMantleEuboea, with NO
+      counterpart anywhere in the EL's params/mantle.go. A fork name the consensus
+      client knows and the execution client cannot express.
+
+eips:
+  # Deltas ON TOP OF op-stack. Several of these CANCEL an op-stack delta and are
+  # declared for that reason: an omitted key would inherit the ancestor's divergence.
+  1559:
+    status: modified
+    severity: high
+    note: >-
+      A fourth variant on top of op-stack's (L2 1559 + L1 data fee + operator fee).
+      For its first three and a half years Mantle HAD NO BASE FEE MARKET AT ALL:
+      CalcBaseFee returns `parent.BaseFee` verbatim whenever IsMantleBaseFee is on
+      and IsMantleArsia is not, and VerifyEIP1559Header skips the base-fee check
+      entirely on the same condition — so the value in the header was whatever the
+      sequencer put in the payload attributes (miner/worker.go takes
+      genParams.baseFee directly), unvalidated by consensus. From Arsia (2026-04-22)
+      the check is enforced, the 1559 parameters move into extraData (denominator,
+      elasticity, minBaseFee — a MinBaseFee-versioned Holocene encoding), and the
+      base fee is metered against max(gasUsed, blobGasUsed) where blobGasUsed is the
+      DA footprint. Live at block 99672064: extraData
+      0x0100000032000000040000000ba43b7400 decodes to denominator 50, elasticity 4,
+      minBaseFee 50 gwei — and baseFeePerGas is exactly 50 gwei, i.e. pinned at its
+      floor.
+    src: "consensus/misc/eip1559/eip1559.go:CalcBaseFee, consensus/misc/eip1559/eip1559.go:VerifyEIP1559Header, consensus/misc/eip1559/eip1559_optimism.go:ValidateOptimismExtraData"
+    src_live: "eth_getBlockByNumber @ 99672064 -> extraData 0x0100000032000000040000000ba43b7400, baseFeePerGas 0xba43b7400"
+  2718:
+    status: modified
+    severity: high
+    note: >-
+      Mantle adds NO type byte. It changes the SHAPE of one it inherited: the OP
+      Stack 0x7e deposit gains an `EthValue` field POSITIONALLY INSERTED between
+      IsSystemTransaction and Data, plus a trailing optional `EthTxValue`. See
+      tx_types."0x7e". This is the direct answer to "did MNT-as-gas-token need a new
+      transaction type": no — the type-byte space is untouched and the ordinary
+      0x00-0x04 envelopes carry MNT unchanged, because MNT simply IS the native
+      balance.
+    src: core/types/deposit_tx.go:DepositTx
+  7823:
+    status: inherited
+    note: >-
+      OVERRIDES op-stack's `removed`. From Limb the MODEXP entry is
+      bigModExp{eip2565: true, eip7823: true, eip7883: true} — mainnet Osaka's
+      upper bounds are BACK. An OP Stack chain accepts modexp inputs mainnet
+      rejects; Mantle does not.
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+  7883:
+    status: inherited
+    note: >-
+      OVERRIDES op-stack's `removed`. Same map, same cause: MODEXP is priced at
+      mainnet Osaka rates here, not at the cheaper OP rate.
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+  7951:
+    status: inherited
+    note: >-
+      OVERRIDES op-stack's `modified`. Everest and Skadi used p256VerifyEverest at
+      P256VerifyGasEverest = 3450 (the RIP-7212 price, matching op-stack). From LIMB
+      the map holds plain &p256Verify{} at P256VerifyGas = 6900 — mainnet's EIP-7951
+      price. Mantle is the only OP Stack descendant in this dataset that has walked
+      BACK to mainnet pricing at 0x0100.
+    src: "core/vm/contracts.go:PrecompiledContractsMantleLimb, params/protocol_params.go:P256VerifyGas"
+  4844:
+    status: inherited
+    note: >-
+      Inherits op-stack's removal — the txpool rejects BlobTxType outright for any
+      chain with Optimism config, and CheckConfigForkOrder rejects a non-nil
+      BlobScheduleConfig. The blobGasUsed repurposing arrives at ARSIA rather than
+      at Jovian; see header_fields. Live at block 99672064: blobGasUsed 0xa0f0 in a
+      two-transaction block, excessBlobGas 0x0.
+    src: "core/txpool/validation.go:ValidateTransaction, params/config.go:CheckConfigForkOrder"
+    src_live: "eth_getBlockByNumber @ 99672064 -> blobGasUsed 0xa0f0, excessBlobGas 0x0"
+  2028:
+    status: modified
+    note: >-
+      HISTORICAL, and the single most consequential thing tokenRatio ever did.
+      Before Arsia, intrinsic gas — and the EIP-7623 floor data gas — were
+      MULTIPLIED by tokenRatio, a value read from contract storage. The same
+      calldata cost a different number of gas units depending on an on-chain
+      number that governance could move without a fork. From Arsia the multiplier
+      is gone (`!rules.IsMantleArsia` guards all three sites) and intrinsic gas is
+      mainnet's.
+    src: "core/state_transition.go:innerExecute"
+  7702:
+    status: unrecorded
+    note: >-
+      SetCodeTx 0x04 is decoded and applyAuthorization runs under rules.IsPrague,
+      but no source read was done on whether Mantle's pre-Arsia gas rescaling or
+      the removed MetaTx path interacts with a delegated account. Not established.
+
+non_eip_specs:
+  - id: MantleMetaTx
+    name: "in-calldata gas sponsorship (v1/v2/v3)"
+    adoption: withdrawn
+    fork: everest
+    severity: high
+    src: "core/types/meta_transaction.go:DecodeAndVerifyMetaTxParams, core/types/meta_transaction.go:MetaTxCheck"
+    src_live: "eth_estimateGas @ 99672064 with calldata beginning 0x...4D616E746C654D65746154785072656669780 -> error 'meta tx is disabled'; same call with the last prefix byte changed -> ordinary execution revert"
+    note: >-
+      Withdrawn, and it left a permanent scar on the calldata space. See
+      tx_authorization.sponsor_secp256k1 and gotchas.
+
+tx_types:
+  "0x7e":
+    name: DepositTx (Mantle variant)
+    status: modified
+    inherited_from: op-stack
+    severity: high
+    src: core/types/deposit_tx.go:DepositTx
+    src_live: "eth_getBlockByNumber @ 99672064 -> tx 0 of type 0x7e carries a JSON field `ethValue: 0x0` that no OP Stack deposit has"
+    fields: [SourceHash, From, To, Mint, Value, Gas, IsSystemTransaction, EthValue, Data, EthTxValue]
+    note: >-
+      OVERRIDE of the op-stack entry per SCHEMA.md's override-by-key rule. OP's
+      deposit is eight RLP fields; Mantle's is ten, and the ninth is not appended —
+      `EthValue` is INSERTED at position 7, where OP Stack's decoder expects `Data`.
+      `EthTxValue` is `rlp:"optional"` on the end.
+
+      The two fields exist because the gas asset changed. `Mint` still creates the
+      NATIVE asset, which on Mantle is MNT. ETH is demoted to an ERC-20 at
+      0xdEAd..1111, and `EthValue`/`EthTxValue` are how the deposit moves it —
+      not by calling that token, but by the client writing its balance slots
+      directly (see system_transactions).
+
+      Hazard direction matters: an OP-Stack decoder handed a Mantle deposit sees a
+      ten-element list where it expects eight and errors, so this fails loudly on
+      the wire. What does NOT fail loudly is the JSON: a Mantle deposit serialises
+      with an extra `ethValue` key that OP tooling silently drops, and the value it
+      drops is a mint of a different asset.
+  "0x7d":
+    name: PostExecTx
+    status: removed
+    inherited_from: op-stack
+    src: core/types/transaction.go:DepositTxType
+    note: >-
+      OVERRIDE of op-stack's `unrecorded`. The op-stack row could not establish
+      whether 0x7D is reachable; on Mantle the question is settled by absence —
+      there is no core/types/post_exec_tx.go in this tree, no PostExecTxType
+      constant, and no signer branch for it. The second unsigned path op-stack
+      worries about does not exist here.
+  note: >-
+    Live set = op-stack's (0x00-0x04, 0x7e) with 0x7e reshaped and 0x7d absent.
+    Zero added type bytes — the one OP Stack derivative in this dataset that
+    changed its gas asset WITHOUT touching the type-byte space, in direct contrast
+    to Celo, which spent 0x7b and 0x7c on the same goal.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    THE QUESTION THIS ROW ANSWERS: paying gas in MNT needs no authorization change
+    at all, because MNT is the native balance — buyGas debits `st.state` exactly as
+    upstream does, and no new signer, sighash or sender-recovery path exists for it.
+    Contrast Celo, where paying gas in an ERC-20 forced a new tx type whose sighash
+    covers a FeeCurrency field. Mantle's authorization delta is elsewhere and it is
+    HISTORICAL: until 2025-03-19 a Mantle transaction could carry TWO independent
+    secp256k1 signers.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/types/transaction_signing.go:recoverPlain"
+      note: >-
+        Untouched. No Mantle-specific signer, no fork list over recovery routines,
+        no chain-id carve-outs. Sender recovery is upstream geth's.
+    sponsor_secp256k1:
+      status: removed
+      authorizes: never
+      precompile: "0x01"
+      signers_per_tx: 2
+      severity: high
+      deprecated_at: 1742367600
+      src: "core/types/meta_transaction.go:DecodeAndVerifyMetaTxParams, core/types/meta_transaction.go:checkSponsorSignature, core/types/meta_transaction.go:MetaTxSignDataV2, core/state_transition.go:buyGas"
+      note: >-
+        A SECOND SIGNER SMUGGLED THROUGH THE CALLDATA. Until Everest, any type-0x02
+        transaction whose `data` began with the 32-byte constant MetaTxPrefix
+        ("MantleMetaTxPrefix", left-padded) was re-read by the client: the remainder
+        RLP-decoded into MetaTxParams { ExpireHeight, SponsorPercent, Payload,
+        GasFeeSponsor, V, R, S }, `checkSponsorSignature` recovered a SECOND
+        secp256k1 address over a Mantle-specific digest (MetaTxSignDataV2, which
+        binds the tx sender, the chain id, the nonce, the fee caps and the sponsor
+        percent), and `buyGas` then debited that percentage of the gas cost from the
+        SPONSOR's balance instead of the sender's. The real calldata was the inner
+        `Payload`; `st.msg.Data` was rewritten to it before execution. Two parties,
+        two independent digests, one type byte, and nothing in the ENVELOPE said so
+        — the second signature lived where an indexer expects ABI arguments.
+
+        `authorizes: never` is the state today, not the history: Everest made
+        DecodeAndVerifyMetaTxParams return ErrMetaTxDisabled the moment it sees the
+        prefix, and innerExecute repeats the check. The signature scheme is still
+        secp256k1 and 0x01 still verifies it, but it can no longer authorize
+        anything. This is a `removed` authorization path on a chain whose
+        transaction encoding never changed at either end.
+
+        THE SCAR: the ban is enforced in three places with two different scopes. At
+        consensus (DecodeAndVerifyMetaTxParams) it applies only to type 0x02. At the
+        MEMPOOL and over RPC (core/txpool/validation.go and internal/ethapi/api.go
+        both call MetaTxCheck) it applies to EVERY transaction type, on the raw
+        calldata, forever. So those 32 bytes are a permanently forbidden calldata
+        prefix on Mantle: a contract call that legitimately starts with them cannot
+        be estimated, cannot enter the pool, and cannot be sent — and the error is
+        "meta tx is disabled", which will mean nothing to whoever hits it.
+
+precompiles:
+  # verified against core/vm/contracts.go:PrecompiledContractsMantleArsia,
+  # which is defined as `= PrecompiledContractsMantleLimb`.
+  "0x05":
+    name: MODEXP
+    status: inherited
+    inherited_from: op-stack
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+    note: "OVERRIDE of op-stack's `modified`: eip7823 and eip7883 are both true here."
+  "0x08":
+    name: BN256_PAIRING
+    status: inherited
+    inherited_from: op-stack
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+    note: >-
+      OVERRIDE of op-stack's `modified`. The map holds &bn256PairingIstanbul{} —
+      mainnet's UNCAPPED implementation. op-stack's Granite/Jovian input caps do
+      not apply: params/optimism_features.go still DEFINES
+      Bn256PairingMaxInputSizeGranite and ...Jovian, but nothing in core/vm reads
+      them, because the Fjord/Granite/Isthmus/Jovian precompile maps that used them
+      were deleted from this tree.
+  "0x0c":
+    name: BLS12_G1MSM
+    status: inherited
+    inherited_from: op-stack
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+    note: "OVERRIDE of op-stack's `modified`: &bls12381G1MultiExp{}, uncapped."
+  "0x0e":
+    name: BLS12_G2MSM
+    status: inherited
+    inherited_from: op-stack
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+    note: "OVERRIDE of op-stack's `modified`: &bls12381G2MultiExp{}, uncapped."
+  "0x0f":
+    name: BLS12_PAIRING
+    status: inherited
+    inherited_from: op-stack
+    src: core/vm/contracts.go:PrecompiledContractsMantleLimb
+    note: "OVERRIDE of op-stack's `modified`: &bls12381Pairing{}, uncapped."
+  "0x0100":
+    name: P256VERIFY
+    status: inherited
+    inherited_from: op-stack
+    src: "core/vm/contracts.go:PrecompiledContractsMantleLimb, params/protocol_params.go:P256VerifyGas"
+    src_live: "eth_getCode @ 99672064 -> 0x (native precompile, not a predeploy)"
+    note: >-
+      OVERRIDE of op-stack's `modified`. 6900 gas (P256VerifyGas), mainnet's
+      EIP-7951 value, from Limb onward; 3450 (P256VerifyGasEverest) between Everest
+      and Limb.
+  note: >-
+    ZERO added addresses AND zero divergences. Mantle's active set at Arsia is
+    membership- and semantics-identical to mainnet Osaka's
+    PrecompiledContractsOsaka. This makes it the first row in the dataset where a
+    descendant is MORE mainnet-equivalent at the precompile layer than its own
+    ancestor: the op-stack row's headline — "zero custom addresses, six divergent
+    precompiles" — is true of OP Stack and false of Mantle. The mechanism is
+    deletion, not override: activePrecompiledContracts has no OP branches left to
+    shadow the Ethereum ones, which is exactly the shadowing op-stack warns about
+    (IsOptimismJovian tested before IsOsaka).
+
+system_contracts:
+  "0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111":
+    name: BVM_ETH
+    status: added
+    severity: high
+    src: "core/state_transition.go:BVM_ETH_ADDR, mantle-v2/packages/contracts-bedrock/src/libraries/Predeploys.sol:BVM_ETH"
+    src_live: "eth_getCode @ 99672064 -> 3.5KB of bytecode; eth_call symbol() -> \"WETH\""
+    note: >-
+      ETH's demotion made concrete. Because MNT is the native asset, bridged ETH is
+      an ordinary ERC-20 living at this address — and the client MUTATES IT WITHOUT
+      RUNNING ITS CODE. mintBVMETH and transferBVMETH compute
+      keccak(pad32(addr) || pad32(0)) for the balanceOf mapping and slot 2 for
+      totalSupply and write them with st.state.SetState directly, then FABRICATE the
+      matching `Transfer(address,address,uint256)` and `Mint(address,uint256)` logs
+      with StateDB.AddLog. The token's own code never executes, so any hook,
+      allowance check, pause flag or transfer-restriction it implements is bypassed
+      on the deposit path. The logs look real and are indistinguishable in a
+      receipt. This is outside the 0x42.. predeploy range.
+  "0x420000000000000000000000000000000000000F":
+    name: GasPriceOracle
+    status: modified
+    inherited_from: op-stack
+    severity: high
+    src: "core/types/rollup_cost.go:TokenRatioSlot, core/types/rollup_cost.go:GasOracleAddr"
+    src_live: "eth_getStorageAt(0x42..0F, 0x0) @ 99672064 -> 0x12b5 (4789)"
+    note: >-
+      SAME ADDRESS, DIFFERENT SLOT MEANING. Storage slot 0 of the OP GasPriceOracle
+      holds `tokenRatio`, the MNT-per-ETH multiplier, and the client reads it from
+      state on every L1-cost calculation — GetState(GasOracleAddr, TokenRatioSlot)
+      appears in the state transition, the state processor, the txpool validator,
+      the simulator and the preconf checker. It is not config and not a fork
+      constant: it is contract storage, so the fee schedule moves when governance
+      moves it, with no client release and no fork. It was 4789 at the probed block
+      and 4778 (0x12aa) in the receipt of a transaction 0x100 blocks earlier — it
+      moves continuously.
+  "0x4200000000000000000000000000000000000018":
+    name: ProxyAdmin
+    status: modified
+    inherited_from: op-stack
+    src: "core/state_transition.go:L2ProxyAdminAddress, core/state_transition.go:NewProxyAdminOwnerAddress"
+    note: >-
+      From the ProxyOwner upgrade (1742367600) the client FORCE-WRITES slot 0 of
+      this predeploy to 0x09734bB3980906Bb217305EA6Bd34256feEAB105 at the top of
+      EVERY state transition — not once at a fork boundary, but on every
+      transaction, unconditionally. Any attempt to change the L2 ProxyAdmin owner
+      through the contract is silently reverted by the next transaction executed.
+  "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000":
+    name: LEGACY_ERC20_MNT
+    status: modified
+    inherited_from: op-stack
+    src: "mantle-v2/packages/contracts-bedrock/src/libraries/Predeploys.sol:LEGACY_ERC20_MNT"
+    note: >-
+      Same address as op-stack's LegacyErc20Eth, renamed to match the changed gas
+      asset. A predeploy whose IDENTITY differs between two chains on the same
+      stack while its address does not.
+  "0x4200000000000000000000000000000000000020":
+    name: SchemaRegistry
+    status: tombstoned
+    inherited_from: op-stack
+    src: "mantle-v2/packages/contracts-bedrock/src/libraries/Predeploys.sol:PREDEPLOY_COUNT"
+    src_live: "eth_call version() @ 99672064 -> reverts 'Proxy: implementation not initialized'"
+    note: >-
+      Mantle's Predeploys.sol declares TWENTY predeploys and stops at
+      GOVERNANCE_TOKEN; op-stack's list has thirty. The proxy at this address exists
+      and is CALLABLE, but has no implementation, so every call reverts. Not
+      `removed`: an absent address returns success with empty output, this one
+      reverts. EAS (0x42..21) behaves identically.
+  "0x4200000000000000000000000000000000000022":
+    name: CrossL2Inbox
+    status: tombstoned
+    inherited_from: op-stack
+    src: "mantle-v2/op-core/forks/mantle_forks.go:MantleNoSupport"
+    src_live: "eth_call version() @ 99672064 -> reverts 'Proxy: implementation not initialized'"
+    note: >-
+      The interop predeploy, uninitialised. The companion repo says why in one line:
+      ForkToMantleFork maps Interop to MantleNoSupport — the only OP fork Mantle's
+      own fork registry declares it will not support.
+  note: >-
+    Mantle's own additions are outside 0x42.. (BVM_ETH). Its divergences inside
+    0x42.. are of a kind address enumeration cannot see: a predeploy that is
+    present, callable, and empty (0x42..20, 0x42..21, 0x42..22), a predeploy whose
+    slot 0 means something else (0x42..0F), and a predeploy the client rewrites on
+    every transaction (0x42..18).
+
+system_transactions:
+  bvm_eth_mint:
+    name: "BVM_ETH mint on deposit"
+    status: added
+    src: core/state_transition.go:mintBVMETH
+    severity: high
+    note: >-
+      Runs before the deposit's own execution when EthValue != 0. Writes the ERC-20
+      balance slot and the totalSupply slot of 0xdEAd..1111 with SetState and emits
+      a hand-built Mint log. Not a call, not in the call tree, invisible to any
+      tracer that follows CALL frames.
+  bvm_eth_transfer:
+    name: "BVM_ETH transfer on deposit"
+    status: added
+    src: core/state_transition.go:transferBVMETH
+    severity: high
+    note: >-
+      Runs at the top of innerExecute when EthTxValue != 0: moves the ERC-20 balance
+      from msg.From to msg.To (or to the created contract address) by direct storage
+      write and emits a fabricated Transfer log. An ERC-20 balance reconstructed
+      from Transfer events happens to stay correct here — because the client forges
+      the events too — but a balance reconstructed by simulating the token's code
+      does not.
+  proxy_owner_write:
+    name: "L2ProxyAdmin owner pin"
+    status: added
+    src: core/state_transition.go:execute
+    note: "SetState(0x42..18, slot 0, NewProxyAdminOwnerAddress) on every transaction."
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    No opcode divergence. One ordering quirk worth knowing: the instruction-set
+    switch in core/vm/evm.go tests IsMantleBaseFee before IsShanghai and selects the
+    Shanghai set, so PUSH0 arrived on Mantle with the BaseFee fork rather than with
+    Shanghai. Purely additive.
+
+fee_model:
+  metering: gas
+  fee_market: "EIP-1559 from Arsia only; a sequencer-set constant base fee before it"
+  src: core/state_transition.go:innerExecute
+  extra_components:
+    - name: MNT as the native gas asset
+      note: >-
+        The whole divergence, and it costs zero protocol machinery. MNT is the
+        native balance, so buyGas, CanTransfer, refunds and the 1559 burn are
+        upstream's code operating on a different asset. Nothing in the client names
+        MNT. The visible consequence is arithmetic, not structural: with MNT worth
+        ~1/4789 of ETH, gas prices are ~4 orders of magnitude larger than on an
+        ETH-denominated chain, which is what tokenRatio exists to reconcile.
+    - name: tokenRatio (L1 data fee multiplier)
+      severity: high
+      src: "core/types/rollup_cost.go:NewL1CostFuncArsia, core/types/rollup_cost.go:L1Cost"
+      note: >-
+        WHERE tokenRatio ENTERS TODAY: the L1 data fee only. NewL1CostFuncArsia
+        computes the standard Fjord cost and multiplies by a tokenRatio re-read
+        FROM STATE on every single transaction — the comment says why, "because
+        after setting the token ratio in the gas oracle, it needs to be updated in
+        the rest of txs of the block". So one transaction in a block can change what
+        every later transaction in the same block pays for L1 data. The
+        pre-Arsia formula (NewL1CostFuncBeforeArsia) folded it in the same way.
+    - name: tokenRatio (L2 gas multiplier)
+      status: removed
+      severity: high
+      src: core/state_transition.go:innerExecute
+      note: >-
+        HISTORICAL — removed at Arsia, and the removal is the interesting part.
+        Pre-Arsia, tokenRatio multiplied intrinsic gas and the EIP-7623 floor,
+        divided the remaining gas budget, and had to be un-applied in the refund
+        path (calcRefundPreArsia, originalGasUsed). Gas UNITS, not just gas price,
+        were scaled by a number in contract storage — so `gasUsed` on Mantle was not
+        comparable to gasUsed anywhere else, and eth_estimateGas had to return a
+        scaled figure. Every one of those sites is now guarded by
+        `!rules.IsMantleArsia`. From Arsia, gas accounting is mainnet's and
+        eth_estimateGas returns ordinary gas units; the MNT/ETH scaling survives
+        only in the L1 fee and in the price, never in the units.
+    - name: operator fee
+      fork: arsia
+      src: core/types/rollup_cost.go:NewOperatorCostFunc
+      src_live: "eth_getTransactionReceipt @ 99672064 -> operatorFeeScalar 0x5f5e100, operatorFeeConstant 0x0"
+      note: >-
+        OP's Isthmus operator fee, switched on at Arsia and returning zero before
+        it. Mantle carries only the post-fix formula (gas * scalar * 100 +
+        constant); upstream's earlier gas * scalar / 1e6 variant is not in this
+        tree, so there is no pre-fix era to account for. Scalar is 1e8 live, i.e.
+        10 gwei of MNT per gas on top of the base fee.
+    - name: DA footprint budget
+      fork: arsia
+      src: "core/types/rollup_cost.go:CalcDAFootprint, core/types/rollup_cost.go:ExtractDAFootprintGasScalar"
+      note: >-
+        Block building enforces a DA budget in addition to the gas limit, and the
+        per-block scalar is read out of the last two bytes of the L1-attributes
+        deposit calldata. Mantle's L1-attributes selector is its own
+        (MantleArsiaL1AttributesSelector 0x49e72383, setL1BlockValuesArsia()), and
+        ExtractDAFootprintGasScalar REJECTS any other selector — so an OP Jovian
+        attributes transaction is not decodable here and vice versa.
+      src_live: "eth_getBlockByNumber @ 99672064 -> L1 attributes calldata begins 0x49e72383 and ends 0x0190 (scalar 400); receipt reports daFootprintGasScalar 0x190"
+  note: >-
+    Four components where op-stack has three, and a fifth (the gas-unit multiplier)
+    that existed until 2026-04-22. eth_estimateGas covers the L2 execution gas only;
+    the L1 data fee, the operator fee and the tokenRatio applied to the former are
+    all outside it.
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: blobGasUsed
+      fork: arsia
+      severity: high
+      inherited_from: op-stack
+      src: "core/types/rollup_cost.go:CalcDAFootprint, consensus/misc/eip1559/eip1559.go:CalcBaseFee"
+      src_live: "eth_getBlockByNumber @ 99672064 -> blobGasUsed 0xa0f0 with two transactions; excessBlobGas 0x0"
+      note: >-
+        Same repurposing op-stack records at Jovian, but gated on IsMantleArsia and
+        therefore live from a different date. It also does MORE here than the field
+        name suggests: CalcBaseFee meters the 1559 update against
+        max(parent.GasUsed, *parent.BlobGasUsed), so the DA footprint sitting in
+        this field directly drives the base fee.
+    - name: extraData
+      fork: arsia
+      src: consensus/misc/eip1559/eip1559_optimism.go:ValidateOptimismExtraData
+      src_live: "eth_getBlockByNumber @ 99672064 -> extraData 0x0100000032000000040000000ba43b7400 (17 bytes)"
+      note: >-
+        REQUIRED EMPTY before Arsia ("extraData must be empty before Arsia") and
+        required to be a 17-byte MinBaseFee-versioned record after it: version byte
+        0x01, uint32 denominator, uint32 elasticity, uint64 minBaseFee. A field
+        mainnet leaves free-form is consensus-checked here, in both directions.
+  src: core/types/block.go:Header
+  note: >-
+    Otherwise the header is upstream geth v1.17.3's, INCLUDING EIP-7928
+    BlockAccessListHash and EIP-7843 SlotNumber — both `rlp:"optional"`, both nil
+    live, and both recorded by the op-stack row as absent from its pinned op-geth.
+    Nothing to flag today; noted because it is the direction of drift nobody
+    expects from a fork.
+
+gotchas:
+  - >-
+    MANTLE CHANGED ITS GAS ASSET WITHOUT ADDING A TRANSACTION TYPE. MNT is simply
+    the native balance, so 0x00-0x04 are untouched and the signer is upstream
+    geth's. The cost lands entirely on the other side: ETH becomes an ERC-20 at
+    0xdEAd..1111 whose balances the CLIENT writes directly, and the OP deposit type
+    0x7e grows two fields to carry it. Compare Celo, which spent two type bytes and
+    a fifth consensus receipt field to reach a similar goal.
+  - >-
+    THE 0x7e DEPOSIT IS NOT OP STACK'S 0x7e. `EthValue` is inserted at RLP position
+    7, where OP Stack's decoder expects `Data`, and `EthTxValue` follows `Data`. RLP
+    decoding fails loudly; the JSON does not — an extra `ethValue` key that OP
+    tooling drops on the floor.
+  - >-
+    tokenRatio IS CONTRACT STORAGE, at slot 0 of the GasPriceOracle predeploy —
+    the same address OP Stack uses for something else. It is re-read from state per
+    transaction inside the block, so a transaction that updates it changes what
+    later transactions in the SAME block pay. Governance moves gas costs here with
+    no client release and no fork.
+  - >-
+    UNTIL 2026-04-22 tokenRatio SCALED GAS UNITS, not just price: intrinsic gas and
+    the 7623 floor were multiplied by it and the refund path had to divide it back
+    out. Historical gasUsed figures from Mantle are not comparable to any other
+    chain's, and any analysis spanning the Arsia boundary compares two different
+    units.
+  - >-
+    UNTIL 2026-04-22 THERE WAS NO BASE FEE MARKET. CalcBaseFee returned the parent's
+    base fee unchanged and VerifyEIP1559Header did not check the field, so the
+    header's baseFeePerGas was whatever the sequencer supplied. Consensus began
+    validating it only at Arsia.
+  - >-
+    A 32-BYTE CALLDATA PREFIX IS PERMANENTLY BANNED. Any transaction whose `data`
+    begins with MetaTxPrefix is rejected by the txpool and by eth_estimateGas — for
+    EVERY type byte, not just the 0x02 the retired MetaTx feature used — with the
+    error "meta tx is disabled". A legitimate contract call that happens to start
+    with those bytes cannot be estimated, pooled or sent.
+  - >-
+    BVM_ETH's BALANCES CHANGE WITHOUT ITS CODE RUNNING. The client writes the
+    balanceOf and totalSupply slots of 0xdEAd..1111 with SetState and fabricates
+    the Transfer/Mint logs. Any transfer hook, pause flag or allowance logic in that
+    token is bypassed on the deposit path, and no CALL frame appears in a trace.
+  - >-
+    MANTLE HAS NONE OF OP STACK'S SIX PRECOMPILE DIVERGENCES. It deleted the
+    Fjord/Granite/Isthmus/Jovian precompile maps, so activePrecompiledContracts
+    falls through to mainnet's Osaka set: MODEXP is bounded and priced as mainnet,
+    BN256 and BLS12-381 are uncapped, and P256VERIFY costs 6900 again from Limb.
+    Resolving `ethereum -> op-stack -> mantle` and keeping the ancestor's precompile
+    deltas gives the wrong answer six times.
+  - >-
+    THREE OP PREDEPLOYS ARE PRESENT BUT EMPTY. 0x42..20, 0x42..21 and 0x42..22 hold
+    proxies with no implementation and revert with "Proxy: implementation not
+    initialized". Mantle's Predeploys.sol declares twenty entries where op-stack's
+    has thirty, and its fork registry maps Interop to MantleNoSupport explicitly.
+  - >-
+    THE ORG MOVED: github.com/mantlenetworkio -> github.com/mantle-xyz, by 301
+    redirect. The execution client is mantle-xyz/op-geth; mantlenetworkio/mantle is
+    the frozen v1 monorepo.

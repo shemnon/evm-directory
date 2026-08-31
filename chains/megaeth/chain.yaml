@@ -1,0 +1,903 @@
+schema_version: 2
+
+chain:
+  name: MegaETH
+  slug: megaeth
+  chain_id: 4326
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: "stateless-validator/test_data/mainnet/genesis.json:chainId"
+  chain_id_src_live: "eth_chainId @ 24869120 -> 0x10e6 (4326); eth_call CHAINID @ 24869120 -> 0x10e6"
+  note: >-
+    An OP Stack L2 whose EVM is a revm/op-revm fork, not op-geth. The EVM itself is
+    open source and released under tags; the SEQUENCER/full node (`mega-reth`) is not.
+    The row is `evidence: source` because two released, pinned repos supply the state
+    transition — mega-evm is the EVM the sequencer embeds, and stateless-validator is
+    an independent second client that re-executes every block from it — but every claim
+    about mini-blocks, block production and the realtime API rests on `src_live:` and
+    `src_doc:`, because that code is not published. Both are marked as such below.
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: null
+  note: >-
+    MegaETH is an OP Stack chain by derivation and predeploys, but NOT by client code:
+    mega-evm builds on revm + op-revm, so it inherits OP semantics as a LIBRARY
+    (`OpSpecId::ISTHMUS`) rather than as a diff against op-geth. Every MegaETH EVM spec
+    from EQUIVALENCE through REX6 maps to exactly one OP spec — Isthmus — and thence to
+    Ethereum Prague. The OP predeploy set is live and unmodified (0x42..11 is the block
+    beneficiary in every header observed), and the DA path is EigenDA with the
+    certificate batched to Ethereum L1.
+  sync_point: >-
+    STOPS AT ISTHMUS. `MegaSpecId::into_op_spec` maps all nine MegaETH specs to
+    `OpSpecId::ISTHMUS`, and the mainnet genesis schedules OP forks only through
+    `isthmusTime: 0`. The op-stack row pins a Jovian/Karst client, so MegaETH has NONE
+    of OP Stack's post-Isthmus changes: not Jovian's repurposing of `blobGasUsed` as a
+    DA footprint, not Jovian's BLS12-381 input caps, not Karst. Inheriting the op-stack
+    row wholesale would over-state this chain. Granite's BN256 pairing cap and Fjord's
+    P256VERIFY at 0x0100 ARE inherited (both precede Isthmus).
+  src: "mega-evm/crates/mega-evm/src/evm/spec.rs:into_op_spec, stateless-validator/test_data/mainnet/genesis.json:isthmusTime"
+
+client:
+  name: mega-evm (MegaEVM)
+  repo: https://github.com/megaeth-labs/mega-evm
+  version: v1.7.0
+  commit: 30ce038cfb0ec108e886ef48105a7ab367a99b33
+  language: rust
+  built_on: revm 27.1.0 + op-revm
+  note: >-
+    THE EVM, NOT THE NODE. mega-evm is the state-transition function: spec ladder,
+    instruction tables, precompile overrides, resource limits, system contracts and
+    the `mega-evme` / `mega-t8n` replay tools. The node that produces blocks is
+    `mega-reth`, which is NOT public — the live RPC identifies itself as
+    `mega-reth/v2.2.0-ea126e0` and no such repo exists under megaeth-labs
+    (`megaeth-labs/reth` is a stale 2025 fork with only `perf-v0.1.0-alpha.*` tags and
+    no MegaETH code). Consequently: everything the EVM decides is `src:`; everything
+    the SEQUENCER decides — mini-block production, block-building limits, the realtime
+    API — is `src_live:` or `src_doc:`.
+  companion_repos:
+  - {name: stateless-validator, repo: "https://github.com/megaeth-labs/stateless-validator",
+     version: v2.0.16, commit: 11078d7b54c0500710a9e7f08d2fc1d76e6ca609, language: rust,
+     provides: "an independent re-execution client (chain spec, block executor, withdrawals root) and the canonical mainnet genesis with the full hardfork schedule"}
+  note_second_client: >-
+    stateless-validator is a genuine second implementation — it depends on mega-evm at
+    the same tag (`Cargo.toml: mega-evm ... tag = \"v1.7.0\"`) and re-executes blocks
+    against SALT witnesses instead of full state. Its README claims a third executor
+    built on the K semantics of the EVM. That is a stronger client-diversity position
+    than any other chain in this dataset that keeps its sequencer closed.
+
+live_probe:
+  endpoint: https://mainnet.megaeth.com/rpc
+  ws_endpoint: wss://mainnet.megaeth.com/ws
+  chain_id: 4326
+  observed_at_block: 24869120
+  observed_at: 2026-08-25
+  client_version_src_live: "web3_clientVersion @ 24869120 -> mega-reth/v2.2.0-ea126e0@mnet-ore-rpc-2"
+  second_session:
+    observed_at_block: 25149945
+    observed_at: 2026-08-28
+    note: >-
+      A SECOND probe session, three days after the first, added to answer the
+      ordering/execution questions. Block 25149945 (0x17fc1f9), timestamp 1787946956
+      (2026-08-28 19:55:56 UTC), still Rex6. The mini-block/sealed-block comparison
+      below is pinned to 25048478 (0x17e359e), the head of a 25-second WebSocket
+      capture taken in the same session; the admission tests and the eth_call detention
+      probes are pinned to 25149945. Everything added in this session is marked
+      `@ 25048478` or `@ 25149945`; nothing new is attached to 24869120.
+  note: >-
+    Block 24869120 (0x17b7900) has timestamp 1787666131, which is AFTER the Rex6
+    mainnet activation at 1787626800 (2026-08-25 03:00 UTC), so every probe below
+    observes the Rex6 spec. Historical state IS served at that height — eth_call and
+    eth_getCode honour the block parameter (unlike Hyperliquid's endpoint). Mini-block
+    observations were taken over the WebSocket endpoint at head, and carry their own
+    mini-block numbers; those are recorded with the EVM block they were sealed into.
+
+consensus:
+  engine: OP Stack derivation, single sequencer; PRODUCES TWO BLOCK KINDS
+  finality: >-
+    preconfirmation at the mini-block (~10ms), EVM block at ~1s, DA on EigenDA with the
+    certificate batched to Ethereum L1, then OP fault-proof dispute window
+  block_time: 1s (EVM blocks) / ~10ms (mini-blocks)
+  src: "stateless-validator/test_data/mainnet/genesis.json:blockTime"
+  src_doc: https://docs.megaeth.com/mini-block
+  src_live: "eth_blockNumber @ 24869120 -> +1 block/s; eth_getBlockByNumber 24869120-24869131 @ 24869120 -> timestamps 1787666131..1787666142, exactly +1s each; eth_subscribe miniBlocks @ 24869120 -> mini_block_timestamp deltas ~9.3ms (0x659df884e54d8 -> 0x659df884e7c21 = 9,537us)"
+  note: >-
+    THE HEADLINE. The sequencer seals a mini-block every ~10ms and an EVM block every
+    ~1s; ~100 mini-blocks per EVM block, with no guaranteed count. Mini-blocks carry
+    their own GLOBAL height sequence, disjoint from block.number: at EVM block
+    24869417 the mini-block number was 2,439,447,937 (0x91610581) — a second, much
+    larger height space that no standard RPC method exposes. They have no state root
+    and no bloom filter, and are delivered only over `eth_subscribe("miniBlocks")`.
+    Most are EMPTY: seven of the eight consecutive mini-blocks observed had
+    `gas_used: 0x0` and the empty transaction/receipt roots. Re-measured in the second
+    session: 2,384 mini-blocks over 24 consecutive EVM blocks, 99 or 100 per block, and
+    2,059 of them (86%) empty.
+  ordering:
+    note: >-
+      (a) ORDERING DOES NOT COMMIT BEFORE EXECUTION. A mini-block is ALREADY-EXECUTED
+      STATE BEING STREAMED, not an order fixed now and executed later. The payload
+      carries a `receipts` array alongside `transactions`, and each receipt already holds
+      `status`, `gasUsed`, `cumulativeGasUsed` and `transactionIndex` — the transaction's
+      FINAL index in the enclosing EVM block — under a `receipt_root` computed over them.
+      A receipt root cannot exist before execution, and `cumulativeGasUsed` is
+      block-level running state that only exists once the transaction has been COMMITTED
+      into the block being built. In the published EVM both are produced inside
+      `MegaBlockExecutor::commit_transaction_outcome`, downstream of the commit-time
+      re-check recorded under `ordered_but_invalid` below. So the all-ones block hash is
+      not a promise about a future execution; it is a finished result missing only its
+      container. This is the same shape as RISE, whose shreds are also published only
+      after execution, and the exact opposite of Monad, where consensus commits the
+      transaction LIST at height N and agrees the state root only at N+3.
+      MINI-BLOCK ORDER IS NEVER REVISED, in the sample: across 24 consecutive
+      fully-observed EVM blocks the concatenated mini-block transaction sequence equalled
+      the sealed block's transaction list exactly — same hashes, same positions, nothing
+      added, nothing removed, nothing reordered — 24 blocks out of 24, 577 transactions.
+      The streamed receipt is field-for-field identical to the final one except
+      `blockHash` — the key SETS are identical — with two consequences. The `logs`
+      differ only because each log carries its own copy of the same `0xffff..ff`
+      sentinel. And `l1Fee` differs for real: the streamed receipt reports a CONSTANT
+      766,561,485 wei (0x2db0cccd) for every transaction regardless of its calldata,
+      while the sealed receipt reports a per-transaction value roughly TWICE as large.
+      `l1GasPrice`, `l1GasUsed`, `l1BaseFeeScalar` and `l1BlobBaseFee` all match; only
+      the derived total is a placeholder. So the preconfirmation is not merely missing a
+      block hash — it under-reports what the transaction actually cost, on the one fee
+      component an OP Stack user cannot predict.
+    src: "mega-evm/crates/mega-evm/src/block/executor.rs:commit_transaction_outcome"
+    src_live: "eth_subscribe miniBlocks vs eth_getBlockByNumber/eth_getBlockReceipts @ 25048478 -> blocks 25048453..25048478 captured, 24 fully observed, 2384 mini-blocks (99 or 100 per EVM block, 2059 empty), 577 transactions; streamed (transactionIndex, hash) sequence == sealed transaction list in 24/24 blocks; streamed-vs-final receipt field diff over 577 receipts = {blockHash: 577, logs: 262, l1Fee: 244}, every other field identical, and identical key sets; second capture of 13 blocks -> l1Fee differed in 131 receipts, streamed value the constant 0x2db0cccd (766,561,485 wei) in every one against final values of 1,533,118,371 / 1,597,241,240 / 1,610,065,813 wei, and the only differing log field was blockHash (149); every streamed receipt blockHash was 0xffff..ff while the streamed TRANSACTION objects in the same payload carried blockHash null"
+    src_doc: https://docs.megaeth.com/mini-block
+  execution:
+    note: >-
+      (b) EXECUTION IS PARALLEL ON THE SEQUENCER, AND THE PARALLELISM IS NOT ITSELF
+      CONSENSUS-VISIBLE — BUT ITS CONFLICT-AVOIDANCE MACHINERY IS, AND THAT IS NEW.
+      stateless-validator's README names "the hyper-optimized, parallel, JIT-compiled
+      executor on sequencer nodes" as one of three MegaETH client implementations, and
+      mega-evm's own AGENTS.md states flatly that "MegaETH incorporates parallel EVM".
+      Nothing in the published EVM re-runs, aborts or retries a transaction on conflict:
+      mega-evm's state transition is sequential and deterministic, and the stateless
+      validator re-executes every sealed block single-threaded on vanilla revm, so two
+      implementations cannot disagree about a result. Every other parallel chain in this
+      dataset stops there — Sei, Monad and RISE's pevm all detect conflicts against a
+      multi-version store and re-run the loser, leaving the state transition untouched.
+      MEGAETH IS THE FIRST ROW WHERE THE SCHEDULER CHANGED THE STATE TRANSITION INSTEAD.
+      Gas detention exists for no other reason: the tree says it "forces transactions that
+      touch volatile data to terminate quickly, reducing parallel execution conflicts
+      without banning the access outright". The 20,000,000 compute-gas cap that a
+      contract incurs for reading `block.timestamp` is a consensus rule whose sole
+      purpose is sequencer throughput, and it is mandatory for every client. The
+      EQUIVALENCE spec — the one that claims Optimism Isthmus equivalence — already
+      carries the block-environment ACCESS TRACKING for the same reason, so even
+      MegaETH's "equivalent" spec is instrumented for a scheduler.
+      What is NOT established is anything about the scheduler itself: how mega-reth
+      partitions transactions, what it does on a genuine read/write conflict, and whether
+      a transaction is ever executed speculatively and thrown away. That code is closed.
+    src: "stateless-validator/README.md:JIT-compiled executor on sequencer nodes, mega-evm/AGENTS.md:MegaETH incorporates parallel EVM, mega-evm/AGENTS.md:reducing parallel execution conflicts without banning the access outright, mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS"
+    src_doc: https://docs.megaeth.com/spec/megaevm/gas-detention
+  ordered_but_invalid:
+    severity: high
+    note: >-
+      (c) THE CENTRAL QUESTION. MegaETH gives THREE different answers depending on which
+      meter fails and which side of the sequencer you stand on, and the published EVM
+      settles all three.
+      (1) SECOND-METER FAILURE AT EXECUTION -> INCLUDED, `status: 0`, GAS REFUNDED. A
+      transaction admitted and ordered whose per-transaction resource budget (compute
+      gas, data size, KV updates, state growth) is exhausted during execution, or whose
+      gas budget is retroactively cut by the detention penalty for reading
+      `block.timestamp`, halts with `KVUpdateLimitExceeded` /
+      `VolatileDataAccessOutOfGas` and is INCLUDED in the block with `status: 0`, no
+      state changes, and its remaining gas PRESERVED AND REFUNDED. So the dual meter and
+      the detention penalty do make a transaction's cost undeterminable at submission
+      time, but they never produce an unincludable transaction — they produce an ordinary
+      failed receipt with an unusual gas line. The receipt cannot express WHICH meter
+      failed: `gasUsed` is compute plus storage combined and there is no halt-reason
+      field.
+      (2) BLOCK-LEVEL LIMIT LOST TO A RACE -> DROPPED AT COMMIT, NO RECEIPT, NO GAS. This
+      is the genuine ordered-then-invalid case and it is a real, tested code path.
+      `commit_transaction_outcome` RE-RUNS `BlockLimiter::pre_execution_check` because
+      "between run_transaction() and commit_transaction_outcome(), other transactions may
+      have been committed, potentially exceeding block limits". On failure it returns an
+      error, the receipt is never built, and the transaction is simply absent from the
+      block. The tree's own test does exactly this: three transactions are executed, two
+      are committed out of order, and the third — which passed every check when it ran —
+      is refused at commit with `TransactionGasLimitMoreThanAvailableBlockGas`; `finish()`
+      returns TWO receipts, not three. The transaction is invalidated by OTHER
+      transactions, not by anything about itself, and it is erased: no receipt, no trace,
+      no gas charged, indistinguishable from never having been submitted.
+      (3) THE SAME CHECK IS WHOLE-BLOCK REJECTION ON THE OTHER SIDE. During block
+      BUILDING an error from `pre_execution_check` means "skip this transaction, try the
+      next" — the module documentation says so in as many words. During block VALIDATION
+      the stateless validator executes the sealed block's transactions strictly in order
+      and maps ANY error from the same function to `ValidationError::BlockReplayFailed`,
+      which rejects the entire block. One function, two meanings, decided by which side
+      of the sequencer is running it. MegaETH therefore holds Conflux-style erasure and
+      Berachain-style whole-block rejection in a single mechanism.
+      WHY (2) IS NOT OBSERVABLE, AND THAT IS THE INTERESTING PART. The receipt is
+      CONSTRUCTED INSIDE `commit_transaction_outcome`, after the re-check passes — so a
+      transaction dropped at commit never has a receipt to stream, and the mini-block
+      preconfirmation is post-commit state by construction. A client therefore cannot see
+      a transaction appear in a mini-block and then vanish from the block. Live, over 577
+      transactions in 24 consecutive blocks, none did. MegaETH thus reaches the same
+      user-visible position as RISE — the ordered-but-invalid state cannot be observed —
+      but by the opposite route: RISE's admission is synchronous so the state never
+      arises, while MegaETH's state DOES arise inside the block builder and is resolved
+      before anything is published.
+      ADMISSION IS SYNCHRONOUS TOO, and the fast path is not a laxer path. Tested live
+      with correctly signed transactions from a fresh zero-balance key: insufficient
+      balance is rejected identically by `eth_sendRawTransaction`,
+      `eth_sendRawTransactionSync` AND `realtime_sendRawTransaction`; a wrong chain id, a
+      gas limit above the per-transaction cap, and a gas limit below MegaETH's 60,000
+      intrinsic are all refused at the RPC boundary with no receipt ever created.
+      NOT ESTABLISHED: nonce and balance invalidation between mini-block and seal. The
+      commit-time re-check covers only the seven BlockLimiter dimensions — it does NOT
+      re-validate nonce or balance — and revm's own nonce/balance validation happens at
+      `run_transaction` time, against whatever state that speculative execution saw.
+      Whether mega-reth's scheduler guarantees that two transactions from the same sender
+      are never executed concurrently, or re-validates the sender before commit, is not in
+      any published repository. See `## Not established here` in SUMMARY.md for the two
+      probes that would settle it.
+    src: "mega-evm/crates/mega-evm/src/block/executor.rs:Re-validate limits at commit time, mega-evm/crates/mega-evm/tests/block_executor/block_limits.rs:test_commit_time_pre_execution_check_parallel_simulation, mega-evm/crates/mega-evm/src/block/limit.rs:pre_execution_check, stateless-validator/crates/stateless-core/src/executor.rs:BlockReplayFailed"
+    src_live: "eth_sendRawTransaction/eth_sendRawTransactionSync/realtime_sendRawTransaction from a fresh zero-balance key @ 25149945 -> all three return -32003 'insufficient funds for gas * price + value: have 0 want 100000000000000'; chainId 1 -> -32000 'RLP decoding failed: Common chain ID ... not matching the derived chain ID 1'; gas limit 20000000000 -> -32000 'exceeds max transaction gas limit'; gas limit 50000 -> -32000 'Gas limit too low. Intrinsic: 60000'; no receipt for any of them. Streamed-then-absent census @ 25048478 -> 0 of 577 transactions"
+
+baseline_fork: prague
+
+baseline_note: >-
+  Prague, reached THROUGH OP Isthmus, not directly: `MegaSpecId::into_op_spec` returns
+  `OpSpecId::ISTHMUS` for all of EQUIVALENCE..REX6 and `into_eth_spec` resolves that to
+  `EthSpecId::PRAGUE`. Confirmed live: `requestsHash` is present in headers (EIP-7685),
+  the EIP-2935 history contract at 0x0000F90827F1C53a10cb7A02335B175320002935 has code
+  (84 bytes) and the EIP-4788 beacon-roots contract at 0x000F3df6...Beac02 has code
+  (98 bytes) at the pinned block. The chain is NOT at Osaka — but it does carry one
+  Osaka precompile change ahead of schedule; see precompiles."0x05".
+
+forks:
+  src: "stateless-validator/test_data/mainnet/genesis.json:rex5Time"
+  ladder_src: "mega-evm/crates/mega-evm/src/block/hardfork.rs:MegaHardfork"
+  src_doc: https://docs.megaeth.com/spec/network-upgrades/overview
+  note: >-
+    Two ladders in one config. The Ethereum and OP ladders are all at time 0
+    (`shanghaiTime`..`pragueTime`, `bedrockBlock`..`isthmusTime`), so the chain was born
+    at Isthmus/Prague; the MegaETH ladder (MiniRex..Rex6) is scheduled on top and is
+    where every divergence enters. `ChainSpec::from_genesis` merges the three sets into
+    one ordered schedule and PANICS at load if Rex6 is scheduled without Rex5 or before
+    it — a fail-fast on fork ordering that most clients do not have.
+  timeline:
+  - {name: "shanghai/cancun/prague + bedrock..isthmus", activation_time: 0, mainnet_equivalent: prague,
+     note: "all at genesis; MegaETH mainnet genesis timestamp is 1762744787 (2025-11-10)"}
+  - {name: MiniRex, activation_time: 0, mainnet_equivalent: null,
+     note: "dual gas model, multidimensional resource limits, gas detention, 98/100 gas forwarding, SELFDESTRUCT disabled, Oracle + high-precision timestamp contracts"}
+  - name: MiniRex1
+    activation_time: 1764845637
+    mainnet_equivalent: null
+    note: >-
+      A ROLLBACK FORK. `MegaHardfork::MiniRex1.spec_id()` returns
+      `MegaSpecId::EQUIVALENCE` — the fork DE-ACTIVATED the dual gas model and every
+      MiniRex rule, returning the live chain to plain OP Isthmus semantics. Nothing in
+      this dataset has done that before: forks elsewhere only ever add. No reorg and no
+      state rollback accompanied it; contracts deployed under the old rules stayed.
+  - {name: MiniRex2, activation_time: 1764849932, mainnet_equivalent: null,
+     note: "restoration: back to MegaSpecId::MINI_REX, 4,295 seconds (71 minutes) after the rollback"}
+  - {name: Rex, activation_time: 1764851940, mainnet_equivalent: null,
+     note: "intrinsic storage gas (39,000), storage gas economics base x (m-1), state growth tracking"}
+  - {name: Rex1, activation_time: 1766282400, mainnet_equivalent: null, note: "compute gas limit reset between transactions"}
+  - {name: Rex2, activation_time: 1770246000, mainnet_equivalent: null, note: "SELFDESTRUCT re-enabled with EIP-6780 semantics; KeylessDeploy contract"}
+  - {name: Rex3, activation_time: 1771639200, mainnet_equivalent: null, note: "oracle detention cap raised 1M -> 20M compute gas"}
+  - {name: Rex4, activation_time: 1776659200, mainnet_equivalent: null,
+     note: "per-frame resource budgets (98/100 of parent), relative detention, storage call stipend, MegaAccessControl + MegaLimitControl"}
+  - {name: Rex5, activation_time: 1780632000, mainnet_equivalent: null,
+     note: "SequencerRegistry, Oracle v2.0.0, mini-block signing begins, EIP-2935/4788 pre-block gas floor with fail-closed block rejection"}
+  - name: Rex6
+    activation_time: 1787626800
+    mainnet_equivalent: null
+    note: >-
+      2026-08-25 03:00 UTC. Unified per-opcode metering order, system-originated
+      transaction metering exemption, SequencerRegistry v2.0.0 rotation hardening.
+      NOT PRESENT in the pinned genesis (`rex6Time` is absent from
+      stateless-validator v2.0.16's mainnet genesis, whose newest entry is
+      `rex5Time`), while mega-evm v1.7.0 implements Rex6 and the docs schedule it —
+      so a validator started from the repo's own genesis file would have diverged from
+      mainnet the morning this row was written. Activation time is from the docs.
+  - {name: Rex7, status: pending, mainnet_equivalent: null,
+     note: "unstable spec, no behavioural change over Rex6, not scheduled on either network"}
+
+eips:
+  150:
+    status: modified
+    severity: high
+    note: >-
+      THE 63/64 RULE IS 98/100 HERE. A CALL-like or CREATE opcode may forward at most
+      98% of the parent's remaining gas, so the parent retains 2% instead of ~1.6%.
+      Every gas-forwarding calculation calibrated on mainnet is wrong on this chain,
+      silently and in the direction of the callee receiving LESS than expected. This is
+      a change to a rule that has been stable since 2016 and that contracts hard-code.
+    src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:forward_gas_ext"
+    src_doc: https://docs.megaeth.com/spec/megaevm/gas-forwarding
+  170:
+    status: modified
+    note: >-
+      Max deployed contract size is 512 KiB (`MAX_CONTRACT_SIZE = 512 * 1024`) instead
+      of 24,576 bytes. Code deposit is charged 10,000 STORAGE gas per byte, so the
+      economic cap bites long before the structural one: a 24 KB contract costs
+      ~240,000,000 storage gas to deploy.
+    src: "mega-evm/crates/mega-evm/src/constants.rs:MAX_CONTRACT_SIZE"
+  3860:
+    status: modified
+    note: "max initcode is MAX_CONTRACT_SIZE + 24 KiB = 536 KiB, not 49,152 bytes"
+    src: "mega-evm/crates/mega-evm/src/constants.rs:MAX_INITCODE_SIZE"
+  1559:
+    status: modified
+    note: >-
+      Same formula, degenerate parameters. The genesis sets `eip1559Elasticity: 1` and
+      `eip1559Denominator: 1000`, i.e. the target equals the limit and the base fee
+      moves at most 0.1% per block. Observed: baseFeePerGas was exactly 1,000,000 wei
+      (0.001 gwei) in all twelve consecutive blocks sampled, with gasUsed ranging over
+      7.7M-9.8M against a 10,000,000,000 gas limit. In practice this is a fixed-price
+      chain with a 1559-shaped header. The OP L1-data-fee and operator-fee components
+      are inherited and still charged (see fee_model).
+    src: "stateless-validator/test_data/mainnet/genesis.json:eip1559Elasticity"
+    src_live: "eth_getBlockByNumber 24869120-24869131 @ 24869120 -> baseFeePerGas 0xf4240 in 12/12, gasLimit 0x2540be400 (10,000,000,000)"
+  7883:
+    status: added
+    note: >-
+      MODEXP ON THE OSAKA SCHEDULE, ON A PRAGUE CHAIN. `mini_rex()` takes op-revm's
+      Isthmus precompile set and extends it with `revm::precompile::modexp::OSAKA`,
+      so MODEXP is priced by EIP-7883 here while mainnet at Prague — and the op-stack
+      row's Jovian client, which drops both 7823 and 7883 — is not. A descendant
+      RE-ADDING what its stack removed is a first for this dataset.
+    src: "mega-evm/crates/mega-evm/src/evm/precompiles.rs:mini_rex"
+    src_doc: https://docs.megaeth.com/spec/megaevm/precompiles
+  7823:
+    status: unrecorded
+    note: >-
+      revm's `modexp::OSAKA` constant is the vehicle for both the EIP-7883 repricing and
+      the EIP-7823 input bounds, but revm is an external crate at version 27.1.0 and is
+      not in the pinned tree, and the MegaETH docs mention only the 7883 gas schedule.
+      Whether MODEXP inputs above the 7823 bounds are REJECTED here is therefore not
+      established from the pinned source, and is deliberately not guessed.
+  7623:
+    status: modified
+    note: >-
+      The calldata floor is charged at 10x, as storage gas: 100 gas per zero byte and
+      400 per non-zero byte on top of the standard floor
+      (`CALLDATA_STANDARD_TOKEN_STORAGE_FLOOR_GAS = TOTAL_COST_FLOOR_PER_TOKEN * 10`).
+      Ordinary calldata is likewise 40/160 per byte instead of 4/16.
+    src: "mega-evm/crates/mega-evm/src/constants.rs:CALLDATA_STANDARD_TOKEN_STORAGE_FLOOR_GAS"
+  3529:
+    status: modified
+    note: >-
+      Compute-gas refunds are unchanged, but STORAGE gas is never refunded: resetting a
+      slot to its original value inside the same transaction refunds the EVM-gas part
+      and none of the storage part. The asymmetry is invisible to any local simulator.
+    src_doc: https://docs.megaeth.com/spec/megaevm/dual-gas-model
+  6780:
+    status: inherited
+    note: >-
+      Inherited NOW, but not always: SELFDESTRUCT was DISABLED outright from MiniRex
+      through Rex1 — the opcode halted with `InvalidFEOpcode` — and was re-enabled at
+      Rex2 (1770246000) with EIP-6780 semantics. A chain that removed an opcode and
+      then put it back; contracts deployed in that window could not self-destruct at all.
+    src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:SELFDESTRUCT"
+  2935:
+    status: modified
+    note: >-
+      Semantics unchanged, gas budget not: from Rex5 the pre-block history-storage call
+      is issued with `max(block.gas_limit, 30,000,000)` instead of revm's fixed 30M,
+      because MegaETH's dynamic SALT storage gas can make the write cost more than 30M.
+      Rex5 also makes the call FAIL-CLOSED — a failure rejects the block.
+    src: "mega-evm/crates/mega-evm/src/block/eips.rs:transact_blockhashes_contract_call"
+    src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 24869120 -> 84 bytes"
+  4788:
+    status: modified
+    note: "same Rex5 gas-floor and fail-closed treatment as EIP-2935; the write itself is unchanged"
+    src: "mega-evm/crates/mega-evm/src/block/eips.rs:transact_beacon_root_contract_call"
+    src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 24869120 -> 98 bytes"
+  7702:
+    status: inherited
+    note: >-
+      Present via Prague/Isthmus. Rex5 added state-growth accounting for authorities and
+      Rex6 consolidated authorization accounting with dynamic SALT account-creation gas
+      for net-new authorities, so the COST of a 7702 authorization differs from mainnet
+      even though its semantics do not.
+    src: "mega-evm/crates/mega-evm/tests/rex6/eip7702_authority_accounting.rs:eip7702"
+  4844:
+    status: removed
+    note: >-
+      No blob market, as on every OP Stack L2; blobGasUsed and excessBlobGas are 0x0 in
+      every header observed and BLOBBASEFEE returns 1. Unlike the op-stack row's Jovian
+      client, blobGasUsed is NOT repurposed here — MegaETH stops at Isthmus, so the
+      field still means blob gas, and means zero.
+    src_live: "eth_getBlockByNumber 24869120 @ 24869120 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_call BLOBBASEFEE @ 24869120 -> 0x01"
+
+non_eip_specs:
+  - id: Rex specs
+    name: "MegaEVM spec ladder EQUIVALENCE..REX7"
+    adoption: adopted
+    note: >-
+      MegaETH versions EVM behaviour with its own spec identifiers, one per hardfork,
+      frozen on release. `MegaSpecId` is the enum; REX6 is `#[default]` at v1.7.0 and
+      REX7 is the open, unstable spec. Nine specs in nine months.
+    src: "mega-evm/crates/mega-evm/src/evm/spec.rs:MegaSpecId"
+
+tx_types:
+  "0x00":
+    name: LegacyTx (overloaded as the MegaETH system transaction)
+    status: modified
+    severity: high
+    note: >-
+      A LEGACY TRANSACTION WHOSE MEANING DEPENDS ON ITS SENDER. When a type-0x00
+      transaction comes from `MEGA_SYSTEM_ADDRESS`
+      (0xA887dCB9D5f39Ef79272801d05Abdf707CFBbD1d — from Rex5 read out of the
+      SequencerRegistry rather than hard-coded) AND calls an address on
+      `MEGA_SYSTEM_TX_WHITELIST` (only the Oracle at 0x6342..0001), the client processes
+      it as an OP DEPOSIT: signature validation, nonce verification and fee deduction
+      are all bypassed, the nonce still bumps, and no fee is paid to the beneficiary or
+      any vault. Calling a non-whitelisted address halts with
+      `MegaHaltReason::SystemTxInvalidCallee`. Nothing in the ENVELOPE distinguishes
+      this from an ordinary legacy transaction — a decoder that classifies by type byte
+      alone cannot tell a fee-exempt protocol transaction from a user one.
+    src: "mega-evm/crates/mega-evm/src/system/tx.rs:check_if_mega_system_transaction, mega-evm/crates/mega-evm/src/system/tx.rs:MEGA_SYSTEM_TX_WHITELIST, mega-evm/crates/mega-evm/src/evm/result.rs:SystemTxInvalidCallee"
+    src_live: "eth_getTransactionReceipt @ 24869614 -> from 0xa887dcb9d5f39ef79272801d05abdf707cfbbd1d, to 0x6342000000000000000000000000000000000001, type 0x0, effectiveGasPrice 0x0, status 0x1"
+  note: >-
+    No new type BYTES. 0x7e deposits are inherited from op-stack unchanged (one per
+    block, from 0xdead...0001 to the L1Block predeploy at 0x42..15, observed at the
+    pinned block). The census over block 24869120 was {0x00: 10, 0x02: 15, 0x7e: 1} —
+    no 0x01, no 0x03, no 0x04 in that block. The divergence is not a new envelope; it
+    is a new MEANING for an old one.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    For user transactions there is no delta: secp256k1, address = hash of key,
+    inherited through op-revm. Two protocol paths reach authorization without a user
+    signature, and both are MegaETH's own rather than op-stack's deposit path. There is
+    also a THIRD secp256k1 role on this chain that authorizes no transaction at all —
+    the sequencer's mini-block signing key — recorded below because it is the key that
+    actually backs every sub-second confirmation users see.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "mega-evm/crates/mega-evm/src/evm/spec.rs:into_eth_spec"
+    system_address:
+      status: added
+      authorizes: protocol
+      precompile: none
+      signers_per_tx: 0
+      severity: high
+      note: >-
+        NOT A SIGNATURE SCHEME — an ADDRESS-KEYED bypass. `is_deposit_like_transaction`
+        returns true for any legacy transaction whose caller equals the current system
+        address, and deposit-like processing skips signature validation entirely. The
+        authorization is therefore "the sequencer put this transaction in the block with
+        this `from` field", exactly as for an OP deposit, except that the envelope is an
+        ordinary legacy transaction rather than the 0x7e type that announces itself. The
+        keyless-deploy sandbox transaction takes the same path under
+        `SANDBOX_TX_SOURCE_HASH`. `precompile: none` here records an absence of subject
+        matter, not an unpaired verifier — there is no signature to verify.
+      src: "mega-evm/crates/mega-evm/src/system/tx.rs:is_deposit_like_transaction, mega-evm/crates/mega-evm/src/system/tx.rs:SANDBOX_TX_SOURCE_HASH"
+    sequencer_miniblock_key:
+      status: added
+      authorizes: never
+      precompile: "0x01"
+      note: >-
+        The key that signs PRECONFIRMATIONS. From Rex5 the sequencer signs every
+        mini-block header — a secp256k1 ECDSA signature over `keccak256(rlp(header))`
+        of eight fields (block_number, block_timestamp, index, mini_block_number,
+        mini_block_timestamp, gas_used, transaction_root, receipt_root) — and the key is
+        registered on-chain in the SequencerRegistry at 0x6342..0006 and rotatable at an
+        EVM block boundary. It authorizes no transaction, so `authorizes: never`; but it
+        is what makes a 10ms confirmation a binding commitment rather than a promise,
+        and it is verifiable on-chain with ecrecover. Signatures were present on every
+        mini-block observed, including the empty ones.
+      src: "mega-evm/crates/mega-evm/src/system/sequencer_registry.rs:SEQUENCER_REGISTRY_ADDRESS"
+      src_live: "eth_subscribe miniBlocks @ 24869417 -> every payload carries signature {r,s,yParity}, e.g. mini_block_number 0x91610581 r=0xdf27cff9... yParity 0x0"
+      src_doc: https://docs.megaeth.com/mini-block
+
+precompiles:
+  "0x05":
+    name: MODEXP
+    status: modified
+    divergence: gas
+    note: >-
+      EIP-7883 (Osaka) gas schedule, installed by extending op-revm's Isthmus set with
+      `revm::precompile::modexp::OSAKA`. More expensive than mainnet Prague and than
+      every other OP Stack chain. See eips.7883 and eips.7823.
+    src: "mega-evm/crates/mega-evm/src/evm/precompiles.rs:mini_rex"
+  "0x0a":
+    name: KZG_POINT_EVALUATION
+    status: modified
+    divergence: gas
+    note: >-
+      A FLAT 100,000 GAS, twice mainnet's 50,000, implemented by a wrapper that runs the
+      upstream verification and then OVERWRITES `gas_used` with the constant. It still
+      returns the correct answer for a chain that has no blobs of its own.
+    src: "mega-evm/crates/mega-evm/src/evm/precompiles.rs:kzg_point_evaluation"
+  note: >-
+    ZERO added addresses. Everything MegaETH adds is a system CONTRACT with real
+    bytecode (below), not a precompile — the opposite of the pattern on Sei, Flare or
+    Hyperliquid. The two divergences here are pricing at mainnet addresses. From REX5
+    there is one further, structural change that is not address-specific: every
+    precompile call has its forwarded gas capped at the caller's remaining COMPUTE gas
+    budget, so a precompile can be forced out of gas by a limit that does not exist on
+    mainnet.
+  compute_cap_src: "mega-evm/crates/mega-evm/src/evm/precompiles.rs:current_call_remaining_compute_gas"
+
+system_contracts:
+  "0x6342000000000000000000000000000000000001":
+    name: Oracle
+    status: added
+    fork: MiniRex
+    note: >-
+      Sequencer-published data written by the mega system transaction. Versioned in
+      three bytecodes (v1.0.0, v1.1.0 with `sendHint` at Rex2, v2.0.0 at Rex5 reading
+      its authority from the SequencerRegistry instead of a constructor immutable).
+      READING IT DETAINS THE TRANSACTION (see opcodes/gas detention).
+    src: "mega-evm/crates/mega-evm/src/system/oracle.rs:ORACLE_CONTRACT_ADDRESS"
+    src_live: "eth_getCode @ 24869120 -> 2665 bytes"
+  "0x6342000000000000000000000000000000000002":
+    name: HighPrecisionTimestamp
+    status: added
+    fork: MiniRex
+    note: >-
+      THE ANSWER TO A QUESTION MAINNET NEVER HAD TO ASK. `block.timestamp` has 1-second
+      resolution while blocks are sealed every ~1s and mini-blocks every ~10ms, so the
+      EVM cannot see time at the granularity the chain actually runs at. This contract
+      returns MICROSECONDS since the epoch — the moment the transaction started
+      executing on the sequencer — non-decreasing within a block and capped at
+      `block.timestamp * 1,000,000`. It is a sequencer-attested clock, not a consensus
+      one, and reading it triggers the 20M compute-gas detention cap.
+    src: "mega-evm/crates/mega-evm/src/system/oracle.rs:HIGH_PRECISION_TIMESTAMP_ORACLE_ADDRESS"
+    src_live: "eth_call timestamp() 0xb80777ea @ 24869120 -> 0x659df74b620a3 = 1787666131,570,...us, matching that block's timestamp 1787666131 to the second; eth_getCode @ 24869120 -> 1107 bytes"
+    src_doc: https://docs.megaeth.com/spec/system-contracts/high-precision-timestamp
+  "0x6342000000000000000000000000000000000003":
+    name: KeylessDeploy
+    status: added
+    fork: Rex2
+    note: >-
+      Re-implements Nick's Method IN A SANDBOX. Deterministic pre-EIP-155 deployment
+      transactions (the CREATE2 factory, multicall, permit2 and friends) cannot be
+      replayed here because MegaETH's gas model makes their hard-coded gas limits
+      insufficient, so the chain provides a contract that decodes such a transaction,
+      recovers its signer and executes the deployment as a protocol sandbox transaction
+      with a 100,000-gas dispatch overhead. Rex5 changed the accounting so the outer
+      transaction is charged the full sandbox gas — 10-100x more for storage-heavy
+      deployments.
+    src: "mega-evm/crates/mega-evm/src/system/keyless_deploy.rs:KEYLESS_DEPLOY_ADDRESS, mega-evm/crates/mega-evm/src/constants.rs:KEYLESS_DEPLOY_OVERHEAD_GAS"
+    src_live: "eth_getCode @ 24869120 -> 516 bytes"
+  "0x6342000000000000000000000000000000000004":
+    name: MegaAccessControl
+    status: added
+    fork: Rex4
+    note: >-
+      Lets a contract OPT OUT of volatile-data access for its inner calls
+      (`disableVolatileDataAccess()`); an inner call that then reads block env, the
+      beneficiary or the oracle reverts with `VolatileDataAccessDisabled(uint8)` instead
+      of detaining the transaction. A consensus-level capability switch, callable by
+      any contract.
+    src: "mega-evm/crates/mega-evm/src/system/control.rs:ACCESS_CONTROL_ADDRESS"
+    src_live: "eth_getCode @ 24869120 -> 398 bytes"
+  "0x6342000000000000000000000000000000000005":
+    name: MegaLimitControl
+    status: added
+    fork: Rex4
+    note: >-
+      Returns the REMAINING COMPUTE GAS of the current call. The result is produced by
+      EVM interception, not by executing the deployed bytecode — the code at the address
+      is real and callable, but the value comes from the host. Contracts need it because
+      `GAS` reports the single combined budget and cannot see the separate compute
+      ceiling that can halt them.
+    src: "mega-evm/crates/mega-evm/src/system/limit_control.rs:LIMIT_CONTROL_ADDRESS"
+    src_live: "eth_getCode @ 24869120 -> 363 bytes"
+  "0x6342000000000000000000000000000000000006":
+    name: SequencerRegistry
+    status: added
+    fork: Rex5
+    note: >-
+      The on-chain source of truth for two protocol roles: the SYSTEM ADDRESS (whose
+      legacy transactions are fee-exempt and signature-exempt) and the SEQUENCER key
+      (which signs mini-blocks). Rotations are scheduled and applied by a pre-block
+      system call to `applyPendingChanges()` at an EVM block boundary; Rex6 hardened
+      rotation with an EIP-712 possession proof and a minimum delay. Before Rex5 the
+      system address was a compile-time constant — this contract turns a client constant
+      into mutable on-chain state.
+    src: "mega-evm/crates/mega-evm/src/system/sequencer_registry.rs:SEQUENCER_REGISTRY_ADDRESS"
+    src_live: "eth_getCode @ 24869120 -> 5366 bytes"
+  note: >-
+    Six contracts in a 0x6342.. block — the prefix is MegaETH's TESTNET chain id (6342)
+    used as an address namespace on mainnet (chain id 4326). All six are installed by
+    the client at their fork boundary (`transact_deploy_*`, idempotent, code-hash
+    checked) rather than by a genesis alloc, so they appear in state without any
+    transaction ever creating them. All six were confirmed to carry real bytecode at the
+    pinned block by `eth_getCode`; the source map, not the probe, is what establishes
+    they are contracts rather than precompiles.
+
+system_transactions:
+  - name: mega system transaction
+    note: >-
+      Sequencer-originated legacy transaction from the system address to the Oracle.
+      Fee-exempt on every axis (no L2 fee, no L1 data fee, no base fee, no vault
+      credit), signature-exempt, nonce-bumping. Observed live: to 0x6342..0001,
+      effectiveGasPrice 0x0.
+    src: "mega-evm/crates/mega-evm/src/system/tx.rs:MEGA_SYSTEM_TRANSACTION_SOURCE_HASH"
+  - name: keyless-deploy sandbox transaction
+    note: "protocol-constructed deposit-like transaction used to execute a decoded pre-EIP-155 deployment"
+    src: "mega-evm/crates/mega-evm/src/system/tx.rs:SANDBOX_TX_SOURCE_HASH"
+  - name: "SequencerRegistry.applyPendingChanges() pre-block call"
+    fork: Rex5
+    note: "runs before the first transaction when a role rotation is due, with gas_limit max(block gas limit, 30M)"
+    src: "mega-evm/crates/mega-evm/src/system/sequencer_registry.rs:transact_apply_pending_changes"
+  - name: system-contract installation
+    note: >-
+      Each fork boundary installs or upgrades bytecode at the 0x6342.. addresses through
+      the block executor, not through a transaction. Rex5 stopped marking the account as
+      `created` on upgrade so that Oracle storage survives a bytecode change.
+    src: "mega-evm/crates/mega-evm/src/system/oracle.rs:oracle_spec"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+    - name: "CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, CREATE2"
+      note: >-
+        98/100 gas forwarding instead of 63/64; storage gas charged for account and
+        contract creation; per-frame budgets for all four resource dimensions forwarded
+        at 98/100 from Rex4; from Rex4 a value-transferring CALL/CALLCODE also grants an
+        extra 23,000-gas STORAGE_CALL_STIPEND that can only be spent on storage gas and
+        is BURNED if unused, because MegaETH's 10x LOG costs make a single LOG1 exceed
+        the 2,300-gas EVM stipend and would otherwise break every `transfer()` to a
+        contract that emits an event.
+      src: "mega-evm/crates/mega-evm/src/constants.rs:STORAGE_CALL_STIPEND, mega-evm/crates/mega-evm/src/limit/frame_limit.rs:FRAME_LIMIT_NUMERATOR"
+    - name: "SSTORE"
+      note: >-
+        Compute gas is mainnet's. Storage gas is added on zero->non-zero writes only,
+        priced 20,000 x (m-1) where m is the SALT bucket multiplier — a cost that
+        depends on the CURRENT SHAPE OF THE STATE TRIE, not on the transaction. At m=1
+        it is free; buckets expand as they fill and the price rises for everyone using
+        that bucket. No other chain in this dataset prices an opcode by state layout.
+      src: "mega-evm/crates/mega-evm/src/constants.rs:SSTORE_SET_STORAGE_GAS_BASE"
+    - name: "LOG0-LOG4"
+      note: "storage gas at 10x the EVM cost: 3,750 per topic and 80 per data byte, on top of standard compute gas"
+      src: "mega-evm/crates/mega-evm/src/constants.rs:LOG_TOPIC_STORAGE_GAS"
+    - name: "NUMBER, TIMESTAMP, COINBASE, PREVRANDAO, GASLIMIT, BASEFEE, BLOCKHASH, BLOBBASEFEE, BLOBHASH"
+      severity: high
+      note: >-
+        GAS DETENTION. Touching any block-environment opcode caps the transaction's
+        remaining COMPUTE gas at 20,000,000 from the point of access (absolute before
+        Rex4, relative after). The value returned is correct; the transaction's budget
+        silently changes because it read it. A contract that reads `block.timestamp`
+        early and then computes heavily halts with
+        `MegaHaltReason::VolatileDataAccessOutOfGas` at a limit that appears nowhere in
+        the transaction or the block header. AND THE CHAIN'S OWN SIMULATION ENDPOINT DOES
+        NOT APPLY IT: measured with the MegaLimitControl introspection contract inside
+        `eth_call`, reading TIMESTAMP did not cap the remaining compute gas, and a loop
+        costing ~29,000,000 gas after a TIMESTAMP read completed successfully where
+        detention would have halted it at ~20,000,000. `eth_call` is running the MegaETH
+        spec (it charges the 60,000 intrinsic and the dual meter), so this is a
+        deliberate omission on the simulation path, not a different spec — and it means
+        the one failure mode with no mainnet analogue is invisible to the one estimator
+        the chain's docs tell you to trust.
+      src: "mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS, mega-evm/crates/mega-evm/src/evm/result.rs:VolatileDataAccessOutOfGas"
+      src_live: "eth_call 0x6342..0005 remainingComputeGas() @ 25149945 -> 59943828 with no block-env read and 59943792 after TIMESTAMP;POP (a 36-gas difference, not a cap to 20,000,000); the same value for a gas parameter of 1,600,000 and of 30,000,000, so the compute meter is a fixed 60,000,000 budget decoupled from the request's gas field; a 983,040-iteration loop costing between 25,000,000 and 30,000,000 gas succeeded at gas 0x1C9C380 both with and without a preceding TIMESTAMP read"
+    - name: "BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH"
+      note: "same detention when the account touched is the block beneficiary; Rex6 extended the coverage"
+      src: "mega-evm/crates/mega-evm/src/access/volatile.rs:VolatileDataAccess"
+    - name: "SELFDESTRUCT"
+      note: "halted with InvalidFEOpcode from MiniRex through Rex1; restored at Rex2 with EIP-6780 semantics"
+      src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:SELFDESTRUCT"
+  note: >-
+    No opcode is added or removed at REX6, and the instruction TABLE is rebuilt from
+    scratch for MINI_REX with every one of the 256 entries wrapped: `compute_gas_ext`
+    (meters compute gas), `storage_gas_ext` (adds storage gas), `additional_limit_ext`
+    (data size and KV updates), `forward_gas_ext` (98/100), `volatile_data_ext`
+    (detention). Every opcode therefore has different accounting from mainnet even where
+    its semantics are identical.
+  src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:instruction_table"
+
+fee_model:
+  metering: "dual: compute gas + storage gas, drawn from one gas_limit"
+  fee_market: "EIP-1559 with elasticity 1 and denominator 1000 (effectively fixed base fee) + inherited OP L1 data fee and operator fee"
+  intrinsic_gas: "60,000 = 21,000 compute + 39,000 storage"
+  src: "mega-evm/crates/mega-evm/src/constants.rs:TX_INTRINSIC_STORAGE_GAS"
+  src_doc: https://docs.megaeth.com/spec/megaevm/dual-gas-model
+  extra_components:
+    - name: nonce on failure
+      severity: high
+      src: "crates/mega-evm/src/block/executor.rs:commit_transaction_outcome, crates/mega-evm/src/block/executor.rs:pre_execution_check"
+      note: >-
+        NONCE ON FAILURE: PRESERVED on the erasure path, BURNED on the failed-receipt
+        path — and the two are told apart exactly the way a mainnet client expects,
+        by whether a receipt exists. See `consensus.ordered_but_invalid` for the
+        three-way split; this entry states what happens to the NONCE in each arm.
+
+        (1) SECOND-METER FAILURE — a per-transaction resource budget exhausted at
+        execution (`KVUpdateLimitExceeded`, `VolatileDataAccessOutOfGas`, or a gas
+        budget retroactively cut by the timestamp detention penalty). The
+        transaction is INCLUDED with `status: 0` and its remaining gas refunded.
+        The outcome is committed, so the NONCE IS BURNED and a RECEIPT EXISTS.
+
+        (2) BLOCK-LEVEL LIMIT LOST TO A RACE — the genuine ordered-then-invalid
+        case. `commit_transaction_outcome` RE-RUNS
+        `block_limiter.pre_execution_check(..)?` because "between run_transaction()
+        and commit_transaction_outcome(), other transactions may have been
+        committed, potentially exceeding block limits". The `?` returns before
+        `self.evm.db_mut().commit(state)`, so the executed transaction's ENTIRE
+        state delta — including revm's nonce increment — is DISCARDED. NONCE
+        PRESERVED, no receipt, no gas charged, absent from the block. The
+        transaction is invalidated by OTHER transactions and is freely
+        resubmittable at the same nonce.
+
+        SO MEGAETH IS NOT ARTELA. Both erase a transaction from the RPC view, but
+        MegaETH erases it because nothing was committed, where Artela erases it
+        after the nonce and fee were committed. Here "no receipt" honestly means
+        "nothing happened".
+
+        THE PRECONFIRMATION CAVEAT. Mini-block receipts are streamed with
+        `blockHash: 0xffff..ff` before the EVM block is sealed, and a case-(2)
+        transaction is dropped at COMMIT — after execution. A streamed receipt
+        for a transaction that is then dropped would be a preconfirmed nonce
+        burn that never happened; whether the mini-block stream can emit one is
+        NOT ESTABLISHED here. The 577-receipt live capture found the streamed
+        (transactionIndex, hash) sequence equal to the sealed transaction list in
+        24 of 24 blocks, so no such drop was observed — but absence in a 24-block
+        sample does not settle it. What would: a capture spanning a block that
+        actually hits a block-level limit, comparing the streamed sequence
+        against the sealed list.
+    - name: storage gas
+      note: >-
+        A second meter for anything that makes the state bigger or must be transmitted:
+        intrinsic 39,000; SSTORE zero->non-zero 20,000 x (m-1); account creation
+        25,000 x (m-1); contract creation 32,000 x (m-1); code deposit 10,000/byte; LOG
+        3,750/topic and 80/byte; calldata 40/160 per byte; EIP-7623 floor 100/400 per
+        byte. `gasUsed` in a receipt is the SUM — there is no per-dimension breakdown in
+        the receipt, so an integrator cannot tell which meter drained the budget.
+      src: "mega-evm/crates/mega-evm/src/constants.rs:CODEDEPOSIT_STORAGE_GAS"
+    - name: compute-gas ceiling
+      note: "200,000,000 per transaction, independent of gas_limit, halting with ComputeGasLimitExceeded"
+      src: "mega-evm/crates/mega-evm/src/constants.rs:TX_COMPUTE_GAS_LIMIT"
+    - name: "resource limits: data size, KV updates, state growth"
+      severity: high
+      note: >-
+        A SHAPE OF SECOND-METER FAILURE FOUND NOWHERE ELSE HERE. Per transaction: 12.5 MB data, 500,000
+        KV updates, 1,000 new state entries; the same numbers per block. Exceeding one
+        DURING execution halts immediately, PRESERVES AND REFUNDS the remaining gas, and
+        includes the transaction in the block with status 0 and no state changes.
+        Compare: Taiko truncates the block, Linea and Polygon zkEVM discard the
+        transaction with no receipt, Moonbeam surfaces it as OutOfGas. MegaETH is the
+        only one of the five that gives you a mined, failed receipt AND your gas back.
+        At the BLOCK level the last transaction is allowed to exceed the limit and is
+        still included — the block is simply sealed after it.
+      src: "mega-evm/crates/mega-evm/src/constants.rs:BLOCK_KV_UPDATE_LIMIT, mega-evm/crates/mega-evm/src/evm/result.rs:KVUpdateLimitExceeded"
+      src_doc: https://docs.megaeth.com/developer-docs/overview-3/resource-limits
+  note: >-
+    Local simulation is systematically WRONG here, and the chain's own docs say so:
+    Foundry and Hardhat model compute gas only and underestimate, sometimes by orders of
+    magnitude, because storage gas depends on live SALT bucket state that no local EVM
+    has. `eth_estimateGas` against a MegaETH endpoint is the only correct estimator —
+    and it is not a complete one either: the endpoint's own `eth_call` does not apply gas
+    detention (see opcodes), so a transaction that reads `block.timestamp` and then
+    computes can simulate clean against MegaETH's own RPC and halt on chain. The
+    admission boundary DOES know the dual model: a transaction with a 50,000 gas limit,
+    perfectly valid on mainnet, is refused with "Gas limit too low. Intrinsic: 60000".
+  src_live: "eth_sendRawTransaction with gas limit 50000 @ 25149945 -> -32000 'Gas limit too low. Intrinsic: 60000'; with gas limit 20000000000 -> -32000 'exceeds max transaction gas limit'"
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: extraData
+      note: >-
+        Nine constant bytes, 0x00000000fa00000001, in every mainnet block sampled; the
+        genesis carries 0x00000000fa00000006. Non-empty extraData is itself a departure
+        from OP Stack, whose blocks carry none. The encoding is not documented and
+        mega-evm does not parse it — meaning `unrecorded`.
+      src_live: "eth_getBlockByNumber 24869120-24869131 @ 24869120 -> extraData 0x00000000fa00000001 in 12/12"
+    - name: gasLimit
+      note: "10,000,000,000 (0x2540be400) — 285x mainnet's 35M. Sequencer-configured, changeable without a hardfork."
+      src_live: "eth_getBlockByNumber 24869120 @ 24869120 -> gasLimit 0x2540be400"
+  note: >-
+    The EVM block header is standard Ethereum/OP: state root, receipts root,
+    withdrawalsRoot, requestsHash, parentBeaconBlockRoot all present and populated. The
+    MINI-BLOCK header is a different structure entirely — eight fields, no state root,
+    no bloom — and it never enters the RLP header chain. The `newHeads` RPC payload
+    (not the header) is enriched with `txOffset`, `miniBlockOffset`, `miniBlockCount`
+    and `signature`.
+  src_doc: https://docs.megaeth.com/developer-docs/rpc/reference/eth_subscribe
+
+gotchas:
+  - >-
+    BLOCKHASH IS HONEST HERE. `BLOCKHASH(number-1)` executed at block 24869120 returned
+    0x42c631c2...3986, byte-for-byte the parentHash of that block and the hash of block
+    24869119. Mini-blocks are NOT addressable by BLOCKHASH, do not shift block numbers,
+    and do not appear in the 2935 history. After Polygon zkEVM (returns a state root)
+    and Monad (deferred execution), MegaETH is the case where the obvious suspicion is
+    WRONG — the 10ms cadence is entirely outside the EVM's view.
+  - >-
+    THE RECEIPT ARRIVES BEFORE THE BLOCK EXISTS, WITH A FAKE BLOCK HASH. A receipt
+    delivered over the `miniBlocks` stream carries `blockNumber` = the EVM block that
+    has not been sealed yet and `blockHash` =
+    0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff — an all-ones
+    sentinel. Observed: at the instant mini-block 0x91611854 was delivered claiming
+    enclosing block 0x17b7a7a, `eth_blockNumber` still returned 0x17b7a79 and
+    `eth_getTransactionReceipt` for that transaction returned null. The final receipt,
+    2.5s later, carried the real hash. Any consumer that treats the streamed receipt's
+    blockHash as a block identifier will index garbage.
+  - >-
+    Compare MONAD, and note that they fail in OPPOSITE directions. Monad's consensus
+    commits an ordering BEFORE execution, so the block you see has no state root for its
+    own transactions and the root lags by three heights. MegaETH executes FIRST and
+    publishes the results before the block header exists, so the state you can query is
+    ahead of the newest block hash. Monad shows you a block you cannot yet trust the
+    state of; MegaETH shows you state that does not yet have a block. Both break the
+    mainnet identity "a receipt names a block that exists".
+  - >-
+    `block.timestamp` moves in 1-second steps while the chain produces ~100 blocks of
+    activity per second. Anything needing real time must call the high-precision
+    timestamp contract at 0x6342..0002 and accept a sequencer-attested clock — and pay
+    the 20M compute-gas detention for reading it.
+  - >-
+    Reading `block.timestamp` or `block.number` CHANGES YOUR GAS BUDGET. The 20M compute
+    detention cap is invisible in the transaction, the header and the receipt, and the
+    resulting failure is a halt, not a revert.
+  - >-
+    Gas forwarding is 98/100, not 63/64. Contracts that compute forwarded gas explicitly
+    behave differently here and nowhere else in this dataset.
+  - >-
+    A LEGACY TRANSACTION CAN BE A PROTOCOL TRANSACTION. Type 0x00 from the registry's
+    current system address to the Oracle pays no fee and is never signature-checked.
+    Classification by type byte is not sufficient on this chain.
+  - >-
+    Two coexisting height spaces: block.number was 24,869,417 while mini_block_number
+    was 2,439,447,937. Only the first is visible to the EVM or to any standard RPC
+    method.
+  - >-
+    A MINI-BLOCK IS A RESULT, NOT A PLAN. It carries receipts with `status`, `gasUsed`,
+    `cumulativeGasUsed` and the transaction's FINAL index in the enclosing EVM block,
+    under a `receipt_root`. Execution has already happened and the transaction's position
+    in the block is already fixed; the only thing missing is the block hash. Measured
+    over 24 consecutive blocks and 577 transactions, the streamed order equalled the
+    sealed order exactly, 24/24. Contrast Monad, where the committed thing IS the plan
+    and the result arrives three heights later.
+  - >-
+    A TRANSACTION CAN BE EXECUTED AND THEN DROPPED WITHOUT A RECEIPT — but only inside
+    the block builder, and you will never see it. `commit_transaction_outcome` re-runs
+    the block-limit check after execution, "to handle parallel execution race
+    conditions", and a transaction that loses that race is erased: no receipt, no gas
+    charged, no trace. Because the receipt is built after that check, the erased
+    transaction never reaches the mini-block stream. The failure is real, tested in the
+    tree, and structurally unobservable from outside.
+  - >-
+    THE PRECONFIRMED RECEIPT UNDER-REPORTS THE FEE. A streamed mini-block receipt is
+    field-identical to the final one except `blockHash` — and `l1Fee`, which is a
+    constant 766,561,485 wei (0x2db0cccd) for every transaction regardless of calldata,
+    against a per-transaction sealed value roughly twice as large. `l1GasPrice`,
+    `l1GasUsed` and the scalars all match; only the derived total is a placeholder. An
+    integrator settling on the 10ms receipt bills the wrong amount.
+  - >-
+    THE SAME CHECK MEANS "SKIP THIS TX" TO A BUILDER AND "REJECT THIS BLOCK" TO A
+    VALIDATOR. `BlockLimiter::pre_execution_check` returning an error makes the sequencer
+    move to the next transaction; the same error inside the stateless validator, which
+    replays a sealed block in order, becomes `BlockReplayFailed` and invalidates the
+    whole block. Do not read a MegaETH limit error without asking which side produced it.
+  - >-
+    `eth_call` ON MEGAETH'S OWN ENDPOINT DOES NOT APPLY GAS DETENTION. Measured with the
+    chain's own MegaLimitControl contract: `remainingComputeGas()` returned 59,943,828
+    before a `TIMESTAMP` read and 59,943,792 after — a 36-gas difference, not the cap to
+    20,000,000 that the consensus rule requires. A ~29M-gas loop after a TIMESTAMP read
+    simulated clean. The estimator the docs tell you to trust is blind to the one halt
+    that has no mainnet analogue. (Its compute meter is also a fixed 60,000,000 budget
+    that ignores the `gas` field of the request entirely.)
+  - >-
+    Admission is synchronous and identical across all three submission methods —
+    `eth_sendRawTransaction`, `eth_sendRawTransactionSync` and
+    `realtime_sendRawTransaction` all return the same `-32003` for an underfunded sender,
+    so the low-latency path is not a laxer path. A 50,000-gas transaction that mainnet
+    would accept is refused outright: "Gas limit too low. Intrinsic: 60000".
+  - >-
+    The RPC front end is not the Rust client. Submitting a transaction signed for chain
+    id 1 returns "RLP decoding failed: Common chain ID chainId() { return
+    BigInt(this._chainParams.chainId); } not matching the derived chain ID 1" — a
+    JavaScript source fragment from an ethereumjs `Common` object, leaked into a JSON-RPC
+    error. Error STRINGS on this endpoint come from a gateway, not from mega-reth, and
+    should not be pattern-matched as if they did.

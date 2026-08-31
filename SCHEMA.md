@@ -138,6 +138,22 @@ number that had drifted onto a different constant, a path written relative to th
 directory, and a sibling that was one directory up. A `src_live:` with no `@ <block>`
 is rejected outright.
 
+### `live_state:` — why a row is not live
+
+Set on `chain:`, and only meaningful when `live: false`. `live: false` alone
+conflates two situations that a reader must not confuse.
+
+| live_state | meaning |
+|---|---|
+| `prelaunch` | the chain has never produced a mainnet block. Facts rest on source plus, at best, a TESTNET probe — so every `src_live:` on such a row states what the testnet did. Arc. |
+| `halted` | the chain produced blocks and stopped. Its `src_live:` facts are real mainnet observations; they are simply frozen at the last block. Polygon zkEVM. |
+
+The distinction is not cosmetic. A `prelaunch` row's live evidence may be
+contradicted by mainnet at launch — Arc's testnet runs a fork the mainnet schedule
+does not contain — while a `halted` row's live evidence can never be contradicted,
+because nothing further will happen. Neither is a claim about intent: a chain may be
+halted because it was sunset or because it broke, and no probe distinguishes those.
+
 ### `evidence:` — the row's overall footing
 
 Set on `chain:`. Defaults to `source`.

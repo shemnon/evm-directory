@@ -1,0 +1,650 @@
+schema_version: 2
+
+chain:
+  name: Taiko Alethia
+  slug: taiko
+  chain_id: 167000
+  role: fork
+  live: true
+  evidence: source
+  chain_id_src: params/taiko_config.go:TaikoMainnetNetworkID
+  note: >-
+    A BASED rollup: there is no sequencer of its own. L1 block proposers submit L2
+    blocks, and a Taiko driver re-derives every block from L1 and drives taiko-geth
+    over an extended Engine API. Every L2 block opens with a mandatory protocol
+    transaction — the anchor — which is an ordinary EIP-1559 type 0x02 transaction on
+    the wire and is identified by NOTHING in its own encoding, only by its POSITION
+    at index 0. That single fact is why this row touches tx_types,
+    system_transactions and tx_authorization at once.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: go-ethereum
+  sync_point: >-
+    taiko-geth v2.6.0 is a rebase of go-ethereum, not a snapshot: the tree carries
+    upstream's Osaka precompile map and Osaka gas rules verbatim and marks its own
+    edits with a literal `CHANGE(taiko)` comment, 250 of them across 44 non-test
+    files. There is no OP Stack, Arbitrum or Cosmos ancestry anywhere in it — Taiko
+    is a direct geth fork, which is now unusual for an L2 of this size.
+  note: >-
+    The protocol contracts, the block driver, the anchor constructor and a second
+    Rust driver live in taikoxyz/taiko-mono, pinned as a companion. taiko-mono is a
+    polyrepo with per-package tags; the client tag series is
+    `taiko-alethia-client-vX.Y.Z` and tracks taiko-geth's version one-for-one
+    (both are v2.6.0, tagged twenty minutes apart).
+
+client:
+  name: taiko-geth
+  repo: https://github.com/taikoxyz/taiko-geth
+  version: v2.6.0
+  commit: ca164c06e00ceb2b1cc25ae2a141ee57b6a1cd18
+  language: go
+  built_on: go-ethereum (Osaka-era)
+  companion_repos:
+  - {name: taiko-mono, repo: "https://github.com/taikoxyz/taiko-mono",
+     version: taiko-alethia-client-v2.6.0, commit: c84c333e6a819062b9017f925882ca28b9969fe7,
+     provides: "the anchor transaction constructor and its fixed-k signer, the golden-touch private key, the Anchor.sol L2 predeploy, the derivation rules (gas-limit clamp, manifest constants), and an independent Rust reimplementation of all of it"}
+
+live_probe:
+  endpoint: https://rpc.mainnet.taiko.xyz
+  chain_id: 167000
+  observed_at_block: 10471924      # 0x9fc9f4, finalized, timestamp 1787542777
+
+consensus:
+  engine: based rollup — L1 proposers, no L2 sequencer; driver-derived over the Engine API
+  finality: inherits L1 finality once the proposal is proved
+  block_time: 2s target
+  note: >-
+    Block production runs through a Taiko-only Engine API path: the driver calls
+    forkchoiceUpdated with a `BlockMetadata` payload attribute that already carries the
+    full transaction list, and taiko-geth BUILDS the block itself rather than executing
+    a payload handed to it. That is where the anchor is validated — see
+    system_transactions. Preconfirmation blocks are exempted from the
+    future-timestamp check by an L1Origin flag.
+  src: "eth/catalyst/api.go:SealBlockWith, core/rawdb/taiko_l1_origin.go:IsPreconfBlock"
+
+baseline_fork: osaka
+baseline_note: >-
+  Osaka, but reached in ONE STEP on 2026-08-06. TaikoGenesisBlock sets
+  CancunTime, PragueTime and OsakaTime all equal to MainnetUnzenTime — the chain ran
+  on SHANGHAI from genesis until then. Everything Cancun, Prague and Osaka brought
+  arrived at a single timestamp, which is why the pre/post live probes below are so
+  sharp: at block 9718650 a valid P-256 signature at 0x0100 returns empty, at 9718651
+  it returns 1.
+
+forks:
+  src: "core/taiko_genesis.go:TaikoGenesisBlock, params/config.go:UnzenTime"
+  note: >-
+    Two fork axes with different units. Ontake and Pacaya are BLOCK NUMBERS; Shasta
+    and Unzen are TIMESTAMPS. The Ethereum fork schedule is not configurable per
+    network at all — it is derived from UnzenTime inside TaikoGenesisBlock, so there
+    is no cancunTime/pragueTime/osakaTime to read from a genesis file, and a tool that
+    looks for one finds nothing and concludes the chain is pre-Cancun.
+  timeline:
+  - {name: genesis, activation_block: 0, mainnet_equivalent: shanghai,
+     note: "ShanghaiTime 0 and every pre-Shanghai block fork at 0; no Cancun.",
+     src: "params/taiko_config.go:TaikoChainConfig"}
+  - {name: ontake, activation_block: 538304, mainnet_equivalent: null,
+     note: "EL effects: base-fee sharing percentage read from extraData, and a txpool floor of 0.005 gwei on gasFeeCap.",
+     src: "core/taiko_genesis.go:MainnetOntakeBlock"}
+  - {name: pacaya, activation_block: 1166000, mainnet_equivalent: null,
+     note: "EL effects: the anchor selector becomes anchorV3 and the anchor gas limit rises from 250,000 to 1,000,000.",
+     src: "core/taiko_genesis.go:MainnetPacayaBlock"}
+  - {name: shasta, activation_time: 1775135700, mainnet_equivalent: null,
+     note: "2026-04-02. EIP-4396 base fee, anchorV4, strict timestamp increase, and a 7-byte extraData layout enforced at consensus.",
+     src: "core/taiko_genesis.go:MainnetShastaTime"}
+  - name: unzen
+    activation_time: 1786021200
+    mainnet_equivalent: "cancun+prague+osaka"
+    src: "core/taiko_genesis.go:MainnetUnzenTime"
+    note: >-
+      2026-08-06 13:00 UTC. Three mainnet forks at once, PLUS Taiko's own zk-gas
+      metering, PLUS the repurposing of header.difficulty. The single largest fork
+      step in this dataset.
+  - {name: amsterdam, status: pending, activation_time: null,
+     note: "no Amsterdam/BPO time is set for any Taiko network; the client has the upstream plumbing."}
+
+eips:
+  1559:
+    status: modified
+    severity: high
+    note: >-
+      Three departures, all live-visible. (a) From Shasta the base-fee formula is
+      EIP-4396's, not EIP-1559's — see EIP 4396 below. (b) The base fee is CLAMPED at
+      both ends: a floor of 0.01 gwei on mainnet and a CEILING of 1 gwei. A ceiling on
+      the base fee means the 1559 feedback loop saturates: past 1 gwei the market
+      cannot price congestion at all and ordering falls back to the priority fee.
+      No other row in this dataset caps its base fee. (c) The base fee is NOT BURNT.
+      It is split between block.coinbase and a treasury by a percentage read out of
+      the block's own extraData — 75% to the proposer at the probed block.
+    src: "consensus/misc/taiko_eip4396.go:clampEIP4396BaseFeeShasta, consensus/misc/taiko_eip4396.go:maxBaseFeeShasta, core/state_transition.go:TaikoTreasuryAddress"
+    src_live: "eth_getBlockByNumber @ 10471924 -> baseFeePerGas 0x989680 (exactly the 0.01 gwei floor), extraData 0x4b000000007746 -> basefeeSharingPctg 0x4b = 75"
+  4396:
+    status: added
+    note: >-
+      Taiko implements EIP-4396 (time-weighted gas target), which mainnet has NOT
+      adopted at any fork. The parent's gas target is scaled by the parent's actual
+      block TIME before the base fee update, so a chain with variable block times
+      does not over-tighten. Verified at import: VerifyEIP4396Header recomputes the
+      base fee from the grandparent's timestamp and rejects a mismatch, so this is a
+      consensus rule, not a heuristic.
+    src: "consensus/misc/taiko_eip4396.go:VerifyEIP4396Header, consensus/misc/taiko_eip4396.go:CalcEIP4396BaseFee"
+  4788:
+    status: modified
+    severity: high
+    note: >-
+      Header field present, contract absent, value always zero. Finalize writes a
+      ZERO parentBeaconRoot into every Unzen header when none is supplied, and
+      verifyUnzenHeaderFields only requires the field to be non-nil, never that it
+      means anything. The beacon-roots contract is NOT in the genesis alloc and is an
+      empty account on mainnet, so the EIP-4788 system call is a call to an address
+      with no code: it succeeds and writes nothing. The client says so itself, in a
+      comment about witnesses needing "an EIP-4788 / EIP-2935 system call to a system
+      contract that is not deployed on the chain". A contract that reads a beacon root
+      here gets empty returndata, not a revert.
+    src: "consensus/taiko/consensus.go:verifyUnzenHeaderFields, core/state/statedb.go:605"
+    src_live: "eth_getCode @ 10471924 at 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 -> 0x; eth_getBlockByNumber @ 10471924 -> parentBeaconBlockRoot 0x00..00"
+  2935:
+    status: modified
+    severity: high
+    note: >-
+      The history-storage contract is likewise not deployed. BLOCKHASH itself is
+      unharmed — taiko-geth carries upstream's opBlockhash, which resolves through the
+      chain context and not through the contract — so the opcode's 256-block window
+      works exactly as on mainnet. What is gone is the CONTRACT path: a contract that
+      staticcalls 0x0000F9..2935 for an older hash gets success and empty returndata,
+      which decodes as bytes32(0), i.e. "genesis-or-unknown", with no error.
+    src: "core/vm/instructions.go:opBlockhash, core/state/statedb.go:605"
+    src_live: "eth_getCode @ 10471924 at 0x0000F90827F1C53a10cb7A02335B175320002935 -> 0x; eth_call with 32 zero bytes -> 0x"
+  4844:
+    status: removed
+    note: >-
+      Blob transactions can never be included. The block builder skips BlobTxType
+      unconditionally at every fork, and from Unzen FinalizeAndAssemble rejects a body
+      containing one outright. blobGasUsed and excessBlobGas are required to be
+      present and required to be ZERO. Note the KZG point-evaluation precompile at
+      0x0a is still installed and still works — a precompile for a transaction type
+      the chain will not carry.
+    src: "miner/taiko_worker.go:BlobTxType, consensus/taiko/consensus.go:verifyUnzenHeaderFields"
+    src_live: "eth_getBlockByNumber @ 10471924 -> blobGasUsed 0x0, excessBlobGas 0x0"
+  6110:
+    status: removed
+    note: "L1-only. The deposit contract is empty here and requestsHash is pinned to the empty-requests hash."
+    src_live: "eth_getCode @ 10471924 at 0x00000000219ab540356cBB839Cbe05303d7705Fa -> 0x"
+  7002:
+    status: removed
+    severity: high
+    note: >-
+      The withdrawal-request predeploy is EMPTY at its canonical address, and
+      requestsHash is forced to EmptyRequestsHash by Finalize. Same silent shape Linea
+      hits by relocation and Taiko hits by omission: EIP-7002's fee query is a
+      zero-calldata staticcall, and an empty account answers it with success and no
+      data, so a client written against mainnet reads a fee of zero and submits a
+      request that goes nowhere.
+    src: "consensus/taiko/consensus.go:verifyUnzenHeaderFields"
+    src_live: "eth_getCode @ 10471924 at 0x00000961Ef480Eb55e80D19ad83579A64c007002 -> 0x"
+  7251:
+    status: removed
+    severity: high
+    note: "Consolidation-request predeploy empty at its canonical address; identical failure shape to 7002."
+    src_live: "eth_getCode @ 10471924 at 0x0000BBdDc7CE488642fb579F8B00f3a590007251 -> 0x"
+  7685:
+    status: modified
+    note: >-
+      The requests envelope exists but is required to be empty: verifyUnzenHeaderFields
+      rejects any header whose requestsHash is not EmptyRequestsHash. Present, checked,
+      and permanently trivial.
+    src: "consensus/taiko/consensus.go:verifyUnzenHeaderFields"
+    src_live: "eth_getBlockByNumber @ 10471924 -> requestsHash 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  7951:
+    status: inherited
+    note: >-
+      P256VERIFY at 0x0100 with mainnet Osaka semantics and gas — stock
+      PrecompiledContractsOsaka, no Taiko override. Live-confirmed the strong way, with
+      a valid signature AND a corrupted control, AND a pre-fork control: one block
+      before Unzen the same valid input returns empty. That last probe is the cleanest
+      direct evidence in this row that Cancun+Prague+Osaka landed together.
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+    src_live: "eth_call 0x0100 @ 10471924 with a valid P-256 vector -> 0x..01; same call with byte 0 flipped -> 0x; same valid call @ 9718650 (one block pre-Unzen) -> 0x"
+  7823:
+    status: inherited
+    note: "stock upstream Osaka modexp bounds; no Taiko override anywhere in core/vm."
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+  7883:
+    status: inherited
+    note: "stock Osaka modexp gas; no Taiko repricing. Every Taiko cost change lives in the SECOND (zk-gas) dimension, not in the EVM gas schedule."
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+  7702:
+    status: inherited
+    note: >-
+      Nothing in the Taiko tree filters SetCodeTx: the builder's only type-based
+      rejection is BlobTxType, and 0x04 is not marked anchor-eligible either
+      (markAsAnchor returns ErrTxTypeNotSupported for every type but 0x02). No 0x04
+      transaction was observed in the 201-block live sample, so the live half of this
+      is unproven; the source half is definite.
+    src: "miner/taiko_worker.go:BlobTxType, core/types/taiko_transaction.go:markAsAnchor"
+  7928:
+    status: unrecorded
+    note: >-
+      Not established. No Amsterdam timestamp is set for any Taiko network and the
+      Unzen zk-gas schedule has no entry for block-access-list accounting, but whether
+      Taiko intends to take EIP-7928 was not determined from source.
+  3529:
+    status: unrecorded
+    note: >-
+      Not established. The gas refund path is upstream's, but the anchor transaction
+      skips returnGas entirely (an anchor never gets a refund), and no source read was
+      done on how the zk-gas meter interacts with a refunded SSTORE — the meter charges
+      on the raw gas the opcode reports, which for SSTORE flows through a Taiko-added
+      errSStoreSentry branch.
+
+# non_eip_specs: deliberately absent. Taiko publishes no numbered spec series
+# (no TIP/ACP/BEP analogue). Its named forks are recorded in forks.timeline and its
+# one non-mainnet EIP adoption (4396) is in the eips map above.
+
+tx_types:
+  "0x02":
+    name: DynamicFeeTx (and, at index 0 only, the anchor transaction)
+    status: modified
+    severity: high
+    src: "consensus/taiko/consensus.go:ValidateAnchorTx, core/state_processor.go:MarkAsAnchor, core/state_transition.go:IsAnchor"
+    src_live: "eth_getBlockByNumber @ 10471924 -> tx[0] type 0x2, from 0x0000777735367b36bC9B61C50022d9D0700dB4Ec, to 0x1670000000000000000000000000000000010001, gas 0xf4240, value 0x0, maxPriorityFeePerGas 0x0, r 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    note: >-
+      THE finding of this row, and the reason it appears here AND in
+      system_transactions. Taiko's protocol transaction did not take a byte from the
+      0x7f ceiling the way Arbitrum (0x78), Base (0x79), OP Stack (0x7e), Celo (0x7b)
+      and Polygon (0x7f) did. It wears mainnet's OWN type 0x02, and nothing in its
+      encoding distinguishes it: `MarkAsAnchor` is applied to `i == 0` and to nothing
+      else. The transaction is identified by its INDEX, not by its bytes.
+
+      At index 0 the rules of type 0x02 change: the balance check is skipped and the
+      up-front gas debit is set to zero, the gasFeeCap-vs-baseFee check is skipped,
+      returnGas is skipped, and the base-fee split to treasury and coinbase is skipped.
+      A type 0x02 transaction at index 0 therefore pays NO GAS AT ALL — while its
+      receipt reports effectiveGasPrice equal to the base fee and gasUsed of 112,068,
+      so a fee-accounting tool that multiplies the two invents a fee that nobody paid
+      and no account lost.
+
+      Anywhere other than index 0, type 0x02 is exactly mainnet's. So this is not a
+      new type byte and not a new envelope — it is a POSITIONAL override of a mainnet
+      type byte, a shape the type-byte axis has no way to express.
+  "0x03":
+    name: BlobTx
+    status: removed
+    src: "miner/taiko_worker.go:BlobTxType, consensus/taiko/consensus.go:FinalizeAndAssemble"
+    note: >-
+      Decodable, poolable, unmineable. The builder skips it with a debug log at every
+      fork; from Unzen a body containing one is rejected by FinalizeAndAssemble. Same
+      "works in simulation, can never be mined" shape as Linea's zeroed precompiles,
+      reached by a different mechanism.
+  note: >-
+    ZERO custom type bytes. Taiko is a top-tier L2 with a mandatory protocol
+    transaction in every single block and it allocated NO byte for it — the opposite
+    strategy to every other chain in this dataset. Live census over 201 consecutive
+    blocks ending at 10471924: 216 transactions, 202 of type 0x02 (201 of them
+    anchors) and 14 of type 0x00. No 0x01, 0x03 or 0x04 observed.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    `derived` is TRUE here and it is also the least informative answer the axis can
+    give, which is the finding. Mechanically the anchor is unremarkable:
+    ValidateAnchorTx calls `types.MakeSigner(...).Sender(tx)` — plain ecrecover over
+    the ordinary 0x02 sighash — and compares the result to a hardcoded address. The
+    identity `ecrecover(sig) == from` holds, so key_binding is `derived`, not
+    `declared` and not `account_code`.
+
+    What the axis cannot express is that the KEY IS PUBLIC. The golden-touch private
+    key is a string constant in the driver's source
+    (`GoldenTouchPrivKey`, and again in the Rust driver as
+    `GOLDEN_TOUCH_PRIVATE_KEY`), and the driver signs with a FIXED ECDSA nonce k=1
+    (falling back to k=2 only if s would be zero). k=1 makes r a compile-time constant:
+    r is the x-coordinate of the secp256k1 generator, 0x79be667e…f81798, on every
+    anchor transaction ever produced. Deliberate k-reuse across two different digests
+    is the textbook way to leak an ECDSA private key — which is exactly why the key
+    was published rather than protected. Determinism is the goal: a prover must be
+    able to rebuild the anchor's exact bytes from L1 data alone.
+
+    So `key_binding: derived` records a key-to-address relation that is real but
+    carries no authority, and `signers_per_tx: 1` counts a party that is not a party.
+    The three legal values all describe WHICH key authorizes; none of them can say
+    that the key authorizes nothing, and that the real gate is elsewhere — in
+    ValidateAnchorTx's four positional and structural checks (index 0, exact
+    recipient, exact gas limit, exact selector, value 0, gasFeeCap == baseFee) plus
+    the block builder's refusal to admit any other golden-touch transaction from the
+    pool. A fourth value — something like `constant` or `none` — is what this row
+    wants, and rather than force one of the three, this note records why.
+
+    Note also what is NOT enforced: neither taiko-geth nor either driver ever checks
+    that r equals the generator's x-coordinate. The constant signature is a PRODUCER
+    convention, reproducible by anyone, not a consensus rule. Both the Go and the Rust
+    validators check only the recovered sender.
+  schemes:
+    secp256k1:
+      status: modified
+      authorizes: protocol
+      precompile: "0x01"
+      severity: high
+      note: >-
+        Same curve, same recovery, same 0x01 — the modification is that ONE
+        well-known address, whose private key is published, authorizes a mandatory
+        fee-exempt transaction in every block, and that its signature's r component is
+        a compile-time constant. The txpool consequence is recorded in the client:
+        `removeGoldenTouchPendingTxs` deletes the golden-touch account from pending
+        transaction lists before block building, because otherwise a user-submitted
+        transaction signed with the published key would compete with the protocol's
+        own. Authorization by key is not what keeps the anchor safe; position and
+        structure are.
+      src: "consensus/taiko/consensus.go:ValidateAnchorTx, consensus/taiko/consensus.go:GoldenTouchAccount, taiko-mono/packages/taiko-client/bindings/encoding/struct.go:GoldenTouchPrivKey, taiko-mono/packages/taiko-client/driver/signer/fixed_k_signer.go:SignWithK, taiko-mono/packages/taiko-client/driver/anchor_tx_constructor/anchor_tx_constructor.go:signTxPayload, taiko-mono/packages/taiko-client-rs/crates/protocol/src/signer.rs:GOLDEN_TOUCH_PRIVATE_KEY, miner/taiko_worker.go:removeGoldenTouchPendingTxs"
+      src_live: "eth_getBlockByNumber @ 10471913..10471924 -> 12 consecutive anchors, all r = 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798 (the secp256k1 generator x), 12 distinct s, yParity both 0 and 1"
+
+non_evm_transactions:
+  note: >-
+    NONE — and the negative is worth recording, because the anchor is the closest
+    thing in this dataset to a case that belongs here and does not. SCHEMA.md's
+    `non_evm_transactions` is for protocol transactions with NO EIP-2718 type byte at
+    all (Avalanche's UTXO atomic txs, Tron's protobuf contracts). Taiko's anchor has a
+    type byte — mainnet's 0x02 — and is decoded by an unmodified EIP-2718 decoder into
+    an unmodified DynamicFeeTx. It is recorded in tx_types (as a positional
+    modification of 0x02) and in system_transactions (as the protocol-driven state
+    change it is), and deliberately NOT here.
+
+precompiles:
+  "0x0000000000000000000000000000000000000100":
+    name: P256VERIFY (EIP-7951)
+    status: inherited
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+    src_live: "eth_call @ 10471924 valid vector -> 0x..01; corrupted vector -> 0x; same valid vector @ 9718650 -> 0x (absent one block before Unzen)"
+    note: >-
+      Present with exact mainnet Osaka semantics and gas, arriving through mainnet's
+      own Osaka fork rather than RIP-7212 — so, unusually for this dataset, both the
+      result and the price match mainnet. Recorded despite being inherited because
+      this row's pre-Unzen control is the dataset's cleanest demonstration that the
+      address was empty until 2026-08-06.
+  "0x000000000000000000000000000000000000000a":
+    name: POINT_EVALUATION (KZG)
+    status: inherited
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+    note: >-
+      Installed and functional on a chain that will not carry a single blob
+      transaction. A precompile whose whole purpose is verifying blob commitments,
+      on a chain where blobGasUsed is required to be zero.
+  note: >-
+    ZERO added, ZERO removed, ZERO repriced. The map is upstream geth's
+    PrecompiledContractsOsaka verbatim — grepping the whole taiko-geth tree for
+    `taiko` inside core/vm/contracts.go returns nothing. For a chain this divergent
+    that is itself the finding: Taiko put none of its protocol surface behind a
+    precompile address, choosing a predeploy contract (the Anchor at
+    0x1670…010001) instead.
+
+    But there is a second price on every one of them. From Unzen each precompile call
+    is charged `gasUsed x multiplier` against a per-block ZK-GAS budget, with
+    multipliers from 4 (ripemd160) to 859 (point evaluation) — and any address ABSENT
+    from that table resolves to FailsafeMultiplier = 65535, which at a 100,000,000
+    block budget makes roughly 1,500 units of raw gas the entire block's allowance.
+    That is a live forward-compatibility trap: a precompile added by a future upstream
+    geth rebase, but not added to unzenPrecompileMultipliers, becomes effectively
+    unusable rather than merely uncosted — and it fails as a truncated block, not as a
+    revert.
+  src: "core/vm/taiko_zk_gas_unzen.go:unzenPrecompileMultipliers, core/vm/taiko_zk_gas.go:FailsafeMultiplier"
+
+system_contracts:
+  "0x1670000000000000000000000000000000010001":
+    name: Anchor (TaikoL2) — and the fee treasury
+    status: added
+    severity: high
+    src: "taiko-mono/packages/protocol/contracts/layer2/core/Anchor.sol:GOLDEN_TOUCH_ADDRESS, consensus/taiko/consensus.go:TaikoL2AddressSuffix, core/state_transition.go:TaikoTreasuryAddress"
+    src_live: "eth_getCode @ 10471924 -> 170-byte proxy; eth_call GOLDEN_TOUCH_ADDRESS() -> 0x0000777735367b36bC9B61C50022d9D0700dB4Ec; eth_getBalance @ 10471924 -> 0x4227759dc288f00dd (~76.5 ETH)"
+    note: >-
+      A CONTRACT, not a precompile, and the only address the anchor may target. Its
+      address is COMPUTED FROM THE CHAIN ID at runtime — decimal chain id, zero
+      padding, suffix "10001" — by two independent functions in the client
+      (the consensus engine's constructor and TaikoTreasuryAddress). Those two
+      derivations produce the SAME address, so on Taiko mainnet the anchor contract
+      and the fee treasury are one account: the 25% of the base fee that does not go
+      to the proposer accrues inside the contract the anchor calls, and Anchor.sol
+      carries a `withdraw` function for exactly that reason. Anyone porting this
+      pattern to a chain id with a leading zero should note the two derivations differ
+      on that case — the consensus engine strips one leading "0", the treasury
+      function does not.
+  "0x0167000000000000000000000000000000010001":
+    name: Anchor implementation
+    status: added
+    src: core/taiko_genesis/mainnet.json
+    src_live: "eth_getCode @ 10471924 -> 9531 bytes"
+    note: >-
+      Taiko's genesis alloc has 22 accounts and a two-prefix convention that reads as
+      one address family but is two: proxies at 0x1670…, implementations at the
+      transposed 0x0167… . Every predeploy appears twice, once per prefix. A tool that
+      normalises or eyeballs these will conflate a proxy with its logic contract.
+  note: >-
+    Taiko's system contracts are NOT in a 0x42.. or 0x01.. namespace and are not at
+    fixed addresses at all: they are a function of the chain id, so the same software
+    on chain 167013 puts them at 0x1670130000…. Twenty-two genesis accounts total
+    (core/taiko_genesis/mainnet.json), against which mainnet's own Prague and Cancun
+    predeploys — 4788, 2935, 6110, 7002, 7251 — are all ABSENT.
+
+system_transactions:
+  anchor_transaction:
+    name: "anchorV4((uint48,bytes32,bytes32)) from the golden-touch account"
+    status: added
+    severity: high
+    src: "consensus/taiko/consensus.go:ValidateAnchorTx, consensus/taiko/consensus.go:AnchorV4Selector, consensus/taiko/consensus.go:AnchorV3V4GasLimit, core/state_processor.go:MarkAsAnchor, core/state_transition.go:IsAnchor, taiko-mono/packages/taiko-client/driver/anchor_tx_constructor/anchor_tx_constructor.go:AssembleAnchorV4Tx"
+    src_live: "eth_getTransactionReceipt @ 10471924 -> status 0x1, gasUsed 0x1b5c4, effectiveGasPrice 0x989680, while the sender's balance is untouched"
+    note: >-
+      Mandatory, protocol-constructed, fee-exempt, and first. It writes the L1
+      checkpoint (block number, block hash, state root) into the L2 Anchor contract —
+      this is the mechanism by which a based rollup learns about L1 — and it stores the
+      parent block hash. It is a system transaction by every criterion in SCHEMA.md
+      except one: it has a registered EIP-2718 type byte, so it is ALSO a tx_types
+      entry.
+
+      Consensus enforcement, exactly: type must be 0x02; recipient must be the
+      chain-id-derived Anchor address; data must start with the fork's anchor selector
+      (0xda69d3db / 0xfd85eb2d / 0x48080a45 / 0x523e6854 for anchor / V2 / V3 / V4);
+      value must be 0; gas must be EXACTLY 250,000 pre-Pacaya and EXACTLY 1,000,000
+      after; gasFeeCap must EQUAL the header base fee; and the recovered sender must be
+      the golden-touch account. Note "exactly": the gas limit is not a ceiling, it is
+      an equality, and the anchor's 1,000,000 is ADDED to the protocol gas limit rather
+      than taken out of it — hence the observed header gasLimit of 46,000,000 against a
+      MaxBlockGasLimit of 45,000,000.
+
+      Where the check LIVES is worth recording. ValidateAnchorTx has exactly one
+      caller, FinalizeAndAssemble — the block-BUILDING path, which is how every node
+      that derives from L1 produces the block. The block-IMPORT path
+      (core/state_processor.go) marks index 0 as the anchor with no validation at all;
+      it relies on the state root disagreeing if the producer did anything else.
+    src_doc: https://docs.taiko.xyz/taiko-alethia-protocol/protocol-design/taiko-l2-execution-engine
+  eip4788_beacon_root_write:
+    name: EIP-4788 parent-beacon-root system call
+    status: modified
+    src: "core/state_processor.go:ProcessBeaconBlockRoot"
+    note: "Runs, but against an address with no code, with a root that is always zero. A no-op that costs nothing and records nothing."
+  eip2935_block_hash_write:
+    name: EIP-2935 parent-block-hash system call
+    status: modified
+    src: "core/state_processor.go:ProcessParentBlockHash"
+    note: "Runs, but against an address with no code. The history contract is never populated, so its reads return empty forever."
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  src: "core/vm/taiko_zk_gas_unzen.go:unzenOpcodeMultipliers, core/vm/taiko_zk_gas_runtime.go"
+  note: >-
+    No opcode is added, removed, or repriced IN GAS — the EVM gas schedule is stock
+    Osaka. But from Unzen every opcode carries a SECOND, consensus-enforced price:
+    `rawGas x multiplier`, multipliers from 0 (STOP, RETURN, REVERT, SELFDESTRUCT) to
+    166 (BLAKE2F's precompile) and 113 (MULMOD), charged into a per-block zk-gas
+    budget. The ratio between the two dimensions is not constant, so relative opcode
+    cost differs from mainnet even though absolute gas does not: SLOAD is 3 and
+    TLOAD is 1 in zk gas, inverting their gas relationship. Recorded as an empty
+    opcode delta with a loud note rather than 140 `modified` rows, because no opcode's
+    RESULT or GAS differs — see fee_model.
+
+fee_model:
+  metering: "gas AND zk gas — two independent, simultaneously-enforced dimensions"
+  fee_market: "EIP-4396 (from Shasta), floored at 0.01 gwei and CAPPED at 1 gwei"
+  src: "core/vm/taiko_zk_gas.go:ZkGasMeter, core/state_transition.go:TaikoTreasuryAddress"
+  extra_components:
+    - name: nonce on failure
+      severity: high
+      src: "core/state_processor.go:ErrZkGasLimitExceeded, core/state_processor.go:RevertToSnapshot, miner/taiko_worker.go:commitL2Transactions"
+      note: >-
+        NONCE ON FAILURE: PRESERVED IN BOTH OF TAIKO'S DROP PATHS, and neither
+        produces a receipt. Worth stating because based sequencing means an L1
+        batch fixes the transaction list before L2 executes it, so the
+        ordered-then-invalid state genuinely can arise here.
+
+        AT BUILD TIME — ordinary geth. `commitL2Transactions` handles
+        `core.ErrNonceTooLow` by logging "Skipping transaction with low nonce"
+        and `txs.Shift()`; any other error `txs.Pop()`s the sender's whole
+        remaining queue "because of `nonce-too-high` clause". Nothing is
+        committed for a skipped transaction, so its nonce is untouched.
+
+        AT DERIVATION — THE ZK-GAS TRUNCATION, which is Taiko's own and has no
+        mainnet analogue. A transaction whose zk-gas cost exceeds the block's
+        remaining 100,000,000 zk-gas budget is not a revert: the interpreter
+        stores `ErrZkGasLimitExceeded` in `result.Err`, and
+        `ApplyTransactionWithEVM` then does `statedb.RevertToSnapshot(zkSnap)`
+        and `gp.Set(zkGp)` and returns it as a Go error — undoing EVERY tx-level
+        state mutation including the nonce increment and restoring the gas pool.
+        The processing loop sees the error, logs "zk gas limit reached during
+        block processing; truncating", and `break`s WITHOUT appending a receipt,
+        so that transaction and every one after it fall out of the block. If the
+        intrinsic zk-gas charge alone exceeds the budget the error is returned
+        before the snapshot is even taken, under the comment "No state has been
+        mutated yet, so no revert is needed". NONCE PRESERVED, NO RECEIPT, NO GAS
+        CHARGED in both arms — the transaction is resubmittable and is
+        indistinguishable from never having been submitted.
+
+        THE ANCHOR IS THE EXCEPTION: the truncation is gated on `i > 0`, and a
+        zk-gas failure on the anchor transaction fails the whole block instead.
+
+        This puts Taiko with MegaETH and Rollkit — erased because nothing was
+        committed — and not with Artela, where the erasure happens after the
+        nonce and fee are already spent. What is unusual is that an ordinary
+        user transaction can be silently truncated out of a block by the zk-gas
+        consumption of the transactions ORDERED AHEAD of it, with no signal of
+        any kind.
+    - name: zk gas (second metering dimension)
+      severity: high
+      src: "core/vm/taiko_zk_gas.go:ZkGasMeter, core/vm/taiko_zk_gas_unzen.go:BlockZkGasLimit, core/vm/taiko_zk_gas_unzen.go:TxIntrinsicZkGas"
+      src_live: "eth_getBlockByNumber @ 10471924 -> difficulty 0x11b632 = 1,160,754 zk gas for a block whose only transaction used 112,068 gas"
+      note: >-
+        A per-block budget of 100,000,000 zk gas, plus 243,000 charged per transaction
+        before execution begins (the proving cost of sender recovery). It is not a
+        soft limit and not a pool policy: when a transaction would exceed it, the block
+        is TRUNCATED — that transaction and every one after it is dropped from the
+        block, and the block is still valid. A transaction can therefore be
+        well-formed, adequately funded, comfortably inside the gas limit, first in
+        line, and still silently not in the block. eth_estimateGas expresses none of
+        this; there is no eth_estimateZkGas.
+    - name: base fee split, not burnt
+      src: "core/state_transition.go:DecodeShastaBasefeeSharingPctg, core/state_transition.go:TaikoTreasuryAddress"
+      src_live: "eth_getBlockByNumber @ 10471924 -> extraData 0x4b000000007746, byte 0 = 0x4b = 75%"
+      note: >-
+        gasUsed x baseFee is split: `pctg` percent to block.coinbase (the L1 proposer)
+        and the remainder to the treasury. The percentage is read out of the block's
+        own extraData byte 0, so the fee split is a per-block, proposer-supplied,
+        consensus-visible parameter. Anyone modelling L2 revenue as "base fee burnt,
+        tips to the sequencer" is wrong in both halves.
+    - name: anchor gas allowance
+      src: "taiko-mono/packages/taiko-client/bindings/manifest/manifest.go:MaxBlockGasLimit, taiko-mono/packages/taiko-client/driver/chain_syncer/event/blocks_inserter/common.go:59"
+      src_live: "eth_getBlockByNumber @ 10471924 -> gasLimit 0x2bde780 = 46,000,000"
+      note: >-
+        The header gasLimit is the protocol limit PLUS the anchor's 1,000,000, so the
+        gas actually available to users is gasLimit - 1,000,000. A gas-utilisation
+        metric computed as gasUsed/gasLimit is wrong by that much in the denominator
+        and includes ~112,000 of unpaid anchor gas in the numerator.
+    - name: txpool base-fee floor
+      src: core/txpool/validation.go:minL2BaseFee
+      note: "from Ontake, a transaction whose gasFeeCap is below 0.005 gwei is rejected from the pool outright."
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+    - name: difficulty
+      severity: high
+      src: "consensus/taiko/consensus.go:verifyUnzenHeaderFields, core/state_processor.go:MarkAsAnchor"
+      src_live: "eth_getBlockByNumber @ 9718650 -> difficulty 0x0; @ 9718651 (first Unzen block) -> difficulty 0x11b632"
+      note: >-
+        REPURPOSED, not merely non-standard. From Unzen, header.difficulty carries the
+        block's total zk gas used, and block import RECOMPUTES it and rejects a
+        mismatch. Post-merge tooling universally treats difficulty == 0 as the
+        signal that a chain is proof-of-stake; on Taiko it has been non-zero since
+        2026-08-06 and means something entirely unrelated. The dataset already has
+        blobGasUsed repurposed by OP Stack; this is the same move applied to the one
+        header field everyone assumes is dead.
+    - name: extraData
+      src: "params/protocol_params.go:ShastaExtraDataLen, core/state_transition.go:DecodeShastaBasefeeSharingPctg"
+      src_live: "eth_getBlockByNumber @ 10471924 -> extraData 0x4b000000007746 (7 bytes: pctg 75, proposalId 30534)"
+      note: >-
+        From Shasta, extraData is a consensus-checked 7-byte struct: byte 0 is the
+        base-fee sharing percentage, bytes 1-6 are the L1 proposal id. VerifyHeader
+        rejects any other length. Pre-Shasta the same field held a big-endian
+        percentage of arbitrary length. Second row in this dataset to turn extraData
+        into a pricing channel, after Linea — independently.
+    - name: gasLimit
+      note: "carries the anchor's 1,000,000 allowance on top of the protocol limit; see fee_model."
+    - name: parentBeaconBlockRoot
+      note: "required present from Unzen, always zero; see EIP-4788."
+    - name: blobGasUsed
+      note: "required present from Unzen, required to be exactly 0."
+    - name: excessBlobGas
+      note: "required present from Unzen, required to be exactly 0."
+    - name: requestsHash
+      note: "required present from Unzen, required to equal EmptyRequestsHash."
+  note: >-
+    Every one of these is enforced by verifyUnzenHeaderFields at import, so they are
+    consensus rules and not conventions. The mixture is the point: three Cancun/Prague
+    fields that must exist and must be empty, one dead field brought back to life, and
+    one field turned into a struct.
+  src: "consensus/taiko/consensus.go:verifyUnzenHeaderFields"
+
+gotchas:
+  - >-
+    EVERY BLOCK'S FIRST TRANSACTION IS A PROTOCOL TRANSACTION WEARING TYPE 0x02, and
+    nothing in its bytes says so. It is identified by INDEX — `i == 0` — not by an
+    envelope flag. An indexer that classifies by type byte will bill users for
+    ~112,000 gas of anchor per block that nobody paid, count the golden-touch account
+    as the chain's busiest EOA, and treat a mandatory system call as user activity.
+  - >-
+    The anchor's private key is PUBLISHED in the driver's source and its signature is
+    signed with a fixed k=1, so the r component of every anchor signature ever
+    produced is the secp256k1 generator's x-coordinate. Security does not come from
+    the key; it comes from position and structure. Nothing in the client checks r.
+  - >-
+    The anchor pays no gas but its RECEIPT says otherwise: effectiveGasPrice equals
+    the base fee and gasUsed is real, while the account's balance never moves. Fee
+    accounting that multiplies the two fields invents revenue.
+  - >-
+    header.difficulty IS NOT ZERO and has not been since 2026-08-06. It carries the
+    block's zk gas and is verified against a recomputation. Any code using
+    `difficulty == 0` as a post-merge test misclassifies Taiko.
+  - >-
+    THERE IS A SECOND GAS. A transaction can be valid, funded, and inside the gas
+    limit and still be dropped from the block because the block's 100,000,000 zk-gas
+    budget ran out — and everything after it is dropped too. The block stays valid.
+    There is no RPC that estimates it.
+  - >-
+    Cancun, Prague and Osaka all activated at ONE timestamp (2026-08-06 13:00 UTC),
+    after two years on Shanghai. There are no cancunTime/pragueTime/osakaTime keys to
+    read: they are computed from unzenTime inside the client. Historical tooling that
+    assumes Cancun-era semantics anywhere before block 9718651 is wrong.
+  - >-
+    The Cancun/Prague system contracts were never deployed. 4788, 2935, 6110, 7002 and
+    7251 are all EMPTY accounts at their canonical addresses, and every one of them
+    answers a call with success and no data. BLOCKHASH still works; the 2935 CONTRACT
+    does not.
+  - >-
+    The base fee is CAPPED at 1 gwei and is not burnt — it is split between the L1
+    proposer and a treasury by a percentage the proposer writes into extraData.
+  - >-
+    System-contract addresses are computed from the chain id, not fixed. And the
+    genesis alloc uses two prefixes for one family: proxies at 0x1670…,
+    implementations at 0x0167… . The anchor contract and the fee treasury are the same
+    account.

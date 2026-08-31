@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berachain · EVM-intel</title>
+<meta name="description" content="Not a geth fork despite bera-geth&#x27;s existence. The client that built the probed block identifies itself as &lt;code&gt;bera-reth/v1.4.4/linux&lt;/code&gt; in extraData, and bera-reth is a Reth SDK node (a wrapper around reth&#x27;s ChainSpec, not a source fork of geth).">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Berachain</h1>
+<p class="lede">Not a geth fork despite bera-geth's existence. The client that built the probed block identifies itself as <code>bera-reth/v1.4.4/linux</code> in extraData, and bera-reth is a Reth SDK node (a wrapper around reth's ChainSpec, not a source fork of geth).</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>80094</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>osaka</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>reth</td></tr><tr><td>Sync point</td><td>bera-reth v1.4.4 tracks reth and reached Osaka on 2026-07-08, adding its own Osaka1 on 2026-08-05. The SECOND execution client, berachain/bera-geth, cannot follow: its newest release (v1.011608.0, 2026-01-20) has no OsakaTime for chain 80094 in params/config.go:BerachainChainConfig and no Osaka1 concept at all, so it stops at Prague4. Two clients of the same chain, three fork generations apart, and only one of them can validate the current head.</td></tr><tr><td>Consensus</td><td>BeaconKit (CometBFT / Tendermint BFT) driving a forked Engine API EL · block time 2s, held there by BRIP-0003 Stable Block Time (an algorithmic commit delay, not timeout_commit)</td></tr><tr><td>Note</td><td><p>The backlog predicted a near-empty EVM delta with all divergence in consensus. That prediction is REFUTED. Berachain runs its own EL fork (bera-reth, and a now-lagging bera-geth), has its own transaction type, a 22-field block header, a raised EIP-170 contract size limit, a base-fee floor, and — for nine days in November 2025 — a consensus rule that rejected any transaction whose LOGS mentioned one of eight blocked addresses. The consensus layer (BeaconKit) does diverge too, but it is not where the surprises are. Second pass (2026-08-28) added the ordering/execution axis and checked the row against Berachain's own BRIP series. Two corrections of emphasis: CometBFT does NOT order this chain's transactions (the execution layer does, and BeaconKit hands CometBFT two opaque blobs), and there is no protocol fork called "Berachain v2" — that name belongs to Proof-of-Liquidity product generations that ship behind an upgradeable proxy, not to the fork list.</p></td></tr><tr><td>Lineage note</td><td><p>Not a geth fork despite bera-geth's existence. The client that built the probed block identifies itself as <code>bera-reth/v1.4.4/linux</code> in extraData, and bera-reth is a Reth SDK node (a wrapper around reth's ChainSpec, not a source fork of geth). BeaconKit replaces the Ethereum beacon chain entirely: it is a CometBFT application, so there is no Ethereum consensus-layer ancestry to record.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/berachain/bera-reth">bera-reth</a> <code>v1.4.4</code></td></tr><tr><td>Pinned commit</td><td><code>aa9bc73ffd49305ce0953c22b38f2affcbdabbd4</code></td></tr><tr><td>Language</td><td>rust</td></tr><tr><td>Built on</td><td>reth SDK</td></tr><tr><td>Companion repos</td><td>https://github.com/berachain/beacon-kit v1.4.1<br>https://github.com/berachain/bera-geth v1.011608.0</td></tr><tr><td>Client note</td><td><p>Chosen as primary over bera-geth on evidence, not convention: the probed block's extraData decodes to "bera-reth/v1.4.4/linux", and bera-reth is the only pinned client whose chain config for 80094 contains osakaTime and osaka1.</p></td></tr><tr><td>Live probe</td><td><code>https://rpc.berachain.com</code> · chain_id 80094 · observed at block <code>25264103</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 45 · <code>src_live:</code> 23 · <code>src_doc:</code> 6</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">3</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-fields-outlive-features">Header fields carrying something other than their Ethereum meaning<a class="anchor" href="#f-fields-outlive-features">#</a></h3><p class="lede">A header field's name is not its meaning. Reading a header by JSON key name is not a portable operation.</p><p>The header is a 22-item RLP list. The extra field is a 48-byte proposer public key, proven by reconstructing the block hash.</p><p class="tags"><a href="../axes/fees-envelope.html#f-fields-outlive-features">Full note · Fees &amp; envelope</a> · also on <a href="../chains/op-stack.html#f-fields-outlive-features">OP Stack</a> · <a href="../chains/avalanche-c.html#f-fields-outlive-features">Avax C</a> · <a href="../chains/linea.html#f-fields-outlive-features">Linea</a> · <a href="../chains/scroll.html#f-fields-outlive-features">Scroll</a> · <a href="../chains/taiko.html#f-fields-outlive-features">Taiko</a> · <a href="../chains/sonic.html#f-fields-outlive-features">Sonic</a> · <a href="../chains/mantle.html#f-fields-outlive-features">Mantle</a> · <a href="../chains/arc.html#f-fields-outlive-features">Arc</a></p></div>
+<div class="finding"><h3 id="f-ordered-then-invalid">A transaction ordered before it is executed has seven different fates<a class="anchor" href="#f-ordered-then-invalid">#</a></h3><p class="lede">Mainnet checks nonce, balance and gas price <em>before</em> a transaction is ordered, so "ordered but invalid" is not a state it can reach. Every chain that separates ordering from execution has to invent an answer, and the rows here have invented seven. There is no portable answer to "was my transaction included".</p><p><strong>Rejects the block.</strong> The EVM sits behind the Engine API, whose <code>newPayload</code> verdict has no per-transaction skip, so <code>ProcessProposal</code> returns REJECT and the client sees nothing at all.</p><p class="tags"><a href="../method.html#f-ordered-then-invalid">Full note · Reference</a> · also on <a href="../chains/conflux.html#f-ordered-then-invalid">Conflux</a> · <a href="../chains/iota-evm.html#f-ordered-then-invalid">IOTA EVM</a> · <a href="../chains/artela.html#f-ordered-then-invalid">Artela</a> · <a href="../chains/rollkit.html#f-ordered-then-invalid">Rollkit</a> · <a href="../chains/taraxa.html#f-ordered-then-invalid">Taraxa</a> · <a href="../chains/autonomys.html#f-ordered-then-invalid">Auto EVM</a> · <a href="../chains/rise.html#f-ordered-then-invalid">RISE</a> · <a href="../chains/megaeth.html#f-ordered-then-invalid">MegaETH</a> · <a href="../chains/monad.html#f-ordered-then-invalid">Monad</a> · <a href="../chains/hedera.html#f-ordered-then-invalid">Hedera</a></p></div>
+<div class="finding"><h3 id="f-cometbft-el-boundary">Same consensus engine, opposite failure mode — the Engine API is the discriminator<a class="anchor" href="#f-cometbft-el-boundary">#</a></h3><p class="lede">Two chains run the same consensus engine, CometBFT, and must answer the same question — what happens to a transaction that is in a proposal but invalid when it executes. They answer oppositely, and the discriminator is not the consensus engine but whether the EVM is inside the ABCI application or behind the Engine API.</p><p>The EVM is a separate process reached over the Engine API, whose <code>engine_newPayload</code> verdict covers the whole payload with no per-transaction skip — so failure is <strong>per-block</strong>. <code>ProcessProposal</code> returns <code>PROCESS_PROPOSAL_STATUS_REJECT</code>, CometBFT re-proposes the height, and an RPC client observes nothing at all. Berachain goes further: CometBFT never orders EVM transactions in the first place, since <code>prepareProposal</code> ignores <code>req.Txs</code> and returns exactly two entries, the SSZ beacon block and its blob sidecars.</p><p class="tags"><a href="../axes/lineage.html#f-cometbft-el-boundary">Full note · Lineage</a> · also on <a href="../chains/artela.html#f-cometbft-el-boundary">Artela</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">12</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">system_contracts</span></td><td><code>0x4242424242424242424242424242424242424242</code> BeaconDeposit</td><td><div class="wrap">Berachain&#x27;s staking deposit contract, at the address Ethereum uses for its TESTNET deposit contracts (Sepolia, Holesky, Hoodi all use 0x4242..4242) — a mainnet chain occupying a well-known testnet address. Different ABI and a different event from Ethereum&#x27;s: Deposit(bytes,bytes,uint64,bytes,uint64), topic 0x68af7516...891d46. The EL reads its logs to build EIP-6110 deposit requests from Osaka onward.</div></td></tr><tr><td><span class="pill">system_contracts</span></td><td><code>0xD2f19a79b026Fb636A7c300bF5947df113940761</code> PoLDistributor</td><td><div class="wrap">An ordinary upgradeable proxy at an ordinary-looking address that the PROTOCOL calls once per block. Its address is a chain-config field, so changing it is a hard fork; its CODE is behind a proxy, so changing what the protocol call does is not. Reward distribution logic is therefore governance-mutable without a client release, and the block is invalid if the call is missing.</div></td></tr><tr><td><span class="pill">tx_types</span></td><td><code>0x7E</code> PoLTx (BRIP-0004 Proof-of-Liquidity distribution)</td><td><div class="wrap">DIRECT COLLISION WITH OP STACK&#x27;S DEPOSIT TYPE. Seven fields, no signature (rawSignatureValues returns 0,0,0), sender hardcoded to the system address 0xfff..ffe, `to` fixed to the PoL Distributor from chain config, and `nonce` abused to carry the BLOCK NUMBER BEING DISTRIBUTED FOR (block-1), not an account nonce. Its calldata is always distributeFor(bytes pubkey) over the PARENT block&#x27;s proposer BLS key, taken from the parent header&#x27;s 22nd field. Three consensus rules make it unusual even among protocol transactions: (1) it MUST be transaction index 0 of every post-Prague1 block and MUST NOT appear anywhere else — validate_pol_transaction recomputes the expected transaction and compares HASHES, so the entire transaction is a pure function of (chain id, distributor, block number, base fee, parent proposer key); (2) it consumes ZERO block gas despite running with a 30,000,000 gas limit and emitting logs — at the probed block its receipt shows gasUsed 0 with 41 logs, and cumulativeGasUsed for the block excludes it entirely; and (3) it is rejected by the transaction pool, so it can never be submitted. The receipt is a normal typed receipt, so an indexer summing receipt gasUsed agrees with the header while an indexer summing traced execution does not.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-170</td><td><div class="wrap">THE headline EVM delta. From Osaka the maximum deployed contract runtime size is 32768 bytes, not 24576 — BRIP-0010&#x27;s code-size bump, applied by setting revm&#x27;s limit_contract_code_size. Verified live: a create returning 32768 bytes succeeds and 32769 fails with CreateContractSizeLimit. Any tool that treats 24576 as a protocol constant (a size linter, a deploy guard, a diamond/proxy splitter, an audit rule) is wrong here in the SAFE direction for deployment and the UNSAFE direction for portability: a 30 KB contract deploys on Berachain and cannot be deployed on mainnet or on any other chain in this dataset.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-1559</td><td><div class="wrap">Two changes, both live. (a) BASE-FEE FLOOR: the computed base fee is clamped up to a per-fork minimum — 1 gwei at Prague1, 0 at Prague2, 1 gwei again at Osaka1. It is not a mempool policy; next_block_base_fee returns raw.max(min_base_fee), so the floor is inside header validation. (b) The base-fee change DENOMINATOR is 48, not 8, from Prague1 — the base fee moves six times more slowly per block in both directions. Burn and tip routing are otherwise mainnet&#x27;s: verified by balance delta at the probed block, where the block&#x27;s entire priority fee (6160500532907892 wei) lands on the header&#x27;s `miner` and the base-fee portion (249042000000000 wei) lands nowhere.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-4788</td><td><div class="wrap">The contract is byte-identical to mainnet&#x27;s at the identical address, the system call runs every block, and the ring buffer fills — but the 32 bytes it stores are NOT a root of an Ethereum beacon block. They are the SSZ hash-tree-root of a BeaconKit BeaconBlockHeader (payload_requests.go passes blk.GetParentBlockRoot()). BeaconKit&#x27;s BeaconBlockHeader happens to have the same five fields as Ethereum&#x27;s, so the header-level generalized indices coincide; everything below does not. The BeaconBlockBody carries empty compatibility stubs for attestations, voluntary exits, the sync aggregate and BLS-to-execution changes (consensus-types/types/body.go), so a proof written against Ethereum&#x27;s BeaconBlockBody indices resolves to a different field, and the BeaconState behind state_root is BeaconKit&#x27;s, not Ethereum&#x27;s. Every 4788-based proof library — validator balance proofs, withdrawal-credential proofs, restaking oracles — reads a well-formed 32-byte root and verifies against the wrong object.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-6110</td><td><div class="wrap">Same request type (0x00), same 192-byte request body, DIFFERENT contract at a DIFFERENT address emitting a DIFFERENT event. Berachain&#x27;s deposit contract is at 0x4242424242424242424242424242424242424242 — Ethereum&#x27;s TESTNET deposit address — and emits Deposit(bytes,bytes,uint64,bytes,uint64), topic 0x68af7516...891d46, not mainnet&#x27;s DepositEvent(bytes,bytes,bytes,bytes,bytes). Mainnet&#x27;s own deposit address 0x00000000219ab540356cBB839Cbe05303d7705Fa is an EMPTY account here, so calls to it succeed with no output and no revert. And the EL only emits deposit requests from OSAKA, not from Prague: for the thirteen months between the two forks Prague was active while the EIP-6110 request path was dormant, deposits reaching BeaconKit through a separate log-watching store instead.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-7251</td><td><div class="wrap">The sharpest silent failure in this row. The consolidation predeploy at 0x0000BBdDc7CE488642fb579F8B00f3a590007251 is byte-identical to mainnet&#x27;s and fully live: it accepts a request, charges the excess-fee, queues it, and the EL&#x27;s system call drains the queue into the block&#x27;s requests list, where it is committed inside requestsHash. BeaconKit then decodes the type-0x02 requests, validates their length — and drops them. The source says so in one line: &quot;ConsolidationRequest is introduced in Pectra but not used by us&quot;; processing iterates requests.Withdrawals and requests.Deposits and never touches requests.Consolidations. A validator consolidation therefore succeeds at every observable layer and has no effect, with no revert anywhere. Recorded as tombstoned rather than removed because the address is occupied, callable, and takes payment.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-4895</td><td><div class="wrap">The withdrawals list is real, credits real native BERA, and has almost nothing to do with staking. Element 0 of EVERY block is a synthetic &quot;EVM inflation&quot; withdrawal with index and validatorIndex both set to 2^64-1, paying a fixed per-fork amount to a fixed address; validator withdrawals, when they exist, follow it. BeaconKit rejects any block whose first withdrawal is not exactly that (ErrFirstWithdrawalNotEVMInflation), which also costs one slot of MAX_WITHDRAWALS_PER_PAYLOAD. In 60 consecutive blocks at the probed height every block had EXACTLY ONE withdrawal — the inflation mint, 1.705 BERA to 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e — and none had a validator withdrawal. Contrast Gnosis, where withdrawals credit zero native token: here they credit native BERA and are the chain&#x27;s entire issuance mechanism.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-2718</td><td><div class="wrap">Berachain adds type byte 0x7E — the SAME BYTE the OP Stack uses for its deposit transaction, on a chain with no OP Stack ancestry whatsoever. Both are unsigned, both are protocol-authored, both come from the system address, and they are not remotely the same transaction. Any decoder that maps 0x7E to DepositTx will parse a Berachain PoL transaction as an OP deposit and get a different field list. It is present in EVERY block, so this is not an edge case: 60 of 60 blocks scanned carried exactly one.</div></td></tr><tr><td><span class="pill">header_fields</span></td><td>header <code>parentProposerPubkey</code></td><td><div class="wrap">A 22nd RLP field: the 48-byte BLS12-381 public key of the PARENT block&#x27;s proposer, appended after requestsHash. Established by reconstruction, not by reading JSON keys — the block hash is only reproducible with 22 fields. It is rlp:&quot;optional&quot; in the struct, which makes OLD headers decodable but does NOT make new ones decodable by a stock client: an Ethereum header decoder handed a Berachain header sees one element too many. Consequences: the header is 48 bytes larger, the block hash preimage differs in shape, and the consensus layer&#x27;s proposer identity is now consensus-critical EL data that the next block&#x27;s mandatory transaction reads.</div></td></tr><tr><td><span class="pill">tx_authorization</span></td><td>protocol_system_address</td><td><div class="wrap">The 0x7E PoL transaction is authorized by nothing at all: v, r and s are literal zeros, `from` is the constant 0xfff..ffe, and validity is decided by recomputing the transaction and comparing hashes. This is the OP-deposit pattern (unsigned, protocol-authored) arrived at independently, and it lands on the same type byte. It cannot reach the mempool — the pool rejects PoLTxType outright — so the ONLY way one exists is for a block producer to synthesise it, and the only way it is accepted is for every other node to derive byte-identical bytes from the header.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>Two interleaved axes. Ethereum forks come from the genesis config; Berachain's own five forks (Prague1-4, Osaka1) are a separate <code>berachain</code> object in the same file, each carrying PARAMETERS rather than only a timestamp — a minimum base fee, a base-fee denominator, a distributor address, a blocked-address list. A fork here is a config record, not just a switch. All of them are gated on the corresponding Ethereum fork being active first (bera-geth states the rule outright: params/config.go:IsPrague1). NAMING. Berachain's own name for the 2026-07-08 fork is FUSAKA (BRIP-0010, "Fusaka Hardfork Specification"), because it bundles the EL's <code>osaka</code> and the CL's <code>fulu</code> at one timestamp. This row uses <code>osaka</code> because that is the name in the client's chain config (<code>osakaTime</code>) and the only one a config reader will find. There is no fork named "v2", "PoL v2" or "Berachain V2" anywhere in the client or the genesis config; the complete list is the eight entries below.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>genesis</code></td><td><span class="pill">active</span></td><td>2025-01-20</td><td>shanghai+cancun</td><td><div class="wrap">2025-01-20. Shanghai and Cancun both at time 0.</div></td></tr><tr><td><code>prague</code></td><td><span class="pill">active</span></td><td>2025-06-04</td><td>prague</td><td><div class="wrap">2025-06-04. Simultaneous with BeaconKit&#x27;s Electra.</div></td></tr><tr><td><code>prague1</code></td><td><span class="pill">active</span></td><td>2025-09-03</td><td>—</td><td><div class="wrap">2025-09-03. BRIP-0002 + BRIP-0004. The largest single fork in this row: adds the 0x7E PoL transaction, the 22nd header field, a 1 gwei base-fee floor and a 6x slower base-fee denominator (48 instead of 8).</div></td></tr><tr><td><code>prague2</code></td><td><span class="pill">active</span></td><td>2025-09-30</td><td>—</td><td><div class="wrap">2025-09-30. Base-fee floor back to 0. Four weeks of a 1 gwei floor, then none.</div></td></tr><tr><td><code>prague3</code></td><td><span class="pill">active</span></td><td>2025-11-03</td><td>—</td><td><div class="wrap">2025-11-03 10:07:39 UTC — note the non-round timestamp, an emergency fork scheduled to the second. Freezes eight addresses and the BEX vault at consensus level. See system_transactions and eips.7685/gotchas.</div></td></tr><tr><td><code>prague4</code></td><td><span class="pill">active</span></td><td>2025-11-12</td><td>—</td><td><div class="wrap">2025-11-12. Does nothing except END Prague3. Its whole content is that is_prague3_active_at_timestamp returns false once Prague4 is live (src/hardforks/mod.rs). A fork whose only job is to switch another fork off.</div></td></tr><tr><td><code>osaka</code></td><td><span class="pill">active</span></td><td>2026-07-08</td><td>osaka</td><td><div class="wrap">2026-07-08. BRIP-0010. Simultaneous with BeaconKit&#x27;s Fulu (same timestamp).</div></td></tr><tr><td><code>osaka1</code></td><td><span class="pill">active</span></td><td>2026-08-05</td><td>—</td><td><div class="wrap">2026-08-05. Anti-spam: minimum base fee back to 1 gwei AND a minimum blob base fee of 1 gwei. Live at the probed block — baseFeePerGas is exactly 0x3b9aca00 and baseFeePerBlobGas is exactly 0x3b9aca00.</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> src/hardforks/mod.rs:BerachainHardfork, tests/fixtures/mainnet-genesis.json:berachain</p>
+<h2 id="eips">EIP deltas <span class="pill">22</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-170"><td><a href="https://eips.ethereum.org/EIPS/eip-170">EIP-170</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">THE headline EVM delta. From Osaka the maximum deployed contract runtime size is 32768 bytes, not 24576 — BRIP-0010&#x27;s code-size bump, applied by setting revm&#x27;s limit_contract_code_size. Verified live: a create returning 32768 bytes succeeds and 32769 fails with CreateContractSizeLimit. Any tool that treats 24576 as a protocol constant (a size linter, a deploy guard, a diamond/proxy splitter, an audit rule) is wrong here in the SAFE direction for deployment and the UNSAFE direction for portability: a 30 KB contract deploys on Berachain and cannot be deployed on mainnet or on any other chain in this dataset.<p class="src"><b>src</b> src/node/evm/config.rs:MAX_CODE_SIZE_OSAKA · <b>live</b> eth_call create returning 32768 bytes @ 25264103 -&gt; OK; 32769 bytes -&gt; EVM error: CreateContractSizeLimit</p></div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">Two changes, both live. (a) BASE-FEE FLOOR: the computed base fee is clamped up to a per-fork minimum — 1 gwei at Prague1, 0 at Prague2, 1 gwei again at Osaka1. It is not a mempool policy; next_block_base_fee returns raw.max(min_base_fee), so the floor is inside header validation. (b) The base-fee change DENOMINATOR is 48, not 8, from Prague1 — the base fee moves six times more slowly per block in both directions. Burn and tip routing are otherwise mainnet&#x27;s: verified by balance delta at the probed block, where the block&#x27;s entire priority fee (6160500532907892 wei) lands on the header&#x27;s `miner` and the base-fee portion (249042000000000 wei) lands nowhere.<p class="src"><b>src</b> src/chainspec/mod.rs:next_block_base_fee, bera-geth/params/protocol_params.go:BerachainBaseFeeChangeDenominator · <b>live</b> eth_getBalance 0x1daa6d6b90e2375d4262cde3c5553bc31688a969 @ 25264102 vs 25264103 -&gt; +6160500532907892 wei = exactly the block&#x27;s total priority fee; baseFeePerGas 0x3b9aca00 == osaka1 floor</p></div></td></tr><tr id="eips-2718"><td><a href="https://eips.ethereum.org/EIPS/eip-2718">EIP-2718</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">Berachain adds type byte 0x7E — the SAME BYTE the OP Stack uses for its deposit transaction, on a chain with no OP Stack ancestry whatsoever. Both are unsigned, both are protocol-authored, both come from the system address, and they are not remotely the same transaction. Any decoder that maps 0x7E to DepositTx will parse a Berachain PoL transaction as an OP deposit and get a different field list. It is present in EVERY block, so this is not an edge case: 60 of 60 blocks scanned carried exactly one.<p class="src"><b>src</b> src/transaction/mod.rs:POL_TX_TYPE, bera-geth/core/types/transaction.go:PoLTxType</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">The history contract at 0x0000F90827F1C53a10cb7A02335B175320002935 is byte-identical to mainnet&#x27;s and is written by the same system call. No delta.<p class="src"><b>live</b> eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 25264103 -&gt; byte-identical to Ethereum mainnet</p></div></td></tr><tr id="eips-3529"><td><a href="https://eips.ethereum.org/EIPS/eip-3529">EIP-3529</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Not established. No Berachain fork touches refund accounting, but not read.</div></td></tr><tr id="eips-3860"><td><a href="https://eips.ethereum.org/EIPS/eip-3860">EIP-3860</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">Initcode limit raised in step with EIP-170: 65536 bytes, not 49152. Verified live at the same block — 65536 bytes of initcode is accepted, 65537 returns &quot;max initcode size exceeded&quot;. The per-word initcode gas charge is unchanged.<p class="src"><b>src</b> src/node/evm/config.rs:MAX_INITCODE_SIZE_OSAKA · <b>live</b> eth_call with 65536-byte create input @ 25264103 -&gt; OK; 65537 bytes -&gt; max initcode size exceeded</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">The contract is byte-identical to mainnet&#x27;s at the identical address, the system call runs every block, and the ring buffer fills — but the 32 bytes it stores are NOT a root of an Ethereum beacon block. They are the SSZ hash-tree-root of a BeaconKit BeaconBlockHeader (payload_requests.go passes blk.GetParentBlockRoot()). BeaconKit&#x27;s BeaconBlockHeader happens to have the same five fields as Ethereum&#x27;s, so the header-level generalized indices coincide; everything below does not. The BeaconBlockBody carries empty compatibility stubs for attestations, voluntary exits, the sync aggregate and BLS-to-execution changes (consensus-types/types/body.go), so a proof written against Ethereum&#x27;s BeaconBlockBody indices resolves to a different field, and the BeaconState behind state_root is BeaconKit&#x27;s, not Ethereum&#x27;s. Every 4788-based proof library — validator balance proofs, withdrawal-credential proofs, restaking oracles — reads a well-formed 32-byte root and verifies against the wrong object.<p class="src"><b>src</b> beacon-kit/consensus-types/types/payload_requests.go:parentBeaconBlockRoot, beacon-kit/consensus-types/types/header.go:BeaconBlockHeader, beacon-kit/consensus-types/types/body.go:BeaconBlockBody · <b>live</b> eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 25264103 -&gt; byte-identical to Ethereum mainnet; header parentBeaconBlockRoot 0xff66acc9b7d43c8af553ead0edd3059b27243c96167139683fcfa4c3a15c4fd1</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">A real blob market with real header fields — blobGasUsed and excessBlobGas are genuine, not repurposed — but with a smaller schedule and a fee floor. Blob target/max is 3/6 at Cancun, Prague AND Osaka, where mainnet moved to 6/9 at Prague and then higher through the BPO forks; Berachain has no BPO forks at all. From Osaka1 the blob base fee has a 1 gwei floor (params.min_blob_fee), against mainnet&#x27;s 1 wei. In 60 consecutive blocks around the probed height, zero blobs were posted.<p class="src"><b>src</b> src/chainspec/mod.rs:blob_params_at_timestamp, tests/fixtures/mainnet-genesis.json:blobSchedule · <b>live</b> eth_feeHistory @ 25264103 -&gt; baseFeePerBlobGas 0x3b9aca00, blobGasUsedRatio 0.0 across the range; 60 blocks scanned to 25264103, none with blobGasUsed &gt; 0</p></div></td></tr><tr id="eips-4895"><td><a href="https://eips.ethereum.org/EIPS/eip-4895">EIP-4895</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">The withdrawals list is real, credits real native BERA, and has almost nothing to do with staking. Element 0 of EVERY block is a synthetic &quot;EVM inflation&quot; withdrawal with index and validatorIndex both set to 2^64-1, paying a fixed per-fork amount to a fixed address; validator withdrawals, when they exist, follow it. BeaconKit rejects any block whose first withdrawal is not exactly that (ErrFirstWithdrawalNotEVMInflation), which also costs one slot of MAX_WITHDRAWALS_PER_PAYLOAD. In 60 consecutive blocks at the probed height every block had EXACTLY ONE withdrawal — the inflation mint, 1.705 BERA to 0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e — and none had a validator withdrawal. Contrast Gnosis, where withdrawals credit zero native token: here they credit native BERA and are the chain&#x27;s entire issuance mechanism.<p class="src"><b>src</b> beacon-kit/state-transition/core/state_processor_withdrawals.go:processWithdrawals, beacon-kit/state-transition/core/state/statedb.go:EVMInflationWithdrawal, beacon-kit/config/spec/mainnet.go:mainnetEVMInflationPerBlockFulu · <b>live</b> eth_getBlockByNumber @ 25264103 -&gt; withdrawals = [{index: 0xffffffffffffffff, validatorIndex: 0xffffffffffffffff, address: 0x1ae7dd7ae06f6c58b4524d9c1f816094b1bccd8e, amount: 0x65a03c40}]; 60/60 blocks to 25264103 had exactly one withdrawal</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">Same request type (0x00), same 192-byte request body, DIFFERENT contract at a DIFFERENT address emitting a DIFFERENT event. Berachain&#x27;s deposit contract is at 0x4242424242424242424242424242424242424242 — Ethereum&#x27;s TESTNET deposit address — and emits Deposit(bytes,bytes,uint64,bytes,uint64), topic 0x68af7516...891d46, not mainnet&#x27;s DepositEvent(bytes,bytes,bytes,bytes,bytes). Mainnet&#x27;s own deposit address 0x00000000219ab540356cBB839Cbe05303d7705Fa is an EMPTY account here, so calls to it succeed with no output and no revert. And the EL only emits deposit requests from OSAKA, not from Prague: for the thirteen months between the two forks Prague was active while the EIP-6110 request path was dormant, deposits reaching BeaconKit through a separate log-watching store instead.<p class="src"><b>src</b> src/deposits.rs:DEPOSIT_EVENT_SIGNATURE, src/node/evm/executor.rs:304, beacon-kit/state-transition/core/state_processor_staking.go:validateDepositSource · <b>live</b> eth_getCode 0x4242424242424242424242424242424242424242 @ 25264103 -&gt; 4190 bytes; eth_getCode 0x00000000219ab540356cBB839Cbe05303d7705Fa @ 25264103 -&gt; 0x; eth_call get_deposit_count() on 0x4242.. -&gt; execution reverted (different ABI)</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">The one Ethereum request path that works end to end. The predeploy at 0x00000961Ef480Eb55e80D19ad83579A64c007002 is byte-identical to mainnet&#x27;s, and BeaconKit actually consumes the requests — &quot;WithdrawalRequest is introduced in EIP7002 which we use for withdrawals&quot;. Note this is the request queue, not the withdrawal LIST; see eips.4895.<p class="src"><b>src</b> beacon-kit/consensus-types/types/withdrawal_request.go:WithdrawalRequest, beacon-kit/state-transition/core/state_processor_staking.go:processWithdrawalRequest · <b>live</b> eth_getCode 0x00000961Ef480Eb55e80D19ad83579A64c007002 @ 25264103 -&gt; byte-identical to Ethereum mainnet</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td></td><td><div class="wrap">The sharpest silent failure in this row. The consolidation predeploy at 0x0000BBdDc7CE488642fb579F8B00f3a590007251 is byte-identical to mainnet&#x27;s and fully live: it accepts a request, charges the excess-fee, queues it, and the EL&#x27;s system call drains the queue into the block&#x27;s requests list, where it is committed inside requestsHash. BeaconKit then decodes the type-0x02 requests, validates their length — and drops them. The source says so in one line: &quot;ConsolidationRequest is introduced in Pectra but not used by us&quot;; processing iterates requests.Withdrawals and requests.Deposits and never touches requests.Consolidations. A validator consolidation therefore succeeds at every observable layer and has no effect, with no revert anywhere. Recorded as tombstoned rather than removed because the address is occupied, callable, and takes payment.<p class="src"><b>src</b> beacon-kit/consensus-types/types/consolidation_request.go:ConsolidationRequest, beacon-kit/state-transition/core/state_processor_staking.go:processWithdrawalRequest · <b>live</b> eth_getCode 0x0000BBdDc7CE488642fb579F8B00f3a590007251 @ 25264103 -&gt; byte-identical to Ethereum mainnet</p></div></td></tr><tr id="eips-7594"><td><a href="https://eips.ethereum.org/EIPS/eip-7594">EIP-7594</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">PeerDAS is part of mainnet Osaka. Berachain activated Osaka WITHOUT it — BRIP-0010 keeps EIP-4844 full sidecars as the blob distribution mechanism, stated in two independent places in the client. This is the cleanest example in the dataset of a chain taking a fork&#x27;s EVM half and declining its networking half, and it is the mirror image of BSC taking Prague&#x27;s EVM half and dropping its beacon half.<p class="src"><b>src</b> src/engine/builder.rs:323, src/pool/mod.rs:75</p></div></td></tr><tr id="eips-7685"><td><a href="https://eips.ethereum.org/EIPS/eip-7685">EIP-7685</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">requestsHash exists and is computed the standard way, but only one of its three request types has an effect (0x01 withdrawals), one is repurposed (0x00 deposits, different contract and event) and one is inert (0x02 consolidations). At the probed block requestsHash is the empty-requests value 0xe3b0c442...7852b855.<p class="src"><b>live</b> eth_getBlockByNumber @ 25264103 -&gt; requestsHash 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Type 0x04 is decodable in bera-reth&#x27;s envelope (src/transaction/mod.rs) and none of the Berachain forks touch delegation, but no source read was done on how a 7702 delegation interacts with the PoL system call, and no 0x04 transaction was observed in the 60 blocks sampled.</div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">MODEXP input bounds (8192 bits / 1024 bytes per field) as on mainnet Osaka, via revm. Named explicitly in BRIP-0010 and covered by an end-to-end test in the client, so it is a deliberate adoption rather than an accident of the dependency bump.<p class="src"><b>src</b> src/evm/mod.rs:test_eip7823_modexp_oversized_input_halts_osaka · <b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md</a></p></div></td></tr><tr id="eips-7825"><td><a href="https://eips.ethereum.org/EIPS/eip-7825">EIP-7825</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">Osaka per-transaction gas cap of 2^24, applied via cfg_env.tx_gas_limit_cap.<p class="src"><b>src</b> src/node/evm/config.rs:MAX_TX_GAS_LIMIT_OSAKA</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">MODEXP repricing — minimum 500 gas, ~3x general cost — as on mainnet Osaka. Recorded because BRIP-0010 enumerates it and the client asserts it; the row previously left both MODEXP EIPs unstated, which under this schema would have fallen back to an unverified `inherited`.<p class="src"><b>src</b> src/evm/mod.rs:MODEXP_MIN_GAS_OSAKA · <b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md</a></p></div></td></tr><tr id="eips-7918"><td><a href="https://eips.ethereum.org/EIPS/eip-7918">EIP-7918</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">A SECOND candidate Osaka omission, alongside EIP-7594. BRIP-0010&#x27;s rationale states outright that &quot;EIP-7918 (blob base fee) was excluded as Berachain does not use blob transactions&quot; — but unlike PeerDAS, whose exclusion is asserted in two places in bera-reth&#x27;s own source, no source read here confirms that the reserve-price floor is actually switched off: bera-reth is a Reth SDK wrapper and would inherit upstream reth&#x27;s Osaka blob-fee rule unless it overrides it, and the only Berachain override found in blob_params_at_timestamp is Osaka1&#x27;s 1 gwei min_blob_fee. Left unrecorded rather than guessed. What would settle it: an executed blob transaction on Berachain (none were seen in the sampled blocks), or a read of the pinned reth dependency&#x27;s Osaka blob-fee path.<p class="src"><b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0010.md</a></p></div></td></tr><tr id="eips-7934"><td><a href="https://eips.ethereum.org/EIPS/eip-7934">EIP-7934</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">BRIP-0010 states the 10 MiB block cap with a 2 MiB safety margin, i.e. the same 8 MiB effective RLP payload cap as mainnet; the value is taken from reth-consensus-common rather than redefined.<p class="src"><b>src</b> src/node/evm/config.rs:MAX_RLP_BLOCK_SIZE</p></div></td></tr><tr id="eips-7939"><td><a href="https://eips.ethereum.org/EIPS/eip-7939">EIP-7939</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><p class="src"><b>live</b> eth_call CLZ(0) @ 25264103 -&gt; 0x0000...0100 (256)</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">P256VERIFY at 0x0100 with mainnet Osaka semantics and gas (6900). Verified live with a valid vector and a corrupted one.<p class="src"><b>src</b> src/evm/mod.rs:P256VERIFY_OSAKA_GAS · <b>live</b> eth_call 0x0100 valid P-256 vector @ 25264103 -&gt; 0x00..01; one byte of s flipped -&gt; 0x</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">1</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>Live set = mainnet's 0x00-0x04 plus 0x7E. Observed in 60 blocks to 25264103: 0x7E x60 (one per block, always index 0), 0x02 x25, 0x00 x10.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x7e"><td><code>0x7e</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>PoLTx (BRIP-0004 Proof-of-Liquidity distribution)</td><td><div class="wrap"><div>DIRECT COLLISION WITH OP STACK&#x27;S DEPOSIT TYPE. Seven fields, no signature (rawSignatureValues returns 0,0,0), sender hardcoded to the system address 0xfff..ffe, `to` fixed to the PoL Distributor from chain config, and `nonce` abused to carry the BLOCK NUMBER BEING DISTRIBUTED FOR (block-1), not an account nonce. Its calldata is always distributeFor(bytes pubkey) over the PARENT block&#x27;s proposer BLS key, taken from the parent header&#x27;s 22nd field. Three consensus rules make it unusual even among protocol transactions: (1) it MUST be transaction index 0 of every post-Prague1 block and MUST NOT appear anywhere else — validate_pol_transaction recomputes the expected transaction and compares HASHES, so the entire transaction is a pure function of (chain id, distributor, block number, base fee, parent proposer key); (2) it consumes ZERO block gas despite running with a 30,000,000 gas limit and emitting logs — at the probed block its receipt shows gasUsed 0 with 41 logs, and cumulativeGasUsed for the block excludes it entirely; and (3) it is rejected by the transaction pool, so it can never be submitted. The receipt is a normal typed receipt, so an indexer summing receipt gasUsed agrees with the header while an indexer summing traced execution does not.</div><p class="src"><b>src</b> src/transaction/mod.rs:POL_TX_TYPE, bera-geth/core/types/tx_pol.go:PoLTx · <b>live</b> eth_getTransactionByBlockNumberAndIndex @ 25264103 idx 0 -&gt; type 0x7e, from 0xfffffffffffffffffffffffffffffffffffffffe, to 0xd2f1..0761, nonce 0x18183e6, v=r=s=0</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>Unchanged from mainnet for every transaction a user can send: secp256k1, derived addresses, ecrecover(sig) == from. The interesting entry is what does NOT authorize. Berachain's validators are identified by BLS12-381 keys, one of which is written into every block header (parentProposerPubkey) and passed as calldata to a protocol transaction — and that key authorizes nothing at the execution layer. It signs CometBFT consensus messages and BeaconKit deposits, never an EVM transaction, and there is no BLS12-381 signature-verification precompile pairing that the EVM could use to check it either: the BLS12-381 precompiles at 0x0b-0x11 are EIP-2537 curve arithmetic, not a signature verifier for this scheme. So the chain writes a public key into consensus state that its own contracts cannot verify a signature from. Contrast Sei's sr25519 and Kaia's role keys, which authorize with no verifier; here the key does not even authorize.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"></div></td></tr><tr><td><code>protocol_system_address</code></td><td><span class="pill">protocol</span></td><td><span class="s-removed" title="no precompile can verify what the protocol accepts">none ⚠️</span></td><td><div class="wrap">The 0x7E PoL transaction is authorized by nothing at all: v, r and s are literal zeros, `from` is the constant 0xfff..ffe, and validity is decided by recomputing the transaction and comparing hashes. This is the OP-deposit pattern (unsigned, protocol-authored) arrived at independently, and it lands on the same type byte. It cannot reach the mempool — the pool rejects PoLTxType outright — so the ONLY way one exists is for a block producer to synthesise it, and the only way it is accepted is for every other node to derive byte-identical bytes from the header.<p class="src"><b>src</b> src/transaction/pol.rs:SYSTEM_ADDRESS, bera-geth/core/types/tx_pol.go:rawSignatureValues</p></div></td></tr><tr><td><code>bls12_381_validator_key</code></td><td><span class="pill">never</span></td><td><span class="s-inherited">none</span></td><td><div class="wrap">48-byte BLS12-381 validator keys authorize CometBFT consensus votes, BeaconKit deposits and EIP-7002 withdrawal requests. They never authorize an EVM transaction. Recorded because one of them is a CONSENSUS-CRITICAL FIELD OF EVERY EVM BLOCK HEADER, which is not true of Ethereum, and because a reader seeing a BLS key in the header may reasonably assume otherwise.<p class="src"><b>src</b> beacon-kit/consensus-types/types/withdrawal_request.go:ValidatorPubKey, src/primitives/header.rs:BlsPublicKey</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">0</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>ZERO custom precompiles and zero divergence from mainnet Osaka. bera-reth builds its precompile set with the stock revm constructor, Precompiles::new(PrecompileSpecId::from_spec_id(spec)) (src/evm/mod.rs), with no Berachain insertions and no removals — the one place in this row where the "near-empty delta" prediction holds exactly. Verified live: 0x01-0x12 all return empty code (native, not predeploys) and 0x0100 verifies a valid P-256 signature and rejects a corrupted one at block 25264103. Berachain is the counterexample to "a chain with a bespoke consensus layer adds precompiles to reach it": the consensus layer is reached through ordinary contracts and the withdrawals list instead.</p></div>
+<h2 id="system-contracts">System contracts <span class="pill">5</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>All four Ethereum system contracts (4788, 2935, 7002, 7251) are present at their mainnet addresses and BYTE-IDENTICAL to mainnet's, checked by diffing eth_getCode against an Ethereum mainnet node. What differs is not their code but what consumes their output: see eips.4788, eips.7251.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x219ab540356cbb839cbe05303d7705fa"><td><code>0x219ab540356cbb839cbe05303d7705fa</code></td><td><span class="s-removed" title="removed">➖</span></td><td>Ethereum mainnet BeaconDeposit (absent)</td><td><div class="wrap"><div>Empty account. A tool holding Ethereum&#x27;s deposit address as a constant gets silent success with empty output, never an error — the same failure shape Gnosis exhibits at the same address.</div><p class="src"><b>live</b> eth_getCode @ 25264103 -&gt; 0x</p></div></td></tr><tr id="system-contracts-0x1ae7dd7ae06f6c58b4524d9c1f816094b1bccd8e"><td><code>0x1ae7dd7ae06f6c58b4524d9c1f816094b1bccd8e</code></td><td><span class="s-added" title="added">➕</span></td><td>EVM inflation recipient (Fulu)</td><td><div class="wrap"><div>Where the whole of BERA issuance is minted. Its balance is a fixed point: exactly one block&#x27;s inflation, at every height sampled. The withdrawal credits 1.705 BERA at the end of each block and the next block&#x27;s PoL transaction — the first transaction of that block — spends it, so the account never accumulates. Two protocol mechanisms, one at each end of the block, forming a closed loop that no user transaction participates in.</div><p class="src"><b>src</b> beacon-kit/config/spec/mainnet.go:mainnetEVMInflationAddressFulu · <b>live</b> eth_getBalance @ 25264102 and @ 25264103 -&gt; exactly 1705000000000000000 wei at both heights (delta 0)</p></div></td></tr><tr id="system-contracts-0x4242424242424242424242424242424242424242"><td><code>0x4242424242424242424242424242424242424242</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>BeaconDeposit</td><td><div class="wrap"><div>Berachain&#x27;s staking deposit contract, at the address Ethereum uses for its TESTNET deposit contracts (Sepolia, Holesky, Hoodi all use 0x4242..4242) — a mainnet chain occupying a well-known testnet address. Different ABI and a different event from Ethereum&#x27;s: Deposit(bytes,bytes,uint64,bytes,uint64), topic 0x68af7516...891d46. The EL reads its logs to build EIP-6110 deposit requests from Osaka onward.</div><p class="src"><b>src</b> tests/fixtures/mainnet-genesis.json:depositContractAddress, beacon-kit/config/spec/defaults.go:defaultDepositContractAddress, src/deposits.rs:DEPOSIT_EVENT_SIGNATURE · <b>live</b> eth_getCode @ 25264103 -&gt; 4190 bytes of bytecode; eth_call get_deposit_count() (mainnet selector 0x621fd130) -&gt; execution reverted</p></div></td></tr><tr id="system-contracts-0x656b95e550c07a9ffe548bd4085c72418ceb1dba"><td><code>0x656b95e550c07a9ffe548bd4085c72418ceb1dba</code></td><td><span class="s-tombstoned" title="tombstoned">⊘⏳</span></td><td>EVM inflation recipient (Deneb1, superseded)</td><td><div class="wrap"><div>Received 5.75 BERA per block from Deneb1 until Fulu redirected issuance elsewhere. Still holds 63.6M BERA and is no longer credited. Recorded because &quot;the inflation address&quot; is a moving target set by CL config, not EL config — three different values so far.</div><p class="src"><b>src</b> beacon-kit/config/spec/mainnet.go:mainnetEVMInflationAddressDeneb1 · <b>live</b> eth_getBalance @ 25264103 -&gt; 63650359473954404521836864 wei, delta 0 across the block</p></div></td></tr><tr id="system-contracts-0xd2f19a79b026fb636a7c300bf5947df113940761"><td><code>0xd2f19a79b026fb636a7c300bf5947df113940761</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>PoLDistributor</td><td><div class="wrap"><div>An ordinary upgradeable proxy at an ordinary-looking address that the PROTOCOL calls once per block. Its address is a chain-config field, so changing it is a hard fork; its CODE is behind a proxy, so changing what the protocol call does is not. Reward distribution logic is therefore governance-mutable without a client release, and the block is invalid if the call is missing.</div><p class="src"><b>src</b> bera-geth/params/protocol_params.go:PoLDistributorAddress, tests/fixtures/mainnet-genesis.json:polDistributorAddress · <b>live</b> eth_getCode @ 25264103 -&gt; 202-char proxy bytecode; it is the `to` of the 0x7E transaction in every block</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="note"><p>EIP-4788 and EIP-2935 system calls run unchanged (see eips). The EIP-7002 and EIP-7251 queue-drain system calls also run unchanged — but only the 7002 output is consumed by the consensus layer.</p></div>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>No opcode divergence. CLZ (EIP-7939) is present because Osaka is, and was verified live. Berachain's EVM-level deltas are limits and fees, not opcodes.</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>EIP-1559 with a per-fork base-fee floor and a 6x slower change denominator</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;nonce on failure&#x27;, &#x27;src&#x27;: &#x27;src/engine/builder.rs:default_berachain_payload, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected&#x27;, &#x27;note&#x27;: &#x27;NONCE ON FAILURE: PRESERVED, and there is no receipt because there is no block. Berachain does not separate ordering from execution in the way that makes this question dangerous elsewhere: the proposer\&#x27;s own EL builds the list BY executing as it appends, so an invalid transaction never reaches a payload. In `default_berachain_payload`, `execute_transaction` returning `InvalidTx` is handled inline — `is_nonce_too_low()` logs &quot;skipping nonce too low transaction&quot; and `continue`s, anything else calls `best_txs.mark_invalid` (dropping the transaction\&#x27;s descendants) and `continue`s. Nothing is committed for either, so the account nonce is untouched and the transaction stays resubmittable at the same nonce.\nIF ONE SURVIVES INTO A PROPOSED BLOCK ANYWAY — a faulty or Byzantine proposer — `engine_newPayload` is ALL-OR-NOTHING: there is no per-transaction skip, the payload is INVALID, and `process_proposal` answers CometBFT with `PROCESS_PROPOSAL_STATUS_REJECT`. beacon-kit ships `TestProcessProposal_BadBlock_IsRejected` for exactly this case. The height is re-proposed by the next proposer, and single-slot finality means the committed chain never contains the bad block. So the innocent co-passengers of the invalid transaction also keep their nonces — nothing was executed — and an RPC client observes nothing at all: no receipt, no status-0 receipt, no orphan block, no reorg. This is the benign pole of the axis, and it is the direct opposite of Artela, where the transaction is in a committed block, its nonce is spent, and the RPC hides it.&#x27;}, {&#x27;name&#x27;: &#x27;base-fee floor&#x27;, &#x27;src&#x27;: &#x27;src/chainspec/mod.rs:next_block_base_fee&#x27;, &#x27;note&#x27;: &#x27;1 gwei (Prague1) -&gt; 0 (Prague2) -&gt; 1 gwei (Osaka1). Inside header validation, not a node policy. Live value at the probed block: 1 gwei.\nOrdering consequence, because this is the exact shape the brief asks about: raising the floor CAN invalidate an already-signed transaction, and the chain resolves it at selection rather than in a block. The payload builder asks the pool for best_transactions_with_attributes(base_fee, ...) computed for the block being built, so a transaction whose cap fell below the new floor is never selected; it sits in the EL mempool with no receipt and no error. If one nevertheless reached a payload, the EL would answer engine_newPayload INVALID and the whole block would be rejected — see consensus.note. It also re-derives the mandatory PoL transaction: the base fee is an input to its hash.&#x27;}, {&#x27;name&#x27;: &#x27;base-fee change denominator 48&#x27;, &#x27;src&#x27;: &#x27;bera-geth/params/protocol_params.go:BerachainBaseFeeChangeDenominator&#x27;, &#x27;note&#x27;: &quot;BRIP-0002. Six times slower response than mainnet&#x27;s 8, in both directions.&quot;}, {&#x27;name&#x27;: &#x27;blob base-fee floor&#x27;, &#x27;src&#x27;: &#x27;src/chainspec/mod.rs:blob_params_at_timestamp&#x27;, &#x27;note&#x27;: &quot;1 gwei from Osaka1, against mainnet&#x27;s 1 wei. Confirmed by eth_feeHistory.&quot;}, {&#x27;name&#x27;: &#x27;zero-gas protocol transaction&#x27;, &#x27;src&#x27;: &#x27;src/node/evm/executor.rs:100&#x27;, &#x27;note&#x27;: &#x27;The 0x7E PoL transaction runs with a 30M gas limit and charges nothing to the block gas pool, so a Berachain block can execute more work than its gasUsed reports. Block gas accounting and block execution cost diverge by the size of the distribution call.&#x27;}, {&#x27;name&#x27;: &#x27;mempool minimum priority fee&#x27;, &#x27;src&#x27;: &#x27;src/pool/min_priority_fee.rs:MinPriorityFeeValidator&#x27;, &#x27;note&#x27;: &#x27;NOT consensus. A pool-admission floor on the EFFECTIVE tip (reth\&#x27;s built-in checks only dynamic-fee transactions and only the declared cap). The source is explicit that &quot;it never changes block validity&quot; — recorded so it is not mistaken for a protocol rule, and because it is exactly the kind of thing that gets reported as one.&#x27;}]</td></tr></tbody></table></div>
+<p class="src"><b>src</b> src/chainspec/mod.rs:next_block_base_fee</p>
+<h2 id="header-fields">Header fields <span class="pill">1</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>All 21 mainnet fields are present and carry their mainnet meanings — including blobGasUsed and excessBlobGas, which are real blob gas here rather than repurposed (contrast OP Stack) or pinned to zero (contrast Avalanche), and parentBeaconBlockRoot and requestsHash, which Sonic omits entirely.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-parentproposerpubkey"><td><code>parentProposerPubkey</code></td><td><span class="s-added" title="added">➕</span></td><td>parentProposerPubkey</td><td><div class="wrap">A 22nd RLP field: the 48-byte BLS12-381 public key of the PARENT block&#x27;s proposer, appended after requestsHash. Established by reconstruction, not by reading JSON keys — the block hash is only reproducible with 22 fields. It is rlp:&quot;optional&quot; in the struct, which makes OLD headers decodable but does NOT make new ones decodable by a stock client: an Ethereum header decoder handed a Berachain header sees one element too many. Consequences: the header is 48 bytes larger, the block hash preimage differs in shape, and the consensus layer&#x27;s proposer identity is now consensus-critical EL data that the next block&#x27;s mandatory transaction reads. <span class="pill s-removed">silent</span><p class="src"><b>src</b> src/primitives/header.rs:prev_proposer_pubkey, bera-geth/core/types/block.go:ParentProposerPubkey · <b>live</b> RLP-reconstructed from eth_getBlockByNumber @ 25264103: keccak256 of the 21 mainnet fields does NOT equal the block hash; keccak256 of 22 fields with the 48-byte pubkey appended DOES equal 0xd0e09c8b1a862f34950fc506d4296e8d30f2053060a7a64813b35da65fd2aea4</p></div></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">7</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>BRIP-0002</code></td><td>Base Fee Change Denominator</td><td><span class="pill">adopted</span></td><td><div class="wrap">Denominator 48 instead of 8 — the source comment calls it a &#x27;6x increase&#x27;.<p class="src"><b>src</b> bera-geth/params/protocol_params.go:BerachainBaseFeeChangeDenominator</p></div></td></tr><tr><td><code>BRIP-0003</code></td><td>Stable Block Time</td><td><span class="pill">adopted</span></td><td><div class="wrap">Block CADENCE is a consensus rule here, not a node setting. Vanilla CometBFT paces blocks with each validator&#x27;s local `timeout_commit`; BRIP-0003 replaces that with an algorithmic delay computed from an (InitialTime, InitialHeight) checkpoint and the drift between actual and expected block time, gated on a consensus parameter `Feature.SBTEnableHeight`. A node that reaches a height past SBTEnableHeight without the delay state panics outright. Recorded under ordering because it is the mechanism that makes &quot;2s block time&quot; a protocol claim rather than an average.<p class="src"><b>src</b> beacon-kit/consensus/cometbft/service/finalize_block.go:SBTEnableHeight · <b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0003.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0003.md</a></p></div></td></tr><tr><td><code>BRIP-0004</code></td><td>Proof of Liquidity distribution (tx type 0x7E, parentProposerPubkey header field, PoL Distributor)</td><td><span class="pill">adopted</span></td><td><div class="wrap">The single most consequential Berachain spec. It puts the consensus layer&#x27;s proposer identity INSIDE the execution header, and turns validator reward distribution into an EVM call the block is invalid without.<p class="src"><b>src</b> bera-geth/core/types/tx_pol.go:PoLTx, src/transaction/pol.rs:create_pol_transaction</p></div></td></tr><tr><td><code>BRIP-0008</code></td><td>Fulu hysteresis parameters and PoL vNext</td><td><span class="pill">adopted</span></td><td><div class="wrap">Consensus-layer only: changes the effective-balance hysteresis quotient to 100 and the upward multiplier to 10, and moves EVM inflation to a new address at a new rate (1.705 BERA/block, down from 5.75).<p class="src"><b>src</b> beacon-kit/config/spec/mainnet.go:mainnetHysteresisQuotientFulu</p></div></td></tr><tr><td><code>BRIP-0010</code></td><td>Fusaka Hardfork Specification (Berachain&#x27;s name for the fork this row calls osaka + the CL&#x27;s fulu)</td><td><span class="pill">adopted</span></td><td><div class="wrap">Osaka minus EIP-7594 (PeerDAS) plus a 32 KB / 64 KB code-size bump. The client carries end-to-end tests asserting each bundled EIP takes effect, which is where the composition is enumerable.<p class="src"><b>src</b> src/node/evm/config.rs:MAX_CODE_SIZE_OSAKA, src/evm/mod.rs:osaka_eip_tests</p></div></td></tr><tr><td><code>BRIP-0007</code></td><td>Berachain Preconfirmations</td><td><span class="pill">proposed</span></td><td><div class="wrap">NOT SHIPPED, and recorded so the negative is pinned rather than assumed. Status `Review` since 2025-10-22. The design is the MegaETH shape arrived at from the other direction: a single Sequencer built as a bera-reth add-on seals a PARTIAL block every 200ms, signs it, and pushes it to RPC nodes over a websocket method `preconf_newPartialBlock`; those RPC nodes re-execute it and then OVERRIDE eth_getBalance / eth_getTransactionCount / eth_estimateGas / eth_getBlockByNumber / eth_gasPrice / eth_getTransactionReceipt to serve pre-confirmed state, which is held only in memory and discarded on the next fork-choice head. It would also be the first place Berachain executes transactions in parallel (&quot;transactions are executed in parallel ... transactions with conflicting state access are shuffled back to the mempool&quot;). None of it is in bera-reth v1.4.4: `grep -ri preconf src/` finds nothing, the only trace in the pinned tree is a nightly Docker job that builds the `preconf-dev` BRANCH, and the public RPC answers the method with -32601. When it lands the ordering answer for this chain changes shape and this row will need re-reading.<p class="src"><b>src</b> .github/workflows/docker-nightly-preconf.yml:preconf-dev · <b>live</b> preconf_newPartialBlock on https://rpc.berachain.com @ 25415365 -&gt; -32601 Method not found · <b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0007.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0007.md</a></p></div></td></tr><tr><td><code>BRIP-0009</code></td><td>Deprecation of Go-ethereum Execution Client</td><td><span class="pill">adopted</span></td><td><div class="wrap">The chain&#x27;s own, Final (2026-01-11) statement of the two-clients-three-forks divergence this row found empirically: bera-geth is deprecated and bera-reth is the sole maintained EL. The stated REASON ties client mono-culture to ordering — &quot;future protocol enhancements, particularly the preconfirmation network described in BRIP-0007, will require deep integration with reth-sdk for block builder and RPC modifications&quot;. So bera-geth&#x27;s inability to validate the current head is not neglect; it is a deliberate consequence of moving block building into reth.<p class="src"><b>src</b> bera-geth/params/config.go:BerachainChainConfig · <b>doc</b> <a href="https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0009.md">https://github.com/berachain/BRIPs/blob/main/meta/BRIP-0009.md</a></p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">16</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>CometBFT DOES NOT ORDER THE TRANSACTIONS. The intuitive reading of a CometBFT-plus-EVM chain — consensus picks the transaction list in PrepareProposal, the execution layer runs what it is handed — is false here. BeaconKit&#x27;s prepareProposal ignores the CometBFT mempool entirely and returns exactly two opaque blobs, the SSZ beacon block and the blob sidecars. EVM transactions are never CometBFT transactions. The list is chosen by bera-reth&#x27;s payload builder over its own mempool, priority-fee greedy and single-threaded, and handed up through engine_getPayloadV4P11. Ordering and execution happen in the same pass, in the execution layer.</li><li>A TRANSACTION THAT IS ORDERED BUT INVALID WHEN EXECUTED KILLS THE BLOCK, NOT ITSELF. There is no per-transaction skip at verification time: engine_newPayload is all-or-nothing, ProcessProposal answers PROCESS_PROPOSAL_STATUS_REJECT, and CometBFT re-proposes the height. An RPC client sees nothing at all — no receipt, no status-0 receipt, no orphan, no reorg, because single-slot finality means the rejected block never enters the canonical chain. beacon-kit&#x27;s own test injects a transaction priced below the base fee and asserts exactly this. Note the contrast with the other CometBFT chain in this dataset: Artela ERASES the transaction (in the block, no index entry, receipt null forever); Berachain never produces the block. Same consensus engine, opposite failure mode — the difference is that Berachain&#x27;s EVM is a separate process behind the Engine API, whose verdict is over the payload rather than over a transaction.</li><li>THE ONE TIME IT DID HAPPEN, THE CHAIN STOPPED ORDERING. Prague3&#x27;s blocked-address rule (Nov 2025) is a consensus rule keyed on EXECUTION OUTPUT — a block is invalid if any receipt in it logs one of eight addresses — which is exactly the predicate a block builder cannot evaluate while selecting transactions. bera-reth&#x27;s answer was to gate its whole selection loop on `while !prague3_active` and log &quot;Prague3 is active, building empty block&quot;. For nine days every block contained nothing but the mandatory PoL transaction. If you want a shipped, on-mainnet demonstration of why validity rules that depend on execution output are different in kind from rules that do not, this is it.</li><li>NO PRECONFIRMATIONS, AND NO EARLY RECEIPT. Single-slot finality means an eth_getTransactionReceipt answer is already final and cannot change; there is no provisional block hash to look for. BRIP-0007 designs a sequencer that would serve 200ms partial-block state through overridden eth_* methods, but it is status Review, has no code in bera-reth v1.4.4, and the public RPC answers preconf_newPartialBlock with -32601. Anything built on that assumption today is building on an unshipped design.</li><li>THE PoL TRANSACTION RUNS BEFORE EVERY USER TRANSACTION, and consensus enforces it in both directions: index 0 must be a PoL transaction and no other index may be. So no user transaction in a block can influence the distribution call. The coupling is across blocks instead — the inflation withdrawal at the end of block N is what the PoL call at the top of N+1 spends. And because the expected PoL transaction is derived from the header&#x27;s BASE FEE and checked by hash, changing the base-fee floor changes the bytes of the block&#x27;s mandatory transaction.</li><li>&quot;BERACHAIN V2&quot; IS NOT A HARD FORK. The chain&#x27;s protocol forks are genesis, prague, prague1-4, osaka and osaka1 — there is no v2 among them, in the client or in the genesis config. &quot;V2&quot; names product/tokenomics generations of Proof-of-Liquidity (PoL v2 / &quot;PoL Next&quot;), which ship as contract upgrades behind the PoL Distributor proxy plus two consensus-layer constants. The protocol surface it touches is already in this row: the Fulu inflation address and rate, and the fact that the Distributor is an upgradeable proxy the protocol calls every block. Do not go looking for a &quot;v2&quot; fork name in a client config.</li><li>THE PREDICTION WAS WRONG. Berachain does not have a near-empty EVM delta. It raises EIP-170&#x27;s contract size limit to 32 KB and EIP-3860&#x27;s initcode limit to 64 KB, adds a transaction type, adds a 22nd header field, floors the base fee, slows the base-fee denominator sixfold, floors the blob base fee, and ships Osaka without PeerDAS. What IS empty is the precompile set: zero custom precompiles, zero divergences, stock revm.</li><li>A 30 KB contract deploys here and nowhere else in this dataset. Size-limit tooling that hardcodes 24576 reports a false failure on Berachain; a contract developed on Berachain against the 32 KB limit cannot be deployed on mainnet.</li><li>Type byte 0x7E is a COLLISION with OP Stack&#x27;s deposit transaction, on a chain with no OP ancestry. Both are unsigned system-authored transactions from 0xfff..ffe; the field lists are different. Any decoder with a global type-byte map mis-parses one chain or the other.</li><li>The first transaction of every block consumes ZERO block gas while running with a 30,000,000 gas limit and emitting logs (41 at the probed block). Receipt-sum gas accounting agrees with the header; execution-cost accounting does not.</li><li>parentBeaconBlockRoot is a well-formed 32-byte root of the wrong object. The 4788 contract is byte-identical to mainnet&#x27;s and the ring buffer is correct, but it commits to a BeaconKit BeaconBlockHeader whose body and state layouts are not Ethereum&#x27;s. Restaking and validator-proof libraries verify against the wrong generalized indices and get no error, only a failed proof — or worse, a succeeding proof of a different field.</li><li>EIP-7251 consolidations are accepted, charged for, queued, drained into requestsHash and then silently discarded by the consensus layer. Every layer a caller can observe reports success.</li><li>Withdrawals are issuance, not staking. Every block carries exactly one withdrawal with index and validatorIndex both 2^64-1 — a synthetic entry the consensus layer requires to be first and which no validator owns. In 60 consecutive blocks there were no validator withdrawals at all.</li><li>For nine days in November 2025 a block was invalid if any receipt in it logged an ERC-20 Transfer involving one of eight addresses. Transaction validity was a predicate over emitted logs, decided after execution. bera-reth&#x27;s response was to build empty blocks for the whole window.</li><li>Two execution clients, three fork generations apart. bera-geth&#x27;s newest release has no osakaTime for chain 80094 and no Osaka1, so it cannot validate the current head; bera-reth is what actually runs. Pinning &quot;the Berachain client&quot; without checking which one gives an answer that is wrong about the code size limit, the base-fee floor and the blob schedule.</li><li>The Engine API is forked: engine_newPayloadV4P11 / forkchoiceUpdatedV3P11 / getPayloadV4P11 carry a proposerPubkey argument, and engine_getPayloadV5 is implemented but deliberately unadvertised. Stock CL and stock EL cannot be mixed in either direction.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Chain ID 80094 · role: <code>fork</code> · upstream: ethereum · baseline: Osaka (BRIP-0010)</strong></p>
+<p>Reference: <a href="https://github.com/berachain/bera-reth">berachain/bera-reth <code>v1.4.4</code></a> @ <code>aa9bc73f</code>,
+with <a href="https://github.com/berachain/beacon-kit">beacon-kit <code>v1.4.1</code></a> @ <code>0a91d178</code> and
+<a href="https://github.com/berachain/bera-geth">bera-geth <code>v1.011608.0</code></a> @ <code>e8f8f968</code> as companions.
+Live probes at block <strong>25264103</strong> (<code>0x18183e7</code>) on <code>https://rpc.berachain.com</code>.</p>
+<p>The backlog predicted a near-empty EVM delta, with the divergence living entirely in
+consensus. <strong>That is refuted, and refuted in an instructive way.</strong> The consensus layer
+does diverge — but the part of Berachain a contract author actually collides with is the
+execution layer, and the part that genuinely <em>is</em> empty is the one the prediction never
+mentioned: the precompile set.</p>
+<p><strong>Second pass, 2026-08-28</strong> — added the ordering/execution axis (<strong>§11</strong>, the headline of
+this pass) and checked the row against Berachain's own BRIP series, which was not read the
+first time. <code>web3_clientVersion</code> now answers
+<code>bera-reth/v1.4.4-aa9bc73/x86_64-unknown-linux-gnu</code>, so the pinned commit is confirmed to
+be what mainnet runs. New live probes are pinned at block <strong>25415365</strong>. <strong>§12</strong> answers
+"what is Berachain v2".</p>
+<hr />
+<h2>1. The contract size limit is 32 KB, not 24 KB</h2>
+<p>BRIP-0010, Berachain's Osaka (2026-07-08), raises <strong>EIP-170</strong> from 24576 to <strong>32768</strong>
+bytes and <strong>EIP-3860</strong> initcode from 49152 to <strong>65536</strong> bytes. It is a two-line
+configuration change — <code>MAX_CODE_SIZE_OSAKA</code> and <code>MAX_INITCODE_SIZE_OSAKA</code> in
+<code>src/node/evm/config.rs</code>, applied to <code>cfg_env.limit_contract_code_size</code> — and it is the
+single most portable-code-breaking fact in this row.</p>
+<p>Verified live, by binary search against the running network at the pinned block:</p>
+<table>
+<thead>
+<tr>
+<th>create returning</th>
+<th>Berachain @ 25264103</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>32768 bytes</td>
+<td><strong>OK</strong></td>
+</tr>
+<tr>
+<td>32769 bytes</td>
+<td><code>EVM error: CreateContractSizeLimit</code></td>
+</tr>
+<tr>
+<td>65536 bytes of initcode</td>
+<td><strong>OK</strong></td>
+</tr>
+<tr>
+<td>65537 bytes of initcode</td>
+<td><code>max initcode size exceeded</code></td>
+</tr>
+</tbody>
+</table>
+<p>Mainnet's limit is 24576. Nothing else in this dataset moves EIP-170. The failure mode
+is asymmetric and quiet: a size linter that hardcodes 24576 reports a false failure on
+Berachain, and a contract <em>developed</em> on Berachain against 32 KB cannot be deployed
+anywhere else — it will be rejected at deploy time on mainnet with the same
+<code>max code size exceeded</code> a developer has never seen locally.</p>
+<h2>2. Type byte <code>0x7E</code> collides with OP Stack's deposit transaction</h2>
+<p>Berachain has no OP Stack ancestry. It nonetheless allocates <code>0x7E</code> — OP's
+<code>DepositTx</code> — to <code>PoLTx</code>, the BRIP-0004 Proof-of-Liquidity distribution transaction.
+Both are unsigned, both are authored by the protocol, both report
+<code>from = 0xfff…ffe</code>. The field lists are unrelated, so a decoder holding one global
+type-byte map mis-parses one chain or the other:</p>
+<pre><code>eth_getTransactionByBlockNumberAndIndex(0x18183e7, 0x0)
+  type 0x7e · from 0xfffffffffffffffffffffffffffffffffffffffe
+  to   0xd2f19a79b026fb636a7c300bf5947df113940761   (PoL Distributor)
+  nonce 0x18183e6                                    (= block number - 1)
+  v = r = s = 0
+</code></pre>
+<p>The dataset's existing claim is that the type-byte space is nearly full and that chains
+assign downward from <code>0x7f</code>. Berachain is the first row where two <em>unrelated lineages</em>
+have landed on the same byte, rather than an ancestor and its descendants sharing one.</p>
+<p>Three consensus rules make this transaction unusual even among protocol transactions:</p>
+<ul>
+<li><strong>It must be index 0 of every block, and must appear nowhere else.</strong>
+  <code>validate_pol_transaction</code> recomputes the expected transaction from (chain id,
+  distributor address, block number, base fee, parent proposer key) and compares
+  <strong>hashes</strong>. The transaction is a pure function of the header.</li>
+<li><strong>It consumes zero block gas</strong> while running with a 30,000,000 gas limit. At the
+  probed block its receipt reports <code>gasUsed 0</code> with <strong>41 logs</strong>, and the block's final
+  <code>cumulativeGasUsed</code> (249042) is exactly the sum of the <em>other seven</em> receipts.</li>
+<li><strong>It is rejected by the transaction pool</strong>, so it can only ever be synthesised by a
+  block producer.</li>
+</ul>
+<p><code>ApplyPoLMessage</code> (bera-geth) / the executor's system-call path (bera-reth) bypass the
+state transition entirely — no nonce check, no balance check, no gas purchase, no
+refund — yet the result is surfaced as an ordinary typed receipt. An event indexer sees
+Proof-of-Liquidity payouts; a gas accountant sees nothing.</p>
+<h2>3. The block header has 22 RLP fields</h2>
+<p>Established by reconstruction rather than by reading JSON keys, because the JSON keys
+would not have proved it:</p>
+<pre><code>keccak256(rlp(21 mainnet fields))                       != block hash
+keccak256(rlp(21 fields + 48-byte parentProposerPubkey)) == 0xd0e09c8b…2aea4  ✓
+</code></pre>
+<p>The 22nd field is the <strong>BLS12-381 public key of the parent block's proposer</strong>, appended
+after <code>requestsHash</code>. It is <code>rlp:"optional"</code> in the struct, which makes <em>old</em> headers
+decodable but does nothing for the reverse direction: a stock Ethereum header decoder
+handed a Berachain header sees one element too many.</p>
+<p>This is the seam the brief was looking for, and it runs the opposite way from the
+expected one. Instead of consensus data staying in consensus, <strong>the consensus layer's
+proposer identity is consensus-critical execution-layer data</strong>, written into the header
+and read back by the next block's mandatory transaction.</p>
+<p>Everything else in the header is mainnet's, with mainnet's meaning. <code>blobGasUsed</code> and
+<code>excessBlobGas</code> are real blob gas — not repurposed as on OP Stack, not pinned to zero as
+on Avalanche. <code>parentBeaconBlockRoot</code> and <code>requestsHash</code> are present, unlike Sonic.</p>
+<h2>4. The five Ethereum system contracts are byte-identical — and two of them lie</h2>
+<p>Diffed <code>eth_getCode</code> at the pinned block against an Ethereum mainnet node:</p>
+<table>
+<thead>
+<tr>
+<th>address</th>
+<th>EIP</th>
+<th>code</th>
+<th>consumed by BeaconKit?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x000F3df6…Beac02</code></td>
+<td>4788</td>
+<td><strong>identical</strong></td>
+<td>root of a <em>BeaconKit</em> block</td>
+</tr>
+<tr>
+<td><code>0x0000F908…002935</code></td>
+<td>2935</td>
+<td><strong>identical</strong></td>
+<td>n/a — fully inherited</td>
+</tr>
+<tr>
+<td><code>0x00000961…007002</code></td>
+<td>7002</td>
+<td><strong>identical</strong></td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td><code>0x0000BBdD…007251</code></td>
+<td>7251</td>
+<td><strong>identical</strong></td>
+<td><strong>no — silently discarded</strong></td>
+</tr>
+<tr>
+<td><code>0x4242…4242</code></td>
+<td>6110</td>
+<td>Berachain's own</td>
+<td>yes, from Osaka</td>
+</tr>
+</tbody>
+</table>
+<p><strong>EIP-7251 is the sharpest silent failure here.</strong> The consolidation predeploy is live:
+it accepts a request, charges the excess fee, queues it, and the execution layer's
+system call drains the queue into the block's requests list, committed inside
+<code>requestsHash</code>. BeaconKit then decodes the type-<code>0x02</code> requests, validates their length,
+and drops them. The source says it in one line —
+<em>"ConsolidationRequest is introduced in Pectra but not used by us"</em> — and
+<code>processOperations</code> iterates <code>requests.Withdrawals</code> and <code>requests.Deposits</code> and never
+touches <code>requests.Consolidations</code>. A validator consolidation succeeds at every layer a
+caller can observe and has no effect. Recorded <code>tombstoned</code>, not <code>removed</code>: the address
+is occupied, callable, and takes payment.</p>
+<p><strong>EIP-4788 is well-formed and points at the wrong object.</strong> The ring buffer is correct
+and the root is a genuine SSZ hash-tree-root — of a <em>BeaconKit</em> <code>BeaconBlockHeader</code>
+(<code>payload_requests.go</code> passes <code>blk.GetParentBlockRoot()</code>). BeaconKit's header happens to
+carry the same five fields as Ethereum's, so header-level generalized indices coincide.
+Below that they do not: the <code>BeaconBlockBody</code> keeps empty compatibility stubs for
+attestations, voluntary exits, the sync aggregate and BLS-to-execution changes, and the
+<code>BeaconState</code> behind <code>state_root</code> is BeaconKit's. Every 4788-based proof library —
+validator balance proofs, withdrawal-credential proofs, restaking oracles — reads a
+well-formed 32-byte root and verifies against a different structure.</p>
+<p><strong>EIP-6110 is repurposed.</strong> Berachain's deposit contract sits at
+<code>0x4242424242424242424242424242424242424242</code> — the address Ethereum uses for its
+<em>testnet</em> deposit contracts — and emits <code>Deposit(bytes,bytes,uint64,bytes,uint64)</code>
+(topic <code>0x68af7516…891d46</code>), not mainnet's five-<code>bytes</code> <code>DepositEvent</code>. Ethereum's own
+deposit address is an <strong>empty account</strong> here, so a tool holding it as a constant gets
+silent success with empty output, exactly as on Gnosis. And the request path is gated on
+<strong>Osaka</strong>, not Prague: for thirteen months Prague was active while EIP-6110 emitted
+nothing, deposits reaching BeaconKit through a separate log-watching store.</p>
+<h2>5. Withdrawals are issuance. There is one per block and no validator owns it</h2>
+<p>Every block carries <strong>exactly one</strong> withdrawal, with <code>index</code> and <code>validatorIndex</code> both
+set to <code>2^64-1</code>:</p>
+<pre><code>withdrawals: [{ index: 0xffffffffffffffff, validatorIndex: 0xffffffffffffffff,
+                address: 0x1ae7dd7ae06f6c58b4524d9c1f816094b1bccd8e,
+                amount: 0x65a03c40 }]          # 1.705 BERA
+</code></pre>
+<p>BeaconKit <em>requires</em> it: <code>processWithdrawals</code> rejects any block whose first withdrawal
+is not exactly <code>EVMInflationWithdrawal(timestamp)</code>, which also costs one slot of
+<code>MAX_WITHDRAWALS_PER_PAYLOAD</code>. Validator withdrawals, when they exist, follow it — in 60
+consecutive blocks to the pinned height there were none.</p>
+<p>Unlike Gnosis, these credit <strong>real native BERA</strong>. The recipient's balance is a fixed
+point: exactly <code>1705000000000000000</code> wei at every height sampled, delta 0 across the
+pinned block. The withdrawal credits one block's inflation at the <em>end</em> of block <em>N</em>,
+and the PoL transaction at index 0 of block <em>N+1</em> spends it. Two protocol mechanisms at
+opposite ends of the block, forming a closed loop no user transaction touches.</p>
+<p>The address is a consensus-layer config value and has moved twice (genesis → Deneb1
+<code>0x656b95E5…</code> at 5.75 BERA/block → Fulu <code>0x1AE7dD7A…</code> at 1.705). The Deneb1 address
+still holds 63.6M BERA and is no longer credited.</p>
+<h2>6. The base fee is burned; the tip goes to the coinbase; both have floors</h2>
+<p>Checked by balance delta rather than by reading the client, because that is the question
+Gnosis got wrong:</p>
+<pre><code>coinbase 0x1daa6d6b… @ 25264102 → @ 25264103   = +6160500532907892 wei
+</code></pre>
+<p>— exactly the block's total priority fee. The base-fee portion
+(<code>249042 gas × 1 gwei = 249042000000000 wei</code>) appears in no account's delta. Burned, as
+on mainnet.</p>
+<p>What <em>is</em> different is the shape of the curve. <code>next_block_base_fee</code> returns
+<code>raw.max(min_base_fee)</code>, inside header validation, with a floor that has been switched
+three times: 1 gwei at Prague1, <strong>0</strong> at Prague2, 1 gwei again at Osaka1 (2026-08-05,
+anti-spam). It is 1 gwei at the pinned block — <code>baseFeePerGas</code> is exactly <code>0x3b9aca00</code>.
+Osaka1 adds a <strong>1 gwei minimum blob base fee</strong> against mainnet's 1 wei, visible in
+<code>eth_feeHistory</code> as <code>baseFeePerBlobGas: 0x3b9aca00</code>. And BRIP-0002 sets the base-fee
+change denominator to <strong>48</strong> instead of 8, so the fee moves six times more slowly in
+both directions.</p>
+<p>There is also a mempool minimum-priority-fee validator, which is <strong>not</strong> a protocol rule
+— the source is explicit that "it never changes block validity". It is recorded in
+<code>fee_model</code> so it is not mistaken for one.</p>
+<h2>7. Prague3: nine days when transaction validity was a predicate over logs</h2>
+<p>On 2025-11-03 at 10:07:39 UTC — note the timestamp scheduled to the second — Berachain
+activated <strong>Prague3</strong>. Its content is a list of eight blocked addresses, a BEX vault
+address, and a single rescue address, all as <strong>chain-configuration fields</strong>. While
+active, a block was invalid if any receipt in it contained:</p>
+<ul>
+<li>an ERC-20 <code>Transfer(address,address,uint256)</code> log whose <code>from</code> was a blocked address
+  and whose <code>to</code> was not the rescue address, or whose <code>to</code> was a blocked address; or</li>
+<li>any <code>Transfer</code> touching the BEX vault; or</li>
+<li>any <code>InternalBalanceChanged</code> event emitted by that vault.</li>
+</ul>
+<p>Nothing else in this dataset makes validity a predicate over <strong>emitted logs</strong>. It is not
+a mempool filter and not a precompile revert: the transaction executes to completion and
+is <em>then</em> rejected — in bera-geth by returning an error from <code>ApplyTransactionWithEVM</code>
+after the receipt is built, in bera-reth in <code>validate_block_post_execution</code> after the
+whole block has executed.</p>
+<p>Two consequences worth stating plainly. First, it freezes an address <strong>for a token that
+has no freeze function</strong>, because the rule is imposed on the log rather than on the
+token. Second, bera-reth's payload builder simply gave up: <code>if prague3_active { …
+building empty block }</code>, and the <code>while</code> loop that pulls from the pool is guarded by
+<code>!prague3_active</code>. For the whole window the chain produced blocks containing nothing but
+the PoL transaction.</p>
+<p><strong>Prague4</strong> (2025-11-12) exists only to switch Prague3 off:
+<code>is_prague3_active_at_timestamp</code> returns false once Prague4 is live, and Prague4 has no
+other content. A fork whose entire job is to end another fork.</p>
+<p>The rule is dead at the pinned block. It is recorded because it shipped, and because the
+machinery — a blocked-address list and a rescue address as first-class config — is still
+in both clients.</p>
+<h2>8. Two execution clients, three fork generations apart</h2>
+<p>The brief assumed the execution layer was stock geth/reth. It is not: <code>berachain/bera-geth</code>
+and <code>berachain/bera-reth</code> are both real forks, and <strong>they do not agree on what chain this
+is</strong>.</p>
+<ul>
+<li><strong>bera-reth v1.4.4</strong> (2026-07-29) is what runs. The pinned block's <code>extraData</code> decodes
+  to <code>bera-reth/v1.4.4/linux</code>. Its chain config for 80094 has <code>osakaTime</code> and <code>osaka1</code>.</li>
+<li><strong>bera-geth v1.011608.0</strong> (2026-01-20) is the newest bera-geth release, and
+  <code>params/config.go:BerachainChainConfig</code> has <strong>no <code>OsakaTime</code></strong> and no Osaka1 concept.
+  It stops at Prague4 and cannot validate the current head.</li>
+</ul>
+<p>Pinning "the Berachain client" without checking which one gives an answer that is wrong
+about the code size limit, the base-fee floor and the blob schedule. This row pins
+bera-reth as primary on that evidence and keeps bera-geth as a companion, because it is
+the readable Go statement of the same rules — <code>tx_pol.go</code>, <code>ValidatePrague3Transaction</code>,
+<code>ParentProposerPubkey</code> — for everything up to Prague4.</p>
+<h2>9. Osaka without PeerDAS, and an Engine API that is not the Engine API</h2>
+<p>BRIP-0010 activates Osaka <strong>minus EIP-7594</strong>. The client says so twice
+(<code>src/engine/builder.rs:323</code>, <code>src/pool/mod.rs:75</code>): <em>"Osaka does not adopt EIP-7594
+(PeerDAS); EIP-4844 sidecars remain"</em>. Blob target/max stays 3/6 at Cancun, Prague <em>and</em>
+Osaka — mainnet went to 6/9 at Prague and higher through the BPO forks, of which
+Berachain has none. Zero blobs were posted in the 60 blocks sampled.</p>
+<p>This is the mirror image of BSC taking Prague's EVM half and dropping its beacon half:
+Berachain takes Osaka's EVM half and drops its networking half. Two chains, opposite
+halves, same lesson about fork names.</p>
+<p>The <strong>Engine API itself is forked</strong>. Three non-standard methods —
+<code>engine_newPayloadV4P11</code>, <code>engine_forkchoiceUpdatedV3P11</code>, <code>engine_getPayloadV4P11</code> —
+carry the extra <code>proposerPubkey</code> argument BRIP-0004 needs, and <code>engine_getPayloadV5</code> is
+implemented but deliberately <strong>removed from the advertised capability set</strong>
+(<code>BERACHAIN_REMOVED_CAPABILITIES</code>), so Osaka payloads travel over V4P11 instead of the
+standard V5. A stock consensus client cannot drive this execution layer and a stock
+execution client cannot be driven by BeaconKit — a sharper statement of the split than
+"BeaconKit replaces the beacon chain".</p>
+<h2>10. What actually is empty: the precompiles</h2>
+<p><code>src/evm/mod.rs</code> builds the precompile set with the stock revm constructor,
+<code>Precompiles::new(PrecompileSpecId::from_spec_id(spec))</code>, with no Berachain insertions
+and no removals. Confirmed live: <code>0x01</code>–<code>0x12</code> all return empty code (native, not
+predeploys), and <code>0x0100</code> returns <code>0x…01</code> for a valid P-256 vector and <code>0x</code> for the same
+vector with one bit of <code>s</code> flipped. <code>CLZ(0)</code> returns 256.</p>
+<p>This is worth stating because the intuition it defeats is a strong one. A chain with a
+bespoke consensus layer "should" expose it through precompiles — that is what Sei, Flare,
+Avalanche and Tron all do. Berachain reaches its consensus layer through an ordinary
+upgradeable proxy called by a mandatory transaction, and through the withdrawals list.
+<strong>Zero custom precompiles, one custom transaction type, one extra header field.</strong></p>
+<h2>11. CometBFT does not order this chain. The execution layer does — and an invalid transaction kills the block</h2>
+<p>This is the question the first pass did not ask, and the intuitive answer is wrong.</p>
+<p><strong>(a) What orders transactions.</strong> Not CometBFT. BeaconKit's <code>prepareProposal</code> ignores
+<code>req.Txs</code> — the CometBFT mempool — completely, and returns exactly two CometBFT
+"transactions":</p>
+<pre><code class="language-go">// beacon-kit/consensus/cometbft/service/prepare_proposal.go
+blkBz, sidecarsBz, err := s.BlockBuilder.BuildBlockAndSidecars(...)
+return &amp;cmtabci.PrepareProposalResponse{ Txs: [][]byte{blkBz, sidecarsBz} }, nil
+</code></pre>
+<p>The SSZ beacon block and the blob sidecars. <strong>EVM transactions are never CometBFT
+transactions</strong>; to CometBFT they are opaque bytes inside one of those two blobs. The
+transaction list is chosen by the <em>execution</em> layer:</p>
+<pre><code>BuildBlockAndSidecars  →  retrieveExecutionPayload
+                       →  localPayloadBuilder.RetrievePayload / RequestPayloadSync
+                       →  engine_getPayloadV4P11
+                       →  bera-reth  src/engine/builder.rs:default_berachain_payload
+                          best_txs = pool.best_transactions_with_attributes(base_fee, blob_gasprice)
+</code></pre>
+<p>That is reth's stock priority-fee-greedy iterator over bera-reth's own mempool. The
+consensus layer's only ordering decision is <em>whether to propose the payload it was
+handed</em>. So ordering does <strong>not</strong> commit before execution — the builder executes each
+transaction as it appends it, and the list and the state root are fixed in one pass. The
+contrast with Monad is exact and opposite: there consensus commits the transaction list at
+height <code>N</code> and the state root only at <code>N+3</code>.</p>
+<p><strong>(b) Parallel or optimistic? Neither.</strong> A single-threaded
+<code>while let Some(pool_tx) = best_txs.next()</code> loop, no speculation, no re-execution, no
+conflict resolution — so there is no conflict rule for two implementations to disagree
+about. The only optimism is at the consensus layer and is node-local: during
+<code>ProcessProposal</code> of block <em>N</em>, a node that is the next proposer begins building <em>N+1</em>
+(<code>handleOptimisticPayloadBuild</code>) and discards that work if <em>N</em> is rejected
+(<code>handleRebuildPayloadForRejectedBlock</code>). Latency, not validity. Parallel execution exists
+only in BRIP-0007's unshipped sequencer.</p>
+<p><strong>(c) A transaction ordered but invalid at execution invalidates the WHOLE BLOCK.</strong></p>
+<pre><code>ProcessProposal → Blockchain.ProcessProposal → VerifyIncomingBlock
+               → verifyStateRoot (WithVerifyPayload(true))
+               → state_processor_payload.go: NotifyNewPayload
+               → engine_newPayloadV4P11
+INVALID → backoff.Permanent(ErrInvalidPayloadStatus)   (execution/engine/engine.go)
+        → PROCESS_PROPOSAL_STATUS_REJECT                (process_proposal.go)
+</code></pre>
+<p><code>engine_newPayload</code> has no per-transaction skip; its verdict is over the payload. And
+beacon-kit ships a test for <strong>precisely</strong> the case the brief asks about — a transaction
+priced below the block base fee, injected into an otherwise valid proposal:</p>
+<pre><code class="language-go">// beacon-kit/testing/simulated/malicious_proposer_test.go
+// TestProcessProposal_BadBlock_IsRejected
+s.Require().Equal(types.PROCESS_PROPOSAL_STATUS_REJECT, processResp.Status)
+s.Require().Contains(s.LogBuffer.String(), errors.ErrInvalidPayloadStatus.Error())
+s.Require().Contains(s.LogBuffer.String(),
+    &quot;max fee per gas less than block base fee: address 0x20f3…51D4, &quot;+
+    &quot;maxFeePerGas: 10000000, baseFee: 765625000&quot;)
+</code></pre>
+<p><strong>Why it almost never arises.</strong> The list is built by the proposer's own EL, which executes
+as it appends. In <code>default_berachain_payload</code>, a nonce-too-low transaction is skipped
+(<code>"skipping nonce too low transaction"</code>), any other invalidity calls <code>best_txs.mark_invalid</code>
+and drops the transaction's dependents, and both paths <code>continue</code> <strong>inside the builder</strong> —
+before anything reaches a payload. The base-fee case resolves the same way:
+<code>best_transactions_with_attributes</code> is parameterised on the <em>new</em> block's base fee, so when
+Osaka1 restored the 1 gwei floor on 2026-08-05, sub-floor transactions simply stopped being
+selected. Only a faulty or Byzantine proposer produces the failing block.</p>
+<p><strong>What an RPC client observes: nothing at all.</strong> The rejected proposal never becomes a
+block. CometBFT re-proposes the height with the next proposer, and single-slot finality
+means the canonical chain never contains the rejected block — no receipt, no <code>status: 0</code>
+receipt, no orphan, no reorg, nothing to poll. The transaction is not consumed; it stays in
+the EL mempool and is retried at a later height or dropped. Live at 25415365, the public
+RPC's <code>txpool_status</code> is <code>{pending: 0x0, queued: 0x0}</code> — nothing queues here.</p>
+<p>Placed against the rest of this batch, Berachain is a third pole:</p>
+<table>
+<thead>
+<tr>
+<th>chain</th>
+<th>mechanism</th>
+<th>what the client sees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Conflux · IOTA EVM · <strong>Artela</strong></td>
+<td>ordered then erased</td>
+<td>receipt <code>null</code> forever — indistinguishable from never-submitted</td>
+</tr>
+<tr>
+<td>Taraxa</td>
+<td>no skip path</td>
+<td>receipt, <code>status: 0</code>, full gas limit charged</td>
+</tr>
+<tr>
+<td>Autonomys</td>
+<td>poisons the bundle</td>
+<td>operator slashed</td>
+</tr>
+<tr>
+<td>RISE</td>
+<td>cannot arise</td>
+<td>synchronous admission, execution precedes publication</td>
+</tr>
+<tr>
+<td><strong>Berachain</strong></td>
+<td><strong>whole block rejected</strong></td>
+<td><strong>no block at that round; nothing observable</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Artela is the instructive comparison because it is <em>also</em> CometBFT. There the EVM is
+in-process and the erasure is an indexing accident — the tx is provably in the block with
+no index entry. Berachain's EVM is a <strong>separate process behind the Engine API</strong>, so the
+verdict CometBFT receives is about the payload, not about a transaction. Same consensus
+engine, opposite failure mode, and the Engine API boundary is the whole reason.</p>
+<p><strong>The one time it really happened, the chain stopped ordering.</strong> Every other validity rule
+here is decidable at selection time — signature, nonce, balance, gas price against the base
+fee. <strong>Prague3 was not.</strong> "Is there a receipt in this block whose logs mention one of eight
+addresses" is a predicate over <em>execution output</em>, and it was evaluated in
+<code>validate_block_post_execution</code>, after the entire block had run, returning a
+<code>ConsensusError</code> over the <strong>block</strong>. For nine days in November 2025 Berachain genuinely had
+the state this row otherwise reports as unreachable: a transaction validly ordered,
+executed to completion, and then invalidating the block. The builder's answer was not to
+skip, refund or fail the transaction — it was to stop ordering:</p>
+<pre><code class="language-rust">// src/engine/builder.rs
+let prague3_active = chain_spec.is_prague3_active_at_timestamp(attributes.timestamp());
+if prague3_active { debug!(target: &quot;payload_builder&quot;, &quot;Prague3 is active, building empty block&quot;); }
+while !prague3_active &amp;&amp; let Some(pool_tx) = best_txs.next() { … }
+</code></pre>
+<p>Nine days of blocks containing nothing but the mandatory PoL transaction is what a
+consensus rule keyed on execution output costs when the block builder cannot predict it.</p>
+<p><strong>The PoL transaction's position is fixed, and it runs first.</strong> <code>apply_pre_execution_changes</code>
+runs the EIP-2935 blockhashes call, then the EIP-4788 beacon-root call, then
+<code>execute_pol_transaction_with_receipt</code> — and only then does the builder enter the selection
+loop. The verifying side enforces the position in both directions: <code>validate_pol_transaction</code>
+requires <code>transactions[0]</code> to be a PoL transaction <em>and</em> walks indices <code>1..n</code> rejecting any
+PoL transaction found there. So <strong>no user transaction in a block can affect the distribution
+call</strong>, because none has executed when it runs. The coupling is across the block boundary
+instead: the EIP-4895 inflation withdrawal is credited at the end of block <em>N</em> and the PoL
+call at the top of <em>N+1</em> spends it. A second coupling is sharper — the expected PoL
+transaction is derived from <em>(chain id, distributor, block number, </em><em>base fee</em><em>, parent
+proposer key)</em> and checked by hash, so switching the base-fee floor changes the bytes of the
+block's mandatory transaction. The fee floor is an input to a consensus-critical
+transaction hash, not only a user-facing rule.</p>
+<p>One thing the protocol does <strong>not</strong> require: that the call succeed. The executor treats only
+an EVM-level <code>Err</code> from <code>transact_system_call</code> as fatal and never inspects
+<code>result.is_success()</code>. A <em>reverting</em> <code>distributeFor</code> would produce a <code>status: 0</code> receipt at
+index 0 inside a perfectly valid block. Missing, moved or byte-different invalidates the
+block; failing does not.</p>
+<p><strong>(d) Preconfirmations: nothing to report — and that is the finding.</strong> CometBFT gives
+single-slot finality, so an <code>eth_getTransactionReceipt</code> answer is already final and cannot
+change. There is no early receipt and no provisional block hash — no analogue of MegaETH's
+<code>blockHash: 0xffff…ff</code>. <strong>BRIP-0007 "Berachain Preconfirmations" designs one</strong> and it is the
+MegaETH shape reached from the other direction: a single Sequencer built as a bera-reth
+add-on seals a <em>partial block</em> every 200 ms, signs it, pushes it to RPC nodes over a
+websocket method <code>preconf_newPartialBlock</code>, and those nodes re-execute it and then
+<strong>override</strong> <code>eth_getBalance</code>, <code>eth_getTransactionCount</code>, <code>eth_estimateGas</code>,
+<code>eth_getBlockByNumber</code>, <code>eth_gasPrice</code> and <code>eth_getTransactionReceipt</code> to serve
+pre-confirmed state — held only in memory, discarded whenever a new fork-choice head
+arrives, and explicitly reorg-able when fallback building triggers. It would also be the
+first place Berachain executes transactions in parallel.</p>
+<p>None of it is shipped. Status <code>Review</code> since 2025-10-22; <code>grep -ri preconf src/</code> in
+bera-reth v1.4.4 finds <strong>nothing</strong>; the only trace in the pinned tree is a nightly Docker
+job that builds the <code>preconf-dev</code> <em>branch</em>; and the public RPC answers the method with
+<code>-32601 Method not found</code> at block 25415365. Recorded as <code>adoption: proposed</code> so the
+negative is pinned rather than assumed — when it lands, this section needs rewriting.</p>
+<p>BRIP-0009 (Final, 2026-01-11) closes the loop with §8: bera-geth was deprecated <em>because</em>
+of this. "Future protocol enhancements — particularly the preconfirmation network described
+in BRIP-0007 — will require deep integration with reth-sdk for block builder and RPC
+modifications." The two-clients-three-forks divergence the first pass found empirically is
+a deliberate consequence of moving block building into reth.</p>
+<h2>12. "Berachain v2" is not a hard fork</h2>
+<p>Asked directly, and the answer is (b): <strong>a product name for something already in this row,
+under other names.</strong></p>
+<p>The chain's protocol forks are, completely: <code>genesis</code>, <code>prague</code>, <code>prague1</code>, <code>prague2</code>,
+<code>prague3</code>, <code>prague4</code>, <code>osaka</code>, <code>osaka1</code>. There is no <code>v2</code> in
+<code>src/hardforks/mod.rs:BerachainHardfork</code>, none in the <code>berachain</code> object of
+<code>tests/fixtures/mainnet-genesis.json</code>, none in bera-geth's <code>params/config.go</code>, and no BRIP
+numbered or titled "v2" in <code>berachain/BRIPs</code>. Two different things carry the name:</p>
+<ul>
+<li><strong>"Berachain V2"</strong> (blog, pre-mainnet) — the architecture rewrite that produced the
+  BeaconKit-plus-forked-EL design this row already describes. It predates chain 80094's
+  genesis.</li>
+<li><strong>"PoL v2" / "PoL Next"</strong> (May 2026, docs changelog) — the Proof-of-Liquidity
+  <em>tokenomics</em> generation: BGT phased out, emissions consolidated. It ships as <strong>contract
+  upgrades behind the PoL Distributor proxy</strong>, plus governance action. At the protocol
+  layer it is invisible <em>by design</em>, and the reason is already recorded here: <code>0xD2f1…0761</code>
+  is an upgradeable proxy whose <strong>address</strong> is a chain-config field (hard fork to change)
+  but whose <strong>code</strong> is not (governance to change). What the protocol's mandatory per-block
+  call actually does is governance-mutable without a client release. That is the whole
+  mechanism by which a "v2" of Proof-of-Liquidity can happen with no fork at all.</li>
+</ul>
+<p>The one place PoL vNext <em>does</em> reach consensus is BRIP-0010 §8, "Proof of Liquidity:
+Consensus Layer Parameter Updates" — <code>EVMInflationAddressFulu</code> and <code>EVMInflationPerBlockFulu</code>
+— and both values are already in this row (<code>0x1AE7dD7A…</code>, 1.705 BERA/block, replacing
+Deneb1's <code>0x656b95E5…</code> at 5.75). <strong>Nothing about "Berachain v2" is missing from the row.</strong></p>
+<p>Reading the BRIP series did turn up three genuine gaps, now fixed:</p>
+<ul>
+<li><strong>BRIP-0010's own title is "Fusaka Hardfork Specification."</strong> The row called it "Berachain
+  Osaka". Both are right for different halves — <code>osakaTime</code> in the EL config, <code>fulu</code> in the
+  CL, one timestamp — but a reader searching Berachain's own documents for "Osaka" will find
+  a fork called Fusaka. Recorded in <code>forks.note</code> and in the BRIP-0010 entry.</li>
+<li><strong>EIP-7823 and EIP-7883 (MODEXP bounds and repricing) were unrecorded</strong>, and under this
+  schema an omission silently asserts <code>inherited</code>. They are named in BRIP-0010 and asserted
+  by end-to-end tests in the client (<code>test_eip7823_modexp_oversized_input_halts_osaka</code>,
+  <code>MODEXP_MIN_GAS_OSAKA = 500</code>). Now <code>inherited</code> with source.</li>
+<li><strong>EIP-7918 may be a second Osaka omission.</strong> BRIP-0010's rationale says plainly that
+  "EIP-7918 (blob base fee) was excluded as Berachain does not use blob transactions" —
+  which would make Berachain's Osaka <em>mainnet Osaka minus 7594 minus 7918</em>. But unlike
+  PeerDAS, whose exclusion is asserted twice in bera-reth's own source, nothing in the
+  client confirms the reserve-price floor is off, and a Reth SDK wrapper inherits upstream
+  behaviour unless it overrides it. Recorded <code>unrecorded</code>, not guessed. See <em>Not established</em>.</li>
+</ul>
+<p>BRIP-0003 (<strong>Stable Block Time</strong>) is also now recorded: block <em>cadence</em> is a consensus rule
+here, not a node setting. Vanilla CometBFT paces blocks with each validator's local
+<code>timeout_commit</code>; BRIP-0003 replaces it with an algorithmic delay from an
+<code>(InitialTime, InitialHeight)</code> checkpoint, gated on a consensus parameter
+<code>Feature.SBTEnableHeight</code>, and a node that passes that height without the delay state
+<strong>panics</strong>. It is why "2 s block time" is a protocol claim and not an average.</p>
+<h2>Not established here</h2>
+<ul>
+<li><strong>EIP-7702 (<code>unrecorded</code>).</strong> Type <code>0x04</code> is in bera-reth's envelope and no Berachain
+  fork touches delegation, but the interaction between a 7702 delegation and the PoL
+  system call was not read, and no <code>0x04</code> transaction appeared in the 60 blocks sampled.</li>
+<li><strong>EIP-3529 (<code>unrecorded</code>).</strong> No Berachain fork touches refund accounting; not read.</li>
+<li><strong>The PoL Distributor's implementation.</strong> <code>0xD2f1…0761</code> is an upgradeable proxy. Its
+  address is a chain-config field (hard-fork to change) but its <em>code</em> is behind the
+  proxy (governance to change), so what the protocol's mandatory per-block call actually
+  does is mutable without a client release. The implementation contract was not
+  retrieved or read, and the 41 logs it emits were not decoded.</li>
+<li><strong>BeaconKit's <code>BeaconState</code> layout</strong> was not enumerated field by field. The 4788
+  finding rests on the <code>BeaconBlockBody</code> differing and on <code>state_root</code> being BeaconKit's;
+  the precise set of generalized indices that a mainnet proof library would mis-resolve
+  is not recorded.</li>
+<li><strong>Whether any validator withdrawal has ever appeared.</strong> 60 consecutive blocks is a
+  small sample; the claim recorded is about those blocks, not about all history.</li>
+<li><strong>A mainnet control for the EIP-170 probe.</strong> Three public Ethereum endpoints refused
+  the <code>eth_call</code> (403 / 521 / internal error), so the 24576 contrast rests on the
+  protocol constant rather than on a matched live probe.</li>
+<li><strong>Precompile extraction.</strong> <code>verify.py</code> reports <code>NO EXTRACTOR</code> for this slug; the
+  "stock revm set" claim rests on reading the constructor and on the live probes above,
+  not on a mechanical diff.</li>
+<li><strong>EIP-7918 (<code>unrecorded</code>).</strong> BRIP-0010's rationale excludes it; the client neither
+  confirms nor denies it, and bera-reth inherits upstream reth's Osaka unless it overrides.
+  What would settle it: a read of the pinned reth dependency's Osaka blob-fee path, or an
+  executed blob transaction on Berachain — none appeared in any sampled block.</li>
+<li><strong>The invalid-payload rejection was not reproduced on mainnet.</strong> The <code>(c)</code> answer rests
+  on the source path and on beacon-kit's own simulated test, not on an observed mainnet
+  rejection: producing one requires being the proposer. No attempt was made to submit an
+  underpriced transaction to the public RPC, so the <em>submission-time</em> rejection message a
+  wallet would see is not recorded — only the consensus-time behaviour is.</li>
+<li><strong>Whether a reverting PoL call has ever occurred.</strong> The claim that a failing
+  <code>distributeFor</code> leaves the block valid is a source read of bera-reth's executor (only an
+  EVM-level <code>Err</code> is fatal; <code>result.is_success()</code> is never inspected). No block with a
+  <code>status: 0</code> receipt at index 0 was searched for.</li>
+<li><strong>BRIP-0005 and BRIP-0006</strong> (validator cutting-board automation) are <code>Draft</code> and were not
+  recorded: they describe off-chain strategy services and reward-allocation policy, with no
+  EL or CL rule change. Named here so the omission is deliberate.</li>
+</ul>
+<h2>Re-verify</h2>
+<pre><code class="language-sh">git clone --depth 1 --branch v1.4.4  https://github.com/berachain/bera-reth
+git clone --depth 1 --branch v1.4.1  https://github.com/berachain/beacon-kit
+git clone --depth 1 --branch v1.011608.0 https://github.com/berachain/bera-geth
+
+R=https://rpc.berachain.com
+B=0x18183e7          # 25264103
+call(){ curl -s -X POST -H 'content-type: application/json' -d &quot;$1&quot; $R; }
+
+# --- source: the five Berachain forks and their parameters
+python3 -m json.tool bera-reth/tests/fixtures/mainnet-genesis.json | sed -n '/&quot;berachain&quot;/,/^  }/p'
+sed -n '1,25p'   bera-reth/src/hardforks/mod.rs            # Prague1-4, Osaka1
+grep -n 'MAX_CODE_SIZE_OSAKA\|MAX_INITCODE_SIZE_OSAKA' bera-reth/src/node/evm/config.rs
+grep -n 'raw.max(min_base_fee)' -B12 bera-reth/src/chainspec/mod.rs
+grep -n 'min_blob_fee' bera-reth/src/chainspec/mod.rs      # Osaka1 blob floor
+grep -n 'EIP-7594' bera-reth/src/engine/builder.rs bera-reth/src/pool/mod.rs
+grep -n 'building empty block' -A6 bera-reth/src/engine/builder.rs   # Prague3 halt
+sed -n '110,210p' bera-reth/src/consensus/mod.rs           # log-predicate validity
+sed -n '40,55p'  bera-reth/src/engine/rpc.rs               # V4P11, removed getPayloadV5
+grep -n 'DEPOSIT_EVENT_SIGNATURE' -B8 bera-reth/src/deposits.rs
+grep -n 'prev_proposer_pubkey' -B6 bera-reth/src/primitives/header.rs
+grep -n 'Precompiles::new(PrecompileSpecId' bera-reth/src/evm/mod.rs
+
+grep -n 'PoLTxType = ' bera-geth/core/types/transaction.go  # 0x7E
+sed -n '30,70p'  bera-geth/core/types/tx_pol.go
+sed -n '/BerachainChainConfig = /,/^\t}/p' bera-geth/params/config.go | grep -c OsakaTime  # 0 — geth stops at Prague4
+grep -n 'ValidatePrague3Transaction' -A28 bera-geth/core/state_processor.go
+
+grep -rn 'not used by us' beacon-kit/consensus-types/types/consolidation_request.go
+grep -rn 'which we use for withdrawals' beacon-kit/consensus-types/types/withdrawal_request.go
+grep -n 'ErrFirstWithdrawalNotEVMInflation' -B8 beacon-kit/state-transition/core/state_processor_withdrawals.go
+grep -n 'EVMInflationWithdrawalIndex' beacon-kit/state-transition/core/state/constants.go
+grep -n 'mainnetEVMInflationAddressFulu\|mainnetEVMInflationPerBlockFulu' beacon-kit/config/spec/mainnet.go
+grep -n 'parentBeaconBlockRoot = blk.GetParentBlockRoot' -B4 beacon-kit/consensus-types/types/payload_requests.go
+
+# --- live: EIP-170 / EIP-3860 raised limits (initcode `62 &lt;N&gt; 6000 f3`)
+for N in 32768 32769; do
+  D=0x62$(printf %06x $N)6000f3
+  call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;data\&quot;:\&quot;$D\&quot;},\&quot;$B\&quot;]}&quot;; echo &quot; &lt;- $N&quot;
+done   # 32768 OK, 32769 -&gt; CreateContractSizeLimit
+python3 - &lt;&lt;'PY'          # 65536 OK, 65537 -&gt; max initcode size exceeded
+import json,urllib.request
+def c(n):
+    d=&quot;0x62&quot;+&quot;%06x&quot;%100+&quot;6000f3&quot;+&quot;00&quot;*(n-7)
+    r=urllib.request.Request(&quot;https://rpc.berachain.com&quot;,
+      data=json.dumps({&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_call&quot;,
+      &quot;params&quot;:[{&quot;data&quot;:d,&quot;gas&quot;:&quot;0x2255100&quot;},&quot;0x18183e7&quot;]}).encode(),
+      headers={&quot;content-type&quot;:&quot;application/json&quot;})
+    print(n, json.load(urllib.request.urlopen(r)))
+c(65536); c(65537)
+PY
+
+# --- live: the 22nd header field, proved by reproducing the block hash
+#   rlp(21 mainnet fields) -&gt; wrong hash; + 48-byte parentProposerPubkey -&gt; 0xd0e09c8b…2aea4
+
+# --- live: system contracts byte-identical to Ethereum mainnet
+for A in 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 \
+         0x0000F90827F1C53a10cb7A02335B175320002935 \
+         0x00000961Ef480Eb55e80D19ad83579A64c007002 \
+         0x0000BBdDc7CE488642fb579F8B00f3a590007251; do
+  P=&quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$A\&quot;,\&quot;$B\&quot;]}&quot;
+  diff &lt;(call &quot;$P&quot;) &lt;(curl -s -X POST -H 'content-type: application/json' \
+        -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$A\&quot;,\&quot;latest\&quot;]}&quot; \
+        https://ethereum-rpc.publicnode.com) &gt;/dev/null &amp;&amp; echo &quot;$A identical&quot;
+done
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x00000000219ab540356cBB839Cbe05303d7705Fa\&quot;,\&quot;$B\&quot;]}&quot;   # -&gt; 0x  (empty)
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x4242424242424242424242424242424242424242\&quot;,\&quot;$B\&quot;]}&quot;   # -&gt; 4190 bytes
+
+# --- live: PoL tx, zero gas, 41 logs; withdrawals; base fee burned, tip to coinbase
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getTransactionByBlockNumberAndIndex\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;,\&quot;0x0\&quot;]}&quot;
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockReceipts\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;]}&quot;        # receipt[0]: gasUsed 0, 41 logs
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;,false]}&quot;  # withdrawals, parentProposerPubkey
+for H in 0x18183e6 0x18183e7; do
+  call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBalance\&quot;,\&quot;params\&quot;:[\&quot;0x1daa6d6b90e2375d4262cde3c5553bc31688a969\&quot;,\&quot;$H\&quot;]}&quot;
+done   # delta = 6160500532907892 = the block's total priority fee; base fee lands nowhere
+for H in 0x18183e6 0x18183e7; do
+  call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBalance\&quot;,\&quot;params\&quot;:[\&quot;0x1AE7dD7AE06F6C58B4524d9c1f816094B1bcCD8e\&quot;,\&quot;$H\&quot;]}&quot;
+done   # 1705000000000000000 at both — one block of inflation, spent and re-minted
+
+# --- source: ORDERING. CometBFT gets two opaque blobs, the EL picks the tx list
+grep -n 'Txs: \[\]\[\]byte{blkBz, sidecarsBz}' -B6 beacon-kit/consensus/cometbft/service/prepare_proposal.go
+grep -n 'BuildBlockAndSidecars' -A20 beacon-kit/beacon/validator/block_builder.go | head -40
+sed -n '/func (s \*Service) retrieveExecutionPayload/,/^}/p' beacon-kit/beacon/validator/block_builder.go
+grep -n 'best_transactions_with_attributes\|while !prague3_active' bera-reth/src/engine/builder.rs
+grep -n 'skipping nonce too low\|mark_invalid' bera-reth/src/engine/builder.rs
+
+# --- source: (c) invalid tx -&gt; whole block REJECTED, with beacon-kit's own test
+grep -n 'NotifyNewPayload(ctx, payloadReq, true)' -B8 beacon-kit/state-transition/core/state_processor_payload.go
+grep -n 'ErrInvalidPayloadStatus' -A4 beacon-kit/execution/engine/engine.go       # backoff.Permanent
+grep -n 'PROCESS_PROPOSAL_STATUS_REJECT' beacon-kit/consensus/cometbft/service/process_proposal.go
+sed -n '/TestProcessProposal_BadBlock_IsRejected/,/^}/p' \
+  beacon-kit/testing/simulated/malicious_proposer_test.go | tail -20
+#   -&gt; asserts REJECT + &quot;max fee per gas less than block base fee: … baseFee: 765625000&quot;
+
+# --- source: PoL runs BEFORE user txs, and its index is fixed in both directions
+grep -n 'fn apply_pre_execution_changes' -A14 bera-reth/src/node/evm/executor.rs
+sed -n '/fn validate_pol_transaction(/,/^    }/p' bera-reth/src/consensus/mod.rs
+grep -n 'is_success' bera-reth/src/node/evm/executor.rs   # -&gt; no hits: a reverting PoL call is not fatal
+
+# --- source: (d) no preconf code in the pinned client
+grep -ri preconf bera-reth/src/ || echo &quot;no preconf code in v1.4.4&quot;
+grep -n 'preconf-dev' bera-reth/.github/workflows/docker-nightly-preconf.yml
+
+# --- source: BRIP-0003 Stable Block Time is a consensus rule, and panics if skipped
+grep -n 'SBTEnableHeight' -B3 -A12 beacon-kit/consensus/cometbft/service/finalize_block.go
+
+# --- BRIPs (primary source for §12; not a git clone, fetch raw)
+for i in 0003 0007 0009 0010; do
+  curl -sL &quot;https://raw.githubusercontent.com/berachain/BRIPs/main/meta/BRIP-$i.md&quot; | head -12
+done
+#   BRIP-0010 title == &quot;Fusaka Hardfork Specification&quot;; §8 == the PoL vNext CL params
+#   BRIP-0007 status == Review;  BRIP-0009 status == Final (bera-geth deprecated for reth-sdk)
+
+# --- live @ 25415365: pinned commit confirmed, empty pool, no preconf namespace
+call '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;web3_clientVersion&quot;,&quot;params&quot;:[]}'
+#   -&gt; bera-reth/v1.4.4-aa9bc73/x86_64-unknown-linux-gnu   (== the pinned commit)
+call '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;txpool_status&quot;,&quot;params&quot;:[]}'        # {pending:0x0,queued:0x0}
+call '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;preconf_newPartialBlock&quot;,&quot;params&quot;:[]}'  # -32601 Method not found
+call '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;rpc_modules&quot;,&quot;params&quot;:[]}'             # -32601 (not exposed)
+
+# --- live: Osaka EVM, stock precompiles
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;data\&quot;:\&quot;0x60001e60005260206000f3\&quot;},\&quot;$B\&quot;]}&quot;  # CLZ(0) = 256
+V=0x33e312814c04744566da589b441f5d193c7b8ac3cfcac66a125c8a6432416539f77f4c3c67be0834c8ba25d24157c68da61cb9aa1c4b634ceef8af33bf5063ad576a523698a72caa4b282a9a09791049c13012613db47705c53a1ab2ed1090006413e370318a922cecfaa94ba2188dd419f586356fa774c766cd6c450295fee95dce9ce0557b0a8f1cef5c663f362cfffc910e3094afc82bbbc7a0a92b0b6bdb
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000100\&quot;,\&quot;data\&quot;:\&quot;$V\&quot;},\&quot;$B\&quot;]}&quot;  # -&gt; 0x…01
+for i in $(seq 1 18); do
+  A=$(printf '0x%040x' $i)
+  call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$A\&quot;,\&quot;$B\&quot;]}&quot;
+done   # all 0x — native, not predeploys
+call &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_feeHistory\&quot;,\&quot;params\&quot;:[3,\&quot;$B\&quot;,[50]]}&quot;  # baseFeePerBlobGas 0x3b9aca00
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh berachain    # fetch the pinned evidence
+tools/verify.py berachain   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/berachain/chain.yaml</code> · <code>chains/berachain/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

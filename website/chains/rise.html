@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RISE · EVM-intel</title>
+<meta name="description" content="OP Stack by derivation, by predeploys and by envelope. &lt;code&gt;rise-op-node&lt;/code&gt; is an op-node fork driving a reth-derived execution client over the standard Engine API; every OP fork from Regolith to Jovian is active at genesis">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>RISE</h1>
+<p class="lede">OP Stack by derivation, by predeploys and by envelope. <code>rise-op-node</code> is an op-node fork driving a reth-derived execution client over the standard Engine API; every OP fork from Regolith to Jovian is active at genesis</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>4153</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>prague</code></td></tr><tr><td>Upstream</td><td><a href="op-stack.html">OP Stack</a></td></tr><tr><td>Ancestry</td><td>ethereum → op-stack</td></tr><tr><td>Sync point</td><td>NONE NEEDED — unusually. RISE&#x27;s rollup config activates `jovian_time: 0`, and the op-stack row pins a Jovian/Karst op-geth, so this descendant is at the same fork level as its ancestor row and inherits it wholesale and correctly. Contrast MegaETH, which stops at Isthmus and needs a sync_point to avoid being credited with Jovian. Karst is NOT active here (`rollup.json` has no `karst_time`).</td></tr><tr><td>Consensus</td><td>OP Stack derivation with a single sequencer, driven by a fork of op-node (`rise-op-node`) over the Engine API; AltDA (plasma) rather than L1 blobs · block time 1s (L2 blocks) / 2-10ms (shreds)</td></tr><tr><td>Note</td><td><p>An OP Stack L2 at Jovian whose EVM is, as far as every probe can tell, STOCK — and whose divergence is entirely in the RPC surface and the block-production path. The headline is <code>shreds</code>: the sequencer publishes each transaction, with its receipt and optionally its state diff, 2-10 ms after executing it and up to a second before the enclosing block exists. THE EVIDENCE GATE IS SPLIT, and not the way the OP Stack usually splits. <code>rise-node</code> is a released, tagged repo, but it is a DEPLOYMENT repo: docker-compose plus the canonical mainnet <code>genesis.json</code> and <code>rollup.json</code> and the exact container digests. The execution client it runs — <code>rise-exec</code> / <code>rise-replica</code> — is CLOSED; no repo under the <code>risechain</code> org builds it, and the live RPC identifies itself as <code>rise-replica/sha-80d9780/linux</code>. The two open Rust repos that look like the client are not: <code>risechain/risechain</code> is a monorepo containing exactly one crate (<code>primitives</code>, 353 lines) and says so, and <code>risechain/pevm</code> says on its own front page that it is not production ready and lists "Integration into RISE nodes" as TODO. Neither carries a tag. So: chain configuration and the RPC wire types are <code>src:</code>; EVERY claim about the EVM, about shreds, and about block production is <code>src_live:</code>. The row is <code>evidence: source</code> because a real released tag is pinned and every <code>src:</code> below resolves inside it, not because the state transition is auditable. It is not.</p></td></tr><tr><td>Lineage note</td><td><p>OP Stack by derivation, by predeploys and by envelope. <code>rise-op-node</code> is an op-node fork driving a reth-derived execution client over the standard Engine API; every OP fork from Regolith to Jovian is active at genesis; the L1 attributes deposit at index 0 of every block calls <code>0x4200...15</code> with the STOCK Jovian selector <code>0x3db6be2b</code>; <code>0x4200...11</code> is the beneficiary of every header; the Isthmus <code>withdrawalsRoot</code> and Jovian 17-byte <code>extraData</code> are both present and well-formed. What RISE changes is not the state transition but who gets to see it, and when.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/risechain/rise-node">rise-node (chain configuration and node distribution)</a> <code>v0.6.0</code></td></tr><tr><td>Pinned commit</td><td><code>27cd88b171000a08a92d2c65358a2d3b84f423d8</code></td></tr><tr><td>Language</td><td>shell + json</td></tr><tr><td>Companion repos</td><td>https://github.com/risechain/risechain main (UNTAGGED)<br>https://github.com/risechain/pevm main (UNTAGGED)</td></tr><tr><td>Client note</td><td><p>NOT AN EXECUTION CLIENT, AND THIS IS THE ROW'S CENTRAL CAVEAT. <code>rise-node</code> is the official "how to run a RISE full node" distribution: a docker-compose that pins two prebuilt images by digest — <code>rise-exec/replica:sha-bb10092</code> (the execution client, invoked with reth's CLI grammar) and <code>rise-op-node:sha-b1f242d</code> (the op-node fork) — together with the canonical mainnet and testnet <code>genesis.json</code> / <code>rollup.json</code>. That makes it real, pinned, verifiable evidence for chain PARAMETERS and for the deployment topology, and no evidence at all for the state transition. Neither image has published source. <code>git ls-remote --tags</code> returns nothing for <code>risechain/pevm</code>, <code>risechain/risechain</code> or <code>risechain/reth</code>; the only tagged repo in the org is this one. The clone was tested, not estimated: the gate was probed by cloning.</p></td></tr><tr><td>Live probe</td><td><code>https://rpc.risechain.com</code> · chain_id 4153 · observed at block <code>20239360</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 14 · <code>src_live:</code> 28 · <code>src_doc:</code> 5</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">3</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-ordered-then-invalid">A transaction ordered before it is executed has seven different fates<a class="anchor" href="#f-ordered-then-invalid">#</a></h3><p class="lede">Mainnet checks nonce, balance and gas price <em>before</em> a transaction is ordered, so "ordered but invalid" is not a state it can reach. Every chain that separates ordering from execution has to invent an answer, and the rows here have invented seven. There is no portable answer to "was my transaction included".</p><p><strong>Makes the state unreachable</strong> — it admits synchronously and publishes only after executing, so the ordered-but-invalid state never exists to be observed.</p><p class="tags"><a href="../method.html#f-ordered-then-invalid">Full note · Reference</a> · also on <a href="../chains/conflux.html#f-ordered-then-invalid">Conflux</a> · <a href="../chains/iota-evm.html#f-ordered-then-invalid">IOTA EVM</a> · <a href="../chains/artela.html#f-ordered-then-invalid">Artela</a> · <a href="../chains/rollkit.html#f-ordered-then-invalid">Rollkit</a> · <a href="../chains/taraxa.html#f-ordered-then-invalid">Taraxa</a> · <a href="../chains/autonomys.html#f-ordered-then-invalid">Auto EVM</a> · <a href="../chains/berachain.html#f-ordered-then-invalid">Bera</a> · <a href="../chains/megaeth.html#f-ordered-then-invalid">MegaETH</a> · <a href="../chains/monad.html#f-ordered-then-invalid">Monad</a> · <a href="../chains/hedera.html#f-ordered-then-invalid">Hedera</a></p></div>
+<div class="finding"><h3 id="f-finality-tag-is-not-finality">The <code>finalized</code> block tag means something different on every chain that has one<a class="anchor" href="#f-finality-tag-is-not-finality">#</a></h3><p class="lede">Any chain speaking the Engine API inherits Ethereum's <code>safe</code> and <code>finalized</code> block tags whether or not it has anything to put behind them, and the rows here fill them with incompatible meanings — with nothing in the RPC response to tell the cases apart.</p><p>Publishes full receipts for blocks that do not exist yet, so the tags sit above a chain whose head is itself provisional.</p><p class="tags"><a href="../axes/fees-envelope.html#f-finality-tag-is-not-finality">Full note · Fees &amp; envelope</a> · also on <a href="../chains/autonomys.html#f-finality-tag-is-not-finality">Auto EVM</a> · <a href="../chains/iota-evm.html#f-finality-tag-is-not-finality">IOTA EVM</a> · <a href="../chains/rollkit.html#f-finality-tag-is-not-finality">Rollkit</a> · <a href="../chains/megaeth.html#f-finality-tag-is-not-finality">MegaETH</a></p></div>
+<div class="finding"><h3 id="f-preconfirmation-sentinels">Three sentinels for "this block does not exist yet", and one reaches unmodified clients<a class="anchor" href="#f-preconfirmation-sentinels">#</a></h3><p class="lede">A chain that publishes a transaction's result before its enclosing block is sealed must name a block hash it does not yet have. Both rows here also contradict themselves inside one payload: the streamed receipt and the streamed transaction disagree about the same missing hash.</p><p>The preconfirmed receipt comes back over ordinary <code>eth_getTransactionReceipt</code> with <code>blockHash: 0x0000…0000</code>, and <code>eth_subscribe(["logs"])</code> is <em>replaced</em> rather than extended, so that channel silently carries shred logs with <code>blockHash: null</code> — two sentinels on one chain. An integrator who changed nothing is already consuming preconfirmations, storing a valid-looking zero <code>bytes32</code> that will never match a real block. RISE's shreds are unsigned, so a contradicted preconfirmation cannot be proven.</p><p class="tags"><a href="../axes/fees-envelope.html#f-preconfirmation-sentinels">Full note · Fees &amp; envelope</a> · also on <a href="../chains/megaeth.html#f-preconfirmation-sentinels">MegaETH</a></p></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>There is no RISE fork ladder. Every Ethereum fork through Prague and every OP fork through Jovian is at time 0, and the chain has shipped no named upgrade of its own — a striking contrast with MegaETH's eleven-step MiniRex..Rex6 ladder over nine months. Whatever RISE changes, it does not change through consensus forks. The <code>rise-node</code> branch names (<code>chain-upgrade-24</code>, <code>ship-upgrade-31</code>) suggest the upgrades are container-digest rollouts of the closed client, which is a fork schedule nobody outside the team can read.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>genesis (shanghai..prague + bedrock..jovian, all at time 0)</code></td><td><span class="pill">active</span></td><td>2026-01-05</td><td>prague</td><td><div class="wrap">RISE mainnet genesis, 2026-01-05, from Ethereum L1 block 24167604. `genesis.json` sets shanghaiTime/cancunTime/pragueTime and regolithTime..jovianTime all to 0; `rollup.json` mirrors that with regolith_time..jovian_time all 0.</div></td></tr><tr><td><code>karst</code></td><td><span class="pill">pending</span></td><td>—</td><td>—</td><td><div class="wrap">not scheduled: `rollup.json` contains no karst_time, so RISE stops at Jovian</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> chain/mainnet/rollup.json:isthmus_time, chain/mainnet/genesis.json:pragueTime</p>
+<h2 id="eips">EIP deltas <span class="pill">9</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-170"><td><a href="https://eips.ethereum.org/EIPS/eip-170">EIP-170</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Whether the 24,576-byte deployed-code limit is raised could not be established. With no client source and no funded key, neither a deploy nor a constant lookup is available. MegaETH raises it to 512 KiB, so the question is live for a chain chasing gigagas; RISE&#x27;s silence on it is not evidence either way.</div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">Same formula, parameters set so that the base fee is a CONSTANT in practice, and the constant is the Jovian minimum. The live `extraData` decodes to denominator 1, elasticity 1, minBaseFee 415300 wei — elasticity 1 means the target equals the gas limit, so with blocks running at 24-44% of a 1,500,000,000 gas limit the base fee always wants to fall, and Jovian&#x27;s floor catches it. Six consecutive blocks at the pinned height all carry `baseFeePerGas: 0x65644` = 415,300 wei = exactly chain_id x 100. Genesis shipped the OP defaults (denominator 250, elasticity 6, minBaseFee 0) in `extraData` and in the `optimism` genesis block; the live values are different, so they were changed on L1 through SystemConfig after launch — a parameter change invisible to anyone reading the repo.<p class="src"><b>src</b> chain/mainnet/genesis.json:eip1559Denominator, chain/mainnet/rollup.json:chain_op_config · <b>live</b> eth_getBlockByNumber 20239360-20239365 @ 20239360 -&gt; baseFeePerGas 0x65644 in all six, gasUsed 360369728..658537939, gasLimit 1500000000, extraData 0x0100000001000000010000000000065644 (version 1, denominator 1, elasticity 1, minBaseFee 415300)</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><p class="src"><b>live</b> eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 20239360 -&gt; 84 bytes of the standard ring-buffer bytecode</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><p class="src"><b>live</b> eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 20239360 -&gt; the standard beacon-roots bytecode; header parentBeaconBlockRoot present</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Inherited from op-stack (no blob transactions on an L2), but doubly true here: RISE does not use L1 blobs for DA at all. `blobGasUsed` and `excessBlobGas` are 0 in every header sampled and `daFootprintGasScalar` is 0, so Jovian&#x27;s repurposing of `blobGasUsed` as a DA footprint is present in the code path and inert in practice.<p class="src"><b>src</b> chain/mainnet/rollup.json:alt_da · <b>live</b> eth_getBlockByNumber 20239360 @ 20239360 -&gt; blobGasUsed 0x0, excessBlobGas 0x0; eth_blobBaseFee @ 20239360 -&gt; 0x1</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no withdrawal-request predeploy; standard for an OP L2 at Isthmus, recorded because Prague as a BASELINE implies it<p class="src"><b>live</b> eth_getCode 0x00000961Ef480Eb55e80D19ad83579A64c007002 @ 20239360 -&gt; 0x</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no consolidation-request predeploy, same reasoning as 7002<p class="src"><b>live</b> eth_getCode 0x0000BBdDc7CE488642fb579F8B00f3a590007251 @ 20239360 -&gt; 0x</p></div></td></tr><tr id="eips-7939"><td><a href="https://eips.ethereum.org/EIPS/eip-7939">EIP-7939</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">CLZ is not activated — the chain is at Prague, not Osaka<p class="src"><b>live</b> eth_call PUSH1 0x01 CLZ MSTORE RETURN (0x60011e5f5260205ff3) @ 20239360 -&gt; error -32003 &#x27;EVM error: NotActivated&#x27;</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">P256VERIFY is present at 0x0100 with the empty-output-on-failure convention, inherited from OP Fjord&#x27;s RIP-7212 rather than from Osaka. Recorded because it is the one precompile whose presence is easy to misattribute to the baseline fork.<p class="src"><b>live</b> eth_call 0x0000000000000000000000000000000000000100 with 160 zero bytes @ 20239360 -&gt; 0x (empty); same with 160 bytes of 0x11 @ 20239360 -&gt; 0x</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">7</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x00"><td><code>0x00</code></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><div></div></div></td></tr><tr id="tx-types-0x01"><td><code>0x01</code></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><div></div></div></td></tr><tr id="tx-types-0x02"><td><code>0x02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><div></div></div></td></tr><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap"><div>no blob transactions on the L2; inherited from op-stack</div></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><div>EIP-7702 set-code transactions are accepted — Prague is active and the RISE shred formatter carries an explicit `0x4` branch producing an `authorizationList`. Not observed in a block at the pinned height; the type-byte census there was 379 of type 0x00, 2 of type 0x02 and 1 of type 0x7e.</div><p class="src"><b>src</b> risechain/crates/primitives/src/rpc.rs:OpReceipt</p></div></td></tr><tr id="tx-types-0x7d"><td><code>0x7d</code> <span class="pill">via op-stack</span></td><td><span class="s-unrecorded" title="unrecorded (from op-stack)">unrecorded†</span></td><td>PostExecTx</td><td><div class="wrap"><div>A SECOND UNSIGNED PATH, and it is not established whether it is reachable. The type is fully implemented in the client — marshalling, receipt handling, and a signer that returns the ZERO ADDRESS rather than recovering one, with sigHash() panicking exactly as DepositTx&#x27;s does — but the tree contains no producer and no fork gate, so nothing here shows it activating on any OP Stack chain. Recorded rather than omitted because an omitted entry would fall back to `inherited` and silently assert mainnet equivalence for a type mainnet does not have.</div><p class="src"><b>src</b> core/types/post_exec_tx.go:PostExecTxType</p></div></td></tr><tr id="tx-types-0x7e"><td><code>0x7e</code></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap"><div>OP deposit, inherited unchanged from op-stack, and used only for the L1 attributes call: exactly one per block at index 0, from 0xdeaddead...dead0001 to 0x4200..15, `depositReceiptVersion: 0x1`. Its receipt carries `depositNonce` and `depositReceiptVersion` and, like every other RISE receipt, NO L1 fee fields.</div><p class="src"><b>live</b> eth_getBlockByNumber 20239360 @ 20239360 -&gt; 382 transactions, exactly one 0x7e at index 0, nonce 0x134d3ff (= block number - 1); eth_getTransactionReceipt @ 20239360 -&gt; keys include depositNonce, depositReceiptVersion</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>Unchanged from mainnet. <code>v</code> on the observed legacy transactions is 0x2095/0x2096, i.e. EIP-155 with chain id 4153, and an EIP-155 signature with the wrong chain id is rejected at admission with <code>invalid chain ID</code>. Recorded as a deliberate negative: nothing about shreds changes what may sign.</p></td></tr><tr><td>Inherited note</td><td><p>For USER transactions there is NO delta from mainnet. op-geth's signer chain is geth's, <code>recoverPlain</code> is the only recovery path in the tree, and the one OP addition to it — NewIsthmusSigner — differs from geth's Prague signer solely by REMOVING BlobTxType from the accepted set. It changes which envelopes may carry a signature, never how a signature is checked or what an address means. The delta on this axis is the deposit path below: transactions the protocol accepts as authorized while carrying no signature at all.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>live</b> eth_sendRawTransactionSync with a legacy tx signed for chainId 1 @ 20277800 -&gt; error -32000 &#x27;invalid chain ID&#x27;; the same tx signed for 4153 is rejected only on balance</p></div></td></tr><tr><td><code>unsigned</code> <span class="pill">via op-stack</span></td><td><span class="pill">protocol</span></td><td><span class="s-inherited">none</span></td><td><div class="wrap">NOT A SIGNATURE SCHEME. The entry exists because every other row on this axis implies &quot;an accepted transaction has a signer&quot;, and on the OP Stack that is false. A 0x7e deposit has no v/r/s — rawSignatureValues returns 0,0,0 — and cannot acquire one: sigHash PANICS with &quot;deposit cannot be signed&quot;. The signer short-circuits on the type byte before any cryptography and returns the envelope&#x27;s own `From` field verbatim, so the sender is READ OUT OF THE TRANSACTION, not recovered from it. This is the one place where the row&#x27;s `key_binding: derived` does not hold, and `signers_per_tx: 0` is recorded on this path for the same reason. What authorizes it instead is construction by the derivation pipeline, and the client says so in as many words: the txpool rejects every deposit with the comment &quot;No unauthenticated deposits allowed in the transaction pool ... as the external engine-API user authenticates deposits.&quot; A deposit can therefore only enter through the authenticated engine API, never the public mempool. For USER deposits op-node scans L1 receipts for the portal&#x27;s TransactionDeposited logs (UserDeposits) and the portal sets from = msg.sender, aliased by applyL1ToL2Alias when the L1 caller is a contract — so those are ultimately backed by an L1 secp256k1 signature one layer down. But the pipeline also SYNTHESIZES deposits with no L1 event behind them at all: the L1-attributes transaction from 0xdead...0001, and the network-upgrade transactions from 0x4210000000000000000000000000000000000000 and from the ZERO ADDRESS. Nobody holds a key for those senders. Those transactions are authorized by protocol construction and by nothing else. DELIBERATELY NOT the schema&#x27;s &quot;authorizes: protocol + precompile: none&quot; finding. That finding is about a chain accepting SIGNATURES its own contracts cannot verify. Here there is no signature, so there is nothing a precompile could have been paired with; `precompile: none` records an absence of subject matter, not an unpaired verifier. The integrator hazard is the mirror image and just as sharp: ecrecover over a 0x7e envelope returns garbage rather than failing, because the fields it would read are zero. A second unsigned path exists in the same tree: PostExecTxType 0x7D, whose signer branch returns the ZERO ADDRESS rather than a stored From. Its sigHash also panics. This client contains the type, its marshalling and its receipt handling, but no producer and no fork gate, so whether 0x7D is reachable on any live OP Stack chain is `unrecorded` here.<p class="src"><b>src</b> core/types/deposit_tx.go:rawSignatureValues, core/types/deposit_tx.go:sigHash, core/types/transaction_signing.go:DepositTxType, core/types/post_exec_tx.go:PostExecTxType, core/txpool/validation.go:ValidateTransaction, optimism/op-node/rollup/derive/deposits.go:UserDeposits, optimism/op-node/rollup/derive/ecotone_upgrade_transactions.go:L1BlockDeployerAddress, optimism/op-node/rollup/derive/l1_block_info.go:L1InfoDepositerAddress, optimism/packages/contracts-bedrock/src/L1/OptimismPortal2.sol:depositTransaction, optimism/packages/contracts-bedrock/src/vendor/AddressAliasHelper.sol:applyL1ToL2Alias</p></div></td></tr><tr><td><code>p256</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY exists for contracts; a P-256 key cannot authorize a transaction</div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">6</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>NO PRECOMPILE DIVERGENCE FOUND, and the search was made: 0x01-0x0a answer, 0x0b (BLS12-381 G1ADD) answers with the point at infinity for 256 zero bytes, 0x0a (KZG) rejects a malformed input with <code>PrecompileError</code> rather than being absent, and 0x0100 behaves as RIP-7212. No <code>added</code> address was found, and none is documented. The caveat that matters: precompile GAS could not be measured. <code>eth_estimateGas</code> binary-searches and adds a buffer, so it cannot resolve a repricing, and with no client source and no funded key there is no other instrument. Repricing is therefore <code>unrecorded</code> for every address rather than asserted inherited.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x05"><td><code>0x05</code> <span class="pill">via op-stack</span></td><td><span class="s-modified" title="modified (from op-stack)">⚠️†</span></td><td>MODEXP</td><td><div class="wrap"><div>no EIP-7823 bounds, no EIP-7883 repricing — cheaper and more permissive than mainnet Osaka</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsJovian</p></div></td></tr><tr id="precompiles-0x08"><td><code>0x08</code> <span class="pill">via op-stack</span></td><td><span class="s-modified" title="modified (from op-stack)">⚠️†</span></td><td>BN256_PAIRING</td><td><div class="wrap"><div>input capped at 81984 bytes / 427 pairs (Bn256PairingMaxInputSizeJovian); Granite capped it at 112687 first. Mainnet has NO cap. Reverts with errBadPairingInputSize where mainnet succeeds.</div><p class="src"><b>src</b> params/protocol_params.go:194</p></div></td></tr><tr id="precompiles-0x0c"><td><code>0x0c</code> <span class="pill">via op-stack</span></td><td><span class="s-modified" title="modified (from op-stack)">⚠️†</span></td><td>BLS12_G1MSM</td><td><div class="wrap"><div>input capped at 288960 bytes / 1806 pairs; mainnet uncapped</div><p class="src"><b>src</b> params/protocol_params.go:195</p></div></td></tr><tr id="precompiles-0x0e"><td><code>0x0e</code> <span class="pill">via op-stack</span></td><td><span class="s-modified" title="modified (from op-stack)">⚠️†</span></td><td>BLS12_G2MSM</td><td><div class="wrap"><div>input capped at 278784 bytes / 968 pairs; mainnet uncapped</div><p class="src"><b>src</b> params/protocol_params.go:196</p></div></td></tr><tr id="precompiles-0x0f"><td><code>0x0f</code> <span class="pill">via op-stack</span></td><td><span class="s-modified" title="modified (from op-stack)">⚠️†</span></td><td>BLS12_PAIRING</td><td><div class="wrap"><div>input capped at 156672 bytes / 408 pairs; mainnet uncapped</div><p class="src"><b>src</b> params/protocol_params.go:197</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>P256VERIFY</td><td><div class="wrap"><div>from OP Fjord (RIP-7212), not from Osaka; empty output on an invalid signature</div><p class="src"><b>live</b> eth_call @ 20239360 with 160 zero bytes -&gt; 0x</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">30</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x4200000000000000000000000000000000000000"><td><code>0x4200000000000000000000000000000000000000</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>LegacyMessagePasser</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000001"><td><code>0x4200000000000000000000000000000000000001</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L1MessageSender</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000002"><td><code>0x4200000000000000000000000000000000000002</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>DeployerWhitelist</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000006"><td><code>0x4200000000000000000000000000000000000006</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>Weth</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000007"><td><code>0x4200000000000000000000000000000000000007</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2CrossDomainMessenger</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000000f"><td><code>0x420000000000000000000000000000000000000f</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>GasPriceOracle</td><td><div class="wrap"><div>`version()` returns &quot;1.6.0&quot;, the Isthmus/Jovian release. It is present and answering, but its L1-fee outputs never reach a receipt on this chain — see `fee_model`.</div><p class="src"><b>live</b> eth_call version() (0x54fd4d50) @ 20239360 -&gt; &quot;1.6.0&quot;</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000010"><td><code>0x4200000000000000000000000000000000000010</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2StandardBridge</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000011"><td><code>0x4200000000000000000000000000000000000011</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>SequencerFeeWallet</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000012"><td><code>0x4200000000000000000000000000000000000012</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>OptimismMintableErc20Factory</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000013"><td><code>0x4200000000000000000000000000000000000013</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L1BlockNumber</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000014"><td><code>0x4200000000000000000000000000000000000014</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2Erc721Bridge</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000015"><td><code>0x4200000000000000000000000000000000000015</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>L1Block</td><td><div class="wrap"><div>Stock Jovian. The per-block attributes call uses selector 0x3db6be2b, which is op-reth&#x27;s `L1_BLOCK_JOVIAN_SELECTOR` verbatim, and the deployed code is 2,059 bytes. This is the clean negative that settles &quot;does RISE diverge in derivation&quot;: it does not.</div><p class="src"><b>live</b> eth_getCode @ 20239360 -&gt; 2059 bytes; eth_getBlockByNumber 20239360 @ 20239360 -&gt; tx[0].input starts 0x3db6be2b</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000016"><td><code>0x4200000000000000000000000000000000000016</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2ToL1MessagePasser</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:31</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000017"><td><code>0x4200000000000000000000000000000000000017</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>OptimismMintableErc721Factory</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000018"><td><code>0x4200000000000000000000000000000000000018</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>ProxyAdmin</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000019"><td><code>0x4200000000000000000000000000000000000019</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>BaseFeeVault</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:27</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000001a"><td><code>0x420000000000000000000000000000000000001a</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L1FeeVault</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:29</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000001b"><td><code>0x420000000000000000000000000000000000001b</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>OperatorFeeVault</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/protocol_params.go:33</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000020"><td><code>0x4200000000000000000000000000000000000020</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>SchemaRegistry</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000021"><td><code>0x4200000000000000000000000000000000000021</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>Eas</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000022"><td><code>0x4200000000000000000000000000000000000022</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>CrossL2Inbox</td><td><div class="wrap"><div></div><p class="src"><b>src</b> params/interop.go:5</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000023"><td><code>0x4200000000000000000000000000000000000023</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2ToL2CrossDomainMessenger</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000024"><td><code>0x4200000000000000000000000000000000000024</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>SuperchainEthBridge</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000025"><td><code>0x4200000000000000000000000000000000000025</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>EthLiquidity</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000029"><td><code>0x4200000000000000000000000000000000000029</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>NativeAssetLiquidity</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000002a"><td><code>0x420000000000000000000000000000000000002a</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>LiquidityController</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000002c"><td><code>0x420000000000000000000000000000000000002c</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>ConditionalDeployer</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x420000000000000000000000000000000000002d"><td><code>0x420000000000000000000000000000000000002d</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>L2DevFeatureFlags</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0x4200000000000000000000000000000000000042"><td><code>0x4200000000000000000000000000000000000042</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>GovernanceToken</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr><tr id="system-contracts-0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000"><td><code>0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000</code> <span class="pill">via op-stack</span></td><td><span class="s-added" title="added (from op-stack)">➕†</span></td><td>LegacyErc20Eth</td><td><div class="wrap"><div></div><p class="src"><b>src</b> optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>None found. <code>BLOCKHASH(number-1)</code> executed by <code>eth_call</code> at 20239360 returned 0x381b2539b4e614c13c5c787fa2eeacd62e038e5450030295cdcb17f112b2dfac, which is that block's <code>parentHash</code> exactly — so shreds do NOT consume block numbers and are not addressable by BLOCKHASH, the same negative MegaETH's mini-blocks produce. CHAINID returns 0x1039 and PREVRANDAO returns the header's <code>mixHash</code> (0x9a8c0359fcfa01f70b1225285a47b347ab58383a6a6df718b190aad93cbcef1d). No opcode was found to behave differently, but note that with no client source this is a behavioural sample, not an enumeration.</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>standard EVM gas, one dimension</code></td></tr><tr><td>Fee market</td><td>EIP-1559 with elasticity 1 and denominator 1, floored by Jovian minBaseFee; base fee is constant at 415,300 wei in practice</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;nonce on failure&#x27;, &#x27;src_live&#x27;: &quot;eth_sendRawTransactionSync from a fresh empty account @ 20277800 -&gt; -32003 &#x27;insufficient funds for gas * price + value: have 0 want 1000009876132000&#x27;; gasPrice 1 wei -&gt; -32000 &#x27;max fee per gas less than block base fee&#x27;; chainId 1 -&gt; -32000 &#x27;invalid chain ID&#x27;; eth_getTransactionReceipt for all three @ 20277800 -&gt; null; eth_getTransactionCount for that account @ 20277800 -&gt; 0x0&quot;, &#x27;note&#x27;: &quot;NONCE ON FAILURE: PRESERVED, because the ordered-but-invalid state cannot arise. RISE does not separate ordering from execution: a shred is published only AFTER execution, and admission is synchronous, so an invalid transaction is rejected at `eth_sendRawTransaction` / `eth_sendRawTransactionSync` and never enters an ordering. Probed live from a freshly generated, correctly signed, empty account — insufficient balance, gas price below the base fee, and wrong chain id each returned a JSON-RPC error, produced no receipt and emitted no shred; the account&#x27;s nonce stayed at 0. This is the mainnet answer reached by a different route, and the opposite pole from Conflux, IOTA EVM and Artela, which order first and erase afterwards. A transaction that IS admitted and then reverts is ordinary: `status: 0x0`, gas charged, nonce burned, receipt present (103 of 2,452 sampled shred receipts).&quot;}, {&#x27;name&#x27;: &#x27;L1 data fee&#x27;, &#x27;status&#x27;: &#x27;removed&#x27;, &#x27;severity&#x27;: &#x27;high&#x27;, &#x27;note&#x27;: &#x27;THE OP FEE COMPONENT IS GONE, AND SO ARE ITS RECEIPT FIELDS. Every other OP Stack chain returns `l1Fee`, `l1GasPrice`, `l1GasUsed` and `l1FeeScalar` (and, from Isthmus, `operatorFeeScalar`/`operatorFeeConstant`) on every receipt. RISE returns none of them: the receipt key set at the pinned block is exactly blockHash, blockNumber, contractAddress, cumulativeGasUsed, effectiveGasPrice, from, gasUsed, logs, logsBloom, status, to, transactionHash, transactionIndex, type — plus depositNonce/depositReceiptVersion on deposits. The published wire type says why: `RiseRpcTransactionReceipt` is documented as &quot;RISE transaction receipt without OP L1 fee fields (always zero on RISE)&quot;. Marked `severity: high` because it fails silently in the direction accounting code does not check: an OP-aware indexer computing `gasUsed * effectiveGasPrice + l1Fee` reads `undefined`/`nil` for the last term rather than an error, and any cost model that sums it gets NaN, zero, or a throw depending on the language — none of which is a signal that the field was never there.&#x27;, &#x27;src&#x27;: &#x27;risechain/crates/primitives/src/rpc.rs:RiseRpcTransactionReceipt&#x27;, &#x27;src_live&#x27;: &#x27;eth_getTransactionReceipt for a type-0x00 tx in block 20239360 @ 20239360 -&gt; key set has no l1Fee/l1GasPrice/l1GasUsed/l1FeeScalar/operatorFee*; same for the type-0x7e deposit receipt&#x27;}]</td></tr><tr><td>Note</td><td><p>The reason the L1 fee is zero is structural, not a scalar set to 0: RISE posts data to an AltDA server, so there is no L1 blob cost to pass through to the user. The OP-standard <code>overhead</code>/<code>scalar</code> in the system config are the identity values and <code>daFootprintGasScalar</code> is 0.</p></td></tr></tbody></table></div>
+<p class="src"><b>src</b> chain/mainnet/rollup.json:system_config</p>
+<h2 id="header-fields">Header fields <span class="pill">2</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>Otherwise the header is a stock OP Jovian header: withdrawalsRoot (the L2ToL1MessagePasser storage root, Isthmus), requestsHash = the empty-list hash, parentBeaconBlockRoot present, blobGasUsed and excessBlobGas zero, miner 0x4200..0011, difficulty 0, nonce 0.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-extradata"><td><code>extraData</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>extraData</td><td><div class="wrap">Non-empty, 17 bytes, and load-bearing: the Jovian encoding of version(1) || eip1559Denominator(4) || eip1559Elasticity(4) || minBaseFee(8). At the pinned block it decodes to 1 / 1 / 1 / 415300. Stock Jovian format, non-stock values.<p class="src"><b>live</b> eth_getBlockByNumber 20239360 @ 20239360 -&gt; extraData 0x0100000001000000010000000000065644</p></div></td></tr><tr id="header-fields-gaslimit"><td><code>gasLimit</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>gasLimit</td><td><div class="wrap">1,500,000,000 per 1-second block — 1.5 gigagas per second, 50x Ethereum&#x27;s rate and 6x the 250,000,000 the chain launched with in `genesis.json`. Blocks are genuinely full-ish: 360-658 Mgas used across six consecutive blocks, 382 transactions in the pinned block.<p class="src"><b>src</b> chain/mainnet/genesis.json:gasLimit · <b>live</b> eth_getBlockByNumber 20239360-20239365 @ 20239360 -&gt; gasLimit 0x59682f00 (1500000000) in all six</p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">12</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>shreds</li><li>shred_delivery</li><li>preconfirmed_receipt</li><li>two_sentinels</li><li>logs_subscription_repurposed</li><li>stale_deposit_shred</li><li>ordered_but_invalid</li><li>parallel_execution_is_not_consensus_visible</li><li>sync_submission</li><li>ipc_side_channel</li><li>alt_da</li><li>no_evm_divergence</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p>Pinned: <code>risechain/rise-node</code> <strong>v0.6.0</strong> (<code>27cd88b1</code>, released 2026-06-29), with
+<code>risechain/risechain</code> (<code>0f53132e</code>, <strong>main, untagged</strong>) and <code>risechain/pevm</code>
+(<code>e94b0e3d</code>, <strong>main, untagged</strong>) as companions.
+Live probe: <code>https://rpc.risechain.com</code> / <code>wss://rpc.risechain.com/ws</code>, chain id
+<strong>4153</strong>, block <strong>20239360</strong> (timestamp 1787845119, 2026-08-27 15:38:39 UTC).
+Baseline fork <strong>prague</strong>, reached through OP <strong>Jovian</strong>. Mainnet has been live since
+2026-01-05 and produces a 1-second, 1.5-gigagas block.</p>
+<p><strong>Evidence path taken: source — with a caveat larger than the pin.</strong> The gate was
+tested by cloning, not estimated, and the answer splits in a way this dataset has not
+seen before. <code>rise-node</code> is a genuine released tag and the <em>only</em> tagged repo in the
+org — but it is a <strong>deployment</strong> repo: a docker-compose that pins two prebuilt images
+by digest (<code>rise-exec/replica:sha-bb10092</code>, <code>rise-op-node:sha-b1f242d</code>), plus the
+canonical mainnet <code>genesis.json</code> and <code>rollup.json</code>. It is real, verifiable evidence
+for chain <em>parameters</em> and for the deployment topology, and no evidence whatsoever
+for the state transition. The execution client is <strong>closed</strong>: the live RPC identifies
+itself as <code>rise-replica/sha-80d9780/linux</code>, and no repo under <code>risechain</code> builds it.
+So <code>evidence: source</code> here means "a real released tag is pinned and every <code>src:</code> below
+resolves inside it", <strong>not</strong> "the state transition is auditable". It is not. Every
+claim about the EVM, about shreds, and about block production on this row is
+<code>src_live:</code>.</p>
+<hr />
+<h2>1. The parallel-EVM claim is refuted as shipped</h2>
+<p>RISE is widely described as running <code>pevm</code>, a Block-STM–lineage parallel EVM. The
+repo is public and the design is real — but <strong>it is not what runs the network at the
+pinned commit, and it says so on its own front page</strong>: <em>"This repository is a work in
+progress and is not production ready"</em>. Its TODO list still contains "Implement an
+inline parallel-optimal EVM to replace <code>revm</code>", "Committing and broadcasting shreds",
+and — decisively — <strong>"Integration into RISE nodes"</strong>. There is no tag, no release, no
+version. Whatever <code>rise-exec</code> does inside its container, the published pevm is not it.</p>
+<p>The second half of the answer matters as much: <strong>even when it ships, the parallelism
+is by design not consensus-visible.</strong> pevm's own design section states that
+"blockchain execution must be deterministic... parallel execution must arrive at the
+same outcome as sequential execution. Having race conditions that affect execution
+results would break consensus." Conflicts are detected against a multi-version memory
+and resolved by <strong>re-execution inside one node</strong>. Two implementations, one sequential
+and one parallel, cannot disagree. That places RISE with Sei and Monad rather than
+anywhere new — the interesting parallelism on this chain is not in the executor, it is
+in what the executor is allowed to <em>publish</em> while it works.</p>
+<p>The other open Rust repo is a similar shape of disappointment: <code>risechain/risechain</code>
+is billed as "the monorepo of RISE Chain" and contains <strong>one crate, 353 lines</strong>
+(<code>crates/primitives</code>: the RPC and IPC wire types). Its README says "We're in a gradual
+process of open-sourcing the whole stack." Those 353 lines turn out to be
+disproportionately valuable — see finding 4 — but they are not a client.</p>
+<h2>2. A shred is one transaction, and it has no identity of its own</h2>
+<p>RISE's sub-block unit is finer than anything else in this dataset and structurally
+<em>simpler</em> than MegaETH's mini-block. The payload is</p>
+<pre><code>{ blockNumber, shredIdx, blockTimestamp, startingLogIndex, transactions[], stateChanges? }
+</code></pre>
+<p>and <strong>every coordinate in it is a block coordinate.</strong> <code>blockNumber</code> is the enclosing
+L2 block. <code>startingLogIndex</code> is the log index <em>within that block</em>. And <code>shredIdx</code> was
+measured to be the transaction's index in the block: block 20277530 was streamed as 98
+shreds with <code>shredIdx</code> 0..97 and sealed with exactly 98 transactions, and the receipts
+for shreds 0, 1, 2 carried <code>transactionIndex</code> 0, 1, 2. Every shred observed across four
+capture runs carried <strong>exactly one transaction</strong>.</p>
+<p>So there is no second height space to reconcile. MegaETH's <code>mini_block_number</code> was
+<strong>2,439,447,937</strong> at EVM block 24,869,417 — a disjoint, monotone, global sequence that
+no standard RPC exposes. RISE's counter <strong>resets to 0 every second</strong> and is just the
+transaction index. Between 55 and 478 shreds per block were observed, 2–18 ms apart.</p>
+<p>A shred is also <strong>already-executed state, not a commitment to order</strong>: it carries a
+receipt with <code>status</code>, <code>cumulativeGasUsed</code> and logs, and optionally the post-state diff
+(<code>stateChanges</code>: per address, <code>{nonce, balance, storage{slot-&gt;value}, newCode}</code>). The
+sequencer never publishes an order it has not yet run.</p>
+<h2>3. The receipt arrives over <strong>plain HTTP</strong>, for a block that does not exist, with <code>blockHash: 0x00…00</code></h2>
+<p>This is the finding. MegaETH's <code>0xffff…ff</code> sentinel only reaches a client that opts
+into the WebSocket mini-block stream; over HTTP MegaETH returns <code>null</code> until the block
+exists. <strong>RISE hands the preconfirmed receipt to an unmodified HTTP client.</strong> Racing
+the shred stream against the HTTP endpoint at block 20239693:</p>
+<ul>
+<li><code>eth_blockNumber</code> returned <strong>20239692</strong> — the block in the receipt did not exist;</li>
+<li><code>eth_getTransactionReceipt</code> returned a fully populated receipt with
+  <code>blockNumber: 0x134d51a</code> (20239693), <code>status: 0x1</code>, real <code>gasUsed</code>, real
+  <code>effectiveGasPrice</code>, real <code>transactionIndex</code>, and
+  <code>blockHash: 0x0000000000000000000000000000000000000000000000000000000000000000</code>;</li>
+<li>at the same instant <code>eth_getTransactionByHash</code> for the <strong>same hash</strong> returned
+  <code>blockHash: null, blockNumber: null</code>.</li>
+</ul>
+<p>Reproduced at block 20277529. Three consequences: every "wait for a non-null receipt"
+loop fires a block early; the zero hash is a plausible-looking <code>bytes32</code> that indexers
+will store, key on, and never match; and the receipt and the transaction contradict
+each other in the same instant without either being an error.</p>
+<p>The published wire type intends <code>null</code> here —
+<code>RiseRpcTransactionReceipt.block_hash: Option&lt;BlockHash&gt;</code>, commented <em>"None for pending
+/ shred receipts"</em>. <strong>The live network and the published source disagree about which
+sentinel is used</strong>, and the live one is the more dangerous of the two.</p>
+<h2>4. The same node uses two different sentinels for the same missing hash</h2>
+<p>A log delivered by <code>eth_subscribe(["logs", {}])</code> for a not-yet-sealed transaction
+carries <code>blockHash: null</code> with a real <code>blockNumber</code>, <code>logIndex</code> and <code>transactionIndex</code>.
+The <em>same log</em>, read back inside <code>eth_getTransactionReceipt</code> at the same moment,
+carries <code>blockHash: 0x00…00</code>. A consumer that special-cases one still breaks on the
+other.</p>
+<h2>5. <code>eth_subscribe(["logs"])</code> was not extended — it was <strong>replaced</strong></h2>
+<p>RISE does not add a parallel log channel. The chain's own client library states that
+"the standard <code>["logs"]</code> subscription is <strong>patched to broadcast events from shreds
+instead of blocks</strong>", and it was confirmed live. So a stock viem/ethers/web3
+application, written for Ethereum and deployed unmodified against RISE, <strong>is already
+consuming preconfirmations</strong>: it receives events for transactions whose block does not
+exist, with <code>blockHash: null</code> and <code>removed: false</code>, and there is no flag to turn it
+off. Nothing in the subscription request distinguishes the two behaviours.</p>
+<p>This is the widest blast radius on the row, because it requires the integrator to have
+done nothing at all. The shred stream proper (<code>eth_subscribe(["shreds", &lt;bool&gt;])</code>) at
+least announces itself — and it is the <em>only</em> way to see a shred: there is no
+<code>rise_</code> namespace, no <code>eth_getShredByNumber</code>, no archive access, and no way to ask for
+one you missed. <code>["shred"]</code> (singular) is rejected outright.</p>
+<p><strong>And a shred is not signed.</strong> No signature, no sequencer key, no hash of its own.
+MegaETH signs each mini-block with secp256k1 over <code>keccak256(rlp(header))</code> precisely so
+that a contradicted preconfirmation is <em>provable</em> by a third party. RISE's
+preconfirmation is the sequencer's unattributable word over a socket. Which matters,
+because of finding 6.</p>
+<h2>6. A shred <em>is</em> routinely contradicted — on the one transaction that writes L1 state</h2>
+<p>Collecting every shred for 24 consecutive complete blocks and comparing hash-by-hash
+against the sealed blocks: the transaction lists have the <strong>same length</strong> and match
+exactly at every position <strong>except 0</strong>, and at position 0 the streamed transaction is
+the type-<code>0x7e</code> L1-attributes deposit that the canonical chain placed in block <strong>N−1</strong>.
+22 of 24 blocks showed it; in every mismatching case the streamed deposit hash for
+block N equals the sealed deposit hash for block N−1 (ten consecutive blocks checked
+individually). Every <em>user</em> transaction — positions 1..n−1 — matched in hash <strong>and</strong>
+order, so shred ordering is otherwise faithful.</p>
+<p>A consumer replaying <code>stateChanges</code> to build state therefore applies the wrong
+<code>L1Block</code> update — stale L1 block number, timestamp, basefee, batcherHash — one block
+late, forever, at 1 Hz. Whether this is a labelling bug in the broadcaster or a real
+mid-flight replacement of the payload attributes cannot be told from outside, and with
+no signature on the shred there is nothing to escalate with.</p>
+<h2>7. There is no ordered-but-invalid state, because admission is synchronous</h2>
+<p>RISE lands at the <strong>opposite pole</strong> from the three rows that converged before it.
+Conflux (<code>Skipped</code>), IOTA EVM (rejected at the ISC request layer) and Artela (the
+indexing event is emitted by the last ante decorator, so an ante failure leaves no
+index entry) all order a transaction and then <strong>erase</strong> it, leaving a null receipt
+indistinguishable from never having submitted. Taraxa is the counter-pole: included,
+charged the full gas limit, <code>status: 0</code>. Autonomys poisons the whole bundle and slashes
+the operator.</p>
+<p>RISE never orders an invalid transaction at all. Because a shred is published only
+<em>after</em> execution, and admission is synchronous at the RPC boundary, the
+ordered-but-unevaluated window does not exist. Tested live with freshly generated,
+correctly signed transactions from an empty account:</p>
+<table>
+<thead>
+<tr>
+<th>condition</th>
+<th>answer</th>
+<th>receipt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>insufficient balance</td>
+<td><code>-32003 insufficient funds for gas * price + value: have 0 want 1000009876132000</code></td>
+<td>null forever</td>
+</tr>
+<tr>
+<td>gas price below base fee</td>
+<td><code>-32000 max fee per gas less than block base fee</code></td>
+<td>null forever</td>
+</tr>
+<tr>
+<td>wrong chain id</td>
+<td><code>-32000 invalid chain ID</code></td>
+<td>null forever</td>
+</tr>
+</tbody>
+</table>
+<p>— and <code>eth_sendRawTransactionSync</code> returns <strong>the identical errors</strong> as
+<code>eth_sendRawTransaction</code>, so the fast path is not a laxer path. A transaction that <em>is</em>
+admitted and then reverts gets the ordinary treatment: 103 of 2,452 sampled shred
+receipts carried <code>status: 0x0</code> with gas charged.</p>
+<p>So RISE's answer to the central question is the <em>mainnet</em> answer, arrived at by a
+different route — and the interesting risk moved somewhere else entirely: not "can an
+ordered transaction be invalidated" but "can a published <em>result</em> be contradicted"
+(finding 6: yes).</p>
+<h2>8. MegaETH and RISE spent their divergence budget in opposite places</h2>
+<p>Two OP Stack L2s, both chasing single-digit-millisecond preconfirmation, both with a
+closed sequencer, both streaming sub-block units over WebSocket. Everything else is
+inverted.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>MegaETH</th>
+<th>RISE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EVM</td>
+<td>rewritten: dual gas meter, 98/100 forwarding, 512 KiB code limit, state-layout-priced <code>SSTORE</code></td>
+<td><strong>stock</strong>, as far as every probe reaches</td>
+</tr>
+<tr>
+<td>own forks</td>
+<td>eleven (MiniRex…Rex6), including a <em>rollback</em></td>
+<td><strong>zero</strong></td>
+</tr>
+<tr>
+<td>sub-block unit</td>
+<td>mini-block: global height space (2.4×10⁹), many txs, mostly empty</td>
+<td>shred: one tx, <code>shredIdx</code> = tx index, resets each block</td>
+</tr>
+<tr>
+<td>signed?</td>
+<td>yes, secp256k1 over the header</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td>preconf over plain HTTP</td>
+<td>no — <code>null</code> until sealed</td>
+<td><strong>yes</strong>, with <code>blockHash: 0x00…00</code></td>
+</tr>
+<tr>
+<td>standard <code>logs</code> subscription</td>
+<td>unchanged</td>
+<td><strong>repurposed to shreds</strong></td>
+</tr>
+<tr>
+<td>receipt shape</td>
+<td>OP-standard</td>
+<td><strong>L1 fee fields removed</strong></td>
+</tr>
+<tr>
+<td>DA</td>
+<td>EigenDA</td>
+<td>AltDA server (<code>da.risechain.com</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>MegaETH rewrote the EVM and kept the RPC recognisable. RISE kept the EVM and rewrote
+the RPC. A contract auditor has almost nothing to learn from the RISE row; a tooling
+maintainer has more to learn from it than from any other OP Stack descendant here.</p>
+<h2>9. The receipt has no OP L1 fee fields at all — marked <code>severity: high</code></h2>
+<p>Every other OP Stack chain returns <code>l1Fee</code>, <code>l1GasPrice</code>, <code>l1GasUsed</code>, <code>l1FeeScalar</code>
+(and from Isthmus <code>operatorFeeScalar</code>/<code>operatorFeeConstant</code>) on every receipt. RISE
+returns <strong>none</strong> of them. The key set at the pinned block is exactly <code>blockHash,
+blockNumber, contractAddress, cumulativeGasUsed, effectiveGasPrice, from, gasUsed,
+logs, logsBloom, status, to, transactionHash, transactionIndex, type</code> — plus
+<code>depositNonce</code>/<code>depositReceiptVersion</code> on deposits. The published wire type says why:
+<code>RiseRpcTransactionReceipt</code> is documented as <em>"RISE transaction receipt without OP L1
+fee fields (always zero on RISE)"</em>.</p>
+<p>This fails silently in the direction accounting code does not check: an OP-aware
+indexer computing <code>gasUsed * effectiveGasPrice + l1Fee</code> reads <code>undefined</code>/<code>nil</code> for
+the last term and gets NaN, zero, or a throw depending on the language — never a signal
+that the field was never there.</p>
+<p>The reason it is zero is structural, not a scalar set to 0: <strong>DA is an AltDA server,
+not Ethereum blobs.</strong> <code>rollup.json</code> carries <code>alt_da</code> with
+<code>da_commitment_type: GenericCommitment</code>, and the node distribution points op-node at
+<code>--altda.da-server=https://da.risechain.com</code>. The <code>da_challenge_contract_address</code> is
+the zero address and both windows are 1, so the on-chain challenge mechanism is not
+configured — availability rests on one HTTPS endpoint the chain operates, with the
+commitment batched to L1 at <code>0x00bb2bf8…cdc9d4a</code>.</p>
+<h2>10. Everything else in the derivation pipeline is stock — a clean negative</h2>
+<p>The L1-attributes deposit calls <code>0x4200…15</code> with selector <strong><code>0x3db6be2b</code></strong>, which is
+op-reth's <code>L1_BLOCK_JOVIAN_SELECTOR</code> verbatim. <code>0x4200…11</code> is the beneficiary of every
+header. <code>withdrawalsRoot</code> (Isthmus) and the 17-byte Jovian <code>extraData</code> are both present
+and well-formed. Every OP fork Regolith→Jovian is at time 0, RISE has scheduled no fork
+of its own, and <code>karst_time</code> is absent. <code>lineage.sync_point</code> is therefore <strong>not needed</strong>
+— unusual for this dataset: RISE sits at exactly the fork level the <code>op-stack</code> row's
+pinned client does, so it inherits that row wholesale and correctly, where MegaETH
+needs a sync_point to avoid being credited with Jovian it does not have.</p>
+<h2>11. The fee market is a constant with a 1559-shaped header</h2>
+<p>Live <code>extraData</code> decodes to denominator <strong>1</strong>, elasticity <strong>1</strong>, minBaseFee <strong>415,300
+wei</strong> — which is exactly <code>chain_id × 100</code>. Elasticity 1 means the target equals the
+gas limit, so with blocks running at 24–44% of a <strong>1,500,000,000</strong> gas limit the base
+fee always wants to fall and Jovian's floor catches it: six consecutive blocks all
+carry <code>baseFeePerGas: 0x65644</code>. Genesis shipped the OP defaults (250 / 6 / 0) and a
+250,000,000 gas limit, so both the 1559 parameters and the gas limit were changed after
+launch through L1 <code>SystemConfig</code> — parameter changes invisible to anyone reading the
+repo, and the closest thing this chain has to a fork schedule.</p>
+<h2>12. A bincode Unix-socket side channel, for co-located parties only</h2>
+<p>The 353 published lines also define an IPC protocol: <em>"RISE nodes can expose a
+Unix-socket for co-located services to read chain state and submit transactions rapidly
+without paying JSON and network costs"</em> — <code>GetBaseFee</code>, <code>GetPendingNonce(address)</code>,
+<code>SubmitRawTx(bytes)</code> returning a compact receipt, length-delimited bincode rather than
+JSON-RPC. Recorded because it means the fastest path onto this chain is one only a
+co-located party can take, a latency asymmetry the public RPC does not reveal.</p>
+<hr />
+<h2>Not established here</h2>
+<p>With no execution-client source, the list of things that cannot be enumerated is
+itself part of the row's shape.</p>
+<ul>
+<li><strong>Gas schedules — the biggest gap.</strong> No precompile repricing, no opcode repricing,
+  no intrinsic-cost change could be measured. <code>eth_estimateGas</code> binary-searches and
+  adds a buffer, so it cannot resolve a repricing, and with no source and no funded key
+  there is no other instrument. Recorded as <code>precompiles.gas_schedule: unrecorded</code>
+  rather than asserted inherited. Settling it needs either the client source or a
+  funded key plus differential gas accounting against a reference node.</li>
+<li><strong>EIP-170 / EIP-3860 limits.</strong> Whether the 24,576-byte code limit is raised is
+  <code>unrecorded</code>. MegaETH raises it to 512 KiB, so the question is live for a chain
+  chasing gigagas. A single funded deploy settles it.</li>
+<li><strong>What <code>rise-exec</code> actually is.</strong> It is invoked with reth's CLI grammar
+  (<code>node --chain --datadir --txpool.pending_max_count …</code>), which makes a reth
+  derivative overwhelmingly likely, but <code>risechain/reth</code> is an untagged fork whose
+  relationship to the shipped digest is unverifiable. Not claimed.</li>
+<li><strong>Whether the deposit-shred mismatch (finding 6) is a broadcaster labelling bug or a
+  real payload-attributes replacement.</strong> Both produce the same observation from
+  outside. The client source would settle it in one read.</li>
+<li><strong>Whether a <em>user</em> transaction's shred can ever be contradicted.</strong> 24 blocks is
+  evidence of practice, not a bound. Nothing observed contradicted a user transaction;
+  nothing observed rules it out either, and with no signature there is no protocol-level
+  guarantee to appeal to.</li>
+<li><strong><code>eth_sendRawTransactionSync</code> with a valid, funded transaction.</strong> Confirmed to
+  exist and to apply the same validity checks; never exercised end-to-end.</li>
+<li><strong>Shred delivery guarantees.</strong> Whether the stream is lossless, whether shreds can
+  arrive out of <code>shredIdx</code> order, and what happens across a reconnect. The captures were
+  contiguous, but the API offers no cursor, no resume and no gap signal, so a consumer
+  cannot detect a loss.</li>
+<li><strong>EIP-7702 in practice.</strong> Type <code>0x04</code> is supported by Prague and has an explicit
+  branch in the shred formatter, but none appeared in the sampled blocks.</li>
+<li><strong>Fault proofs.</strong> A <code>protocol_versions_address</code> and a dispute-game deployment are
+  configured, but whether the fault-proof system is active for an AltDA chain with an
+  unconfigured challenge contract was not investigated.</li>
+</ul>
+<hr />
+<h2>Re-verify</h2>
+<pre><code class="language-sh">cd /Volumes/TendiesTown/EVM-intel
+R=https://rpc.risechain.com; B=0x134d400          # 20239360
+
+# --- pins (rise-node is the only TAGGED repo in the org)
+git -C chains/rise/repos/rise-node  rev-parse HEAD   # 27cd88b171000a08a92d2c65358a2d3b84f423d8
+git -C chains/rise/repos/rise-node  describe --tags  # v0.6.0
+git -C chains/rise/repos/risechain  rev-parse HEAD   # 0f53132e...  (main, UNTAGGED)
+git -C chains/rise/repos/pevm       rev-parse HEAD   # e94b0e3d...  (main, UNTAGGED)
+git ls-remote --tags https://github.com/risechain/pevm       # empty
+git ls-remote --tags https://github.com/risechain/risechain  # empty
+git ls-remote --tags https://github.com/risechain/reth       # empty
+
+# --- source: the client is two container digests, not code (finding 1)
+grep -n 'image:\|altda.da-server' chains/rise/repos/rise-node/docker-compose.yml
+# --- source: chain parameters
+python3 -m json.tool chains/rise/repos/rise-node/chain/mainnet/rollup.json \
+  | grep -E 'l2_chain_id|block_time|jovian_time|karst|batch_inbox|da_commitment_type|eip1559'
+python3 -c &quot;import json;print(json.load(open('chains/rise/repos/rise-node/chain/mainnet/genesis.json'))['config'])&quot;
+# --- source: pevm is NOT production (finding 1)
+grep -n 'not production ready\|Integration into RISE nodes\|Committing and broadcasting shreds' \
+  chains/rise/repos/pevm/README.md
+grep -n 'must arrive at the same outcome as sequential' chains/rise/repos/pevm/README.md
+# --- source: the receipt wire type (findings 3, 9) and the IPC channel (finding 12)
+grep -n 'without OP L1 fee fields\|None for pending / shred receipts\|block_hash' \
+  chains/rise/repos/risechain/crates/primitives/src/rpc.rs
+grep -n 'RiseIpcRequest' -A 10 chains/rise/repos/risechain/crates/primitives/src/ipc.rs
+
+# --- live: identity
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_chainId&quot;,&quot;params&quot;:[]}' $R          # 0x1039
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;web3_clientVersion&quot;,&quot;params&quot;:[]}' $R   # rise-replica/sha-80d9780/linux
+
+# --- live: header, fee floor, gas limit (finding 11)
+for i in 0 1 2 3 4 5; do n=$(python3 -c &quot;print(hex(0x134d400+$i))&quot;); curl -s -X POST \
+  -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$n\&quot;,false]}&quot; $R \
+  | python3 -c &quot;import json,sys;d=json.load(sys.stdin)['result'];e=d['extraData'];print(d['number'],d['baseFeePerGas'],int(d['gasUsed'],16),int(d['gasLimit'],16),'v%s denom %d elas %d minBaseFee %d'%(e[2:4],int(e[4:12],16),int(e[12:20],16),int(e[20:36],16)))&quot;; done
+# 0x134d400 0x65644 654381583 1500000000 v01 denom 1 elas 1 minBaseFee 415300   (and x5 more)
+
+# --- live: baseline fork markers (Prague, not Osaka)
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x0000F90827F1C53a10cb7A02335B175320002935\&quot;,\&quot;$B\&quot;]}&quot; $R   # 84 bytes
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02\&quot;,\&quot;$B\&quot;]}&quot; $R   # has code
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;data\&quot;:\&quot;0x60011e5f5260205ff3\&quot;},\&quot;$B\&quot;]}&quot; $R
+#   -&gt; {&quot;error&quot;:{&quot;code&quot;:-32003,&quot;message&quot;:&quot;EVM error: NotActivated&quot;}}   (CLZ absent =&gt; not Osaka)
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000100\&quot;,\&quot;data\&quot;:\&quot;0x$(printf '00%.0s' $(seq 1 160))\&quot;},\&quot;$B\&quot;]}&quot; $R
+#   -&gt; &quot;0x&quot;   (P256VERIFY, RIP-7212 empty-output-on-failure)
+
+# --- live: BLOCKHASH is honest — shreds do not consume block numbers (finding 2)
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;data\&quot;:\&quot;0x4360019003405f5260205ff3\&quot;},\&quot;$B\&quot;]}&quot; $R
+#   -&gt; 0x381b2539b4e614c13c5c787fa2eeacd62e038e5450030295cdcb17f112b2dfac == parentHash of 20239360
+
+# --- live: the receipt has NO L1 fee fields (finding 9)
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockReceipts\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;]}&quot; $R \
+  | python3 -c &quot;import json,sys;print(sorted(json.load(sys.stdin)['result'][1].keys()))&quot;
+#   -&gt; ['blockHash','blockNumber','contractAddress','cumulativeGasUsed','effectiveGasPrice',
+#       'from','gasUsed','logs','logsBloom','status','to','transactionHash','transactionIndex','type']
+
+# --- live: stock Jovian L1 attributes selector, tx-type census (finding 10)
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;,true]}&quot; $R \
+  | python3 -c &quot;import json,sys;from collections import Counter;t=json.load(sys.stdin)['result']['transactions'];print(t[0]['type'],t[0]['to'],t[0]['input'][:10]);print(Counter(x['type'] for x in t))&quot;
+#   -&gt; 0x7e 0x4200000000000000000000000000000000000015 0x3db6be2b
+#      Counter({'0x0': 379, '0x2': 2, '0x7e': 1})
+
+# --- live: custom RPC surface (finding 5)
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_sendRawTransactionSync&quot;,&quot;params&quot;:[&quot;0xdeadbeef&quot;]}' $R
+#   -&gt; -32602 &quot;failed to decode signed transaction&quot;   (method EXISTS)
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;rise_getShred&quot;,&quot;params&quot;:[]}' $R
+#   -&gt; -32601 &quot;Method not found&quot;                      (no custom namespace)
+
+# --- live: shreds, the preconfirmed receipt, the two sentinels, the stale deposit
+#           (findings 2, 3, 4, 6) — needs a minimal WebSocket client.
+#     Connect to wss://rpc.risechain.com/ws  (the bare host with NO /ws path returns
+#     HTTP 403 on the upgrade), then:
+#       eth_subscribe [&quot;shreds&quot;, false]   -&gt; shred stream
+#       eth_subscribe [&quot;shreds&quot;, true]    -&gt; shred stream WITH stateChanges
+#       eth_subscribe [&quot;shred&quot;]           -&gt; -32602 &quot;data did not match any variant of
+#                                            untagged enum AllSubscriptionKind&quot;
+#       eth_subscribe [&quot;logs&quot;, {}]        -&gt; SHRED logs, blockHash NULL
+#     and the instant a shred arrives, call over HTTP:
+#       eth_blockNumber   and   eth_getTransactionReceipt(&lt;the shred's tx hash&gt;)
+#
+#   Observed 2026-08-27:
+#     shred blk=20239693 idx=88  -&gt;  eth_blockNumber = 20239692   (block does not exist)
+#         eth_getTransactionReceipt -&gt; blockNumber 0x134d51a, blockHash 0x00..00,
+#                                      status 0x1, transactionIndex 0x58
+#         eth_getTransactionByHash  -&gt; blockHash null, blockNumber null
+#     eth_subscribe [&quot;logs&quot;,{}] @ 20277529 -&gt; blockHash null, blockNumber 0x1356919,
+#                                      logIndex 0x2be..0x2c1, removed false
+#     block 20277530: 98 shreds, shredIdx 0..97, ntx=1 each; sealed block has 98 txs;
+#                     shredIdx 0/1/2 -&gt; receipt transactionIndex 0/1/2
+#     24 consecutive blocks: 22 mismatch the sealed block at position 0 ONLY, and the
+#                     streamed shredIdx-0 deposit for block N is the sealed deposit of
+#                     block N-1 (e.g. streamed[0] of 20277749 == sealed[0] of 20277748)
+#     shred receipt status census over ~14 s: 2349 status 0x1, 103 status 0x0
+
+# --- live: admission is synchronous, nothing is ordered-then-erased (finding 7)
+#     sign a legacy tx from a FRESH EMPTY account (chainId 4153) and submit it:
+#       insufficient balance -&gt; -32003 &quot;insufficient funds for gas * price + value: have 0 want ...&quot;
+#       gasPrice 1 wei       -&gt; -32000 &quot;max fee per gas less than block base fee&quot;
+#       chainId 1            -&gt; -32000 &quot;invalid chain ID&quot;
+#     eth_getTransactionReceipt for all three -&gt; null, permanently.
+#     eth_sendRawTransactionSync returns the IDENTICAL errors as eth_sendRawTransaction.
+
+# --- schema
+tools/.venv/bin/python -c &quot;import yaml;yaml.safe_load(open('chains/rise/chain.yaml'))&quot;
+tools/.venv/bin/python tools/verify.py 2&gt;&amp;1 | sed -n '/^rise/,/^$/p'
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh rise    # fetch the pinned evidence
+tools/verify.py rise   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/rise/chain.yaml</code> · <code>chains/rise/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

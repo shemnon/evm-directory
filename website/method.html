@@ -195,6 +195,32 @@ enough. Three citations in this repo pointed at real files and still lied: a lin
 number that had drifted onto a different constant, a path written relative to the wrong
 directory, and a sibling that was one directory up. A <code>src_live:</code> with no <code>@ &lt;block&gt;</code>
 is rejected outright.</p>
+<h3><code>live_state:</code> — why a row is not live</h3>
+<p>Set on <code>chain:</code>, and only meaningful when <code>live: false</code>. <code>live: false</code> alone
+conflates two situations that a reader must not confuse.</p>
+<table>
+<thead>
+<tr>
+<th>live_state</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prelaunch</code></td>
+<td>the chain has never produced a mainnet block. Facts rest on source plus, at best, a TESTNET probe — so every <code>src_live:</code> on such a row states what the testnet did. Arc.</td>
+</tr>
+<tr>
+<td><code>halted</code></td>
+<td>the chain produced blocks and stopped. Its <code>src_live:</code> facts are real mainnet observations; they are simply frozen at the last block. Polygon zkEVM.</td>
+</tr>
+</tbody>
+</table>
+<p>The distinction is not cosmetic. A <code>prelaunch</code> row's live evidence may be
+contradicted by mainnet at launch — Arc's testnet runs a fork the mainnet schedule
+does not contain — while a <code>halted</code> row's live evidence can never be contradicted,
+because nothing further will happen. Neither is a claim about intent: a chain may be
+halted because it was sunset or because it broke, and no probe distinguishes those.</p>
 <h3><code>evidence:</code> — the row's overall footing</h3>
 <p>Set on <code>chain:</code>. Defaults to <code>source</code>.</p>
 <table>
@@ -464,8 +490,9 @@ unchanged.</p>
 </table>
 <p><code>findings.yaml</code> is the one <strong>content</strong> file in the pipeline — the place where a human
 says what the dataset means. Everything else on the site is derived. A finding is
-written once and surfaces in three places: the home page, its <code>axis:</code> page, and the page
-of every chain in its <code>chains:</code> list.</p>
+written once and surfaces in three places, in two voices: the home page and its <code>axis:</code>
+page carry the full cross-chain survey, while each chain in its <code>chains:</code> mapping gets
+only its own slice — the note's <code>lede</code>, that chain's gloss, and a link to the survey.</p>
 <h2>Regenerating after a change</h2>
 <p>The build is dependency-tracked, so the honest answer to "what do I re-run" is almost
 always just <code>tools/site.py</code>. It hashes every page's declared inputs into
@@ -550,8 +577,8 @@ tools/.venv/bin/pip install pyyaml markdown
 </code></pre>
 <p>No Node, no bundler, no external network at build or view time. The pages embed no
 webfonts, scripts or images from other hosts, so they render identically offline.</p></div>
-<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2><div class="finding"><h3 id="f-schema-meets-new-axes">Axes the schema does not model<a class="anchor" href="#f-schema-meets-new-axes">#</a></h3><p>Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and omits a second virtual machine. Base's precompiles are not enumerable. opBNB has two parents. Each is recorded explicitly rather than reduced to a zero the schema can hold.</p><p class="tags"><a href="chains/arbitrum.html">Arbitrum</a> · <a href="chains/base.html">Base</a> · <a href="chains/opbnb.html">opBNB</a></p></div>
+<h2 id="notes">Notes <span class="pill">3</span><a class="anchor" href="#notes">#</a></h2><div class="finding"><h3 id="f-schema-meets-new-axes">Axes the schema does not model<a class="anchor" href="#f-schema-meets-new-axes">#</a></h3><p>Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and omits a second virtual machine. Base's precompiles are not enumerable. opBNB has two parents. Each is recorded explicitly rather than reduced to a zero the schema can hold.</p><p class="tags"><a href="chains/arbitrum.html">Arbitrum</a> · <a href="chains/base.html">Base</a> · <a href="chains/opbnb.html">opBNB</a></p></div><div class="finding"><h3 id="f-stale-coordinates">Four of fifteen candidate clients were at the wrong address<a class="anchor" href="#f-stale-coordinates">#</a></h3><p>The repository coordinates a chain publishes are not durable, and the drift is invisible until a clone fails. Of fifteen chains scheduled in one pass, four were not where the backlog said: <code>gnosischain/gnosis</code> <strong>404s</strong> (the live chainspec is inside Nethermind, while <code>gnosischain/configs</code>' genesis is frozen pre-Merge), <code>InjectiveLabs/injective-core</code> <strong>moved orgs</strong> to <code>InjectiveFoundation</code>, <code>mantlenetworkio</code> <strong>redirects</strong> to <code>mantle-xyz</code>, and <code>0xPolygonHermez/zkevm-node</code> is <strong>archived</strong> and replaced by a different client (<code>0xPolygon/cdk-erigon</code>) whose contracts moved to a third org. Linea had already shown the pattern: Consensys → LFDT-Lineth, hyperledger/besu → besu-eth. In three of the five cases the running network was identified only by asking it — <code>web3_clientVersion</code> — rather than by reading a document. Pinning a commit protects a fact once found; it does not help you find the client.</p><p class="tags"><a href="chains/gnosis.html">Gnosis</a> · <a href="chains/injective.html">Injective</a> · <a href="chains/mantle.html">Mantle</a> · <a href="chains/polygon-zkevm.html">zkEVM</a> · <a href="chains/linea.html">Linea</a></p></div><div class="finding"><h3 id="f-ordered-then-invalid">A transaction ordered before it is executed has seven different fates<a class="anchor" href="#f-ordered-then-invalid">#</a></h3><p>Mainnet checks nonce, balance and gas price <em>before</em> a transaction is ordered, so "ordered but invalid" is not a state it can reach. Every chain that separates ordering from execution has to invent an answer, and ten rows here have invented seven. <strong>Erasure, by four unrelated mechanisms:</strong> Conflux defines a third receipt outcome, <code>TransactionStatus::Skipped</code>, then deletes the transaction from the block, the transaction index and <code>eth_getTransactionReceipt</code> alike; IOTA EVM rejects at the ISC request layer before the EVM is entered, so there is no receipt to write; Artela emits its indexing event from the <em>last</em> ante decorator, so an ante failure leaves the CometBFT index with no entry while the transaction sits provably in the block; Rollkit's builder logs a <code>warn!</code> and does not append. In all four, <code>eth_getTransactionReceipt</code> returns null forever and the transaction is indistinguishable from one never submitted. <strong>Taraxa is the counter-pole:</strong> no skip path at all — included, charged the full gas limit, <code>status: 0</code>. <strong>Autonomys escalates:</strong> the offending transaction poisons its whole <code>Bundle</code>, every valid co-passenger is dropped, and the operator is automatically slashed under <code>SlashedReason::InvalidBundle</code>. <strong>Berachain rejects the block:</strong> the EVM sits behind the Engine API, whose <code>newPayload</code> verdict has no per-transaction skip, so <code>ProcessProposal</code> returns REJECT and the client sees nothing at all. <strong>RISE and MegaETH make the state unreachable</strong>, by opposite routes — RISE admits synchronously and publishes only after executing, MegaETH creates the state inside the builder and resolves it before publication. <strong>Monad charges it</strong>, inside execution. <strong>Hedera bills it without ever executing it, and the bill may land on the node</strong>: fees are charged before the handler is reached, and the split is by <em>who was negligent</em> rather than by what failed — a due-diligence failure (expiry re-checked against the consensus clock, a bad payer signature) debits the submitting <strong>node's</strong> account and the payer nothing, while a duplicate or an unaffordable service fee debits the <strong>payer</strong> and never calls the handler. It is the only row where the node pays for the sender's invalid transaction. A record always exists, because Hedera cannot drop something that reached consensus — but for a wrapped Ethereum transaction the Ethereum hash is written only inside the handler, so the <code>eth_*</code> view is null forever anyway. There is no portable answer to "was my transaction included", and a null receipt means "still pending" on some of these chains, "gone forever" on others, and "gone, and you were charged" on one.</p><p class="tags"><a href="chains/conflux.html">Conflux</a> · <a href="chains/iota-evm.html">IOTA EVM</a> · <a href="chains/artela.html">Artela</a> · <a href="chains/rollkit.html">Rollkit</a> · <a href="chains/taraxa.html">Taraxa</a> · <a href="chains/autonomys.html">Auto EVM</a> · <a href="chains/berachain.html">Bera</a> · <a href="chains/rise.html">RISE</a> · <a href="chains/megaeth.html">MegaETH</a> · <a href="chains/monad.html">Monad</a> · <a href="chains/hedera.html">Hedera</a></p></div>
 </main>
-<footer>Generated 2026-08-22</footer>
+<footer>Generated 2026-08-31</footer>
 <script src="assets/site.js"></script>
 </body></html>

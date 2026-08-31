@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flare · EVM-intel</title>
+<meta name="description" content="go-flare is a MONOREPO fork of BOTH halves of an Avalanche node: avalanchego (consensus, P/X chains, genesis) and coreth (the C-Chain EVM) live side by side in one tree and are versioned together.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Flare</h1>
+<p class="lede">go-flare is a MONOREPO fork of BOTH halves of an Avalanche node: avalanchego (consensus, P/X chains, genesis) and coreth (the C-Chain EVM) live side by side in one tree and are versioned together.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>14</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>cancun</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>avalanchego + coreth (whole-repo fork)</td></tr><tr><td>Sync point</td><td>coreth v0.16.0-rc.0 / avalanchego v1.14.0, but the FORK CLOCK is what matters here, not the code version. Flare runs the same coreth generation as the C-Chain and reaches every Avalanche upgrade roughly a year late: Durango 2024-03-06 on Avalanche vs 2025-08-05 on Flare (17 months), Etna 2024-12-16 vs 2025-12-02 (11.5 months), Granite 2025-11-19 vs 2026-07-14 (8 months). Same client, same baseline, different calendar — a chain can be code-current and still be a year behind in what its rules allow. src: avalanchego/upgrade/upgrade.go:Flare</td></tr><tr><td>Consensus</td><td>Snowman++ (Avalanche consensus) · block time ~1.8s</td></tr><tr><td>Lineage note</td><td><p>go-flare is a MONOREPO fork of BOTH halves of an Avalanche node: avalanchego (consensus, P/X chains, genesis) and coreth (the C-Chain EVM) live side by side in one tree and are versioned together. Its own README pins the bases: "a modified version of avalanchego@v1.14.0 and coreth@v0.16.0 rc0". Read chains/avalanche-c/chain.yaml first: everything that row establishes about coreth v0.16.0 — libevm, the Durango=Shanghai / Etna=Cancun mapping, the absence of Prague and Osaka, the three tombstoned native-asset addresses, P256VERIFY at 0x0100 from Granite, Warp at 0x0200..05, blob/beacon fields pinned to constants, the UTXO atomic transactions — is true here too and is restated in this file only because avalanche-c has role <code>fork</code>, not <code>stack</code>, so tools/model.py does not resolve inheritance across it. The entries that are FLARE'S OWN carry <code>note: FLARE-SPECIFIC</code> and cite files under coreth/core/ that do not exist upstream: daemon.go, state_connector.go, governance_settings.go, state_transition_params.go.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/flare-foundation/go-flare">go-flare</a> <code>v1.14.0</code></td></tr><tr><td>Pinned commit</td><td><code>1f9983a2f83a8469314817b456d8b279861dbad8</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Client note</td><td><p>One repo, two vendored trees. EVM facts cite <code>coreth/...</code>; fork schedule and genesis allocation cite <code>avalanchego/...</code>. The <code>coreth/plugin/evm/version.go</code> string still reads v0.15.4 and is served verbatim by web3_clientVersion on mainnet, so the client version reported over RPC does not identify the release. src_live: "web3_clientVersion @ 68124744 -&gt; v0.15.4 (repo tag is v1.14.0)"</p></td></tr><tr><td>Live probe</td><td><code>https://flare-api.flare.network/ext/C/rpc</code> · chain_id 14 · observed at block <code>68124744</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 61 · <code>src_live:</code> 22 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-getcode-proves-nothing">eth_getCode cannot tell a precompile from a contract<a class="anchor" href="#f-getcode-proves-nothing">#</a></h3><p class="lede">SCHEMA.md distinguishes a precompile (native code, no bytecode in state) from a system contract (real bytecode at a fixed address), and the obvious test is <code>eth_getCode</code>: empty means precompile. That test fails on eight rows here, in six shapes, in BOTH directions. Classification has to come from the client's precompile map; a probe can only corroborate it.</p><p>Fails in both directions on one chain. The Warp precompile answers <code>0x01</code>, inherited from Avalanche's deliberate <code>extcodesize</code> stub — while Flare's <code>0x1000…0001–0007</code>, cited elsewhere as custom precompiles, are ordinary system contracts with real genesis bytecode.</p><p class="tags"><a href="../axes/precompiles.html#f-getcode-proves-nothing">Full note · Precompiles</a> · also on <a href="../chains/sonic.html#f-getcode-proves-nothing">Sonic</a> · <a href="../chains/cosmos-evm.html#f-getcode-proves-nothing">Cosmos EVM</a> · <a href="../chains/moonbeam.html#f-getcode-proves-nothing">Moonbeam</a> · <a href="../chains/tempo.html#f-getcode-proves-nothing">Tempo</a> · <a href="../chains/arc.html#f-getcode-proves-nothing">Arc</a> · <a href="../chains/avalanche-c.html#f-getcode-proves-nothing">Avax C</a> · <a href="../chains/injective.html#f-getcode-proves-nothing">Injective</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">3</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">system_contracts</span></td><td><code>0x1000000000000000000000000000000000000002</code> FlareDaemon</td><td><div class="wrap">THE LARGEST DIVERGENCE ON THIS CHAIN. After EVERY successful transaction the client calls trigger() (selector 0x7fec8d38) on this address with a gas budget of 100x the block gas limit, charged to nobody. Whatever 32-byte value the call returns is treated as a MINT REQUEST and credited to this contract&#x27;s balance by a direct AddBalance, capped at 60,000,000 FLR per invocation. If the mint is rejected the daemon&#x27;s state changes are reverted to a snapshot; if the daemon call errors, the failure is only logged and the user&#x27;s transaction still succeeds. Its side effects land inside the user&#x27;s receipt: a probed submission transaction carries six logs emitted by this address that its own call tree never produced.</div></td></tr><tr><td><span class="pill">system_contracts</span></td><td><code>0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f</code> Submitter (FTSO v2 / FDC)</td><td><div class="wrap">NOT a genesis contract — an ordinary deployed contract that the CLIENT knows about by hardcoded address. It is the second prioritised address, and it is where essentially all of Flare&#x27;s traffic goes: 248 of 290 transactions (86%) in a 40-block window. Prioritisation applies when the selector is one of five hardcoded prefixes, the calldata is &lt;= 4500 bytes, the tx gas limit is &lt;= 3,000,000, and the call returned a non-zero word.</div></td></tr><tr><td><span class="pill">fee_model</span></td><td>fee model</td><td><div class="wrap">TWO FLARE-SPECIFIC RULES. (1) EVERYTHING BURNS. The whole fee — base fee and priority fee alike — is credited to 0x000000000000000000000000000000000000dEaD. The block producer&#x27;s address is the blackhole 0x0100..0000 in every header and it receives nothing, so validator revenue on Flare is not transaction fees. (2) PRIORITISED CALLS ARE CHARGED A FLAT FEE, AND THE RECEIPT DOES NOT SAY SO. If a transaction targets 0x1000..0003 or 0x2cA6..c33f with an allowlisted selector, within the calldata and gas-limit caps, and its call returned a non-zero word, then after execution the client computes nominalFee = 21000 * 25 gwei, refunds (actualFee - nominalFee) to the SENDER, and burns only the nominal amount. gasUsed and effectiveGasPrice in the receipt are untouched and describe the charge that did not happen. Measured at block 68124744: a submission transaction reports gasUsed 212362 at effectiveGasPrice 1625 gwei, implying a fee of 0.34508825 FLR. The sender&#x27;s balance fell by 0.000525 FLR. The receipt overstates the fee by 657x, with status 0x1 and no other signal. Across the whole block, receipts imply 1.31034165 FLR of fees while the burn address received 0.05638215 FLR. This is the majority path, not an edge case: 86% of sampled transactions qualify. Any fee accounting, gas-cost dashboard, MEV estimate or revenue model built on Flare receipts is wrong by two to three orders of magnitude.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>Flare does not define forks of its own on the EVM side. It reuses Avalanche's fork NAMES with its own TIMESTAMPS, hardcoded in a <code>Flare</code> Config literal beside avalanchego's <code>Mainnet</code> one. The Ethereum mapping is coreth's and unmodified: ShanghaiTime = durango, CancunTime = etna, and there is no PragueTime or OsakaTime assignment anywhere in the tree. Apricot Phases 1-5 are ZeroTime (genesis); Berlin and London are pinned to block 0 by an explicit chain-id case. coreth's NetworkUpgrades struct additionally carries a Flare-added field, songbirdTransitionTimestamp, which Flare mainnet never sets (it gates the Songbird/Coston networks' migration onto this codebase).</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>apricot_phase1-5</code></td><td><span class="pill">active</span></td><td>1970-01-01</td><td>—</td><td><div class="wrap">ZeroTime for all five; Berlin and London forced to block 0 for chain 14</div></td></tr><tr><td><code>apricot_phase3</code></td><td><span class="pill">active</span></td><td>1970-01-01</td><td>london</td><td><div class="wrap">LondonBlock = 0 by chain-id case, not by timestamp</div></td></tr><tr><td><code>apricot_phase_pre6</code></td><td><span class="pill">active</span></td><td>2024-12-17</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>apricot_phase6</code></td><td><span class="pill">active</span></td><td>2024-12-17</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>apricot_phase_post6</code></td><td><span class="pill">active</span></td><td>2024-12-17</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>banff</code></td><td><span class="pill">active</span></td><td>2024-12-17</td><td>—</td><td><div class="wrap">tombstoned the native-asset precompiles — 26 months after Avalanche did</div></td></tr><tr><td><code>cortina</code></td><td><span class="pill">active</span></td><td>2025-05-13</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>durango</code></td><td><span class="pill">active</span></td><td>2025-08-05</td><td>shanghai</td><td><div class="wrap">FLARE-SPECIFIC SIDE EFFECT: also switched the State Connector hook OFF — GetStateConnectorIsActivatedAndCalled returns !isDurango &amp;&amp; ...</div></td></tr><tr><td><code>etna</code></td><td><span class="pill">active</span></td><td>2025-12-02</td><td>cancun</td><td><div class="wrap"></div></td></tr><tr><td><code>fortuna</code></td><td><span class="pill">active</span></td><td>2026-04-14</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>granite</code></td><td><span class="pill">active</span></td><td>2026-07-14</td><td>—</td><td><div class="wrap">added P256VERIFY at 0x0100, out of Ethereum&#x27;s fork order. Live-confirmed to the block: 0x0100 returns empty at 65060227 (timestamp 1784030399) and the correct 32-byte 1 at 65060228 (timestamp 1784030400).</div></td></tr><tr><td><code>songbird_transition</code></td><td><span class="pill">skipped</span></td><td>—</td><td>—</td><td><div class="wrap">a Flare-added fork field in coreth&#x27;s NetworkUpgrades; never set on chain 14</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> avalanchego/upgrade/upgrade.go:Flare, coreth/params/config_extra.go:SetEthUpgrades</p>
+<h2 id="eips">EIP deltas <span class="pill">12</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">TWO deviations, and the second is Flare&#x27;s own. (1) Avalanche&#x27;s ACP-176 dynamic fee replaces mainnet&#x27;s base-fee update rule — inherited from coreth. (2) FLARE-SPECIFIC: the whole fee, base fee AND priority fee, is credited to 0x000000000000000000000000000000000000dEaD; the block producer receives nothing, ever. And for a &quot;prioritised&quot; call the charge is overridden entirely — see fee_model and the severity:high gotcha.<p class="src"><b>src</b> coreth/core/state_transition_params.go:stateTransitionParamsFlare, coreth/core/state_transition.go:557-567 · <b>live</b> eth_getBalance 0x..dEaD @ 68124743 -&gt; 68124744 delta +0.05638215 FLR; coinbase 0x0100..00 delta 0</p></div></td></tr><tr id="eips-2537"><td><a href="https://eips.ethereum.org/EIPS/eip-2537">EIP-2537</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BLS12-381 at 0x0b-0x11 never adopted — Prague is not in the tree<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades · <b>live</b> eth_call 0x0b @ 68124744 -&gt; 0x (empty account, no precompile)</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Prague not adopted<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">parentBeaconBlockRoot must be the empty hash — no beacon chain, so the beacon-roots contract has nothing to read<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty · <b>live</b> eth_getBlockByNumber @ 68124744 -&gt; parentBeaconBlockRoot 0x00..00</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">inherited from coreth: Cancun is live via Etna but block validation rejects any header with blobGasUsed != 0 or excessBlobGas != 0<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled · <b>live</b> eth_getBlockByNumber @ 68124744 -&gt; blobGasUsed 0x0, excessBlobGas 0x0</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Prague not adopted; no beacon chain<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Prague not adopted; no beacon chain<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Prague not adopted; no beacon chain<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No EOA code delegation, no transaction type 0x04. Same absence as the C-Chain and for the same reason — Prague is not in the tree.<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Osaka not adopted — MODEXP keeps Cancun bounds<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Osaka not adopted — MODEXP keeps Cancun pricing<p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">P256VERIFY at 0x0100, gated on GRANITE (2026-07-14), not Osaka. Same out-of-order adoption as the C-Chain: Flare has 0x0100 and does NOT have the BLS12-381 precompiles mainnet shipped two forks earlier. What is measured here and not on the avalanche-c row is that the SEMANTICS AND GAS ARE MAINNET&#x27;S EXACTLY — a valid signature returns 32 bytes of 1, a corrupted r returns empty, and binary search puts the charge at precisely 6900 gas, EIP-7951&#x27;s number. Recorded as `modified` only because the fork gate differs.<p class="src"><b>src</b> coreth/params/hooks_libevm.go:PrecompiledContractsGranite · <b>live</b> eth_call 0x0100 @ 68124744 -&gt; 0x..01 for a valid sig, 0x for r^1; gas floor 6900 by binary search</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">2</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>NO custom type bytes. The EVM envelope is libevm's 0x00-0x03 unchanged; go-flare adds no type of its own, which makes it one of the few large non-Ethereum chains with a completely stock EIP-2718 surface. What is unusual is the MIX: 86% of transactions in the sampled window are FTSO/FDC submissions to a single prioritised address, and 19% of the window (55 of 290) still rides the untyped legacy envelope.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BlobTx</td><td><div class="wrap"><div>decodable but unincludable — blob gas is pinned to zero at the header level</div><p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled</p></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-removed" title="removed">➖</span></td><td>SetCodeTx</td><td><div class="wrap"><div>EIP-7702 not adopted — Prague absent</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades · <b>live</b> 40-block census @ 68124704-68124744 -&gt; {0x0: 55, 0x2: 235}; no 0x03, no 0x04</p></div></td></tr></tbody></table></div>
+<h2 id="non-evm-transactions">Transactions outside EIP-2718<a class="anchor" href="#non-evm-transactions">#</a></h2>
+<div class="note"><p>Inherited from coreth unchanged. Atomic import/export transactions move value between Flare's C-Chain and its P/X chains. They are UTXO-based, serialised with Avalanche's codec rather than RLP, registered in a separate codec namespace, and carry no EIP-2718 type byte — so they cannot appear in tx_types and are invisible to any indexer that enumerates a block through the EVM envelope.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code></code></td><td>UnsignedImportTx</td></tr><tr><td><code></code></td><td>UnsignedExportTx</td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1 for EVM transactions; N for atomic transactions</td></tr><tr><td>Note</td><td><p>On the signature axis Flare is coreth: two authorization envelopes on one chain (EVM secp256k1, and the UTXO credential lists of the atomic transactions), and nothing Flare adds changes what a signature IS. See chains/avalanche-c for the full treatment of both paths; they are restated here only because inheritance does not resolve across a <code>fork</code> row. THE FLARE-SPECIFIC POINT IS NOT A SCHEME — IT IS AN ORIGIN. Four client code paths execute EVM calls whose msg.sender is a SYNTHESISED address that nobody holds a key to, chosen because the target Solidity contract checks <code>msg.sender == SIGNAL</code> as its authorization: 0x00000000000000000000000000000000000DEaD1 (State Connector round finalisation), 0x00000000000000000000000000000000000DEaD0 (GovernanceSettings), 0x00000000000000000000000000000000000dead2 and 0x00000000000000000000000000000000000deAD3 (treasury address migration). The client also temporarily REWRITES block.coinbase to that same address for the duration of the call, because the contract reads block.coinbase as the second half of the signal. The source says outright that the security argument is "know the private key to the address 0x00000000000000000000000000000000000DEaD1" — i.e. a privileged call authorised by an address that provably has no signer. These are not transactions, carry no signature, pay no fee and have no nonce, so they are recorded under system_transactions rather than as a scheme. They are named here because "who can cause a state change" and "what can sign a transaction" come apart on this chain in a way the scheme table cannot show.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap">EVM path, stock. The 0x01-0x11 implementations come from ava-labs/libevm, outside this clone, so the citation is the call site.<p class="src"><b>src</b> coreth/core/state_transition.go:TransactionToMessage</p></div></td></tr><tr><td><code>secp256k1_utxo_credential</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap">The atomic import/export path — same curve, different envelope. The signed payload is the Avalanche-codec serialisation of the unsigned transaction, and the signature block is a list of credentials (one per input, each holding a list of signatures) rather than a single (v,r,s). See chains/avalanche-c for why this is recorded as 0x01-with-a-caveat rather than `none`.<p class="src"><b>src</b> coreth/plugin/evm/atomic/tx.go:Sign</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY from Granite. A tool for contracts; a P-256 key cannot authorize either kind of Flare transaction.<p class="src"><b>src</b> coreth/params/hooks_libevm.go:P256VerifyAddress</p></div></td></tr><tr><td><code>bls12_381</code></td><td><span class="pill">never</span></td><td><code>0x0200000000000000000000000000000000000005</code></td><td><div class="wrap">Warp is consensus signing, not transaction authorization: the aggregate signature is checked by a BLOCK PREDICATE outside EVM execution and the precompile only reads the verdict, so a contract cannot point this address at an arbitrary BLS signature.<p class="src"><b>src</b> coreth/precompile/contracts/warp/config.go:VerifyPredicate</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">13</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>THE PREDICTION FOR THIS ROW WAS WRONG, AND THAT IS THE FINDING. Flare was expected to add FTSO and State Connector PRECOMPILES at 0x1000..0001-0003. It adds NO precompile addresses at all. The precompile map is coreth's, byte for byte (coreth/params/hooks_libevm.go:PrecompiledContractsGranite), and every 0x1000.. address holds real EVM bytecode from the genesis allocation — they are system contracts, listed below under system_contracts and proved by eth_getCode. Flare's oracle machinery reaches consensus through STATE-TRANSITION HOOKS on ordinary contract calls, not through native code at an address.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x05"><td><code>0x05</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>MODEXP</td><td><div class="wrap"><div>Cancun-level (EIP-2565 only) — no EIP-7823 bounds and no EIP-7883 repricing, because Osaka was never adopted</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0b"><td><code>0x0b</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1ADD</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0c"><td><code>0x0c</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1MSM</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0d"><td><code>0x0d</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G2ADD</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0e"><td><code>0x0e</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G2MSM</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0f"><td><code>0x0f</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_PAIRING</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x10"><td><code>0x10</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_MAP_FP_TO_G1</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x11"><td><code>0x11</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_MAP_FP2_TO_G2</td><td><div class="wrap"><div>EIP-2537 absent — no Prague</div><p class="src"><b>src</b> coreth/params/config_extra.go:SetEthUpgrades</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>P256VERIFY</td><td><div class="wrap"><div>Present, correct, and priced exactly as mainnet — 6900 gas, valid returns 32 bytes of 1, invalid returns empty. Flare is the counter-example to Hyperliquid, Sei and Sonic: the address is occupied by the same function everyone else&#x27;s 0x0100 is supposed to hold. Marked `modified` because the fork gate is Granite rather than Osaka, not because behaviour differs.</div><p class="src"><b>src</b> coreth/params/hooks_libevm.go:PrecompiledContractsGranite · <b>live</b> eth_call 0x0100 @ 68124744 -&gt; valid 0x..01, corrupted-r 0x; eth_getCode -&gt; 0x</p></div></td></tr><tr id="precompiles-0x0100000000000000000000000000000000000000"><td><code>0x0100000000000000000000000000000000000000</code></td><td><span class="s-tombstoned" title="tombstoned">⊘</span></td><td>GenesisContract</td><td><div class="wrap"><div>always reverts (nativeasset.DeprecatedContract). Also the chain&#x27;s coinbase address in every block header.</div><p class="src"><b>src</b> coreth/nativeasset/contract.go:GenesisContractAddr · <b>live</b> eth_getCode @ 68124744 -&gt; 0x</p></div></td></tr><tr id="precompiles-0x0100000000000000000000000000000000000001"><td><code>0x0100000000000000000000000000000000000001</code></td><td><span class="s-tombstoned" title="tombstoned">⊘</span></td><td>NativeAssetBalance</td><td><div class="wrap"><div>tombstoned at Flare&#x27;s Banff (2024-12-17), 26 months after Avalanche&#x27;s. Reverts; address permanently consumed.</div><p class="src"><b>src</b> coreth/nativeasset/contract.go:NativeAssetBalanceAddr · <b>live</b> eth_call @ 68124744 -&gt; execution reverted, while empty 0x1000..0008 returns 0x</p></div></td></tr><tr id="precompiles-0x0100000000000000000000000000000000000002"><td><code>0x0100000000000000000000000000000000000002</code></td><td><span class="s-tombstoned" title="tombstoned">⊘</span></td><td>NativeAssetCall</td><td><div class="wrap"><div>same lifecycle; always reverts since Banff</div><p class="src"><b>src</b> coreth/nativeasset/contract.go:NativeAssetCallAddr</p></div></td></tr><tr id="precompiles-0x0200000000000000000000000000000000000005"><td><code>0x0200000000000000000000000000000000000005</code></td><td><span class="s-added" title="added">➕</span></td><td>Warp Messenger</td><td><div class="wrap"><div>ENABLED ON FLARE MAINNET — verified, not assumed: getBlockchainID() returns this chain&#x27;s blockchain ID. Stateful: its answers come from block predicate results computed outside EVM execution, so a STATICCALL to it is not a pure function of its input. AND IT HAS BYTECODE. Activating a coreth stateful precompile writes nonce=1 and code=0x01 into state so Solidity&#x27;s extcodesize guard passes, so eth_getCode at this address returns 0x01, not 0x. That contradicts SCHEMA.md&#x27;s precompile/system_contract boundary (&quot;no bytecode in state, no EXTCODESIZE&quot;) — the one-byte marker is a third thing. It is still a precompile: no dispatcher, no ABI, native Go.</div><p class="src"><b>src</b> coreth/precompile/contracts/warp/module.go, coreth/core/state_processor_ext.go:ApplyPrecompileActivations · <b>live</b> eth_getCode @ 68124744 -&gt; 0x01 ; eth_call getBlockchainID() -&gt; 0x77d3074dc510f43b09ac5be77edee276ef3b55f0097d504846aa8eec613fc625</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">9</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>Seven contracts are written into the C-Chain genesis allocation at 0x1000000000000000000000000000000000000001-0007 with real runtime bytecode (2.1KB-13.6KB each) — this is the range the backlog predicted would hold precompiles. Identity was not taken from documentation: each was confirmed live by finding its distinguishing 4-byte selector in the deployed code at block 68124744. Three of the seven are additionally special-cased by the CLIENT, which is what makes them consensus objects rather than ordinary predeploys.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0xdead"><td><code>0xdead</code></td><td><span class="s-added" title="added">➕</span></td><td>fee burn sink</td><td><div class="wrap"><div>Not a contract — an EOA-shaped hole with no code that every transaction fee on the chain is credited to. Held 4,216,961,490.46 FLR at the probed block. Listed here because it is a fixed, protocol-referenced address; mainnet&#x27;s equivalent of &quot;burn&quot; removes supply from existence instead.</div><p class="src"><b>src</b> coreth/core/state_transition_params.go:stateTransitionParamsFlare · <b>live</b> eth_getCode @ 68124744 -&gt; 0x ; eth_getBalance -&gt; 4216961490.456238 FLR</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000001"><td><code>0x1000000000000000000000000000000000000001</code></td><td><span class="s-added" title="added">➕</span></td><td>StateConnector</td><td><div class="wrap"><div>Flare&#x27;s cross-chain attestation contract. The client watches for a call to this exact address carrying selector 0xcfd1fdad (submitAttestation) and, if the returned bool says this is the first buffer slot, runs FinalisePreviousRound: it CALLS getAttestation on nine hardcoded attestation-provider addresses, takes a plurality vote over the returned Merkle roots, and if a strict majority agrees, calls finaliseRound with block.coinbase and msg.sender both rewritten to 0x..DEaD1. A consensus vote conducted by the execution client inside a user transaction. SWITCHED OFF AT DURANGO (2025-08-05): the gate is `!isDurango &amp;&amp; ...`, so on Flare today this hook is dead code and the contract is an ordinary contract. It ran for three years.</div><p class="src"><b>src</b> coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalledFlare, coreth/core/state_connector.go:FinalisePreviousRound, coreth/core/state_connector.go:GetDefaultAttestors · <b>live</b> eth_getCode @ 68124744 -&gt; 2196 bytes; contains selectors for submitAttestation(uint256,bytes32,bytes32,bytes32) and getAttestation(uint256)</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000002"><td><code>0x1000000000000000000000000000000000000002</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>FlareDaemon</td><td><div class="wrap"><div>THE LARGEST DIVERGENCE ON THIS CHAIN. After EVERY successful transaction the client calls trigger() (selector 0x7fec8d38) on this address with a gas budget of 100x the block gas limit, charged to nobody. Whatever 32-byte value the call returns is treated as a MINT REQUEST and credited to this contract&#x27;s balance by a direct AddBalance, capped at 60,000,000 FLR per invocation. If the mint is rejected the daemon&#x27;s state changes are reverted to a snapshot; if the daemon call errors, the failure is only logged and the user&#x27;s transaction still succeeds. Its side effects land inside the user&#x27;s receipt: a probed submission transaction carries six logs emitted by this address that its own call tree never produced.</div><p class="src"><b>src</b> coreth/core/daemon.go:GetDaemonContractAddr, coreth/core/daemon.go:GetDaemonSelector, coreth/core/daemon.go:GetMaximumMintRequest, coreth/core/daemon.go:atomicDaemonAndMint, coreth/core/state_transition.go:571 · <b>live</b> eth_getCode @ 68124744 -&gt; 13627 bytes; receipt of 0xf9a1072e659b67ea1768a25f628b8c0776f70bb93f83b3eada23a2977c9aa39c @ 68124724 carries 6 logs from this address though the tx was sent to 0x2cA6..c33f</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000003"><td><code>0x1000000000000000000000000000000000000003</code></td><td><span class="s-added" title="added">➕</span></td><td>PriceSubmitter</td><td><div class="wrap"><div>The legacy FTSO price-submission entry point, and the first of the two PRIORITISED addresses: a call here whose selector is 0x8fc6f667 or 0xe2db5a52 is charged a flat nominal fee instead of what it used gas for. See fee_model.</div><p class="src"><b>src</b> coreth/core/daemon.go:prioritisedFTSOContractAddress, coreth/core/daemon.go:prioritisedFTSOContractDataPrefixesFlareNetworks · <b>live</b> eth_getCode @ 68124744 -&gt; 9742 bytes; contains selector for getFtsoManager()</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000004"><td><code>0x1000000000000000000000000000000000000004</code></td><td><span class="s-added" title="added">➕</span></td><td>DistributionTreasury</td><td><div class="wrap"><div>Genesis treasury. Named in the client, not just in state: a call to 0x4d1c42F41555Ae35DfC1819bd718f7D9Fb28abdD carrying selector 0x5ace4f0d makes the client SWEEP THIS CONTRACT&#x27;S ENTIRE BALANCE to another address with a raw SubBalance/AddBalance pair, outside any EVM frame.</div><p class="src"><b>src</b> coreth/core/governance_settings.go:GetDistributionContractAddress, coreth/core/governance_settings.go:UpdateDistributionAddress · <b>live</b> eth_getCode @ 68124744 -&gt; 5048 bytes; contains selectors for pullFunds(uint256) and lastPullTs()</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000005"><td><code>0x1000000000000000000000000000000000000005</code></td><td><span class="s-added" title="added">➕</span></td><td>IncentivePoolTreasury</td><td><div class="wrap"><div>genesis treasury; held 17,480,794,654.9 FLR at the probed block. Not referenced by the client.</div><p class="src"><b>live</b> eth_getCode @ 68124744 -&gt; 4284 bytes, selectors incentivePool() and setIncentivePoolContract(address); eth_getBalance -&gt; 17480794654.935430 FLR</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000006"><td><code>0x1000000000000000000000000000000000000006</code></td><td><span class="s-added" title="added">➕</span></td><td>InitialAirdrop</td><td><div class="wrap"><div>same client-driven balance sweep as 0x1000..0004, triggered by selector 0x7d1f9946 to 0x4AeE563140E36abA778944E2Ca68c3988CAd5730</div><p class="src"><b>src</b> coreth/core/governance_settings.go:GetInitialAirdropContractAddress, coreth/core/governance_settings.go:UpdateInitialAirdropAddress · <b>live</b> eth_getCode @ 68124744 -&gt; 6855 bytes</p></div></td></tr><tr id="system-contracts-0x1000000000000000000000000000000000000007"><td><code>0x1000000000000000000000000000000000000007</code></td><td><span class="s-added" title="added">➕</span></td><td>GovernanceSettings</td><td><div class="wrap"><div>Holds the governance address and the timelock. setGovernanceAddress(address) (0xcfc16254) and setTimelock(uint256) (0x1e891c0a) are re-executed by the client with msg.sender and block.coinbase rewritten to 0x..DEaD0 — but ONLY if the client&#x27;s own allowlist accepts the argument. On chain 14 NewGovernanceAddressIsPermitted returns false unconditionally, so the governance address can no longer be changed by this path at all; NewTimelockIsPermitted accepts exactly one value, 3600.</div><p class="src"><b>src</b> coreth/core/governance_settings.go:GetGovernanceSettingIsActivatedAndCalled, coreth/core/governance_settings.go:NewGovernanceAddressIsPermitted, coreth/core/governance_settings.go:NewTimelockIsPermitted · <b>live</b> eth_getCode @ 68124744 -&gt; 2533 bytes; contains selectors for setGovernanceAddress(address) and setTimelock(uint256)</p></div></td></tr><tr id="system-contracts-0x2ca6571daa15ce734bbd0bf27d5c9d16787fc33f"><td><code>0x2ca6571daa15ce734bbd0bf27d5c9d16787fc33f</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>Submitter (FTSO v2 / FDC)</td><td><div class="wrap"><div>NOT a genesis contract — an ordinary deployed contract that the CLIENT knows about by hardcoded address. It is the second prioritised address, and it is where essentially all of Flare&#x27;s traffic goes: 248 of 290 transactions (86%) in a 40-block window. Prioritisation applies when the selector is one of five hardcoded prefixes, the calldata is &lt;= 4500 bytes, the tx gas limit is &lt;= 3,000,000, and the call returned a non-zero word.</div><p class="src"><b>src</b> coreth/core/daemon.go:prioritisedSubmitterContractAddress, coreth/core/daemon.go:submitterDataPrefixes, coreth/core/daemon.go:prioritisedCallDataCap, coreth/core/daemon.go:IsPrioritisedContractCall · <b>live</b> 40-block census @ 68124704-68124744 -&gt; 248/290 transactions to this address, all selector 0x833bf6c0</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="note"><p>Ethereum's one system transaction (EIP-4788's beacon-root write) is absent — no beacon chain. Flare replaces it with four client-driven state changes, all piggybacked on ordinary user transactions rather than occupying a slot of their own, and none of them visible as a transaction in any block.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th>Note</th></tr></thead><tbody><tr><td>trigger + mint</td><td><div class="wrap">Runs after EVERY successful transaction, after the fee has been settled and outside the user&#x27;s call frame. Calls 0x1000..0002 with 100x the block gas limit, free, then mints up to 60,000,000 FLR to that contract based on the returned word. This is the mechanism by which FTSO rewards, the incentive pool and inflation are funded, and it is the second mechanism in this dataset after subnet-evm&#x27;s ContractNativeMinter that increases native supply outside block rewards — but unlike that one it is unconditional and needs no allowlist.<p class="src"><b>src</b> coreth/core/daemon.go:atomicDaemonAndMint, coreth/core/daemon.go:mint, coreth/core/state_transition.go:571</p></div></td></tr><tr><td>State Connector round finalisation</td><td><div class="wrap">Ran on any transaction that called submitAttestation on 0x1000..0001 and returned a first-buffer-slot flag: nine client-side calls to fixed attestation providers, a plurality vote, then a finaliseRound call with msg.sender and block.coinbase rewritten to 0x..DEaD1. Gated off at Durango (`!isDurango &amp;&amp; ...`). A node operator could set SC_LOCAL_ATTESTATORS and SC_FORKING_ENABLED=1 to make its own node halt when its local attestors disagreed with the default set — a deliberate, configurable consensus split.<p class="src"><b>src</b> coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalled, coreth/core/state_connector.go:FinalisePreviousRound</p></div></td></tr><tr><td>governance address / timelock re-execution</td><td><div class="wrap">re-runs the same calldata against 0x1000..0007 with msg.sender = block.coinbase = 0x..DEaD0, only for arguments the client&#x27;s own allowlist permits<p class="src"><b>src</b> coreth/core/governance_settings.go:SetGovernanceAddress, coreth/core/governance_settings.go:SetTimelock</p></div></td></tr><tr><td>treasury balance sweep</td><td><div class="wrap">A 4-byte call to either of two hardcoded addresses makes the client move the ENTIRE balance of a genesis treasury to another address with SubBalance / AddBalance — a value transfer with no transaction, no trace frame, and no log.<p class="src"><b>src</b> coreth/core/governance_settings.go:UpdateInitialAirdropAddress, coreth/core/governance_settings.go:UpdateDistributionAddress</p></div></td></tr></tbody></table></div>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>No opcode divergence, and no second VM. Flare's changes live entirely in the state transition, the fee accounting and the genesis allocation.</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>ACP-176 dynamic fee (coreth), with a Flare-specific per-call override</td></tr><tr><td>Extra components</td><td>[&#x27;prioritised-call flat fee&#x27;]</td></tr><tr><td>Note</td><td><p>TWO FLARE-SPECIFIC RULES. (1) EVERYTHING BURNS. The whole fee — base fee and priority fee alike — is credited to 0x000000000000000000000000000000000000dEaD. The block producer's address is the blackhole 0x0100..0000 in every header and it receives nothing, so validator revenue on Flare is not transaction fees. (2) PRIORITISED CALLS ARE CHARGED A FLAT FEE, AND THE RECEIPT DOES NOT SAY SO. If a transaction targets 0x1000..0003 or 0x2cA6..c33f with an allowlisted selector, within the calldata and gas-limit caps, and its call returned a non-zero word, then after execution the client computes nominalFee = 21000 * 25 gwei, refunds (actualFee - nominalFee) to the SENDER, and burns only the nominal amount. gasUsed and effectiveGasPrice in the receipt are untouched and describe the charge that did not happen. Measured at block 68124744: a submission transaction reports gasUsed 212362 at effectiveGasPrice 1625 gwei, implying a fee of 0.34508825 FLR. The sender's balance fell by 0.000525 FLR. The receipt overstates the fee by 657x, with status 0x1 and no other signal. Across the whole block, receipts imply 1.31034165 FLR of fees while the burn address received 0.05638215 FLR. This is the majority path, not an edge case: 86% of sampled transactions qualify. Any fee accounting, gas-cost dashboard, MEV estimate or revenue model built on Flare receipts is wrong by two to three orders of magnitude.</p></td></tr></tbody></table></div>
+<p class="src"><b>src</b> coreth/core/state_transition.go:550-568, coreth/core/daemon.go:IsPrioritisedContractCall, coreth/core/state_transition_params.go:stateTransitionParamsFlare · <b>live</b> receipt of 0x5dbbbce34e3cdf774908dd2931f596cb3eabc6bceba7f6f3dd715a6a10e9446d @ 68124744 -&gt; gasUsed 212362 x 1625 gwei = 0.34508825 FLR; eth_getBalance of its sender 68124743 -&gt; 68124744 delta -0.000525 FLR</p>
+<h2 id="header-fields">Header fields <span class="pill">9</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>The five added fields are coreth's, not Flare's, and are recorded here because inheritance does not resolve across a <code>fork</code> upstream. They are RLP-appended to the Ethereum header and therefore inside the block hash. These live observations contradicted <code>chains/avalanche-c/chain.yaml</code>, which recorded <code>header_fields.added: []</code>; that row has since been corrected against its own pinned coreth, where all five fields are present.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-extdatahash"><td><code>extDataHash</code></td><td><span class="s-added" title="added">➕</span></td><td>extDataHash</td><td><div class="wrap">Avalanche atomic-tx data commitment; from coreth, not Flare<p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:ExtDataHash</p></div></td></tr><tr id="header-fields-extdatagasused"><td><code>extDataGasUsed</code></td><td><span class="s-added" title="added">➕</span></td><td>extDataGasUsed</td><td><div class="wrap">gas attributed to atomic transactions<p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:ExtDataGasUsed</p></div></td></tr><tr id="header-fields-blockgascost"><td><code>blockGasCost</code></td><td><span class="s-added" title="added">➕</span></td><td>blockGasCost</td><td><div class="wrap">ACP-176 block cost<p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:BlockGasCost</p></div></td></tr><tr id="header-fields-timestampmilliseconds"><td><code>timestampMilliseconds</code></td><td><span class="s-added" title="added">➕</span></td><td>timestampMilliseconds</td><td><div class="wrap">Granite; sub-second block times<p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:TimeMilliseconds</p></div></td></tr><tr id="header-fields-mindelayexcess"><td><code>minDelayExcess</code></td><td><span class="s-added" title="added">➕</span></td><td>minDelayExcess</td><td><div class="wrap">ACP-226 minimum block delay, Granite<p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess</p></div></td></tr><tr id="header-fields-blobgasused"><td><code>blobGasUsed</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>blobGasUsed</td><td><div class="wrap">must be 0<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled</p></div></td></tr><tr id="header-fields-excessblobgas"><td><code>excessBlobGas</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>excessBlobGas</td><td><div class="wrap">must be 0<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errInvalidExcessBlobGas</p></div></td></tr><tr id="header-fields-parentbeaconblockroot"><td><code>parentBeaconBlockRoot</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>parentBeaconBlockRoot</td><td><div class="wrap">must be the empty hash — no beacon chain<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty</p></div></td></tr><tr id="header-fields-miner"><td><code>miner</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>miner</td><td><div class="wrap">always the blackhole 0x0100..0000; header validation rejects any other value, and it receives no fees<p class="src"><b>src</b> coreth/plugin/evm/wrapped_block.go:431</p></div></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">4</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>ACP-176</code></td><td>dynamic fee / target gas excess</td><td><span class="pill">adopted</span></td><td><div class="wrap"><p class="src"><b>src</b> coreth/plugin/evm/upgrade/ap4/cost.go:MinBaseFee</p></div></td></tr><tr><td><code>ACP-226</code></td><td>minimum block delay (Granite)</td><td><span class="pill">adopted</span></td><td><div class="wrap"><p class="src"><b>src</b> coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess</p></div></td></tr><tr><td><code>Avalanche Warp Messaging</code></td><td>cross-chain messaging</td><td><span class="pill">adopted</span></td><td><div class="wrap">enabled on Flare mainnet — confirmed live, not merely present in the tree<p class="src"><b>src</b> coreth/precompile/contracts/warp/module.go</p></div></td></tr><tr><td><code></code></td><td></td><td><span class="pill">—</span></td><td><div class="wrap">Flare&#x27;s own spec series (FIPs) was NOT read. FTSO and FDC protocol versions are governed by on-chain contract upgrades, not by client releases, so nothing in this clone records them. Deliberately omitted rather than guessed.</div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">7</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>THE FTSO AND STATE CONNECTOR ARE NOT PRECOMPILES. 0x1000..0001-0007 hold real EVM bytecode from the genesis allocation; eth_getCode returns 2.1KB-13.6KB at each. Flare adds ZERO precompile addresses to coreth&#x27;s map. Any survey that went looking for oracle precompiles here finds none, and any tool that treats these addresses as native code is wrong in the opposite direction.</li><li>RECEIPTS OVERSTATE FEES BY UP TO ~657x ON THE MAJORITY OF TRANSACTIONS. FTSO/FDC submissions are charged a flat 21000 x 25 gwei and refunded the difference after execution, while gasUsed and effectiveGasPrice in the receipt still describe the unrefunded amount. Status is 0x1, nothing reverts, and 86% of sampled traffic takes this path.</li><li>A SYSTEM CALL RUNS AFTER EVERY TRANSACTION AND CAN MINT NATIVE COIN. trigger() on 0x1000..0002 executes with 100x the block gas limit, free, and its 32-byte return value is minted (up to 60,000,000 FLR) straight onto that contract&#x27;s balance. Its logs appear inside the triggering user&#x27;s receipt.</li><li>THE CLIENT MAKES EVM CALLS AS ADDRESSES WITH NO PRIVATE KEY, and rewrites block.coinbase to those addresses for the duration. 0x..DEaD1, 0x..DEaD0, 0x..dead2, 0x..deAD3. block.coinbase is not a stable observation inside a transaction on this chain.</li><li>NO PRAGUE, NO OSAKA, NO EIP-7702 — the same Cancun ceiling as the C-Chain, but reached about a year later. Flare activated Durango 17 months after Avalanche, Etna 11.5 months after, Granite 8 months after. &quot;Runs current coreth&quot; does not mean &quot;allows what current coreth allows&quot;.</li><li>0x0100 IS THE REAL P256VERIFY HERE, at mainnet&#x27;s exact 6900 gas and mainnet&#x27;s exact semantics, arriving at Granite. Flare is the control case for the Hyperliquid/Sei/Sonic failures — but it still has no BLS12-381 at 0x0b-0x11, so inferring fork level from precompile presence fails on this chain too.</li><li>THE WARP PRECOMPILE HAS BYTECODE. eth_getCode at 0x0200..0005 returns 0x01, a deliberate one-byte marker written into state so Solidity&#x27;s extcodesize guard lets contracts call it. &quot;eth_getCode returns 0x&quot; is therefore NOT a sound test for precompile-ness on Avalanche-lineage chains.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Role:</strong> <code>fork</code> · <strong>Upstream:</strong> <code>ethereum</code> (via avalanchego + coreth) · <strong>Chain ID:</strong> 14 ·
+<strong>Baseline:</strong> Cancun
+<strong>Client:</strong> <a href="https://github.com/flare-foundation/go-flare"><code>flare-foundation/go-flare</code></a> <code>v1.14.0</code>
+(<code>1f9983a2f83a8469314817b456d8b279861dbad8</code>) — a monorepo fork of <em>both</em>
+avalanchego <code>v1.14.0</code> and coreth <code>v0.16.0-rc.0</code>
+<strong>Live probes:</strong> <code>https://flare-api.flare.network/ext/C/rpc</code> @ block <code>68124744</code></p>
+<p>Everything <a href="../chains/avalanche-c.html"><code>chains/avalanche-c/</code></a> establishes about coreth
+v0.16.0 is true here. This file states only what is Flare's own — plus the handful of
+places where measuring Flare turned up something the ancestor's row records wrongly.
+(<code>avalanche-c</code> has <code>role: fork</code>, not <code>stack</code>, so <code>tools/model.py</code> does not resolve
+inheritance across it; the shared entries are restated in <code>chain.yaml</code> out of necessity
+and marked as coreth's.)</p>
+<h2>1. The prediction was wrong, and the way it was wrong is the finding</h2>
+<p><code>CANDIDATES.md</code> promoted Flare on the expectation of <em>"FTSO and State Connector
+</em><em>precompiles</em><em> at addresses like <code>0x1000…0002</code> — far outside the mainnet or <code>0x0100</code>
+ranges."</em></p>
+<p><strong>Flare adds zero precompile addresses.</strong> Its precompile map is coreth's, unmodified:
+<code>coreth/params/hooks_libevm.go:PrecompiledContractsGranite</code> is three tombstoned
+native-asset stubs plus <code>P256VerifyAddress</code>. There is no Flare entry in it.</p>
+<p>The <code>0x1000…</code> addresses are real, and they are <strong>system contracts</strong> — Solidity written
+into the C-Chain genesis allocation, with 2.1 KB–13.6 KB of runtime bytecode each.
+<code>eth_getCode</code> at block 68124744:</p>
+<table>
+<thead>
+<tr>
+<th>address</th>
+<th><code>eth_getCode</code></th>
+<th>identified by</th>
+<th>what the client does with it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x1000…0001</code></td>
+<td>2196 bytes</td>
+<td><code>submitAttestation</code>, <code>getAttestation</code></td>
+<td>State Connector — hook, now off</td>
+</tr>
+<tr>
+<td><code>0x1000…0002</code></td>
+<td>13627 bytes</td>
+<td><code>trigger()</code>, <code>daemonize()</code></td>
+<td><strong>FlareDaemon</strong> — called after every tx</td>
+</tr>
+<tr>
+<td><code>0x1000…0003</code></td>
+<td>9742 bytes</td>
+<td><code>getFtsoManager()</code></td>
+<td>PriceSubmitter — prioritised fee path</td>
+</tr>
+<tr>
+<td><code>0x1000…0004</code></td>
+<td>5048 bytes</td>
+<td><code>pullFunds</code>, <code>lastPullTs</code></td>
+<td>DistributionTreasury — swept by client</td>
+</tr>
+<tr>
+<td><code>0x1000…0005</code></td>
+<td>4284 bytes</td>
+<td><code>incentivePool()</code></td>
+<td>IncentivePoolTreasury — 17.48 bn FLR</td>
+</tr>
+<tr>
+<td><code>0x1000…0006</code></td>
+<td>6855 bytes</td>
+<td><em>(named in client)</em></td>
+<td>InitialAirdrop — swept by client</td>
+</tr>
+<tr>
+<td><code>0x1000…0007</code></td>
+<td>2533 bytes</td>
+<td><code>setGovernanceAddress</code>, <code>setTimelock</code></td>
+<td>GovernanceSettings — re-executed by client</td>
+</tr>
+</tbody>
+</table>
+<p>Identity was <strong>not</strong> taken from documentation. Each name was confirmed by computing the
+4-byte selector of a distinguishing signature and finding it in the deployed bytecode.</p>
+<p>So Flare is not a second Hyperliquid-style break in precompile enumeration. It is the
+opposite shape of surprise: <strong>a chain that puts protocol machinery at fixed addresses
+without making any of it a precompile</strong>, and instead reaches consensus through
+<strong>state-transition hooks on ordinary contract calls</strong>. <code>coreth/core/</code> gains four files
+that do not exist upstream — <code>daemon.go</code>, <code>state_connector.go</code>, <code>governance_settings.go</code>,
+<code>state_transition_params.go</code> — and all of Flare's divergence is in them.</p>
+<p>An address-diff survey reports Flare as pure coreth and is right about the addresses and
+wrong about the chain.</p>
+<h2>2. Receipts overstate the fee by 657× on 86% of transactions</h2>
+<p>This is the row's severity-<code>high</code> finding and it is live-measured, not inferred.</p>
+<p><code>IsPrioritisedContractCall</code> (<code>coreth/core/daemon.go</code>) marks a transaction <em>prioritised</em>
+when it targets <code>0x1000…0003</code> or the hardcoded Submitter contract
+<code>0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f</code>, carries one of a fixed list of 4-byte
+selectors, is ≤ 4500 bytes of calldata, has a gas limit ≤ 3,000,000, and returned a
+non-zero word. For such a transaction <code>TransitionDb</code> <strong>discards the metered fee</strong>:</p>
+<pre><code>nominalFee = 21000 * 25 gwei
+if actualFee &gt; nominalFee:  refund (actualFee - nominalFee) to msg.From ; burn nominalFee
+</code></pre>
+<p><code>gasUsed</code> and <code>effectiveGasPrice</code> in the receipt are never touched. They describe the
+charge that did not happen.</p>
+<p>Measured at block 68124744, transaction <code>0x5dbbbce3…9446d</code>:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>receipt <code>gasUsed</code> × <code>effectiveGasPrice</code></td>
+<td>212362 × 1625 gwei = <strong>0.34508825 FLR</strong></td>
+</tr>
+<tr>
+<td>sender balance delta across the block</td>
+<td><strong>0.000525 FLR</strong> = exactly 21000 × 25 gwei</td>
+</tr>
+<tr>
+<td>receipt <code>status</code></td>
+<td><code>0x1</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>657×</strong>, silently. Block-wide the same gap holds: receipts imply 1.31034165 FLR of fees;
+the burn address received 0.05638215 FLR.</p>
+<p>And this is the <em>majority</em> path. A 40-block census (68124704–68124744) found <strong>248 of 290
+transactions (86%)</strong> going to the Submitter contract, every one with selector <code>0x833bf6c0</code>
+— which is in <code>submitterDataPrefixes</code>. Like Celo's <code>0x7b</code>, the exotic case <em>is</em> the
+traffic.</p>
+<p>Two consequences the dataset has not recorded before:</p>
+<ul>
+<li>Every fee/revenue/MEV figure computed from Flare receipts is wrong by two to three
+  orders of magnitude, with no error to catch.</li>
+<li><strong>The block producer receives nothing at all.</strong> <code>stateTransitionParamsFlare</code> returns
+  <code>0x…dEaD</code> as the fee sink, so base fee <em>and</em> priority fee are burned. <code>miner</code> is the
+  blackhole <code>0x0100…0000</code> in every header and its balance did not move across the probed
+  block. Flare's validator economics are not fee-based, and OP-style "sequencer revenue"
+  tooling reads zero.</li>
+</ul>
+<h2>3. A system call runs after every transaction, and it can mint</h2>
+<p><code>atomicDaemonAndMint(st, log)</code> fires at the end of <code>TransitionDb</code> for every transaction
+that did not throw a VM error — <em>after</em> the fee has been settled, <em>outside</em> the user's
+call frame:</p>
+<ul>
+<li>calls <code>trigger()</code> (<code>0x7fec8d38</code>) on <code>0x1000…0002</code>,</li>
+<li>with a gas budget of <strong>100 × the block gas limit</strong>, charged to nobody,</li>
+<li>treats the returned 32-byte word as a <strong>mint request</strong> and credits it to that
+  contract's balance with a raw <code>AddBalance</code>, capped at <strong>60,000,000 FLR</strong> per
+  invocation,</li>
+<li>reverts only the daemon's own state on a rejected mint, and on a daemon <em>error</em> merely
+  logs it — the user's transaction still succeeds.</li>
+</ul>
+<p>This is the funding mechanism for FTSO rewards and inflation. It is the second mechanism
+in this dataset that increases native supply outside block rewards (after subnet-evm's
+<code>ContractNativeMinter</code>), and unlike that one it is unconditional and needs no allowlist.</p>
+<p>Its side effects land inside somebody else's receipt. The receipt for
+<code>0xf9a1072e…a39c</code> — a submission sent to <code>0x2cA6…c33f</code> — carries <strong>six logs emitted by
+<code>0x1000…0002</code></strong> that the transaction's own call tree never produced.</p>
+<h2>4. The client makes EVM calls as addresses with no private key</h2>
+<p>Four client paths execute EVM calls whose <code>msg.sender</code> is a synthesised address, chosen
+because the target Solidity contract authorises on <code>msg.sender == SIGNAL</code> <strong>and</strong> on
+<code>block.coinbase == SIGNAL</code>. The client temporarily rewrites <code>block.coinbase</code> to match:</p>
+<table>
+<thead>
+<tr>
+<th>signal address</th>
+<th>used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x…000DEaD1</code></td>
+<td>State Connector round finalisation</td>
+</tr>
+<tr>
+<td><code>0x…000DEaD0</code></td>
+<td><code>setGovernanceAddress</code> / <code>setTimelock</code></td>
+</tr>
+<tr>
+<td><code>0x…000dead2</code></td>
+<td>InitialAirdrop address migration</td>
+</tr>
+<tr>
+<td><code>0x…000deAD3</code></td>
+<td>Distribution address migration</td>
+</tr>
+</tbody>
+</table>
+<p><code>core/state_connector.go</code> states the security model in a comment: to subvert it one would
+have to <em>"know the private key to the address <code>0x…DEaD1</code>"</em>. Authorisation by an address
+that provably has no signer.</p>
+<p>Two knock-on facts:</p>
+<ul>
+<li><strong><code>block.coinbase</code> is not stable inside a transaction on Flare.</strong> It is saved,
+  overwritten and restored around these calls.</li>
+<li>The last two paths <strong>move an entire treasury balance</strong> with a <code>SubBalance</code>/<code>AddBalance</code>
+  pair in Go — a value transfer with no transaction, no trace frame, and no log.</li>
+</ul>
+<p>Recorded under <code>system_transactions</code>, and named in <code>tx_authorization.note</code>, because "what
+can sign a transaction" and "what can cause a state change" come apart here in a way the
+scheme table cannot express.</p>
+<p>The State Connector hook itself is now <strong>dead code on Flare</strong>: the gate reads
+<code>!isDurango &amp;&amp; …</code>, and Durango activated 2025-08-05. It ran for three years. While live,
+a node operator could set <code>SC_LOCAL_ATTESTATORS</code> and <code>SC_FORKING_ENABLED=1</code> to make the
+node <strong>halt when its local attestors disagreed with the hardcoded default set</strong> — a
+deliberate, configurable consensus split shipped in the client.</p>
+<h2>5. <code>0x0100</code> — Flare is the control case</h2>
+<p>Three chains now fail the <code>0x0100</code> test in three ways (Hyperliquid empty, Sei relocated to
+<code>0x1011</code>, Sonic). Flare passes it cleanly, and the check was done properly — a <strong>valid</strong>
+P-256 signature plus a <strong>corrupted-<code>r</code></strong> control on otherwise identical calldata, because
+EIP-7951 signals <em>invalid</em> with empty output, byte-identical to a missing precompile:</p>
+<table>
+<thead>
+<tr>
+<th>probe @ 68124744</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>valid signature</td>
+<td><code>0x…0001</code></td>
+</tr>
+<tr>
+<td>same input, <code>r ^ 1</code></td>
+<td><code>0x</code></td>
+</tr>
+<tr>
+<td>gas floor (binary search)</td>
+<td><strong>6900</strong> — exactly EIP-7951</td>
+</tr>
+<tr>
+<td><code>eth_getCode</code></td>
+<td><code>0x</code></td>
+</tr>
+</tbody>
+</table>
+<p>Better still, the fork gate is verifiable to the block. Binary search on header timestamps
+puts the Granite boundary at <strong>block 65060228, timestamp 1784030400</strong> — the exact value in
+<code>avalanchego/upgrade/upgrade.go:Flare</code>. <code>eth_call</code> to <code>0x0100</code> returns <code>0x</code> at 65060227 and
+the correct answer at 65060228.</p>
+<p>The usual Avalanche caveat still bites: Flare has <code>0x0100</code> and <strong>no</strong> BLS12-381 at
+<code>0x0b</code>–<code>0x11</code>, because P256VERIFY arrived through Granite rather than Osaka. Fork-level
+inference from precompile presence fails here in both directions.</p>
+<h2>6. Two corrections to how the dataset describes precompiles</h2>
+<p><strong>(a) <code>eth_getCode == 0x</code> is not a sound test for precompile-ness on Avalanche-lineage
+chains.</strong> <code>eth_getCode</code> at the Warp precompile <code>0x0200…0005</code> returns <strong><code>0x01</code></strong>.
+<code>core/state_processor_ext.go:ApplyPrecompileActivations</code> deliberately writes <code>nonce = 1</code>
+and <code>code = 0x01</code> when a stateful precompile activates, so that Solidity's <code>extcodesize</code>
+guard lets contracts call it. It is still a precompile — native Go, no dispatcher, no ABI —
+but it has bytecode in state and a non-zero <code>EXTCODESIZE</code>. SCHEMA.md's boundary
+("precompile — native code at an address, <strong>no bytecode in state, no <code>EXTCODESIZE</code></strong>")
+does not have a slot for this. The one-byte marker is a third thing, and it applies to
+every coreth/subnet-evm stateful precompile, not just Flare's.</p>
+<p><strong>(b) A stateful precompile is live on Flare, and it is Warp — not an oracle.</strong> The brief
+asked whether Flare has a precompile a contract can <code>STATICCALL</code> for a changing answer.
+The FTSO does not qualify: it is a contract. Warp does — its answers come from block
+predicate results computed outside EVM execution — and it is <strong>enabled on Flare mainnet</strong>,
+verified rather than assumed: <code>getBlockchainID()</code> returns
+<code>0x77d3074dc510f43b09ac5be77edee276ef3b55f0097d504846aa8eec613fc625</code>.</p>
+<h2>7. Same client, a year behind</h2>
+<p>Flare runs the current coreth generation and reaches every Avalanche upgrade about a year
+late. <code>avalanchego/upgrade/upgrade.go</code> puts a <code>Flare</code> config literal directly beside
+<code>Mainnet</code>, so the two schedules are diffable in one file:</p>
+<table>
+<thead>
+<tr>
+<th>fork</th>
+<th>Avalanche</th>
+<th>Flare</th>
+<th>lag</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Banff</td>
+<td>2022-10-18</td>
+<td>2024-12-17</td>
+<td>26 months</td>
+</tr>
+<tr>
+<td>Cortina</td>
+<td>2023-04-25</td>
+<td>2025-05-13</td>
+<td>25 months</td>
+</tr>
+<tr>
+<td>Durango (= Shanghai)</td>
+<td>2024-03-06</td>
+<td>2025-08-05</td>
+<td>17 months</td>
+</tr>
+<tr>
+<td>Etna (= Cancun)</td>
+<td>2024-12-16</td>
+<td>2025-12-02</td>
+<td>11.5 months</td>
+</tr>
+<tr>
+<td>Fortuna</td>
+<td>2025-04-08</td>
+<td>2026-04-14</td>
+<td>12 months</td>
+</tr>
+<tr>
+<td>Granite</td>
+<td>2025-11-19</td>
+<td>2026-07-14</td>
+<td>8 months</td>
+</tr>
+</tbody>
+</table>
+<p>The gap is closing, but the point stands: <strong>"runs current coreth" does not mean "allows
+what current coreth allows."</strong> <code>sync_point</code> in the schema was designed for a descendant
+pinned to an <em>older client</em>; Flare is a descendant pinned to an older <em>clock</em>, with the
+same code. Both baselines land on Cancun — no Prague, no Osaka, no EIP-7702, no <code>0x04</code>.</p>
+<p>Flare also carries a fork field of its own in coreth's <code>NetworkUpgrades</code>,
+<code>songbirdTransitionTimestamp</code>, which chain 14 never sets — it gates the Songbird/Coston
+networks' migration onto this codebase. Recorded as <code>status: skipped</code>.</p>
+<h2>Contradicts an existing row</h2>
+<p><code>chains/avalanche-c/chain.yaml</code> records <code>header_fields.added: []</code>. Live probing block
+68124744 on Flare — running the same coreth — returns <code>extDataHash</code>, <code>extDataGasUsed</code>,
+<code>blockGasCost</code>, <code>blockExtraData</code>, <code>minDelayExcess</code> and <code>timestampMilliseconds</code> alongside
+the Cancun fields, and <code>coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra</code> shows
+they are RLP-appended to the Ethereum header and therefore inside the block hash. Flare's
+row records them as <code>added</code> with a note; the ancestor's <code>[]</code> looks like a gap rather than
+a Flare difference, and belongs to whoever owns that row.</p>
+<p>Two softer notes for the integrator:</p>
+<ul>
+<li><code>avalanche-c</code> marks <code>0x0100</code> as <code>modified</code>. This row measures the same code path and
+  finds the semantics and gas <strong>identical to mainnet</strong> (6900, valid → 1, invalid → empty).
+  <code>modified</code> is still defensible because the fork gate differs, but the note should not be
+  read as "the answer differs."</li>
+<li>Two places in the repo already cite "Flare <code>0x1000...0002</code>" as an example of custom
+  <strong>precompile</strong> placement — <code>chains/celo/SUMMARY.md</code> (fourth finding) and the generated
+  <code>PRECOMPILES.md</code> note that derives from it. That address is a system contract with
+  13627 bytes of code. The sentence needs a different example or a different word; the
+  point it is making (Celo parked a precompile three addresses below <code>0x0100</code>) survives
+  either way, since Tron <code>0x1000001+</code> and Monad <code>0x1000</code> still carry it.</li>
+</ul>
+<h2>Not established here</h2>
+<ul>
+<li><strong><code>debug_*</code> is not exposed on the public endpoint.</strong> The claim that the daemon call is
+  invisible to tracers is therefore <em>unverified</em>; only the receipt observation (logs from
+  <code>0x1000…0002</code> attributed to a user transaction) is live evidence. Recorded as such.</li>
+<li><strong>The FTSO's own read path</strong> (<code>FtsoV2.getFeedById</code> and friends) was not probed. Nothing
+  in the client references it, so it has no bearing on the consensus claims — but "the
+  oracle answer is a plain contract read" rests on <code>eth_getCode</code>, not on a value read.</li>
+<li><strong>Flare's FIP series</strong> was not read; FTSO/FDC protocol versions are governed by on-chain
+  contract upgrades, not client releases, so nothing in this clone records them.
+  <code>non_eip_specs</code> says so rather than guessing an adoption state.</li>
+<li><strong>The <code>0x1000…0004</code> / <code>0x1000…0006</code> sweeps</strong> are recorded from source; neither was
+  observed firing on-chain (both are one-shot migrations from 2022–2023).</li>
+<li><strong><code>songbird_transition</code></strong> is recorded as <code>skipped</code> for chain 14 from the absence of a
+  timestamp in <code>upgrade.Flare</code>; Songbird itself (chain 19) is a separate row nobody has
+  written.</li>
+<li><strong>No extractor</strong> exists for this row, so <code>verify.py</code> takes the precompile list on trust.
+  It is a nine-entry list copied from one <code>map</code> literal, which is the cheapest kind to
+  extract if someone wants to.</li>
+</ul>
+<h2>Re-verify</h2>
+<pre><code class="language-sh"># from the repo root
+tools/clone.sh                                 # re-fetches every pinned clone
+tools/.venv/bin/python tools/verify.py         # expect: flare pin ok, citations ok, exit 0
+                                               # &quot;! NO EXTRACTOR&quot; for flare is expected
+
+C=chains/flare/repos/go-flare
+
+# --- 1. the precompile map is coreth's, and has no Flare entry
+git -C $C grep -n 'PrecompiledContractsGranite' -- coreth/params/hooks_libevm.go
+git -C $C grep -rn '0x1000000000000000000000000000000000000' -- coreth/params/ ; echo &quot;grep exit=$? (1 == no 0x1000.. address anywhere in the precompile config)&quot;
+
+# --- the 0x1000.. addresses have real bytecode (system contracts, not precompiles)
+for a in 1 2 3 4 5 6 7; do
+  printf '0x100000000000000000000000000000000000000%s ' $a
+  curl -s -X POST https://flare-api.flare.network/ext/C/rpc -H 'content-type: application/json' \
+    -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x100000000000000000000000000000000000000$a\&quot;,\&quot;0x40f8048\&quot;]}&quot; \
+    | python3 -c 'import json,sys; r=json.load(sys.stdin)[&quot;result&quot;]; print(&quot;bytes:&quot;,(len(r)-2)//2)'
+done
+# -&gt; 2196 13627 9742 5048 4284 6855 2533   (none is &quot;0&quot;)
+
+# identity, by selector rather than by documentation
+cast sig 'trigger()'                   # 0x7fec8d38 -&gt; present in 0x1000..0002 (the selector the client calls)
+cast sig 'incentivePool()'             # -&gt; present in 0x1000..0005
+cast sig 'setGovernanceAddress(address)'  # -&gt; present in 0x1000..0007
+
+# --- 2. the fee override: receipt vs reality
+curl -s -X POST https://flare-api.flare.network/ext/C/rpc -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getTransactionReceipt&quot;,&quot;params&quot;:[&quot;0x5dbbbce34e3cdf774908dd2931f596cb3eabc6bceba7f6f3dd715a6a10e9446d&quot;]}' \
+  | python3 -c 'import json,sys; r=json.load(sys.stdin)[&quot;result&quot;]; print(&quot;implied fee&quot;, int(r[&quot;gasUsed&quot;],16)*int(r[&quot;effectiveGasPrice&quot;],16)/1e18, &quot;FLR&quot;)'
+# -&gt; implied fee 0.34508825 FLR
+# sender 0x5dbbbce3..'s balance across 68124743 -&gt; 68124744 falls by 0.000525 FLR
+#   ( = 21000 * 25 gwei, the nominal fee ) — 657x less than the receipt says
+git -C $C grep -n 'nominalFee' -- coreth/core/state_transition.go
+git -C $C grep -n 'func IsPrioritisedContractCall' -- coreth/core/daemon.go
+
+# 86% of traffic takes that path
+python3 - &lt;&lt;'PY'
+import json,urllib.request,collections
+R=&quot;https://flare-api.flare.network/ext/C/rpc&quot;
+def rpc(m,p):
+    q=urllib.request.Request(R,json.dumps({&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:m,&quot;params&quot;:p}).encode(),{&quot;content-type&quot;:&quot;application/json&quot;})
+    return json.load(urllib.request.urlopen(q))[&quot;result&quot;]
+c=collections.Counter()
+for n in range(0x40f8048-40, 0x40f8048):
+    for t in rpc(&quot;eth_getBlockByNumber&quot;,[hex(n),True])[&quot;transactions&quot;]:
+        c[(t[&quot;to&quot;] or &quot;CREATE&quot;).lower()]+=1
+print(c.most_common(3), &quot;of&quot;, sum(c.values()))
+PY
+# -&gt; 0x2ca6571daa15ce734bbd0bf27d5c9d16787fc33f: 248 of 290
+
+# --- 3. the daemon runs after every transaction and can mint
+git -C $C grep -n 'atomicDaemonAndMint' -- coreth/core/state_transition.go coreth/core/daemon.go
+git -C $C grep -n 'GetMaximumMintRequest\|GetDaemonGasMultiplier\|AddBalance' -- coreth/core/daemon.go
+# a user tx to 0x2cA6..c33f whose receipt carries 6 logs from 0x1000..0002:
+curl -s -X POST https://flare-api.flare.network/ext/C/rpc -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getTransactionReceipt&quot;,&quot;params&quot;:[&quot;0xf9a1072e659b67ea1768a25f628b8c0776f70bb93f83b3eada23a2977c9aa39c&quot;]}' \
+  | python3 -c 'import json,sys,collections; r=json.load(sys.stdin)[&quot;result&quot;]; print(&quot;to&quot;,r[&quot;to&quot;]); print(collections.Counter(l[&quot;address&quot;] for l in r[&quot;logs&quot;]))'
+
+# --- 4. calls from keyless addresses, and the coinbase rewrite
+git -C $C grep -n 'DEaD1\|DEaD0\|dead2\|deAD3' -- coreth/core/state_connector.go coreth/core/governance_settings.go
+git -C $C grep -n 'Context.Coinbase = coinbaseSignal' -- coreth/core/state_connector.go coreth/core/governance_settings.go
+git -C $C grep -n 'return !isDurango' -- coreth/core/state_connector.go   # the hook is off since Durango
+
+# --- 5. 0x0100 is the real P256VERIFY, and Granite is the gate
+V=0x4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4d61340c88c3aaebeb4f6d667f672ca9759a6ccaa9fa8811313039ee4a35471d325bea3d29d6f788eca19bf7488f8972be048acbcb4f2eae52575d1e02a08a16c760fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb67903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299
+# valid -&gt; 1 ; corrupted r (…1d33) -&gt; empty ; pre-Granite block -&gt; empty
+for spec in &quot;$V 0x40f8048&quot; &quot;${V/471d32/471d33} 0x40f8048&quot; &quot;$V 0x3e0bd83&quot; &quot;$V 0x3e0bd84&quot;; do
+  set -- $spec
+  curl -s -X POST https://flare-api.flare.network/ext/C/rpc -H 'content-type: application/json' \
+    -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000100\&quot;,\&quot;data\&quot;:\&quot;$1\&quot;},\&quot;$2\&quot;]}&quot;; echo
+done
+# -&gt; 0x..01 | 0x | 0x (block 65060227, pre-Granite) | 0x..01 (block 65060228)
+git -C $C grep -n 'GraniteTime:' -- avalanchego/upgrade/upgrade.go   # Flare: 2026-07-14 12:00 UTC = 1784030400
+
+# --- 6. the Warp precompile has one byte of code, on purpose
+curl -s -X POST https://flare-api.flare.network/ext/C/rpc -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getCode&quot;,&quot;params&quot;:[&quot;0x0200000000000000000000000000000000000005&quot;,&quot;0x40f8048&quot;]}'
+# -&gt; {&quot;result&quot;:&quot;0x01&quot;}
+git -C $C grep -n 'SetCode(module.Address' -- coreth/core/state_processor_ext.go
+
+# --- 7. the fork clock, Flare beside Avalanche in one file
+git -C $C grep -n -A16 '^\tFlare = Config{' -- avalanchego/upgrade/upgrade.go
+git -C $C grep -n 'ShanghaiTime = utils.NewUint64\|CancunTime = utils.NewUint64\|PragueTime\|OsakaTime' -- coreth/params/config_extra.go
+# -&gt; Shanghai=durango, Cancun=etna, and no Prague/Osaka assignment anywhere
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh flare    # fetch the pinned evidence
+tools/verify.py flare   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/flare/chain.yaml</code> · <code>chains/flare/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

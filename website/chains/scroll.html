@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll · EVM-intel</title>
+<meta name="description" content="Neither the client repo nor the org has moved: scroll-tech/go-ethereum is live and scroll-tech/scroll (the monorepo) is unarchived.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Scroll</h1>
+<p class="lede">Neither the client repo nor the org has moved: scroll-tech/go-ethereum is live and scroll-tech/scroll (the monorepo) is unarchived.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>534352</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>shanghai</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>go-ethereum</td></tr><tr><td>Sync point</td><td>A DEEP fork, not a rebase. params/version.go declares Major 5 / Minor 10 / Patch 2 with VersionMeta &quot;mainnet&quot; — Scroll renumbered geth&#x27;s version scheme, so the client does not announce which upstream geth it descends from and web3_clientVersion reports &quot;Geth/v5.10.2-mainnet&quot;. The fork ladder in params/config.go ends at ShanghaiBlock; everything past Shanghai was back-ported EIP by EIP into Scroll-named forks (Archimedes, Bernoulli, Curie, Darwin, Euclid, Feynman, Galileo) rather than by tracking upstream. There is no Cancun, Prague or Osaka fork field to set.</td></tr><tr><td>Consensus</td><td>Clique -&gt; SystemContract (single sequencer, signer key read from L1 storage) · block time 3s</td></tr><tr><td>Note</td><td><p>A go-ethereum fork whose EVM stops at SHANGHAI and then cherry-picks single EIPs out of Cancun, Prague and Osaka without ever declaring those forks. <code>params/config.go</code> contains no CancunTime, PragueTime or OsakaTime field at all — grep the whole tree for "Cancun" and you get nothing — yet TSTORE, MCOPY, EIP-7702, EIP-7623, EIP-2935, EIP-7823/7883 and CLZ are all live. Any tool that maps a chain to a mainnet fork name and derives capabilities from it is wrong here in both directions at once.</p></td></tr><tr><td>Lineage note</td><td><p>Neither the client repo nor the org has moved: scroll-tech/go-ethereum is live and scroll-tech/scroll (the monorepo) is unarchived. The contracts moved OUT of the monorepo into scroll-tech/scroll-contracts, but no predeploy fact in this row needed it — the client carries the predeploy addresses AND their deployed bytecode as Go constants (rollup/rcfg/config.go), so contracts facts are established from the execution client itself and confirmed live. No companion repo is pinned.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/scroll-tech/go-ethereum">scroll-tech/go-ethereum (l2geth)</a> <code>scroll-v5.10.2</code></td></tr><tr><td>Pinned commit</td><td><code>d67dd0baa0ff3607c23f8f23bc94be26aabaa290</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Client note</td><td><p>The running network is at exactly this release: web3_clientVersion @ block 34765788 returns "Geth/v5.10.2-mainnet/linux-amd64/go1.22.2". Unusually for this dataset the pinned tag and the deployed client are the same build.</p></td></tr><tr><td>Live probe</td><td><code>https://rpc.scroll.io</code> · chain_id 534352 · observed at block <code>34765788</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 66 · <code>src_live:</code> 32 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">3</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-four-flavours">Same-address divergence, and every flavour is quieter than enumeration<a class="anchor" href="#f-four-flavours">#</a></h3><p class="lede">An address that exists on two chains can differ in ways no address diff sees, and every one of those flavours is quieter than adding or removing the address.</p><p>The mirror image — OP's GasPriceOracle <strong>ABI at a different address</strong>, while OP's own <code>0x42..0F</code> is an empty account, so OP-derived code reads an L1 fee of zero and reports no error.</p><p class="tags"><a href="../axes/precompiles.html#f-four-flavours">Full note · Precompiles</a> · also on <a href="../chains/op-stack.html#f-four-flavours">OP Stack</a> · <a href="../chains/avalanche-c.html#f-four-flavours">Avax C</a> · <a href="../chains/polygon.html#f-four-flavours">Polygon</a> · <a href="../chains/tron.html#f-four-flavours">Tron</a> · <a href="../chains/taiko.html#f-four-flavours">Taiko</a> · <a href="../chains/gnosis.html#f-four-flavours">Gnosis</a> · <a href="../chains/polygon-zkevm.html#f-four-flavours">zkEVM</a></p></div>
+<div class="finding"><h3 id="f-proof-constraints-leak">Proof-system constraints leak into consensus — and they expire<a class="anchor" href="#f-proof-constraints-leak">#</a></h3><p class="lede">A proof system's constraints leak into consensus rules by unrelated mechanisms — and they are not permanent, so the claim needs a DATE, not just a chain name.</p><p>Disabled <code>0x03</code>/<code>0x09</code> outright and capped MODEXP the same 32-byte way — then lifted that cap at Galileo (2025-12-16) for EIP-7823's 1024 bytes, lifted its SHA256 and BN256 restrictions earlier, and retired the block-level checker entirely, keeping the two hash tombstones. Scroll is the proof that these constraints expire.</p><p class="tags"><a href="../axes/precompiles.html#f-proof-constraints-leak">Full note · Precompiles</a> · also on <a href="../chains/op-stack.html#f-proof-constraints-leak">OP Stack</a> · <a href="../chains/linea.html#f-proof-constraints-leak">Linea</a> · <a href="../chains/zksync-era.html#f-proof-constraints-leak">zkSync</a> · <a href="../chains/polygon-zkevm.html#f-proof-constraints-leak">zkEVM</a> · <a href="../chains/taiko.html#f-proof-constraints-leak">Taiko</a></p></div>
+<div class="finding"><h3 id="f-fields-outlive-features">Header fields carrying something other than their Ethereum meaning<a class="anchor" href="#f-fields-outlive-features">#</a></h3><p class="lede">A header field's name is not its meaning. Reading a header by JSON key name is not a portable operation.</p><p><code>extraData</code> carries Scroll's payload — and the block seal rides inside it, is stripped over RPC, and is excluded from <code>Header.Hash()</code>, so the block hash does not commit to the signature authorising the block.</p><p class="tags"><a href="../axes/fees-envelope.html#f-fields-outlive-features">Full note · Fees &amp; envelope</a> · also on <a href="../chains/op-stack.html#f-fields-outlive-features">OP Stack</a> · <a href="../chains/avalanche-c.html#f-fields-outlive-features">Avax C</a> · <a href="../chains/linea.html#f-fields-outlive-features">Linea</a> · <a href="../chains/taiko.html#f-fields-outlive-features">Taiko</a> · <a href="../chains/sonic.html#f-fields-outlive-features">Sonic</a> · <a href="../chains/mantle.html#f-fields-outlive-features">Mantle</a> · <a href="../chains/berachain.html#f-fields-outlive-features">Bera</a> · <a href="../chains/arc.html#f-fields-outlive-features">Arc</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">11</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000003</code> RIPEMD160</td><td><div class="wrap">Disabled since GENESIS (PrecompiledContractsArchimedes, block 0) and still disabled at Galileo, ten forks later. `ripemd160hashDisabled` keeps ripemd160hash&#x27;s RequiredGas — so the caller is charged the full RIPEMD160 price and then gets an error, and because the error is not ErrExecutionReverted the CALL consumes ALL forwarded gas. &quot;temporarily&quot; has now held for the chain&#x27;s entire life. Note the error string still names sha256, which was re-enabled at Bernoulli — the message is stale by two years.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000009</code> BLAKE2F</td><td><div class="wrap">Same mechanism and same genesis-to-now lifetime as 0x03. blake2FDisabled.RequiredGas returns 0, so unlike 0x03 the caller is not pre-charged before the failure.</div></td></tr><tr><td><span class="pill">system_contracts</span></td><td><code>0x5300000000000000000000000000000000000002</code> L1GasPriceOracle</td><td><div class="wrap">NOT OP&#x27;s oracle, and the difference is the address, not the interface. Scroll&#x27;s L1 fee oracle answers `l1BaseFee()` (0x519b4bd3), `overhead()` (0x0c18c162), `scalar()` (0xf45e65d8), `getL1Fee(bytes)` (0x49948e0e) and `getL1GasUsed(bytes)` (0xde26c4a1) — OP&#x27;s GasPriceOracle ABI — from 0x53..02 instead of 0x420000000000000000000000000000000000000F, WHICH IS EMPTY ON SCROLL. So the collision here is the mirror image of the ones this dataset usually records: same interface at a different address, rather than a different interface at the same address. Code written against OP&#x27;s oracle compiles, the address returns success with no data, and the decoded L1 fee is zero. The bytecode is also not deployed by anyone — the CLIENT writes it. Curie, Feynman and GalileoV2 each call statedb.SetCode with a hard-coded Go byte array and seed new storage slots, so three of Scroll&#x27;s ten forks exist mainly to upgrade this one contract, and its code is a client constant rather than a deployment artefact.</div></td></tr><tr><td><span class="pill">system_contracts</span></td><td><code>0x5300000000000000000000000000000000000005</code> L2TxFeeVault</td><td><div class="wrap">This address IS the EVM&#x27;s coinbase. See opcodes.modified — the divergence is not the vault, it is that `block.coinbase` and `eth_getBlockByNumber().miner` disagree.</div></td></tr><tr><td><span class="pill">tx_types</span></td><td><code>0x7e</code> L1MessageTx</td><td><div class="wrap">A THIRD, INDEPENDENT CLAIMANT TO 0x7e. OP Stack&#x27;s deposit transaction and Scroll&#x27;s L1 message transaction are the same type byte, different RLP payloads, different field counts, no shared code. The dataset already records 0x7e as &quot;the OP family&quot;; it is not. Scroll&#x27;s payload is (QueueIndex, Gas, To, Value, Data, Sender) — six fields, no chain id, no signature, no nonce, no gas price, and `To` may not be nil (no contract creation from L1). A decoder that sees 0x7e and reaches for OP&#x27;s DepositTx layout mis-parses every L1 message on Scroll. Two further traps: the JSON carries non-standard `sender` and `queueIndex` keys, and the type is invisible in ordinary traffic — a 50-block census at the probe height found 40 legacy and 11 dynamic-fee transactions and ZERO 0x7e, and a 389-block sweep found none either, so an integration can pass every test and still meet this type in production.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-6780</td><td><div class="wrap">Not &quot;SELFDESTRUCT restricted to the same transaction&quot; — SELFDESTRUCT DOES NOT EXIST. jump_table.go sets `SELFDESTRUCT: nil` with the comment &quot;SELFDESTRUCT has the same behavior as INVALID&quot;, and eips.go carries two commented-out gas assignments marked &quot;SELFDESTRUCT is disabled in Scroll&quot;. Live, the opcode aborts with &quot;invalid opcode: SELFDESTRUCT&quot;. EIP-6780 is therefore moot here, and any contract whose withdrawal or upgrade path ends in SELFDESTRUCT is bricked rather than merely limited.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-7823</td><td><div class="wrap">THE headline Scroll divergence, and it CLOSED at Galileo. From genesis until 1765868400 `bigModExp.Run` rejected any base/exp/modulus longer than 32 bytes with errModexpUnsupportedInput — &quot;modexp temporarily only accepts inputs of 32 bytes (256 bits) or less&quot; — making RSA-2048 verification impossible on-chain. Galileo sets eip7823: true, replacing the 32-byte cap with EIP-7823&#x27;s 1024-byte bound. Exactly the arc Linea&#x27;s 512-byte modexp cap took: a private proving constraint absorbed by a mainnet consensus rule. Recorded as `added` because at the Shanghai baseline mainnet had no 7823 at all; the dangerous half is that the dead 32-byte branch is still in the source, gated only on `!(eip7823 || eip7883)`.</div></td></tr><tr><td><span class="pill">header_fields</span></td><td>header <code>BlockSignature</code></td><td><div class="wrap">From EuclidV2 the sequencer&#x27;s 65-byte seal is a header field of its own. It is stored in the database, but on the p2p wire it travels INSIDE extraData (PrepareForNetwork moves it there and back), and over JSON-RPC it is dropped entirely — hence the empty extraData observed live. Header.Hash() explicitly strips BlockSignature and blanks Extra before hashing, SO THE BLOCK HASH DOES NOT COMMIT TO THE SEAL. Two consequences: the same header has two different byte encodings depending on which side of the network boundary you are on, and the signature that authorises the block is outside the hash that identifies it. Another header field carrying something other than its Ethereum meaning (see findings.yaml:fields-outlive-features), and it lands on the same field Linea repurposed.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> SELFDESTRUCT</td><td><div class="wrap">Set to nil in the jump table with the comment &quot;SELFDESTRUCT has the same behavior as INVALID&quot;. Not EIP-6780&#x27;s restriction — total removal, since genesis. The only chain in this dataset that removes a mainnet opcode outright rather than repricing or restricting it.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> COINBASE</td><td><div class="wrap">SILENT AND CHEAP TO MISS. NewEVMBlockContext sets the block context&#x27;s Coinbase to the FEE VAULT ADDRESS whenever FeeVaultEnabled(), never consulting Engine.Author(header). So `block.coinbase` inside the EVM is 0x5300000000000000000000000000000000000005, the header&#x27;s `miner` field is the zero address, and the sequencer that actually produced the block is neither of them — it is recovered from the header&#x27;s block signature. Three different answers to &quot;who mined this block&quot;, none of which agree, no error anywhere. EIP-3651 then warms the fee vault instead of the miner, so the gas cost of touching `block.coinbase` also differs from mainnet.</div></td></tr><tr><td><span class="pill">tx_authorization</span></td><td>l1_message_queue</td><td><div class="wrap">`authorizes: protocol` with `precompile: none` — the pairing SCHEMA.md flags as the finding to look for. The client authorises a 0x7e transaction by reading `tx.AsL1MessageTx().Sender` and returning it; no cryptography runs on L2 at all. An L2 contract handed an L1 message cannot verify that the claimed sender authorised it, because the authorising signature was consumed on Ethereum and never crosses the bridge. The pool refuses to accept the type from the network (&quot;No unauthenticated deposits allowed in the transaction pool&quot;), so the only producer is the sequencer&#x27;s L1 sync service — which makes sequencer honesty, not a signature, the thing an L2 contract is trusting. Shape-identical to OP Stack&#x27;s deposit authorization; independently arrived at, on the same type byte.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>THREE activation mechanisms in one config. London and Shanghai are block numbers pinned to 0; Bernoulli and Curie are real block numbers; everything from Darwin on is a timestamp. Nothing maps to a mainnet fork name, and the client has no way to express one — so <code>mainnet_equivalent</code> is null for every Scroll-named fork and the equivalence has to be read out of the EIP table instead.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>homestead..london</code></td><td><span class="pill">active</span></td><td>—</td><td>london</td><td><div class="wrap">genesis-active; MuirGlacier and ArrowGlacier are nil</div></td></tr><tr><td><code>archimedes</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap">genesis-active. Scroll&#x27;s own fork that DISABLES SHA256, RIPEMD160 and BLAKE2F and caps BN256_PAIRING at 4 pairs — the chain launched already diverged.</div></td></tr><tr><td><code>shanghai</code></td><td><span class="pill">active</span></td><td>—</td><td>shanghai</td><td><div class="wrap">PUSH0 and EIP-3860 from genesis; EIP-4895 withdrawals never adopted</div></td></tr><tr><td><code>bernoulli</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap">re-enables SHA256 (0x02) after ~1 year tombstoned</div></td></tr><tr><td><code>curie</code></td><td><span class="pill">active</span></td><td>—</td><td>—</td><td><div class="wrap">EIP-1153 + EIP-5656 (Cancun opcodes) and EIP-3198; rewrites L1GasPriceOracle bytecode for blob DA</div></td></tr><tr><td><code>darwin</code></td><td><span class="pill">active</span></td><td>2024-08-21</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>darwinV2</code></td><td><span class="pill">active</span></td><td>2024-09-02</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>euclid</code></td><td><span class="pill">active</span></td><td>2025-04-16</td><td>—</td><td><div class="wrap">zkTrie -&gt; MPT state-trie migration; retires the in-client circuit-capacity checker</div></td></tr><tr><td><code>euclidV2</code></td><td><span class="pill">active</span></td><td>2025-04-22</td><td>—</td><td><div class="wrap">EIP-7702 (a Prague EIP); P256VERIFY at 0x0100 at 3450 gas; Clique -&gt; SystemContract engine; block seal moves out of extraData</div></td></tr><tr><td><code>feynman</code></td><td><span class="pill">active</span></td><td>2025-08-19</td><td>—</td><td><div class="wrap">EIP-7623 and EIP-2935 (Prague EIPs); lifts the 4-pair BN256_PAIRING cap; rewrites L1GasPriceOracle bytecode again</div></td></tr><tr><td><code>galileo</code></td><td><span class="pill">active</span></td><td>2025-12-16</td><td>—</td><td><div class="wrap">EIP-7823 + EIP-7883 + EIP-7951 + EIP-7939 (all Osaka EIPs). Lifts the 32-byte MODEXP cap and raises P256VERIFY from 3450 to 6900 gas.</div></td></tr><tr><td><code>galileoV2</code></td><td><span class="pill">active</span></td><td>2025-12-18</td><td>—</td><td><div class="wrap">third client-driven rewrite of the L1GasPriceOracle bytecode</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> params/config.go:ScrollMainnetChainConfig</p>
+<h2 id="eips">EIP deltas <span class="pill">18</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-1153"><td><a href="https://eips.ethereum.org/EIPS/eip-1153">EIP-1153</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">TSTORE/TLOAD, a CANCUN EIP, active since Curie (block 7096836) on a chain with no Cancun fork.<p class="src"><b>src</b> core/vm/jump_table.go:newCurieInstructionSet · <b>live</b> eth_call @ 34765788 -&gt; TSTORE 0xaa then TLOAD returns 0xaa</p></div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">EIP-1559 is active and the base fee is real, but it is not computed from L2 congestion alone: the L2 base fee is derived with baseFeeOverhead and baseFeeScalar read from the L2SystemConfig predeploy&#x27;s storage (slots 101 and 102), i.e. from contract state the sequencer writes. Observed flat at 0x1d4c8 (120,008 wei) across the sampled range with gasUsedRatio under 3%.<p class="src"><b>src</b> rollup/rcfg/config.go:L2BaseFeeOverheadSlot, rollup/l2_system_config/abi.go · <b>live</b> eth_feeHistory @ 34765788 -&gt; baseFeePerGas 0x1d4c8 for three consecutive blocks, gasUsedRatio 0.006 / 0.021</p></div></td></tr><tr id="eips-2537"><td><a href="https://eips.ethereum.org/EIPS/eip-2537">EIP-2537</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BLS12-381 precompiles 0x0a-0x12 exist in the source as PrecompiledContractsBLS but are wired into NO active set. See precompiles 0x0a.<p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsBLS, core/vm/contracts.go:ActivePrecompiles</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">A Prague EIP, active since Feynman, and implemented FULLY: the canonical 0x0000F90827F1C53a10cb7A02335B175320002935 holds the canonical 0x3373... bytecode, HistoryServeWindow is 8191, and BLOCKHASH was rewritten to read the ring buffer out of that contract&#x27;s storage rather than from the header chain.<p class="src"><b>src</b> core/vm/instructions.go:opBlockhashPostFeynman, core/state_processor.go:ProcessParentBlockHash, params/protocol_params.go:HistoryStorageAddress · <b>live</b> eth_getCode @ 34765788 -&gt; 0x3373fffffffffffffffffffffffffffffffffffffffe14604657...; BLOCKHASH(n-1) returns the block&#x27;s parentHash</p></div></td></tr><tr id="eips-3529"><td><a href="https://eips.ethereum.org/EIPS/eip-3529">EIP-3529</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">London&#x27;s refund reduction applies, but its SELFDESTRUCT half is dead code: enable3529 carries `// SELFDESTRUCT is disabled in Scroll` above a commented-out gasSelfdestructEIP3529 assignment. Refund accounting for SELFDESTRUCT can never be reached.<p class="src"><b>src</b> core/vm/eips.go:enable3529</p></div></td></tr><tr id="eips-3651"><td><a href="https://eips.ethereum.org/EIPS/eip-3651">EIP-3651</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">warm coinbase — but the warmed address is the fee vault, not the header miner; see opcodes.modified COINBASE<p class="src"><b>src</b> core/state/statedb.go:Prepare</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No beacon chain, no beacon-roots contract, no parentBeaconBlockRoot in live headers. The header field exists as an optional for SDK compatibility only.<p class="src"><b>src</b> core/types/block.go:ParentBeaconRoot · <b>live</b> eth_getBlockByNumber @ 34765788 -&gt; no parentBeaconBlockRoot key</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">No blob transactions and no blob opcodes. BLOBHASH (0x49) and BLOBBASEFEE (0x4a) are both undefined opcodes live. The BlobTx type is still DECODABLE — the 0x03 case survives in transaction.go and transaction_signing.go — but nothing activates it and blobGasUsed/excessBlobGas are header fields kept only &quot;for Ethereum compatibility in Scroll SDK&quot; and absent from live headers.<p class="src"><b>src</b> core/types/transaction.go:BlobTxType, core/types/block.go:BlobGasUsed · <b>live</b> eth_call @ 34765788 -&gt; opcode 0x49 not defined; opcode 0x4a not defined; block has no blobGasUsed key</p></div></td></tr><tr id="eips-4895"><td><a href="https://eips.ethereum.org/EIPS/eip-4895">EIP-4895</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Withdrawals were never adopted. types.Body has only Transactions and Uncles — there is no Withdrawals field to decode — while the HEADER still carries an optional withdrawalsRoot, commented &quot;Included for Ethereum compatibility in Scroll SDK&quot;. Live, the field is absent from the JSON entirely.<p class="src"><b>src</b> core/types/block.go:Body · <b>live</b> eth_getBlockByNumber @ 34765788 -&gt; no withdrawalsRoot key in the result</p></div></td></tr><tr id="eips-5656"><td><a href="https://eips.ethereum.org/EIPS/eip-5656">EIP-5656</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">MCOPY, a Cancun EIP, active since Curie.<p class="src"><b>src</b> core/vm/jump_table.go:newCurieInstructionSet · <b>live</b> eth_call @ 34765788 -&gt; MCOPY copies 0xff from m[0] to m[32]</p></div></td></tr><tr id="eips-6780"><td><a href="https://eips.ethereum.org/EIPS/eip-6780">EIP-6780</a></td><td><span class="s-removed" title="removed — silent divergence">➖</span></td><td></td><td><div class="wrap">Not &quot;SELFDESTRUCT restricted to the same transaction&quot; — SELFDESTRUCT DOES NOT EXIST. jump_table.go sets `SELFDESTRUCT: nil` with the comment &quot;SELFDESTRUCT has the same behavior as INVALID&quot;, and eips.go carries two commented-out gas assignments marked &quot;SELFDESTRUCT is disabled in Scroll&quot;. Live, the opcode aborts with &quot;invalid opcode: SELFDESTRUCT&quot;. EIP-6780 is therefore moot here, and any contract whose withdrawal or upgrade path ends in SELFDESTRUCT is bricked rather than merely limited.<p class="src"><b>src</b> core/vm/jump_table.go:SELFDESTRUCT, core/vm/eips.go:enable3529 · <b>live</b> eth_call @ 34765788 -&gt; `invalid opcode: SELFDESTRUCT`</p></div></td></tr><tr id="eips-7623"><td><a href="https://eips.ethereum.org/EIPS/eip-7623">EIP-7623</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">Calldata floor pricing, a Prague EIP, active since Feynman. Confirmed live: 100 zero calldata bytes to an EOA estimate at 22000 gas (21000 + 10 x 100 tokens), not the 21400 that pre-7623 pricing gives.<p class="src"><b>src</b> core/state_transition.go:FloorDataGas · <b>live</b> eth_estimateGas @ 34765788 -&gt; 0x55f0 (22000) for 100 zero calldata bytes</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">A PRAGUE EIP live since EuclidV2. Type 0x04 is accepted by the pool gated on IsEuclidV2, the authorisation list is validated in state_transition.go, and enable7702 is in the EuclidV2 instruction set.<p class="src"><b>src</b> core/vm/jump_table.go:newEuclidV2InstructionSet, core/tx_pool.go:eip7702, core/state_transition.go:validateAuthorization</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td></td><td><div class="wrap">THE headline Scroll divergence, and it CLOSED at Galileo. From genesis until 1765868400 `bigModExp.Run` rejected any base/exp/modulus longer than 32 bytes with errModexpUnsupportedInput — &quot;modexp temporarily only accepts inputs of 32 bytes (256 bits) or less&quot; — making RSA-2048 verification impossible on-chain. Galileo sets eip7823: true, replacing the 32-byte cap with EIP-7823&#x27;s 1024-byte bound. Exactly the arc Linea&#x27;s 512-byte modexp cap took: a private proving constraint absorbed by a mainnet consensus rule. Recorded as `added` because at the Shanghai baseline mainnet had no 7823 at all; the dangerous half is that the dead 32-byte branch is still in the source, gated only on `!(eip7823 || eip7883)`.<p class="src"><b>src</b> core/vm/contracts.go:errModexpUnsupportedInput, core/vm/contracts.go:PrecompiledContractsGalileo · <b>live</b> eth_call @ 34765788 -&gt; 0x05 with 64-byte base and modulus returns 3^3 mod 10 = 7 as 64 bytes</p></div></td></tr><tr id="eips-7883"><td><a href="https://eips.ethereum.org/EIPS/eip-7883">EIP-7883</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">MODEXP repricing (Osaka), live since Galileo via galileoModexpGas<p class="src"><b>src</b> core/vm/contracts.go:galileoModexpGas</p></div></td></tr><tr id="eips-7928"><td><a href="https://eips.ethereum.org/EIPS/eip-7928">EIP-7928</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Not established. Nothing in the tree references block access lists or an Amsterdam fork; no timestamp exists to gate one.</div></td></tr><tr id="eips-7939"><td><a href="https://eips.ethereum.org/EIPS/eip-7939">EIP-7939</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">CLZ (0x1e), an OSAKA opcode, live since Galileo on a chain with no Cancun or Prague fork.<p class="src"><b>src</b> core/vm/jump_table.go:newGalileoInstructionSet · <b>live</b> eth_call @ 34765788 -&gt; CLZ(1) returns 255 (0xff)</p></div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">P256VERIFY at 0x0100. Arrived at EuclidV2 at RIP-7212&#x27;s 3450 gas and was raised to EIP-7951&#x27;s 6900 at Galileo — so Scroll is one of the few rows where the P256VERIFY gas now MATCHES mainnet rather than halving it. Semantics are EIP-7951&#x27;s: 32-byte 0x01 for valid, EMPTY for invalid.<p class="src"><b>src</b> params/protocol_params.go:P256VerifyGasGalileo, core/vm/contracts.go:p256Verify · <b>live</b> eth_call @ 34765788 -&gt; valid P-256 signature returns 0x...01; one flipped hash byte returns 0x</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">3</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>Live set at the probe height is 0x00, 0x01, 0x02, 0x04 and 0x7e. Scroll took its byte from the SAME end of the space as everyone else — the 0x7f ceiling — and landed on one that was already occupied.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BlobTx</td><td><div class="wrap"><div>Decodable but unreachable: the type constant, the RLP shape and the signer branch all exist, and nothing ever activates them — there is no Cancun fork to gate on. Distinct from Linea&#x27;s blob removal, which is an explicit plugin rejection with a named error; here it is simply never switched on.</div><p class="src"><b>src</b> core/types/transaction.go:BlobTxType, core/types/blob_tx.go:BlobTx</p></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-added" title="added">➕</span></td><td>SetCodeTx</td><td><div class="wrap"><div>EIP-7702, admitted from EuclidV2; the pool additionally requires a non-empty authorization list.</div><p class="src"><b>src</b> core/tx_pool.go:eip7702</p></div></td></tr><tr id="tx-types-0x7e"><td><code>0x7e</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>L1MessageTx</td><td><div class="wrap"><div>A THIRD, INDEPENDENT CLAIMANT TO 0x7e. OP Stack&#x27;s deposit transaction and Scroll&#x27;s L1 message transaction are the same type byte, different RLP payloads, different field counts, no shared code. The dataset already records 0x7e as &quot;the OP family&quot;; it is not. Scroll&#x27;s payload is (QueueIndex, Gas, To, Value, Data, Sender) — six fields, no chain id, no signature, no nonce, no gas price, and `To` may not be nil (no contract creation from L1). A decoder that sees 0x7e and reaches for OP&#x27;s DepositTx layout mis-parses every L1 message on Scroll. Two further traps: the JSON carries non-standard `sender` and `queueIndex` keys, and the type is invisible in ordinary traffic — a 50-block census at the probe height found 40 legacy and 11 dynamic-fee transactions and ZERO 0x7e, and a 389-block sweep found none either, so an integration can pass every test and still meet this type in production.</div><p class="src"><b>src</b> core/types/transaction.go:L1MessageTxType, core/types/l1_message_tx.go:L1MessageTx · <b>live</b> eth_getTransactionByHash 0x9b24c569894dd98c75daba1b2fdc240712cc8e9d1ea4b978fa1ae440e74abbc6 @ 34760253 -&gt; type 0x7e, v/r/s all 0x0, nonce 0x0, gasPrice 0x0, extra JSON fields `sender` and `queueIndex` 0xf3dc8</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>Two schemes, and the second one is the interesting cell. Ordinary Scroll transactions are plain secp256k1 with mainnet's derived binding. L1 messages are not signed at all: the sender is a FIELD, the signature values are hard-coded to zero, and the signing hash does not exist — londonSigner.Hash PANICS with "l1 message tx cannot be signed and do not have a signing hash". Authority comes from the L1MessageQueue contract on Ethereum, replayed into the L2 block by the sequencer, so <code>key_binding</code> for that path is <code>declared</code> and there is no precompile on Scroll that can check it. signers_per_tx stays 1 because an L1 message has exactly one (unverifiable-on-L2) party.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> core/types/transaction_signing.go:londonSigner, core/vm/contracts.go:ecrecover</p></div></td></tr><tr><td><code>l1_message_queue</code></td><td><span class="pill">protocol</span></td><td><span class="s-removed" title="no precompile can verify what the protocol accepts">none ⚠️</span></td><td><div class="wrap">`authorizes: protocol` with `precompile: none` — the pairing SCHEMA.md flags as the finding to look for. The client authorises a 0x7e transaction by reading `tx.AsL1MessageTx().Sender` and returning it; no cryptography runs on L2 at all. An L2 contract handed an L1 message cannot verify that the claimed sender authorised it, because the authorising signature was consumed on Ethereum and never crosses the bridge. The pool refuses to accept the type from the network (&quot;No unauthenticated deposits allowed in the transaction pool&quot;), so the only producer is the sequencer&#x27;s L1 sync service — which makes sequencer honesty, not a signature, the thing an L2 contract is trusting. Shape-identical to OP Stack&#x27;s deposit authorization; independently arrived at, on the same type byte.<p class="src"><b>src</b> core/types/transaction_signing.go:londonSigner, core/types/l1_message_tx.go:setSignatureValues, core/tx_pool.go:validateTx · <b>live</b> eth_getTransactionByHash 0x9b24c569894dd98c75daba1b2fdc240712cc8e9d1ea4b978fa1ae440e74abbc6 @ 34760253 -&gt; v=0x0 r=0x0 s=0x0, sender 0x7885bcbd5cecef1336b5300fb5186a12ddd8c478</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><code>0x0100</code></td><td><div class="wrap">P256VERIFY is present from EuclidV2 and at mainnet&#x27;s 6900 gas from Galileo, but a P-256 key cannot authorize a Scroll transaction. The ordinary pairing.<p class="src"><b>src</b> core/vm/contracts.go:p256Verify</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">7</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>ZERO added addresses outside 0x0100, and four same-address divergences, two of which are still live. Scroll's whole precompile story is subtraction: it launched with three hash precompiles disabled and a 32-byte MODEXP cap because the zkEVM circuits could not prove them, then restored them one fork at a time as the circuits improved. SHA256 came back at Bernoulli, BN256_PAIRING's input cap at Feynman, MODEXP's operand cap at Galileo. RIPEMD160 and BLAKE2F never came back.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x02"><td><code>0x02</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>SHA256</td><td><div class="wrap"><div>Recorded although it is now identical to mainnet, because it was TOMBSTONED for the first 5,220,340 blocks of the chain (Archimedes -&gt; Bernoulli) and any historical replay or archive query below that height must model it as failing. A chain&#x27;s precompile set is a function of height, not just of address.</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsBernoulli · <b>live</b> eth_call @ 34765788 -&gt; 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (SHA256 of empty input)</p></div></td></tr><tr id="precompiles-0x03"><td><code>0x03</code></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td>RIPEMD160</td><td><div class="wrap"><div>Disabled since GENESIS (PrecompiledContractsArchimedes, block 0) and still disabled at Galileo, ten forks later. `ripemd160hashDisabled` keeps ripemd160hash&#x27;s RequiredGas — so the caller is charged the full RIPEMD160 price and then gets an error, and because the error is not ErrExecutionReverted the CALL consumes ALL forwarded gas. &quot;temporarily&quot; has now held for the chain&#x27;s entire life. Note the error string still names sha256, which was re-enabled at Bernoulli — the message is stale by two years.</div><p class="src"><b>src</b> core/vm/contracts.go:ripemd160hashDisabled, core/vm/contracts.go:errPrecompileDisabled, core/vm/contracts.go:PrecompiledContractsGalileo · <b>live</b> eth_call @ 34765788 -&gt; error -32000 `sha256, ripemd160, blake2f precompiles temporarily disabled`</p></div></td></tr><tr id="precompiles-0x05"><td><code>0x05</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>MODEXP</td><td><div class="wrap"><div>Inherited AS OF GALILEO and not before. From genesis to 1765868400 any operand wider than 32 bytes was rejected outright — 32x tighter than EIP-7823 and the same restriction, at the same width, that zkSync Era still enforces. Scroll&#x27;s version is now gone; zkSync&#x27;s is not. Below Galileo this address is `modified`.</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsGalileo, core/vm/contracts.go:errModexpUnsupportedInput · <b>live</b> eth_call @ 34765788 -&gt; 64-byte operands accepted, 3^3 mod 10 returned as 64 bytes</p></div></td></tr><tr id="precompiles-0x08"><td><code>0x08</code></td><td><span class="s-inherited" title="inherited">=</span></td><td>BN256_PAIRING</td><td><div class="wrap"><div>Inherited as of FEYNMAN. From genesis to 1755576000 `limitInputLength: true` rejected any input longer than 4x192 bytes with errBadPairingInput — a cap on a SINGLE CALL&#x27;s input size, the identical mechanism OP Stack still uses for its fault-proof caps, and unlike Linea&#x27;s per-block work budget. Two of Scroll&#x27;s three prover-driven precompile restrictions have now been lifted; the two hash tombstones have not.</div><p class="src"><b>src</b> core/vm/contracts.go:bn256PairingIstanbul, core/vm/contracts.go:PrecompiledContractsFeynman</p></div></td></tr><tr id="precompiles-0x09"><td><code>0x09</code></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td>BLAKE2F</td><td><div class="wrap"><div>Same mechanism and same genesis-to-now lifetime as 0x03. blake2FDisabled.RequiredGas returns 0, so unlike 0x03 the caller is not pre-charged before the failure.</div><p class="src"><b>src</b> core/vm/contracts.go:blake2FDisabled, core/vm/contracts.go:PrecompiledContractsGalileo · <b>live</b> eth_call @ 34765788 -&gt; error -32000 `sha256, ripemd160, blake2f precompiles temporarily disabled`</p></div></td></tr><tr id="precompiles-0x0a"><td><code>0x0a</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1ADD (EIP-2537, 0x0a-0x12)</td><td><div class="wrap"><div>THE CONTROL CASE FOR THE TOMBSTONE DISTINCTION. All nine EIP-2537 addresses are implemented in this client and wired into nothing: ActivePrecompiles never returns PrecompiledAddressesBLS because no such list is built. Calling 0x0a at the same block as 0x03 SUCCEEDS with empty output, while 0x03 ERRORS — so on one chain, at one height, `removed` and `tombstoned` are directly distinguishable by a two-line probe. Recorded on 0x0a as the representative of the run.</div><p class="src"><b>src</b> core/vm/contracts.go:PrecompiledContractsBLS, core/vm/contracts.go:ActivePrecompiles · <b>live</b> eth_call @ 34765788 -&gt; 0x (success, empty output)</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-added" title="added">➕</span></td><td>P256VERIFY</td><td><div class="wrap"><div>Gas went 3450 (EuclidV2, RIP-7212&#x27;s price) -&gt; 6900 (Galileo, EIP-7951&#x27;s price), so Scroll is one of the few rows in this dataset whose 0x0100 now costs exactly what mainnet charges. Failure signalling is EIP-7951&#x27;s empty return, which on this chain is INDISTINGUISHABLE from the empty return of an unoccupied address — the same silent-failure shape recorded for Hyperliquid and Sei, except here the precompile is genuinely present and answering.</div><p class="src"><b>src</b> core/vm/contracts.go:p256Verify, params/protocol_params.go:P256VerifyGasGalileo · <b>live</b> eth_call @ 34765788 -&gt; valid signature returns 0x00..01; corrupted hash returns 0x; eth_getCode returns 0x (native, not a predeploy)</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">4</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>Scroll's predeploy namespace is 0x53.., not OP's 0x42.., and the two do not overlap at all: 0x420000000000000000000000000000000000000F and 0x4200000000000000000000000000000000000015 are both EMPTY at the probe height. That is safer than a collision and more dangerous than an error, because an empty account answers every staticcall with success and no data.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0xf90827f1c53a10cb7a02335b175320002935"><td><code>0xf90827f1c53a10cb7a02335b175320002935</code></td><td><span class="s-added" title="added">➕</span></td><td>HistoryStorage (EIP-2935)</td><td><div class="wrap"><div>At the canonical mainnet address with the canonical bytecode — the one Prague system contract Scroll has, and it did not drift.</div><p class="src"><b>src</b> params/protocol_params.go:HistoryStorageAddress, core/genesis.go:HistoryStorageCode · <b>live</b> eth_getCode @ 34765788 -&gt; 0x3373fffffffffffffffffffffffffffffffffffffffe1460465760203603604257... (canonical, 100 bytes)</p></div></td></tr><tr id="system-contracts-0x5300000000000000000000000000000000000000"><td><code>0x5300000000000000000000000000000000000000</code></td><td><span class="s-added" title="added">➕</span></td><td>L2MessageQueue</td><td><div class="wrap"><div>Withdrawal (L2-&gt;L1) message trie. Its slot 0 is read by the client as the withdraw-trie root, so ordinary contract storage is protocol-visible state.</div><p class="src"><b>src</b> rollup/rcfg/config.go:L2MessageQueueAddress, rollup/rcfg/config.go:WithdrawTrieRootSlot · <b>live</b> eth_getCode @ 34765788 -&gt; bytecode present (0x608060405234801561001057600080fd5b50...)</p></div></td></tr><tr id="system-contracts-0x5300000000000000000000000000000000000002"><td><code>0x5300000000000000000000000000000000000002</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>L1GasPriceOracle</td><td><div class="wrap"><div>NOT OP&#x27;s oracle, and the difference is the address, not the interface. Scroll&#x27;s L1 fee oracle answers `l1BaseFee()` (0x519b4bd3), `overhead()` (0x0c18c162), `scalar()` (0xf45e65d8), `getL1Fee(bytes)` (0x49948e0e) and `getL1GasUsed(bytes)` (0xde26c4a1) — OP&#x27;s GasPriceOracle ABI — from 0x53..02 instead of 0x420000000000000000000000000000000000000F, WHICH IS EMPTY ON SCROLL. So the collision here is the mirror image of the ones this dataset usually records: same interface at a different address, rather than a different interface at the same address. Code written against OP&#x27;s oracle compiles, the address returns success with no data, and the decoded L1 fee is zero. The bytecode is also not deployed by anyone — the CLIENT writes it. Curie, Feynman and GalileoV2 each call statedb.SetCode with a hard-coded Go byte array and seed new storage slots, so three of Scroll&#x27;s ten forks exist mainly to upgrade this one contract, and its code is a client constant rather than a deployment artefact.</div><p class="src"><b>src</b> rollup/rcfg/config.go:L1GasPriceOracleAddress, rollup/rcfg/config.go:GalileoV2L1GasPriceOracleBytecode, consensus/misc/galileoV2.go:applyGalileoV2HardFork · <b>live</b> eth_getCode @ 34765788 -&gt; 3782 bytes, sha256 0b32912d09bc322afbc270c1bdbf8979404e06d49de070804905fc5f105ac07b, byte-identical to rcfg.GalileoV2L1GasPriceOracleBytecode; l1BaseFee() 0x4086d28, overhead() 0x38, scalar() 0x3e95ba80; slots 8/11/12 (isCurie/isFeynman/isGalileo) all 1</p></div></td></tr><tr id="system-contracts-0x5300000000000000000000000000000000000005"><td><code>0x5300000000000000000000000000000000000005</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>L2TxFeeVault</td><td><div class="wrap"><div>This address IS the EVM&#x27;s coinbase. See opcodes.modified — the divergence is not the vault, it is that `block.coinbase` and `eth_getBlockByNumber().miner` disagree.</div><p class="src"><b>src</b> rollup/rcfg/config.go:ScrollFeeVaultAddress, core/evm.go:NewEVMBlockContext · <b>live</b> eth_call @ 34765788 -&gt; COINBASE returns 0x5300000000000000000000000000000000000005 while the header&#x27;s miner is 0x0000000000000000000000000000000000000000; balance 0x50926b2231aa187c9</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<h2 id="opcodes">Opcodes <span class="pill">9</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Op</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="opcodes-"><td><code>—</code></td><td><span class="s-added" title="added">➕</span></td><td>CLZ</td><td><div class="wrap">EIP-7939, an Osaka opcode<p class="src"><b>src</b> core/vm/jump_table.go:newGalileoInstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-added" title="added">➕</span></td><td>TLOAD</td><td><div class="wrap">EIP-1153, a Cancun opcode<p class="src"><b>src</b> core/vm/jump_table.go:newCurieInstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-added" title="added">➕</span></td><td>TSTORE</td><td><div class="wrap"><p class="src"><b>src</b> core/vm/jump_table.go:newCurieInstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-added" title="added">➕</span></td><td>MCOPY</td><td><div class="wrap">EIP-5656, a Cancun opcode<p class="src"><b>src</b> core/vm/jump_table.go:newCurieInstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>SELFDESTRUCT</td><td><div class="wrap">Set to nil in the jump table with the comment &quot;SELFDESTRUCT has the same behavior as INVALID&quot;. Not EIP-6780&#x27;s restriction — total removal, since genesis. The only chain in this dataset that removes a mainnet opcode outright rather than repricing or restricting it. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/vm/jump_table.go:SELFDESTRUCT · <b>live</b> eth_call @ 34765788 -&gt; `invalid opcode: SELFDESTRUCT`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLOBHASH</td><td><div class="wrap">never added (no 4844)<p class="src"><b>live</b> eth_call @ 34765788 -&gt; opcode 0x49 not defined</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLOBBASEFEE</td><td><div class="wrap">never added (no 4844)<p class="src"><b>live</b> eth_call @ 34765788 -&gt; opcode 0x4a not defined</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>COINBASE</td><td><div class="wrap">SILENT AND CHEAP TO MISS. NewEVMBlockContext sets the block context&#x27;s Coinbase to the FEE VAULT ADDRESS whenever FeeVaultEnabled(), never consulting Engine.Author(header). So `block.coinbase` inside the EVM is 0x5300000000000000000000000000000000000005, the header&#x27;s `miner` field is the zero address, and the sequencer that actually produced the block is neither of them — it is recovered from the header&#x27;s block signature. Three different answers to &quot;who mined this block&quot;, none of which agree, no error anywhere. EIP-3651 then warms the fee vault instead of the miner, so the gas cost of touching `block.coinbase` also differs from mainnet. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/vm/instructions.go:opCoinbase, core/vm/evm.go:FeeRecipient, core/evm.go:NewEVMBlockContext · <b>live</b> eth_call @ 34765788 -&gt; COINBASE = 0x5300000000000000000000000000000000000005; eth_getBlockByNumber @ 34765788 -&gt; miner = 0x0000000000000000000000000000000000000000</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>BLOCKHASH</td><td><div class="wrap">Reads the EIP-2935 history contract&#x27;s storage ring instead of walking headers; the 256-block window is unchanged, so behaviour matches mainnet Prague.<p class="src"><b>src</b> core/vm/instructions.go:opBlockhashPostFeynman</p></div></td></tr></tbody></table></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>EIP-1559 on L2, with baseFeeOverhead/baseFeeScalar read from a predeploy&#x27;s storage</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;L1 data fee&#x27;, &#x27;src&#x27;: &#x27;rollup/fees/rollup_fee.go:CalculateL1DataFee&#x27;, &#x27;note&#x27;: &quot;Charged in addition to gas x gasPrice and paid to the fee vault, computed from the L1GasPriceOracle&#x27;s storage. Four generations of formula coexist in the client — calculateEncodedL1DataFee, ...Curie, ...Feynman, ...Galileo — selected by which isXxx flag the oracle&#x27;s own storage has set, so the fee formula is chosen by CONTRACT STATE rather than by the chain config.&quot;}, {&#x27;name&#x27;: &#x27;compression penalty&#x27;, &#x27;src&#x27;: &#x27;rollup/rcfg/config.go:PenaltyThresholdSlot&#x27;, &#x27;note&#x27;: &quot;From Feynman the L1 fee includes a penalty term keyed on how well the transaction&#x27;s calldata compresses (penaltyThreshold / penaltyFactor, slots 9 and 10). Two transactions with identical length and identical gas can pay different L1 fees because one compresses worse.&quot;}, {&#x27;name&#x27;: &#x27;L1 messages are free&#x27;, &#x27;src&#x27;: &#x27;rollup/fees/rollup_fee.go:EstimateL1DataFeeForMessage&#x27;, &#x27;note&#x27;: &quot;IsL1MessageTx() short-circuits to zero; the receipt&#x27;s l1Fee is 0x0 and no refund is issued (TransitionDb returns early for L1 messages).&quot;}]</td></tr><tr><td>Note</td><td><p><code>eth_estimateGas</code> covers the L2 gas only. The receipt carries an <code>l1Fee</code> field, but — unlike Celo's CIP-66 base fee — it lives in storedReceiptRLP and NOT in receiptRLP, so receiptsRoot is standard and the extra field is a database and JSON-RPC extension, not a consensus one.</p></td></tr></tbody></table></div>
+<p class="src"><b>src</b> core/state_transition.go:TransitionDb, core/types/receipt.go:storedReceiptRLP</p>
+<h2 id="header-fields">Header fields <span class="pill">9</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-blocksignature"><td><code>BlockSignature</code></td><td><span class="s-added" title="added">➕</span></td><td>BlockSignature</td><td><div class="wrap">From EuclidV2 the sequencer&#x27;s 65-byte seal is a header field of its own. It is stored in the database, but on the p2p wire it travels INSIDE extraData (PrepareForNetwork moves it there and back), and over JSON-RPC it is dropped entirely — hence the empty extraData observed live. Header.Hash() explicitly strips BlockSignature and blanks Extra before hashing, SO THE BLOCK HASH DOES NOT COMMIT TO THE SEAL. Two consequences: the same header has two different byte encodings depending on which side of the network boundary you are on, and the signature that authorises the block is outside the hash that identifies it. Another header field carrying something other than its Ethereum meaning (see findings.yaml:fields-outlive-features), and it lands on the same field Linea repurposed. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/types/block.go:PrepareForNetwork, consensus/system_contract/consensus.go:ecrecover · <b>live</b> eth_getBlockByNumber @ 34765788 -&gt; extraData 0x, miner 0x00..00, difficulty 0x1</p></div></td></tr><tr id="header-fields-iseuclidv2"><td><code>IsEuclidV2</code></td><td><span class="s-added" title="added">➕</span></td><td>IsEuclidV2</td><td><div class="wrap">A boolean stored beside the header telling the decoder which of the two encodings it is holding. Not hashed, not transmitted, not exposed.<p class="src"><b>src</b> core/types/block.go:PrepareFromNetwork</p></div></td></tr><tr id="header-fields-withdrawalsroot"><td><code>withdrawalsRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>withdrawalsRoot</td><td><div class="wrap">declared optional in the struct for SDK compatibility; never populated<p class="src"><b>src</b> core/types/block.go:WithdrawalsHash</p></div></td></tr><tr id="header-fields-blobgasused"><td><code>blobGasUsed</code></td><td><span class="s-removed" title="removed">➖</span></td><td>blobGasUsed</td><td><div class="wrap">same<p class="src"><b>src</b> core/types/block.go:BlobGasUsed</p></div></td></tr><tr id="header-fields-excessblobgas"><td><code>excessBlobGas</code></td><td><span class="s-removed" title="removed">➖</span></td><td>excessBlobGas</td><td><div class="wrap">same<p class="src"><b>src</b> core/types/block.go:ExcessBlobGas</p></div></td></tr><tr id="header-fields-parentbeaconblockroot"><td><code>parentBeaconBlockRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>parentBeaconBlockRoot</td><td><div class="wrap">same<p class="src"><b>src</b> core/types/block.go:ParentBeaconRoot</p></div></td></tr><tr id="header-fields-extradata"><td><code>extraData</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>extraData</td><td><div class="wrap">Empty over RPC, 65 bytes of secp256k1 seal on the wire. Pre-EuclidV2 it was Clique&#x27;s extraData and held the seal in the normal Clique layout; the system_contract engine rejects any non-empty Extra (errInvalidExtra).<p class="src"><b>src</b> core/types/block.go:PrepareForNetwork · <b>live</b> eth_getBlockByNumber @ 34765788 -&gt; 0x</p></div></td></tr><tr id="header-fields-miner"><td><code>miner</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>miner</td><td><div class="wrap">Always zero (errInvalidCoinbase rejects anything else). The real producer is recovered from the seal; the EVM&#x27;s COINBASE is the fee vault. See opcodes.modified.<p class="src"><b>live</b> eth_getBlockByNumber @ 34765788 -&gt; 0x0000000000000000000000000000000000000000</p></div></td></tr><tr id="header-fields-difficulty"><td><code>difficulty</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>difficulty</td><td><div class="wrap">Pinned to 1 (errInvalidDifficulty), and totalDifficulty is therefore a block counter.<p class="src"><b>live</b> eth_getBlockByNumber @ 34765788 -&gt; 0x1</p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">9</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>A DISABLED PRECOMPILE AND AN ABSENT ONE FAIL DIFFERENTLY, AND SCROLL SHOWS BOTH AT ONE HEIGHT. Calling 0x03 (RIPEMD160) or 0x09 (BLAKE2F) ERRORS and burns all forwarded gas; calling 0x0a (BLS12-381 G1ADD, simply absent) SUCCEEDS with empty output. Same block, same node. Any survey that tests &quot;does this address return data&quot; classifies both as missing and is wrong about one of them.</li><li>SELFDESTRUCT IS NOT RESTRICTED, IT IS GONE. The opcode is nil in the jump table and aborts as INVALID. Contracts whose emergency-withdraw or self-upgrade path ends in SELFDESTRUCT are unrecoverable on Scroll, and no EIP-6780 reasoning applies.</li><li>`block.coinbase` IS NOT THE MINER. Inside the EVM it is the fee vault 0x5300000000000000000000000000000000000005; the header&#x27;s `miner` is the zero address; the actual sequencer is recovered from a signature that RPC never shows you. A contract paying the block producer via `block.coinbase` pays the fee vault.</li><li>THE L1-FEE ORACLE HAS OP&#x27;S ABI AT A DIFFERENT ADDRESS. `getL1Fee(bytes)`, `l1BaseFee()`, `overhead()`, `scalar()` and `getL1GasUsed(bytes)` all live at 0x5300000000000000000000000000000000000002. OP&#x27;s 0x420000000000000000000000000000000000000F is an EMPTY ACCOUNT here, so OP-derived code calls it, gets success and no data, and reads an L1 fee of zero.</li><li>TYPE BYTE 0x7e IS NOT OP&#x27;S. Scroll&#x27;s L1MessageTx shares the byte and shares nothing else: six fields, no signature, no nonce, no chain id, no gas price, plus non-standard `sender` and `queueIndex` JSON keys. It is also RARE — zero occurrences in a 389-block sweep — so a decoder can be wrong for months before it is wrong in production.</li><li>THE CLIENT REWRITES A LIVE CONTRACT&#x27;S BYTECODE AT THREE FORKS. Curie, Feynman and GalileoV2 each call statedb.SetCode on the L1GasPriceOracle with a byte array hard-coded in Go, and seed new storage slots. No transaction, no log, no receipt. Contract-upgrade monitoring that watches events sees none of it.</li><li>WHETHER THE STATE ROOT IS CHECKED DEPENDS ON A NODE-LOCAL CLI FLAG. `shouldValidateStateRoot := config.Scroll.UseZktrie != config.IsEuclid(header.Time)` and `UseZktrie` is set from `!--scroll-mpt` at startup. Post-Euclid a node started WITHOUT `--scroll-mpt` (the built-in default for `--scroll`) skips the state-root comparison entirely; one started WITH it performs it. This was the mechanism that let zkTrie and MPT nodes coexist across the Euclid migration, and it is still the code at this tag. Which flag production nodes actually run is `unrecorded`.</li><li>THE ZK-CIRCUIT LIMITER IS RETIRED, ITS SCARS ARE NOT. `AsyncChecker.Check` returns immediately for any post-Euclid block (&quot;Euclid blocks use MPT and CCC doesn&#x27;t support them&quot;), so the 950,000-row per-sub-circuit budget in types.RowConsumptionLimit no longer rejects anything. The precompile tombstones, the 100-transactions-per-block producer cap and the 120 KB payload cap it motivated are all still enforced.</li><li>THE FORK NAME TELLS YOU NOTHING. Scroll has TSTORE, MCOPY, EIP-7702, EIP-7623, EIP-2935, EIP-7823, EIP-7883, EIP-7951 and CLZ — Cancun, Prague and Osaka features — and no Cancun, Prague or Osaka fork field anywhere in its chain config. It also lacks EIP-4895, which mainnet shipped in Shanghai, the fork Scroll does claim.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Chain ID 534352 · role: <code>fork</code> · baseline: Shanghai · Clique → SystemContract, 3s blocks</strong></p>
+<p>Reference: <a href="https://github.com/scroll-tech/go-ethereum">scroll-tech/go-ethereum <code>scroll-v5.10.2</code></a>
+@ <code>d67dd0ba</code>. The running network is at exactly that build —
+<code>web3_clientVersion</code> returns <code>Geth/v5.10.2-mainnet/linux-amd64/go1.22.2</code> — which is
+unusual in this dataset and means the pinned tag and the deployed client cannot drift
+apart. No companion repo was needed: the predeploy addresses <em>and their deployed
+bytecode</em> are Go constants inside the client (<code>rollup/rcfg/config.go</code>), so every
+contract fact below is established from the execution client and confirmed live.</p>
+<p>All live probes are at block <strong>34765788</strong> (<code>0x21279dc</code>, <code>finalized</code> at probe time) on
+<code>https://rpc.scroll.io</code>.</p>
+<hr />
+<h2>1. <code>tombstoned</code> vs <code>removed</code>, demonstrated on one chain at one height</h2>
+<p>This was the question the row was commissioned to answer, and Scroll answers it
+cleanly — it is the only chain here where both halves of the distinction are
+observable at the same block:</p>
+<pre><code>eth_call 0x03 (RIPEMD160)      -&gt; error -32000 &quot;sha256, ripemd160, blake2f precompiles temporarily disabled&quot;
+eth_call 0x09 (BLAKE2F)        -&gt; error -32000 (same)
+eth_call 0x0a (BLS12-381 G1ADD)-&gt; 0x           success, empty output
+</code></pre>
+<p><code>0x03</code> and <code>0x09</code> are <strong><code>tombstoned</code></strong>: <code>PrecompiledContractsGalileo</code> maps them to
+<code>ripemd160hashDisabled</code> and <code>blake2FDisabled</code>, whose <code>Run</code> returns
+<code>errPrecompileDisabled</code>. Because that error is not <code>ErrExecutionReverted</code>, a <code>CALL</code>
+consumes <strong>all forwarded gas</strong> and returns 0. Worse for <code>0x03</code>:
+<code>ripemd160hashDisabled.RequiredGas</code> still returns the <em>real</em> RIPEMD160 price, so the
+caller is charged in full and then fails. (<code>blake2FDisabled.RequiredGas</code> returns 0.)</p>
+<p><code>0x0a</code>–<code>0x12</code> are <strong><code>removed</code></strong>: <code>PrecompiledContractsBLS</code> is fully implemented in this
+tree and wired into nothing — <code>ActivePrecompiles</code> has no BLS branch — so those
+addresses are ordinary empty accounts and calling them <em>succeeds</em>.</p>
+<p>Any survey that probes "does this address return data" classifies both as missing and
+is wrong about one of them.</p>
+<p>Two details worth keeping. The error string still names <strong>sha256</strong>, which was
+re-enabled at Bernoulli two years ago — the message is stale. And "temporarily" has
+now held for the chain's entire life: both tombstones date from <strong>genesis</strong>
+(<code>PrecompiledContractsArchimedes</code>, block 0), not from a later restriction.</p>
+<h2>2. The prover-constraint leak is the same law as Linea's — but Scroll's has mostly healed</h2>
+<p>This is the third instance of the pattern (OP fault proofs, Linea, now Scroll), and
+the comparison is the most useful thing this row adds.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Linea</th>
+<th>Scroll</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mechanism</td>
+<td>per-block <strong>work budget</strong> per arithmetization module (<code>trace-limits.mainnet.toml</code>)</td>
+<td>per-call <strong>capability gate</strong> compiled into the precompile map, plus a per-block <strong>row budget</strong> (CCC)</td>
+</tr>
+<tr>
+<td>Where it lives</td>
+<td>a plugin's TOML config file</td>
+<td>the client's <code>core/vm/contracts.go</code> and a Rust FFI checker</td>
+</tr>
+<tr>
+<td>Failure signal</td>
+<td>transaction is never <em>selected</em>; <code>eth_call</code> still succeeds</td>
+<td>the call <strong>errors inside the EVM</strong>; <code>eth_call</code> fails identically</td>
+</tr>
+<tr>
+<td>Detectable by probing?</td>
+<td><strong>no</strong> — simulation lies</td>
+<td><strong>yes</strong> — the probe above is sufficient</td>
+</tr>
+<tr>
+<td>Status today</td>
+<td>live; <code>RIPEMD_BLOCKS = 0</code>, <code>BLAKE_ROUNDS = 0</code></td>
+<td><strong>the per-block checker is retired</strong>; the per-call gates remain</td>
+</tr>
+</tbody>
+</table>
+<p>Scroll's version is the <em>legible</em> one. Linea's is the dangerous one precisely because
+<code>eth_call</code> cannot see it. Same cause, same two victims (RIPEMD160 and BLAKE2F), and
+opposite observability.</p>
+<p>And Scroll's has been decommissioned in place. <code>AsyncChecker.Check</code> opens with:</p>
+<pre><code class="language-go">if c.bc.Config().IsEuclid(block.Time()) {
+    // Euclid blocks use MPT and CCC doesn't support them
+    return nil
+}
+</code></pre>
+<p>So the 950,000-row-per-sub-circuit budget in <code>types.RowConsumptionLimit</code> no longer
+rejects anything on mainnet. <strong>The limiter is gone; its scars are load-bearing.</strong> What
+survives are the two hash tombstones, <code>ScrollMaxTxPerBlock = 100</code>, and
+<code>ScrollMaxTxPayloadBytesPerBlock = 120 KB</code> — the latter two enforced only in the
+<em>producer</em> (<code>miner/scroll_worker.go</code>, <code>rollup/pipeline/pipeline.go</code>), not in block
+validation, so they are sequencer policy rather than a consensus rule.</p>
+<p>Three of the four original circuit-driven restrictions have since been lifted, each at
+a different fork:</p>
+<ul>
+<li><strong>SHA256 (<code>0x02</code>)</strong> re-enabled at <strong>Bernoulli</strong> (block 5,220,340). Any archive query
+  or historical replay below that height must model <code>0x02</code> as failing.</li>
+<li><strong>BN256_PAIRING (<code>0x08</code>)</strong> input cap lifted at <strong>Feynman</strong>. Until then
+  <code>bn256PairingIstanbul{limitInputLength: true}</code> rejected anything over <code>4*192</code> bytes —
+  a cap on a <em>single call's input size</em>, which is <strong>exactly OP Stack's mechanism</strong>, not
+  Linea's.</li>
+<li><strong>MODEXP (<code>0x05</code>)</strong> operand cap lifted at <strong>Galileo</strong>.</li>
+</ul>
+<h3>The MODEXP arc is Linea's, repeated</h3>
+<p>From genesis to 1765868400, <code>bigModExp.Run</code> rejected any base/exponent/modulus over
+32 bytes:</p>
+<pre><code>errModexpUnsupportedInput = &quot;modexp temporarily only accepts inputs of 32 bytes (256 bits) or less&quot;
+</code></pre>
+<p>RSA-2048 verification was impossible. Galileo sets <code>eip7823: true, eip7883: true</code>,
+replacing the private 32-byte cap with <strong>EIP-7823's 1024-byte bound</strong>. Confirmed live:
+<code>0x05</code> with 64-byte base and modulus returns <code>3^3 mod 10 = 7</code> as 64 bytes.</p>
+<p>That is the identical arc Linea's 512-byte modexp cap took — <em>a private proving
+constraint absorbed by a mainnet consensus rule</em>. Two chains, independently, closed the
+same divergence by the same route. <strong>zkSync Era still enforces the 32-byte width</strong>, so
+the dataset's claim that three chains cap modexp needs a date attached: as of Galileo,
+Scroll's is history and the dead branch survives only behind <code>!(eip7823 || eip7883)</code>.</p>
+<h2>3. <code>SELFDESTRUCT</code> does not exist</h2>
+<p>Not EIP-6780's restriction. Total removal, since genesis:</p>
+<pre><code class="language-go">// SELFDESTRUCT is disabled in Scroll.
+// SELFDESTRUCT has the same behavior as INVALID.
+SELFDESTRUCT: nil,
+</code></pre>
+<p><code>core/vm/eips.go</code> carries two commented-out gas assignments for it in <code>enable2929</code> and
+<code>enable3529</code>, each labelled "SELFDESTRUCT is disabled in Scroll". Live, the opcode
+aborts with <code>invalid opcode: SELFDESTRUCT</code>.</p>
+<p>This is the only chain in the dataset that <strong>removes a mainnet opcode outright</strong> rather
+than repricing or restricting it. Contracts whose emergency-withdraw or self-upgrade
+path terminates in <code>SELFDESTRUCT</code> are unrecoverable here, and no EIP-6780 reasoning
+applies — there is nothing to restrict.</p>
+<h2>4. <code>block.coinbase</code> is not the miner, and neither is <code>miner</code></h2>
+<pre><code>eth_call  COINBASE                    -&gt; 0x5300000000000000000000000000000000000005
+eth_getBlockByNumber -&gt; miner          -&gt; 0x0000000000000000000000000000000000000000
+</code></pre>
+<p><code>NewEVMBlockContext</code> sets the block context's <code>Coinbase</code> to the <strong>fee vault address</strong>
+whenever <code>FeeVaultEnabled()</code>, never consulting <code>Engine.Author(header)</code>. The header's
+<code>miner</code> is pinned to zero (<code>errInvalidCoinbase</code> rejects anything else). The sequencer
+that actually produced the block is a third answer, recoverable only from the block
+signature.</p>
+<p><strong>Three different answers to "who mined this block", none of which agree, and no error
+anywhere.</strong> A contract that pays the block producer via <code>block.coinbase</code> pays the fee
+vault. EIP-3651 compounds it: the address warmed at transaction start is the fee vault,
+so the <em>gas cost</em> of touching <code>block.coinbase</code> also differs from mainnet.</p>
+<h2>5. The L1-fee predeploy: OP's ABI at a different address</h2>
+<p>The brief asked whether Scroll's oracle is genuinely distinct from OP's <code>0x42…0F</code>. It
+is — but the divergence runs the opposite way from what the dataset usually records.</p>
+<p><code>0x5300000000000000000000000000000000000002</code> answers <strong>OP's GasPriceOracle selectors</strong>:</p>
+<pre><code>l1BaseFee()        0x519b4bd3 -&gt; 0x4086d28
+overhead()         0x0c18c162 -&gt; 0x38
+scalar()           0xf45e65d8 -&gt; 0x3e95ba80
+getL1Fee(bytes)    0x49948e0e
+getL1GasUsed(bytes)0xde26c4a1
+</code></pre>
+<p>Meanwhile <code>0x420000000000000000000000000000000000000F</code> and
+<code>0x4200000000000000000000000000000000000015</code> are <strong>empty accounts</strong> on Scroll.</p>
+<p>So this is <strong>same interface, different address</strong> — the mirror image of the
+same-address/different-code collisions the dataset is built around, and it fails the
+same silent way: OP-derived code calls <code>0x42…0F</code>, gets success and no return data,
+decodes an L1 fee of <strong>zero</strong>.</p>
+<h3>And the client writes that contract's bytecode itself</h3>
+<p><code>applyCurieHardFork</code>, <code>applyFeynmanHardFork</code> and <code>applyGalileoV2HardFork</code> each call
+<code>statedb.SetCode(rcfg.L1GasPriceOracleAddress, &lt;hard-coded Go byte array&gt;)</code> and seed new
+storage slots. Verified live: the deployed code is 3782 bytes,
+<code>sha256 = 0b32912d…5ac07b</code>, <strong>byte-identical</strong> to <code>rcfg.GalileoV2L1GasPriceOracleBytecode</code>
+in the pinned clone, and slots 8/11/12 (<code>isCurie</code>/<code>isFeynman</code>/<code>isGalileo</code>) are all <code>1</code>.</p>
+<p>A contract's code changes with <strong>no transaction, no log and no receipt</strong>. Three of
+Scroll's ten forks exist mainly to upgrade this one contract. Any upgrade-monitoring
+that watches events or diffs code at deployment sites sees nothing.</p>
+<p>There is a further twist in the fee formula: four generations coexist
+(<code>calculateEncodedL1DataFee</code>, <code>…Curie</code>, <code>…Feynman</code>, <code>…Galileo</code>) and the client selects
+between them by reading the oracle's <strong>own storage flags</strong>, so the fee formula in force
+is chosen by contract state, not by the chain config. From Feynman the L1 fee also
+carries a <strong>compression penalty</strong> (<code>penaltyThreshold</code>/<code>penaltyFactor</code>, slots 9 and 10):
+two transactions of identical length and identical gas can pay different L1 fees because
+one compresses worse.</p>
+<h2>6. <code>0x7e</code> has a third, unrelated claimant</h2>
+<p>README currently reads <code>0x7d</code>/<code>0x7e</code> as "the OP family". Scroll's <strong>L1MessageTx</strong> is
+<code>0x7E</code> and shares nothing with OP's deposit transaction but the byte:</p>
+<pre><code>QueueIndex, Gas, To, Value, Data, Sender
+</code></pre>
+<p>Six fields. No chain id, no nonce, no gas price, no signature; <code>To</code> may not be nil
+(no contract creation from L1). Confirmed live on
+<code>0x9b24c569…e74abbc6</code> at block 34760253: <code>type 0x7e</code>, <code>v</code>/<code>r</code>/<code>s</code> all <code>0x0</code>,
+<code>nonce 0x0</code>, <code>gasPrice 0x0</code>, plus <strong>non-standard <code>sender</code> and <code>queueIndex</code> JSON keys</strong>.</p>
+<p>A decoder that sees <code>0x7e</code> and reaches for OP's <code>DepositTx</code> layout mis-parses every L1
+message on Scroll. And the type is <strong>rare</strong> — a 50-block census at the probe height
+found 40 legacy + 11 dynamic-fee and zero <code>0x7e</code>; a 389-block sweep found none either.
+An integration can pass every test and still be wrong in production.</p>
+<h2>7. Transaction authorization: <code>authorizes: protocol</code> with <code>precompile: none</code></h2>
+<p>The finding SCHEMA.md says to look for. <code>londonSigner.Sender</code> for an L1 message is:</p>
+<pre><code class="language-go">if tx.IsL1MessageTx() { return tx.AsL1MessageTx().Sender, nil }
+</code></pre>
+<p>No cryptography runs on L2 at all. <code>SignatureValues</code> refuses ("l1 message tx do not
+have a signature") and <code>Hash</code> <strong>panics</strong> ("l1 message tx cannot be signed and do not
+have a signing hash"). Authority comes from the L1MessageQueue contract on Ethereum,
+replayed into the block by the sequencer's sync service — the pool refuses the type
+from the network outright ("No unauthenticated deposits allowed in the transaction
+pool").</p>
+<p>So an L2 contract handed an L1 message <strong>cannot verify that the claimed sender
+authorised it</strong>: the authorising signature was consumed on Ethereum and never crosses
+the bridge. What it is really trusting is sequencer honesty. <code>key_binding</code> for that path
+is <code>declared</code>; <code>signers_per_tx</code> stays 1. Shape-identical to OP Stack's deposit
+authorization, arrived at independently, on the same type byte.</p>
+<p><code>secp256r1</code> is the ordinary pairing: P256VERIFY present, cannot sign.</p>
+<h2>8. The fork name tells you nothing, in both directions</h2>
+<p><code>params/config.go</code> has <strong>no <code>CancunTime</code>, <code>PragueTime</code> or <code>OsakaTime</code> field</strong>. Grep the
+whole tree for "Cancun" and you get nothing. The ladder ends at <code>ShanghaiBlock: 0</code>.</p>
+<p>Yet the chain has, all live and all probed:</p>
+<table>
+<thead>
+<tr>
+<th>EIP</th>
+<th>Mainnet fork</th>
+<th>Scroll fork</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1153 TSTORE/TLOAD</td>
+<td>Cancun</td>
+<td>Curie (block 7,096,836)</td>
+</tr>
+<tr>
+<td>5656 MCOPY</td>
+<td>Cancun</td>
+<td>Curie</td>
+</tr>
+<tr>
+<td>7702 SetCode</td>
+<td>Prague</td>
+<td>EuclidV2</td>
+</tr>
+<tr>
+<td>7623 calldata floor</td>
+<td>Prague</td>
+<td>Feynman</td>
+</tr>
+<tr>
+<td>2935 history storage</td>
+<td>Prague</td>
+<td>Feynman</td>
+</tr>
+<tr>
+<td>7823 + 7883 MODEXP</td>
+<td>Osaka</td>
+<td>Galileo</td>
+</tr>
+<tr>
+<td>7951 P256VERIFY</td>
+<td>Osaka</td>
+<td>Galileo</td>
+</tr>
+<tr>
+<td>7939 CLZ</td>
+<td>Osaka</td>
+<td>Galileo</td>
+</tr>
+</tbody>
+</table>
+<p>And it <strong>lacks EIP-4895 (withdrawals), which mainnet shipped in Shanghai</strong> — the fork
+Scroll does claim. <code>types.Body</code> has only <code>Transactions</code> and <code>Uncles</code>; there is no
+<code>Withdrawals</code> field to decode.</p>
+<p>EIP-2935 is implemented <em>fully</em>, not cosmetically: canonical address, canonical
+<code>0x3373…</code> bytecode, <code>HistoryServeWindow = 8191</code>, <code>BLOCKHASH</code> rewritten to read the
+storage ring. Verified: <code>BLOCKHASH(n-1)</code> returns the block's <code>parentHash</code>.</p>
+<p>EIP-7623 verified independently of source: 100 zero calldata bytes to an EOA estimate at
+<strong>22000</strong> gas (<code>21000 + 10 × 100</code> tokens), not the 21400 pre-7623 pricing gives.</p>
+<p>P256VERIFY's gas went <strong>3450 → 6900</strong> (RIP-7212's price → EIP-7951's), so Scroll is one
+of the few rows whose <code>0x0100</code> now costs <em>exactly</em> what mainnet charges rather than
+half. Its failure signalling is EIP-7951's empty return, which here is
+indistinguishable from an unoccupied address — the Hyperliquid/Sei silent-failure shape,
+except the precompile is genuinely present and answering.</p>
+<p><code>baseline_fork: shanghai</code> is therefore derived from the config, and every <code>added</code> entry
+in <code>chain.yaml</code> means "not on mainnet <strong>at Shanghai</strong>", with the real mainnet fork named
+in the note.</p>
+<h2>9. The block seal is outside the block hash</h2>
+<p>From EuclidV2 the sequencer's 65-byte seal is a header field of its own,
+<code>BlockSignature</code>. Three encodings of one header coexist:</p>
+<ul>
+<li><strong>on the p2p wire</strong>: the seal sits inside <code>extraData</code> (<code>PrepareForNetwork</code> moves it
+  there; <code>PrepareFromNetwork</code> moves it back)</li>
+<li><strong>in the database</strong>: <code>BlockSignature</code> populated, <code>Extra</code> nil</li>
+<li><strong>over JSON-RPC</strong>: dropped entirely — hence <code>extraData: 0x</code> observed live</li>
+</ul>
+<p>And <code>Header.Hash()</code> explicitly strips it:</p>
+<pre><code class="language-go">hCopy.BlockSignature = nil
+if hCopy.IsEuclidV2 { hCopy.IsEuclidV2 = false; hCopy.Extra = nil }
+</code></pre>
+<p><strong>The block hash does not commit to the signature that authorises the block.</strong> This is
+the third instance in the dataset of a header field carrying something other than its
+Ethereum meaning — after OP Stack's <code>blobGasUsed</code> and Linea's <code>extraData</code> — and it lands
+on <em>the same field Linea repurposed</em>, for a different purpose, by a different mechanism.</p>
+<p>Related: the consensus engine itself. From EuclidV2 the authorised signer is read from
+<strong>one storage slot on Ethereum mainnet</strong> —
+<code>eth_getStorageAt(0x8432728A257646449245558B8b7Dbe51A16c7a4D, 0x67)</code>. A Scroll node
+cannot validate a header without an L1 RPC endpoint, and the L2's block-producer
+authorisation is mutable from L1 with no L2 fork.</p>
+<h2>10. Whether the state root is checked depends on a node-local CLI flag</h2>
+<pre><code class="language-go">shouldValidateStateRoot := v.config.Scroll.UseZktrie != v.config.IsEuclid(header.Time)
+</code></pre>
+<p>and <code>UseZktrie</code> is assigned at startup from <code>!ctx.GlobalBool(ScrollMPTFlag.Name)</code> —
+i.e. from <code>--scroll-mpt</code>, a <strong>node-local command-line flag</strong>, not from genesis or from
+consensus.</p>
+<p>Post-Euclid, therefore: a node started <strong>without</strong> <code>--scroll-mpt</code> (the built-in default
+for <code>--scroll</code>) evaluates <code>true != true</code> and <strong>skips the state-root comparison
+entirely</strong>; one started <strong>with</strong> it evaluates <code>false != true</code> and performs it. This was
+the mechanism that let zkTrie and MPT sequencers coexist across the Euclid migration
+(the source says so: "clocks of mpt-sequencer and zktrie-sequencer can be slightly out
+of sync… this might result in a reorg at the Euclid fork block"), and it is still the
+code at this tag.</p>
+<p>SCHEMA.md's warning about config-switchable consensus rules applies exactly: two nodes
+with different flags disagree about whether they verify state at all. <strong>Which flag
+production nodes actually run is <code>unrecorded</code></strong> — nothing in the repo's docs, Dockerfiles
+or configs mentions <code>--scroll-mpt</code>.</p>
+<p>The same Euclid migration left <code>StateAccount</code> carrying two zkTrie-era extensions,
+<code>PoseidonCodeHash</code> and <code>CodeSize</code>, both <code>rlp:"-"</code>.</p>
+<h2>Not established here</h2>
+<ul>
+<li><strong>Which flag production nodes run</strong> (<code>--scroll-mpt</code> or not), and therefore whether
+  the state root is verified on the network today. The code path is recorded; the
+  deployment is not.</li>
+<li><strong>EIP-7928 / Amsterdam.</strong> Nothing in the tree references block access lists and there
+  is no timestamp field to gate one. Marked <code>unrecorded</code>, not guessed.</li>
+<li><strong><code>scroll-tech/scroll</code> and <code>scroll-tech/scroll-contracts</code> were not pinned.</strong> Both exist
+  and neither is archived, but no fact in this row needed them — the client carries the
+  predeploy addresses <em>and</em> their deployed bytecode as Go constants, and the live probe
+  confirms the deployed code is byte-identical to the client's copy. The contracts moved
+  out of the monorepo into <code>scroll-tech/scroll-contracts</code> at some point; that move is not
+  characterised here.</li>
+<li><strong>Whether <code>0x03</code>/<code>0x09</code> ever return anything other than the disabled error at any
+  height ≥ Bernoulli.</strong> Only the probe height was tested.</li>
+<li><strong>The Darwin and DarwinV2 forks</strong> have timestamps in the config and no identified EVM
+  delta; they are DA/compression upgrades, not characterised from source here.</li>
+<li><strong>The exact live gas of P256VERIFY</strong> could not be isolated by <code>eth_estimateGas</code>,
+  because the EIP-7623 calldata floor dominates a 160-byte call. The 6900 figure comes
+  from <code>params.P256VerifyGasGalileo</code>, not from a measurement.</li>
+</ul>
+<h2>Re-verify</h2>
+<pre><code class="language-sh">git clone --depth 1 --branch scroll-v5.10.2 --single-branch \
+  https://github.com/scroll-tech/go-ethereum
+cd go-ethereum
+git rev-parse HEAD          # d67dd0baa0ff3607c23f8f23bc94be26aabaa290
+
+# the fork ladder stops at Shanghai — and there is no Cancun/Prague/Osaka field at all
+sed -n '/ScrollMainnetChainConfig = &amp;ChainConfig{/,/^   }$/p' params/config.go
+grep -rn &quot;Cancun\|Prague\|Osaka&quot; params/config.go        # expect: no output
+
+# the two tombstones, and the BLS set that is wired into nothing
+grep -n &quot;errPrecompileDisabled\|errModexpUnsupportedInput&quot; core/vm/contracts.go
+sed -n '/PrecompiledContractsGalileo contains/,/^}/p'    core/vm/contracts.go
+sed -n '/PrecompiledContractsArchimedes contains/,/^}/p' core/vm/contracts.go
+grep -n &quot;ripemd160hashDisabled\|blake2FDisabled\|sha256hashDisabled&quot; -A 6 core/vm/contracts.go
+grep -n &quot;func ActivePrecompiles&quot; -A 22 core/vm/contracts.go   # no BLS branch
+grep -n &quot;P256VerifyGas&quot; params/protocol_params.go             # 3450 then 6900
+
+# SELFDESTRUCT is nil; the Cancun/Osaka opcodes arrive at Curie and Galileo
+grep -n &quot;SELFDESTRUCT&quot; core/vm/jump_table.go core/vm/eips.go
+sed -n '75,130p' core/vm/jump_table.go
+
+# COINBASE is the fee vault
+grep -n &quot;func NewEVMBlockContext&quot; -A 20 core/evm.go
+grep -n &quot;func opCoinbase&quot; -A 4 core/vm/instructions.go
+
+# the client writes the oracle's bytecode at three forks
+cat consensus/misc/forks.go consensus/misc/curie.go consensus/misc/galileoV2.go
+grep -n &quot;L1GasPriceOracleAddress\|ScrollFeeVaultAddress\|L2MessageQueueAddress&quot; rollup/rcfg/config.go
+
+# 0x7e, and the sender that is a field rather than a signature
+sed -n '48,60p' core/types/transaction.go
+sed -n '/^type L1MessageTx struct/,/^}/p' core/types/l1_message_tx.go
+grep -n &quot;IsL1MessageTx&quot; core/types/transaction_signing.go core/tx_pool.go
+
+# the seal outside the hash; the state root behind a CLI flag; the retired CCC
+grep -n &quot;func (h \*Header) Hash\|func (h \*Header) PrepareForNetwork&quot; -A 10 core/types/block.go
+sed -n '260,270p' core/block_validator.go
+grep -n &quot;ScrollMPTFlag&quot; cmd/utils/flags.go
+grep -n &quot;CCC doesn't support&quot; -B 3 rollup/ccc/async_checker.go
+grep -n &quot;RowConsumptionLimit&quot; core/types/row_consumption.go
+</code></pre>
+<p>Live probes, all at block <code>34765788</code> (<code>0x21279dc</code>) on <code>https://rpc.scroll.io</code>:</p>
+<pre><code class="language-sh">R=https://rpc.scroll.io; B=0x21279dc
+c(){ curl -s -X POST $R -H 'content-type: application/json' -d &quot;$1&quot;; echo; }
+call(){ c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;data\&quot;:\&quot;$1\&quot;,\&quot;gas\&quot;:\&quot;0x100000\&quot;},\&quot;$B\&quot;]}&quot;; }
+
+# tombstoned (errors) vs removed (succeeds empty) — the whole distinction, two lines
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000003\&quot;,\&quot;data\&quot;:\&quot;0x\&quot;},\&quot;$B\&quot;]}&quot;
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x000000000000000000000000000000000000000a\&quot;,\&quot;data\&quot;:\&quot;0x\&quot;},\&quot;$B\&quot;]}&quot;
+# and SHA256, which came back at Bernoulli
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000002\&quot;,\&quot;data\&quot;:\&quot;0x\&quot;},\&quot;$B\&quot;]}&quot;
+
+# opcodes, run as eth_call init code (result = the 32 bytes RETURNed)
+call 0x415f5260205ff3          # COINBASE   -&gt; 0x53..05  (header miner is 0x00..00)
+call 0x60011e5f5260205ff3      # CLZ(1)     -&gt; 0xff      (EIP-7939, Osaka)
+call 0x60aa60005d60005c5f5260205ff3   # TSTORE/TLOAD -&gt; 0xaa   (EIP-1153, Cancun)
+call 0x60ff5f5260205f60205e60206020f3 # MCOPY        -&gt; 0xff   (EIP-5656, Cancun)
+call 0x4360019003405f5260205ff3       # BLOCKHASH(n-1) == parentHash (EIP-2935)
+call 0x5fff                    # -&gt; &quot;invalid opcode: SELFDESTRUCT&quot;
+call 0x5f495f5260205ff3        # -&gt; &quot;opcode 0x49 not defined&quot;  (no BLOBHASH)
+call 0x4a5f5260205ff3          # -&gt; &quot;opcode 0x4a not defined&quot;  (no BLOBBASEFEE)
+
+# MODEXP with 64-byte operands: 3^3 mod 10, impossible before Galileo
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000005\&quot;,\&quot;data\&quot;:\&quot;0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a\&quot;,\&quot;gas\&quot;:\&quot;0x1000000\&quot;},\&quot;$B\&quot;]}&quot;
+
+# EIP-7623 floor: 22000 (0x55f0), not 21400 (0x5398)
+Z=0x$(python3 -c &quot;print('00'*100)&quot;)
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_estimateGas\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x000000000000000000000000000000000000dead\&quot;,\&quot;data\&quot;:\&quot;$Z\&quot;},\&quot;$B\&quot;]}&quot;
+
+# Scroll's oracle has OP's ABI; OP's address is empty
+for s in 519b4bd3 0c18c162 f45e65d8; do
+  c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x5300000000000000000000000000000000000002\&quot;,\&quot;data\&quot;:\&quot;0x$s\&quot;},\&quot;$B\&quot;]}&quot;; done
+for a in 0x5300000000000000000000000000000000000000 0x5300000000000000000000000000000000000002 \
+         0x5300000000000000000000000000000000000005 0x0000F90827F1C53a10cb7A02335B175320002935 \
+         0x420000000000000000000000000000000000000F 0x4200000000000000000000000000000000000015; do
+  c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$a\&quot;,\&quot;$B\&quot;]}&quot; | head -c 100; echo &quot; &lt;- $a&quot;; done
+
+# deployed oracle code == the client's Go constant
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x5300000000000000000000000000000000000002\&quot;,\&quot;$B\&quot;]}&quot; \
+  | python3 -c &quot;import sys,json,hashlib;r=json.load(sys.stdin)['result'];b=bytes.fromhex(r[2:]);print(len(b),hashlib.sha256(b).hexdigest())&quot;
+# -&gt; 3782 0b32912d09bc322afbc270c1bdbf8979404e06d49de070804905fc5f105ac07b
+
+# an unsigned 0x7e L1 message: v=r=s=0, plus `sender` and `queueIndex`
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getTransactionByHash&quot;,&quot;params&quot;:[&quot;0x9b24c569894dd98c75daba1b2fdc240712cc8e9d1ea4b978fa1ae440e74abbc6&quot;]}'
+
+# header: extraData empty, miner zero, difficulty 1, no 4844/4788/4895 fields
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;,false]}&quot;
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh scroll    # fetch the pinned evidence
+tools/verify.py scroll   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/scroll/chain.yaml</code> · <code>chains/scroll/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

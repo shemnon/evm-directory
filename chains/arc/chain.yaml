@@ -1,0 +1,592 @@
+schema_version: 2
+
+chain:
+  name: Arc
+  slug: arc
+  chain_id: 5042
+  role: fork
+  live: false
+  live_state: prelaunch    # mainnet has never produced a block; public launch date 2026-09-16
+  evidence: source
+  chain_id_src: crates/shared/src/chain_ids.rs:MAINNET_CHAIN_ID
+  note: >-
+    MAINNET IS NOT LIVE AT THIS TAG. `https://rpc.arc.network` does not resolve;
+    chain id 5042 exists only as a constant and a hardfork schedule in the
+    client. Circle's public mainnet date is 2026-09-16. Everything below is
+    therefore SOURCE plus a probe of the PUBLIC TESTNET (5042002), and every
+    `src_live:` should be read as "the testnet does this", not "mainnet does
+    this". The two schedules genuinely differ — see `forks` — so that hedge is
+    load-bearing, not boilerplate. `live: false` is set accordingly.
+
+    Arc keeps a native coin, which is what makes it the interesting contrast to
+    the tempo row: USDC IS the native coin, minted and burned through a
+    precompile, with `msg.value`, BALANCE and SELFDESTRUCT all working normally.
+    The divergence is not that they stopped working — it is that the SAME
+    balance now has two on-chain representations in two different units.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: reth
+  note: >-
+    An SDK consumer, not a source fork: `Cargo.toml` pins every `reth-*` crate to
+    `https://github.com/paradigmxyz/reth` TAG `v1.11.3` and builds an
+    `ArcEvmFactory` / `ArcPrecompileProvider` / `ArcEvmHandler` on top. Deltas are
+    overrides — a replaced SELFDESTRUCT instruction, an inserted precompile map, a
+    pre-execution hook — rather than patches. Consensus is Malachite (Tendermint
+    BFT, Ed25519 validator keys), vendored as a git submodule and maintained by
+    Circle. Apache-2.0.
+  sync_point: >-
+    reth v1.11.3 is a released tag, not a floating rev — a stronger pin than
+    tempo's. The Ethereum fork ladder is declared explicitly in `BASE_FORKS`
+    (Frontier..Prague, all at block/timestamp 0) with Osaka inserted per network
+    and PAIRED with the Arc Zero5 fork.
+
+client:
+  name: arc-node (reth execution + Malachite consensus)
+  repo: https://github.com/circlefin/arc-node
+  version: v0.7.3
+  commit: 79b6fddf18345732007bb94b4af3add4c2efd12d
+  language: rust
+  built_on: reth v1.11.3 / revm
+  note: >-
+    One repo, both halves: `crates/evm`, `crates/precompiles`,
+    `crates/execution-*` are the EL; `crates/malachite-app`, `crates/quake`,
+    `crates/types` are the CL. A `contracts/` Foundry tree ships the Solidity
+    system contracts. The testnet RPC reports only `arc/v1`, so the running
+    version CANNOT be matched to this tag — unlike tempo, where it could.
+    v0.7.3 is the newest release; a `test/v0.8.0` tag exists and is not a release.
+    The repo README calls this "alpha software currently undergoing audits".
+
+live_probe:
+  endpoint: https://rpc.testnet.arc.network
+  chain_id: 5042002
+  observed_at_block: 58728247      # 0x3801f37, `finalized` at probe time
+  observed_at: 2026-08-25
+  chain_id_src_live: "eth_chainId @ 58728247 -> 0x4cef52 (5042002); web3_clientVersion -> arc/v1 (no version detail)"
+  block_scan_range: 58728247-58728296
+  caveat: >-
+    THIS IS THE TESTNET, NOT MAINNET — mainnet does not exist yet. Testnet runs
+    Zero7 (activated 1781791200); the mainnet schedule in this tag stops at
+    Zero6, so the CallFrom precompile and the Zero7 SELFDESTRUCT variant probed
+    here are NOT scheduled for mainnet genesis. Facts marked with a mainnet-only
+    or testnet-only qualifier say so explicitly.
+
+consensus:
+  engine: Malachite (Tendermint BFT, Rust), Ed25519 validator keys
+  finality: single-slot deterministic (BFT), sub-second
+  block_time: ~1s (testnet, observed)
+  note: >-
+    Permissioned validator set governed by a PermissionedValidatorManager
+    contract. No beacon chain — but the header still carries
+    `parentBeaconBlockRoot`, and on the observed testnet block it is set to the
+    PARENT HASH rather than to zero, so the field is repurposed rather than
+    nulled. The EIP-4788 ring-buffer contract holds no code, so nothing consumes
+    it.
+  src: crates/types/src/signing.rs:Ed25519
+  src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> parentBeaconBlockRoot 0x7c34095362de2855d9261111730b02b3b447afaea582d46c910c2d920b2dd689 == parentHash; eth_getCode(0x000F3df6…Beac02) -> 0x"
+
+baseline_fork: osaka
+baseline_note: >-
+  Derived from the schedule, and it contradicts the client's own comments. The
+  `ArcHardfork` enum annotates Zero3/Zero4/Zero5 as "align to Ethereum Prague",
+  but `ARC_MAINNET_HARDFORKS` inserts `EthereumHardfork::Osaka` at
+  `Timestamp(0)`, paired with Zero5. `BASE_FORKS` stops at Prague and each
+  network's table adds Osaka on top. So mainnet is Osaka from genesis and the
+  testnet reached Osaka at 1779890400. Confirmed live: P256VERIFY answers at
+  0x0100 with EIP-7951 empty-on-invalid semantics, which only exists at Osaka.
+  src: crates/execution-config/src/hardforks.rs:ARC_MAINNET_HARDFORKS
+
+forks:
+  src: crates/execution-config/src/hardforks.rs:ArcHardfork
+  activation_src: crates/execution-config/src/hardforks.rs:ARC_ZERO7_HARDFORK_TIMESTAMP_ACTIVATION_TESTNET
+  note: >-
+    TWO SCHEDULES THAT DO NOT MATCH, and the mismatch is the finding. Mainnet
+    (5042) gets Zero3, Zero4, Osaka, Zero5, Zero6 all at genesis and STOPS —
+    Zero7 and Zero8 are absent from `ARC_MAINNET_HARDFORKS` entirely. Testnet
+    (5042002) has been through Zero3..Zero7 on a real timeline. So a feature
+    validated on testnet for months (CallFrom, Multicall3From, Memo, the Zero7
+    SELFDESTRUCT variant) is not in the mainnet table at this tag. Anyone reading
+    the testnet as a preview of mainnet is reading a superset.
+
+    The activation mechanism is also mixed: Zero3/Zero4 by BLOCK, Zero5/Zero6 by
+    block on mainnet but by TIMESTAMP on testnet, Zero7+ by timestamp
+    everywhere. The client documents why — a block-based fork declared after a
+    timestamp fork breaks `ForkFilter`'s BTreeMap ordering and corrupts the
+    EIP-2124 fork id — and `is_arc_fork_active` therefore has to OR the two
+    checks, because a bare block check silently returns false for a
+    timestamp-activated fork.
+  timeline:
+  - {name: Zero3, activation_block: 0, mainnet_equivalent: prague,
+     note: "mainnet: genesis. testnet: block 11172019.",
+     src: "crates/execution-config/src/hardforks.rs:ARC_ZERO3_HARDFORK_BLOCK_ACTIVATION_TESTNET"}
+  - {name: Zero4, activation_block: 0, mainnet_equivalent: prague,
+     note: "mainnet: genesis. testnet: block 26148086.",
+     src: "crates/execution-config/src/hardforks.rs:ARC_ZERO4_HARDFORK_BLOCK_ACTIVATION_TESTNET"}
+  - {name: Osaka, activation_time: 0, mainnet_equivalent: osaka,
+     note: "mainnet: Timestamp(0). testnet: 1779890400. Paired with Zero5 by convention.",
+     src: "crates/execution-config/src/hardforks.rs:ARC_OSAKA_HARDFORK_TIMESTAMP_ACTIVATION_TESTNET"}
+  - {name: Zero5, activation_block: 0, mainnet_equivalent: osaka,
+     note: "extraData becomes exactly 8 bytes of consensus data; EIP-7708 transfer logs replace the custom NativeCoinTransferred log; beneficiary blocklist check. testnet: timestamp 1779894517.",
+     src: "crates/execution-validation/src/consensus.rs:arc_validate_extra_data_format"}
+  - {name: Zero6, activation_block: 0, mainnet_equivalent: osaka,
+     note: "PQ precompile (SLH-DSA) registered; stricter ABI-decode validation on precompile calldata. testnet: timestamp 1779894517.",
+     src: "crates/precompiles/src/precompile_provider.rs:ArcHardfork"}
+  - {name: Zero7, activation_time: 1781791200, status: pending, mainnet_equivalent: osaka,
+     note: "LIVE ON TESTNET, NOT IN THE MAINNET TABLE. Adds the CallFrom subcall precompile (callable only by the Memo and Multicall3From contracts) and a third SELFDESTRUCT variant.",
+     src: "crates/evm/src/evm.rs:build_subcall_registry"}
+  - {name: Zero8, status: pending, mainnet_equivalent: osaka,
+     note: "declared in the enum with no activation on ANY network table. Makes delegatecall rejections charge the uniform early-revert gas penalty.",
+     src: "crates/execution-config/src/hardforks.rs:Zero8"}
+
+eips:
+  1559:
+    status: modified
+    note: >-
+      Rewritten in three ways at once. (a) The controller input is an
+      EMA-SMOOTHED gas-used figure, `(1-α)·G[t-1] + α·G[t]`, not the parent's raw
+      gas used — so the base fee responds to a trend rather than to one block.
+      (b) `max_change_denominator` and `elasticity_multiplier` are replaced by
+      fixed-point `k_rate` and `inverse_elasticity_multiplier` against a scale of
+      10,000, letting the gas target be an arbitrary fraction of the gas limit
+      rather than exactly half. (c) The result is bounded by `FeeParams` READ FROM
+      A CONTRACT (see system_contracts 0x3600…0001) and by a per-network ceiling
+      of 20,000 gwei. The mainnet and testnet BaseFeeConfigs are identical at this
+      tag.
+    src: crates/execution-config/src/gas_fee.rs:determine_ema_parent_gas_used, crates/execution-config/src/gas_fee.rs:arc_calc_next_block_base_fee, crates/execution-config/src/chainspec.rs:BASE_FEE_CONFIG_MAINNET
+    src_live: "eth_feeHistory 4 blocks from 0x3801f37 @ 58728247 -> baseFeePerGas flat at 0x4a817c800 (20 gwei) across all five entries while gasUsedRatio moved 0.017 -> 0.19 -> 0.042"
+  7708:
+    status: added
+    note: >-
+      NOT ON MAINNET ETHEREUM. Native-coin movements emit an ERC-20 `Transfer`
+      log from the EIP-7708 system address 0xffff…fffe. Adopted here because the
+      native coin is a stablecoin and Circle wants native movement to be
+      indexable the way a token transfer is. ADOPTION IS PARTIAL: the log is
+      emitted by SELFDESTRUCT (Zero5+) and by the NativeCoinAuthority
+      mint/burn/transfer paths, and NOT by an ordinary CALL carrying value — so
+      log-based accounting still misses plain value transfers. Before Zero5 the
+      same events were a Circle-specific `NativeCoinTransferred` log emitted from
+      the NativeCoinAuthority address instead.
+    src: crates/evm/src/log.rs:create_eip7708_transfer_log, crates/evm/src/opcode.rs:Eip7708Transfer
+    src_live: "eth_getTransactionReceipt(0x134f1abe…) @ 58728247 -> log[0] from 0xfffffffffffffffffffffffffffffffffffffffe, Transfer topic 0xddf252ad…, data 0x0117dd71f42e7000 (78,775,000,000,000,000)"
+  4844:
+    status: removed
+    note: >-
+      Removed by CONFIGURATION, not by encoding. `ArcPoolBuilder` calls
+      `.no_eip4844()` on the validator, so blob transactions are rejected by the
+      mempool; the reth envelope still knows the type. That is a weaker removal
+      than tempo's, where the envelope has no 0x03 variant at all — a blob
+      transaction delivered by other means is a consensus question this row does
+      not answer. Header keeps `blobGasUsed`/`excessBlobGas` (zero) and
+      `eth_feeHistory` still reports `baseFeePerBlobGas`.
+    src: crates/execution-txpool/src/pool.rs:no_eip4844
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_feeHistory -> baseFeePerBlobGas [0x1 x5]"
+  4788:
+    status: modified
+    note: >-
+      The field is present and is NOT zero — the observed block sets
+      `parentBeaconBlockRoot` to the parent block hash. The ring-buffer contract
+      at 0x000F3df6…Beac02 holds no code, so the system call is a no-op and
+      nothing can read the value back on chain. A contract expecting a beacon
+      root gets empty output; a client validating the field against a beacon
+      chain would reject every block.
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> parentBeaconBlockRoot == parentHash == 0x7c340953…dd689; eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) -> 0x"
+  2935:
+    status: inherited
+    note: "history-storage contract deployed with the standard runtime"
+    src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 58728247 -> 0x3373fffffffffffffffffffffffffffffffffffffffe14604657602036036042575f… (168 bytes)"
+  4895:
+    status: removed
+    note: "withdrawals list is empty with the empty-trie root; no beacon chain to withdraw from. Not probed for active rejection, unlike tempo."
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> withdrawals [], withdrawalsRoot 0x56e81f17…363b421"
+  7002:
+    status: removed
+    src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 58728247 -> 0x; requestsHash 0xe3b0c442…7852b855"
+  7251:
+    status: removed
+    src_live: "eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 58728247 -> 0x"
+  7951:
+    status: inherited
+    note: "P256VERIFY at 0x0100, registered only when Osaka is active — the client asserts both directions in `test_p256_precompile_not_available_with_prague`."
+    src: crates/precompiles/src/precompile_provider.rs:P256_PRECOMPILE_ADDRESS
+    src_live: "eth_call(0x…0100, 160 zero bytes) @ 58728247 -> 0x (empty, EIP-7951 invalid-signature semantics); eth_getCode -> 0x"
+  6780:
+    status: modified
+    note: >-
+      SELFDESTRUCT is replaced by an Arc instruction with three behaviours
+      layered on the Cancun semantics: both the executing address and the
+      beneficiary are checked against the native-coin blocklist and the
+      instruction fails with "Blocked address" if either is listed; a non-zero
+      balance emits a transfer log; and self-targeted selfdestruct with a
+      non-zero balance is rejected outright (`ERR_SELFDESTRUCTED_BALANCE_INCREASED`).
+      Three variants exist, pre-Zero5, Zero5/Zero6 and Zero7+.
+    src: crates/evm/src/opcode.rs:arc_network_selfdestruct_impl
+  7702:
+    status: inherited
+    note: "delegation designators are resolved normally, including through the CallFrom precompile. No Arc-specific delegation mechanism."
+    src: crates/evm/src/evm.rs:Eip7702Bytecode
+  7623:
+    status: unrecorded
+    note: "not traced."
+
+non_eip_specs:
+  adopted:
+  - {id: ADR-0004, name: "base fee in extraData", note: "the client's own ADR; header extraData is exactly 8 bytes holding the next block's base fee", src: "crates/execution-validation/src/consensus.rs:arc_validate_extra_data_format"}
+  note: >-
+    Arc has no numbered public spec series comparable to Tempo's TIPs. Design
+    decisions live in `docs/adr/` inside the client repo and are referenced from
+    the code by number.
+
+tx_types:
+  "0x00": {name: Legacy, status: inherited, note: "60% of transactions in the scanned range — unusually high, and the sampled one is an ERC-20 transfer to the native USDC contract", src_live: "blocks 58728247-58728296 @ 58728247 -> 355 of 586"}
+  "0x01": {name: EIP-2930, status: unrecorded, note: "not observed in the scanned range; nothing in the client excludes it"}
+  "0x02": {name: EIP-1559, status: inherited, src_live: "blocks 58728247-58728296 @ 58728247 -> 231 of 586"}
+  "0x03": {name: EIP-4844 blob, status: removed, note: "rejected by the txpool validator, not by the envelope — see eips.4844", src: "crates/execution-txpool/src/pool.rs:no_eip4844"}
+  "0x04": {name: EIP-7702 set-code, status: inherited, note: "supported; not observed in the scanned range", src: "crates/evm/src/evm.rs:Eip7702Bytecode"}
+  note: >-
+    NO ARC-SPECIFIC TRANSACTION TYPE EXISTS. This is a real finding for a chain
+    whose pitch is stablecoin payments: no fee-payer type, no sponsored type, no
+    batch type at the envelope. Batching and sender-spoofing are done with
+    ordinary transactions to the Multicall3From contract, which then calls the
+    CallFrom precompile — application-layer, not protocol-layer.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    MAINNET-EQUIVALENT AND THAT IS THE ANSWER. secp256k1, `ecrecover(sig) == from`,
+    one signer. There is no fee-payer signature, no alternative curve at the
+    protocol level, no account-key registry — the contrast with the tempo row,
+    written from the same brief, is total.
+
+    Two things that look like exceptions and are not:
+
+    (1) THE CallFrom PRECOMPILE SPOOFS `msg.sender`, NOT THE TRANSACTION SIGNER.
+    `callFrom(address sender, address target, bytes data)` at 0x1800…0003 executes
+    a subcall with an arbitrary `sender`. It is not a transaction-authorization
+    mechanism: the transaction is still signed by one secp256k1 key, and the
+    precompile is callable ONLY by two CREATE2-fixed contract addresses baked into
+    the client (`AllowedCallers::Only({MEMO_ADDRESS, MULTICALL3_FROM_ADDRESS})`) —
+    an allow-list in consensus code, not on chain. It nevertheless means `msg.sender`
+    inside a called contract is not proof of a signature by that address, which is
+    an assumption a great deal of Solidity rests on. Zero7 only; not in the mainnet
+    fork table at this tag.
+
+    (2) THE PQ PRECOMPILE VERIFIES SIGNATURES THAT CAN NEVER AUTHORIZE ANYTHING.
+    `verifySlhDsaSha2128s` (FIPS 205 SLH-DSA-SHA2-128s) is the first post-quantum
+    verifier in this dataset. It is `authorizes: never` — the ordinary state of a
+    verifier precompile, and worth recording precisely because the tempo row shows
+    the opposite pairing on the same axis.
+  src: crates/precompiles/src/call_from.rs:CALL_FROM_ADDRESS, crates/evm/src/evm.rs:AllowedCallers, crates/precompiles/src/pq.rs:PQ_ADDRESS
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: crates/execution-txpool/src/pool.rs:TransactionValidationTaskExecutor
+    p256:
+      status: inherited
+      authorizes: never
+      precompile: "0x0100"
+      note: "the standard pairing — verifiable by contracts, cannot move a coin"
+      src: crates/precompiles/src/precompile_provider.rs:P256_PRECOMPILE_ADDRESS
+    slh_dsa_sha2_128s:
+      status: added
+      authorizes: never
+      precompile: "0x1800000000000000000000000000000000000004"
+      note: >-
+        Post-quantum hash-based signatures (FIPS 205), gated on Zero6. The
+        precompile's own doc comment calls it experimental. Gas is priced against
+        the hash count implied by the scheme rather than as a flat fee.
+      src: crates/precompiles/src/pq.rs:verifySlhDsaSha2128s
+    ed25519:
+      status: added
+      authorizes: never
+      precompile: none
+      note: "Malachite validator keys only; no EVM-visible verifier and no transaction path"
+      src: crates/types/src/signing.rs:Ed25519
+
+precompiles:
+  "0x1800000000000000000000000000000000000000":
+    name: NativeCoinAuthority
+    status: added
+    note: >-
+      Mints, burns and transfers the native coin, in 18-decimal units. Callable
+      ONLY by the NativeFiatToken contract at 0x3600…0000 — the check is
+      `caller != ALLOWED_CALLER_ADDRESS` in the precompile itself. So the native
+      coin's supply is controlled by one Solidity contract, which is upgradeable
+      behind a proxy. Emits EIP-7708 Transfer logs from the system address on
+      every path.
+    src: crates/precompiles/src/native_coin_authority.rs:NATIVE_COIN_AUTHORITY_ADDRESS
+    src_live: "eth_call(totalSupply()) @ 58728247 -> 314870942069315201000000000000; eth_getCode -> 0x01"
+  "0x1800000000000000000000000000000000000001":
+    name: NativeCoinControl
+    status: added
+    note: >-
+      The blocklist. `blocklist(address)` / `unBlocklist(address)` / `isBlocklisted(address)`,
+      with storage in the precompile's own account. Its effects are not confined
+      to the precompile — see system_transactions and gotchas: a blocklisted
+      sender or (for value-bearing calls) recipient fails PRE-EXECUTION, and a
+      block whose beneficiary is blocklisted is INVALID.
+    src: crates/precompiles/src/native_coin_control.rs:NATIVE_COIN_CONTROL_ADDRESS
+    src_live: "eth_call(isBlocklisted(0x0)) @ 58728247 -> false; eth_getCode -> 0x01"
+  "0x1800000000000000000000000000000000000002":
+    name: SystemAccounting
+    status: added
+    note: >-
+      Per-block gas accounting written by a system call from 0xffff…fffe and
+      readable by contracts via `getGasValues(uint64)`. It is how the EMA gas
+      figure and the base fee are carried across blocks in state as well as in
+      extraData.
+    src: crates/precompiles/src/system_accounting.rs:SYSTEM_ACCOUNTING_ADDRESS
+    src_live: "eth_call(getGasValues(58728246)) @ 58728247 -> (0x137095, 0x1fa38c, 0x4a817c800) — the last word is the 20 gwei base fee; eth_getCode -> 0x01"
+  "0x1800000000000000000000000000000000000003":
+    name: CallFrom
+    status: added
+    availability: optional
+    activation_condition: "ArcHardfork::Zero7 — live on testnet, absent from the mainnet fork table at this tag"
+    note: >-
+      A SUBCALL precompile, a category the dataset has not had: it is not
+      registered in the precompile map at all but in a separate
+      `SubcallRegistry`, because it must run a child EVM call and post-process
+      the result. `callFrom(sender, target, data)` executes `target` with
+      `msg.sender == sender`. Callers are restricted to two hardcoded CREATE2
+      addresses.
+    src: crates/precompiles/src/call_from.rs:CALL_FROM_ADDRESS, crates/evm/src/evm.rs:build_subcall_registry
+    src_live: "eth_getCode @ 58728247 -> 0x01"
+  "0x1800000000000000000000000000000000000004":
+    name: PQ (SLH-DSA-SHA2-128s verifier)
+    status: added
+    availability: optional
+    activation_condition: "ArcHardfork::Zero6"
+    note: "FIPS 205 post-quantum signature verification. Reverts with an ABI-encoded string on malformed input rather than returning empty."
+    src: crates/precompiles/src/pq.rs:PQ_ADDRESS
+    src_live: "eth_call(0x1800…0004, empty calldata) @ 58728247 -> revert 'Input too short'; eth_getCode -> 0x01"
+  "0x000000000000000000000000000000000000000a":
+    name: KZG point evaluation
+    status: inherited
+    note: "present and functioning although blob transactions are rejected by the pool — the same verifier-without-payload pattern as tempo."
+    src_live: "eth_call(0x…0a, 192 zero bytes) @ 58728247 -> error 'EVM error: PrecompileError'"
+  note: >-
+    ARC PRECOMPILES CARRY ONE BYTE OF CODE, `0x01`. Every address in the
+    0x1800…000{0..4} family returns `0x01` from `eth_getCode` and
+    `EXTCODESIZE == 1`, while the inherited Ethereum precompiles return `0x`.
+    Same trick as tempo, different byte — tempo writes `0xef`, the EOF-reserved
+    prefix that cannot be executed; Arc writes `0x01`, which as bytecode is a
+    bare ADD and would underflow the stack. Either way `eth_getCode` alone
+    misclassifies these addresses in both directions, and the source map is the
+    only reliable enumeration.
+  src: crates/precompiles/src/precompile_provider.rs:create_precompiles_map
+  src_live: "eth_getCode @ 58728247: 0x1800…0000/0001/0002/0003/0004 all -> 0x01; 0x…01 and 0x…0100 -> 0x. EXTCODESIZE(0x1800…0000) via eth_call state override -> 1"
+
+system_contracts:
+  "0x3600000000000000000000000000000000000000":
+    name: NativeFiatToken (USDC)
+    status: added
+    note: >-
+      THE CENTRE OF THIS CHAIN. A real Solidity proxy with 3,598 bytes of runtime
+      that presents the native coin as an ERC-20 named "USDC" with SIX decimals,
+      while the coin itself is 18-decimal. It is the only address permitted to call
+      the NativeCoinAuthority precompile, so it is simultaneously the token
+      interface, the mint authority and the blocklist administrator. Its Solidity
+      source is NOT in this repository — only its address, as a constant the
+      precompiles compare against.
+    src: crates/precompiles/src/helpers.rs:NATIVE_FIAT_TOKEN_ADDRESS
+    src_live: "eth_getCode @ 58728247 -> 3598 bytes; decimals() -> 6; symbol()/name() -> \"USDC\"; totalSupply() -> 314870942069315201"
+  "0x3600000000000000000000000000000000000001":
+    name: ProtocolConfig (proxy)
+    status: added
+    note: >-
+      CONSENSUS PARAMETERS LIVE IN A CONTRACT'S STORAGE. The block gas limit and
+      the base-fee `FeeParams` are read out of this contract by the protocol via a
+      call from the system address, then enforced on the header. Probing the
+      ERC-7201 gas-limit slot at the pinned block returns 0x1c9c380 = 30,000,000,
+      which is exactly the header's `gasLimit`. It is an ERC-1967 proxy, so those
+      parameters are upgradeable by whoever holds the proxy admin.
+    src: crates/execution-config/src/protocol_config.rs:PROTOCOL_CONFIG_ADDRESS, crates/execution-config/src/protocol_config.rs:retrieve_fee_params
+    src_live: "eth_getStorageAt(0x3600…0001, 0x668f09ce…385203) @ 58728247 -> 0x1c9c380 == header gasLimit; ERC-1967 impl slot -> 0x695d85e3437daa1f8f6de97c5aedf75b82dea80a"
+  "0x522fAf9A91c41c443c66765030741e4AaCe147D0":
+    name: Multicall3From
+    status: added
+    activation_condition: "ArcHardfork::Zero7"
+    note: "one of exactly two contracts the client permits to call the CallFrom precompile. Address is a CREATE2 constant compiled into the node."
+    src: crates/execution-config/src/call_from.rs:MULTICALL3_FROM_ADDRESS
+    src_live: "eth_getCode @ 58728247 -> 0x608060405234801561000f575f5ffd5b506004… (deployed)"
+  "0x5294E9927c3306DcBaDb03fe70b92e01cCede505":
+    name: Memo
+    status: added
+    activation_condition: "ArcHardfork::Zero7"
+    note: "the other permitted CallFrom caller — attaches a memo to a payment."
+    src: crates/execution-config/src/call_from.rs:MEMO_ADDRESS
+    src_live: "eth_getCode @ 58728247 -> deployed"
+  "0x36059b615370eB999e8eC0c9401835B407834221":
+    name: Denylist
+    status: added
+    availability: optional
+    activation_condition: "node flag --arc.denylist.address + --arc.denylist.storage-slot; default address is the localdev genesis deployment"
+    note: >-
+      A SECOND, INDEPENDENT BLOCKLIST, and it is NODE CONFIGURATION rather than
+      consensus. The mempool and a revm pre-flight read an ERC-7201 mapping slot
+      out of an arbitrary contract nominated on the command line and reject
+      transactions touching a listed address. Two nodes configured differently
+      disagree about which transactions are valid to accept — SCHEMA.md's
+      config-switchable warning, applied to censorship rather than to signatures.
+      Not deployed at the default address on testnet.
+    src: crates/execution-config/src/addresses_denylist.rs:DEFAULT_DENYLIST_ADDRESS, crates/execution-config/src/addresses_denylist.rs:compute_denylist_storage_slot
+    src_live: "eth_getCode(0x36059b615370eB999e8eC0c9401835B407834221) @ 58728247 -> 0x (not deployed on testnet)"
+  "0x0000F90827F1C53a10cb7A02335B175320002935":
+    name: EIP-2935 history storage
+    status: inherited
+    src_live: "eth_getCode @ 58728247 -> standard 2935 runtime (168 bytes)"
+
+system_transactions:
+  - name: SystemAccounting gas-value write
+    note: "each block, a call from 0xffff…fffe stores that block's gas values into the SystemAccounting precompile. No transaction appears in the body."
+    src: crates/precompiles/src/system_accounting.rs:ARC_SYSTEM_CALLER
+  - name: ProtocolConfig fee-params read
+    note: "the executor calls ProtocolConfig from the system address during pre-execution to obtain the expected gas limit and fee params for the header it is about to validate."
+    src: crates/execution-config/src/protocol_config.rs:retrieve_fee_params
+  - name: beneficiary blocklist check
+    note: >-
+      pre-execution, the executor SLOADs the block beneficiary's blocklist slot out
+      of the NativeCoinControl precompile and REJECTS THE WHOLE BLOCK if it is set.
+      A validator that gets blocklisted stops being able to produce valid blocks.
+      Zero5+.
+    src: crates/evm/src/executor.rs:validate_beneficiary_not_blocklisted
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - number: "0xFF"
+    name: SELFDESTRUCT
+    note: >-
+      Replaced in the instruction table by an Arc implementation with three
+      layered behaviours: blocklist checks on both the executing address and the
+      beneficiary (failing with "Blocked address"), a transfer log on any non-zero
+      balance move (a Circle-specific `NativeCoinTransferred` before Zero5, an
+      EIP-7708 `Transfer` from Zero5), and rejection of a self-targeted
+      selfdestruct that would increase the account's own balance. Three variants
+      across Zero5/Zero6/Zero7.
+    src: crates/evm/src/opcode.rs:arc_network_selfdestruct_impl
+  - number: "0xF1"
+    name: CALL
+    note: >-
+      Value transfers work normally — Arc HAS a native coin, unlike tempo. What
+      changes is that a value-bearing transaction is rejected pre-execution if
+      either party is blocklisted, and that a plain CALL does NOT emit the EIP-7708
+      log the precompile paths emit. See gotchas.
+    src: crates/evm/src/handler.rs:check_blocklist
+
+fee_model:
+  metering: gas, denominated in 18-decimal units of the native USDC coin
+  fee_market: EIP-1559 formula over an EMA-smoothed gas figure, fixed-point params, contract-governed bounds
+  gas_token: "USDC — the native coin itself, mint/burn controlled by the NativeFiatToken contract"
+  burn: unrecorded
+  note: >-
+    THE UNIT ANSWER, AND IT IS THE OPPOSITE OF TEMPO'S. Arc did not remove the
+    native asset; it made the native asset a stablecoin and left the EVM alone.
+    `msg.value`, BALANCE, SELFBALANCE and CALL-with-value all behave exactly as on
+    mainnet, and `baseFeePerGas` is 18-decimal units of that coin — 20 gwei
+    observed, so ~0.00042 USDC for a 21,000-gas transfer.
+
+    THE COST IS A DUPLICATED UNIT. The ERC-20 view at 0x3600…0000 reports SIX
+    decimals. The relationship is a FLOOR, not a conversion:
+    `USDC.balanceOf(a) == eth_getBalance(a) / 10^12`, integer division. Measured on
+    three unrelated accounts at the pinned block, exactly. Because minting happens
+    in whole microdollars but gas refunds and priority fees are arbitrary wei, live
+    balances carry sub-microdollar DUST that the ERC-20 view cannot see and cannot
+    move: 808717034443278127 wei displays as 808717 (0.808717 USDC), and the
+    trailing 034443278127 wei is spendable as gas but invisible to every ERC-20
+    tool. `totalSupply` happens to divide exactly (all mints are whole
+    microdollars); individual balances do not.
+
+    THE BASE FEE IS CARRIED IN `extraData`. From Zero5 the header's extraData must
+    be exactly 8 bytes, holding the base fee the CHILD block must use, and
+    validation requires the child's `baseFeePerGas` to equal it exactly. A field
+    mainnet leaves free-form for client vanity strings is consensus-critical here.
+
+    THE FEE PARAMETERS ARE GOVERNED BY A CONTRACT. `retrieve_fee_params` calls
+    ProtocolConfig at 0x3600…0001 from the system address; the block gas limit
+    comes from the same contract's storage. So the gas limit and the fee-market
+    bounds are upgradeable behind an ERC-1967 proxy without a client release.
+  extra_components:
+  - {name: EMA gas smoothing, src: "crates/execution-config/src/gas_fee.rs:determine_ema_parent_gas_used"}
+  - {name: base fee in extraData, src: "crates/execution-config/src/gas_fee.rs:encode_base_fee_to_bytes"}
+  - {name: contract-governed fee params and gas limit, src: "crates/execution-config/src/protocol_config.rs:determine_bounded_base_fee"}
+  - {name: 20,000 gwei base-fee ceiling, src: "crates/execution-config/src/chainspec.rs:BASE_FEE_CONFIG_MAINNET"}
+  src: crates/execution-config/src/gas_fee.rs:arc_calc_next_block_base_fee
+  src_live: "eth_getBalance vs USDC.balanceOf @ 58728247 for 0xa693cc18…, 0x5d56c534…, 0x1c831f75… -> 5028673577309960459376547/5028673577309, 808717034443278127/808717, 3048802109906077411/3048802 — floor(x/10^12) in all three, exact in none; eth_gasPrice -> 0x4e3b29200; header baseFeePerGas 0x4a817c800"
+
+header_fields:
+  added: []
+  removed: []
+  modified:
+  - name: extraData
+    note: >-
+      EXACTLY 8 BYTES, AND IT IS CONSENSUS DATA. Holds the base fee the next block
+      must use; `arc_validate_extra_data_format` rejects any other length from
+      Zero5, and the child's `baseFeePerGas` must equal the decoded value. Observed:
+      extraData 0x00000004a817c800 = 20,000,000,000, matching the block's own
+      baseFeePerGas.
+    src: crates/execution-validation/src/consensus.rs:arc_validate_extra_data_format
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> extraData 0x00000004a817c800, baseFeePerGas 0x4a817c800"
+  - name: parentBeaconBlockRoot
+    note: "set to the parent block hash, not to zero and not to a beacon root. See eips.4788."
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> equals parentHash"
+  - name: gasLimit
+    note: "not chosen by the proposer within the usual 1/1024 band — read from ProtocolConfig storage and validated against it, bounded to [10,000,000, 200,000,000] for mainnet and testnet."
+    src: crates/execution-config/src/chainspec.rs:BlockGasLimitProvider
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> gasLimit 0x1c9c380 == ProtocolConfig slot value"
+  - name: baseFeePerGas
+    note: "18-decimal units of native USDC; must equal the parent's extraData."
+    src_live: "eth_getBlockByNumber(0x3801f37) @ 58728247 -> 0x4a817c800 (20 gwei)"
+  note: >-
+    Receipts are stock — no added fields, unlike tempo's feeToken/feePayer.
+  receipts_src_live: "eth_getTransactionReceipt(0x134f1abe…) @ 58728247 -> keys are exactly the mainnet set (type, status, cumulativeGasUsed, logs, logsBloom, transactionHash, transactionIndex, blockHash, blockNumber, gasUsed, effectiveGasPrice, from, to, contractAddress)"
+
+gotchas: >-
+  ONE TRANSFER, TWO `Transfer` EVENTS, TWO DIFFERENT AMOUNTS. A single
+  `transfer(to, 78775)` on the native USDC contract produced two logs in the same
+  receipt: one from 0xffff…fffe (the EIP-7708 system address) for
+  78,775,000,000,000,000, and one from 0x3600…0000 (the ERC-20) for 78,775. The
+  same movement, logged twice, in units 10^12 apart. An indexer that subscribes to
+  the `Transfer` topic without filtering by address will double-count every native
+  transfer AND mis-scale one of the two copies. This is measured, not inferred.
+
+  THE ERC-20 BALANCE IS A FLOOR OF THE REAL ONE. `USDC.balanceOf(a)` is
+  `eth_getBalance(a) / 10^12`, integer division, so up to 10^12 - 1 wei of a user's
+  balance is invisible through the token interface. `transfer`ing the full ERC-20
+  balance does not empty the account. Reconciliation that treats the ERC-20 view as
+  authoritative will find unexplained dust forever.
+
+  EIP-7708 COVERAGE IS PARTIAL. SELFDESTRUCT and the NativeCoinAuthority
+  mint/burn/transfer paths emit the log; an ordinary CALL carrying value does not.
+  So "index native movement from logs" works for some native movement.
+
+  A BLOCKLISTED ADDRESS FAILS BEFORE EXECUTION, AND A BLOCKLISTED VALIDATOR
+  CANNOT BUILD BLOCKS. `check_blocklist` runs pre-execution on the caller always
+  and on the recipient when value is non-zero; the block executor separately
+  rejects any block whose beneficiary is blocklisted. Blocklist SLOADs are
+  UNMETERED — they cost the transaction no gas, which is a deliberate choice worth
+  knowing when modelling worst-case block validation cost.
+
+  THERE IS A SECOND BLOCKLIST THAT IS NOT CONSENSUS. The `--arc.denylist.*` flags
+  point the mempool and a revm pre-flight at an arbitrary contract's ERC-7201
+  storage. Nodes configured differently will accept different transactions.
+
+  `msg.sender` IS NOT PROOF OF A SIGNATURE (Zero7). The CallFrom precompile lets
+  the Memo and Multicall3From contracts execute a call with any `sender` they
+  choose. The allow-list is two hardcoded addresses in the client, not an on-chain
+  registry, so it cannot be inspected or changed from the chain.
+
+  `eth_getCode` AT AN ARC PRECOMPILE RETURNS `0x01`. One byte of marker code, the
+  same inversion as tempo's `0xef` with a different byte. The inherited Ethereum
+  precompiles return `0x`.
+
+  TESTNET IS A SUPERSET OF THE MAINNET SCHEDULE. Zero7 (CallFrom, Multicall3From,
+  Memo) is live on testnet and absent from `ARC_MAINNET_HARDFORKS` at this tag.
+  Testing against testnet exercises code mainnet will not have at genesis.
+
+  `parentBeaconBlockRoot` IS THE PARENT HASH. Not zero, not a beacon root. Any
+  consumer that treats a non-zero value as evidence of a beacon chain is wrong.

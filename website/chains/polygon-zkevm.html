@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polygon zkEVM · EVM-intel</title>
+<meta name="description" content="THE CLIENT MOVED, AND SO DID THE CLIENT. Two separate moves, and CANDIDATES.md records neither. (1) Org move: &lt;code&gt;0xPolygonHermez&lt;/code&gt; no longer hosts any of it.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Polygon zkEVM</h1>
+<p class="lede">THE CLIENT MOVED, AND SO DID THE CLIENT. Two separate moves, and CANDIDATES.md records neither. (1) Org move: <code>0xPolygonHermez</code> no longer hosts any of it.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>1101</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>berlin</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>erigon</td></tr><tr><td>Sync point</td><td>cdk-erigon v2.64.2 tracks Erigon&#x27;s `main` EVM only for the code paths it does not replace. Its own chain config sets berlinBlock 0 and londonBlock to the sentinel 9999999999999999999999999999999999999999999999999 — London and everything after it are structurally unreachable for chain 1101. Erigon&#x27;s Shanghai, Cancun, Prague and Osaka implementations are all present in the tree and all dead code for this chain. A Berlin-era EVM in a 2026 client.</td></tr><tr><td>Consensus</td><td>single trusted sequencer; batches sequenced and SNARK-verified on Ethereum L1 · block time ~1-3s (when producing)</td></tr><tr><td>Note</td><td><p>NOT Polygon PoS. Chain 1101 is a zk-rollup with its own client (cdk-erigon, an Erigon fork), its own EVM (a parallel <code>*_zkevm.go</code> implementation living beside Erigon's), its own state trie (a Poseidon sparse Merkle tree, not a Keccak MPT) and a versioning axis — forkID — that is neither an Ethereum fork name nor a timestamp nor a block number. It shares nothing with chain 137 except a brand. <code>live: false</code> is an observation, not an editorial. At probe time the head was block 33391890 with timestamp 1783094144 (2026-07-03 15:54:44 UTC) — 52 days stale — and it did not move across 24 hours or across two independent public endpoints (zkevm-rpc.com and polygon-zkevm.drpc.org). The node reports eth_syncing false, so it believes it is at the head. Re-probed independently on 2026-08-25: the head is still block 33391890, now 52.9 days stale, so the halt has persisted across a further seven weeks and is not a transient outage. Whether it is a deliberate sunset remains UNRECORDED — that is a statement about intent, which no probe can establish. Every fact below was read at that fixed height, which is also the chain's last block.</p></td></tr><tr><td>Lineage note</td><td><p>THE CLIENT MOVED, AND SO DID THE CLIENT. Two separate moves, and CANDIDATES.md records neither. (1) Org move: <code>0xPolygonHermez</code> no longer hosts any of it. <code>0xPolygonHermez/zkevm-node</code> 301-redirects to <code>0xPolygon/zkevm-node</code>, which is ARCHIVED — last push 2025-02-11. <code>0xPolygonHermez/zkevm-contracts</code> redirects to <code>agglayer/agglayer-contracts</code>, a different organisation entirely. <code>0xPolygonHermez/zkevm-prover</code> redirects to <code>0xPolygon/zkevm-prover</code>, last push 2025-08-29. (2) Client replacement, not just a rename: zkevm-node was a Go node that drove a separate C++ prover-executor. The chain now runs <code>0xPolygon/cdk-erigon</code>, an Erigon fork that implements the zkEVM in Go inside the execution client. This is confirmed live rather than inferred: web3_clientVersion on the public endpoint returns "cdk-erigon/v2.61.24/linux-amd64/go1.21.5". Anything pinned to zkevm-node is pinned to an archived repo describing a client the network stopped running. That makes three chains in a row where CANDIDATES.md's coordinates were stale (gnosischain/gnosis 404s, InjectiveLabs/injective-core changed orgs, mantlenetworkio redirects). Verifying that the repo still exists at the recorded path is not a formality; it has been a finding four times.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/0xPolygon/cdk-erigon">cdk-erigon</a> <code>v2.64.2</code></td></tr><tr><td>Pinned commit</td><td><code>03f20326c5ae5acf8cac32159dd03aeb244d6913</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Client note</td><td><p>Newest non-prerelease tag (2026-01-16); v2.65.0-RC3 exists but is a prerelease. The public endpoint runs v2.61.24, three minor versions behind the pin — recorded because it matters here more than usual: v2.64.2 contains PrecompiledContractsForkID13Durian and the Normalcy/PMT (Merkle-Patricia-trie) migration path, neither of which is reachable on mainnet, so the pinned tag describes a superset of the running chain. Where the two could differ the row states what the LIVE fork (forkID 12) selects.</p></td></tr><tr><td>Live probe</td><td><code>https://zkevm-rpc.com</code> · chain_id 1101 · observed at block <code>33391890</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 49 · <code>src_live:</code> 35 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">6</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-four-flavours">Same-address divergence, and every flavour is quieter than enumeration<a class="anchor" href="#f-four-flavours">#</a></h3><p class="lede">An address that exists on two chains can differ in ways no address diff sees, and every one of those flavours is quieter than adding or removing the address.</p><p>Supplies a detection channel the other flavours lack: disabled precompiles stay in the map and so stay WARM (122 gas) while genuinely absent addresses are COLD (2622), which separates the two cases by gas alone.</p><p class="tags"><a href="../axes/precompiles.html#f-four-flavours">Full note · Precompiles</a> · also on <a href="../chains/op-stack.html#f-four-flavours">OP Stack</a> · <a href="../chains/avalanche-c.html#f-four-flavours">Avax C</a> · <a href="../chains/polygon.html#f-four-flavours">Polygon</a> · <a href="../chains/tron.html#f-four-flavours">Tron</a> · <a href="../chains/taiko.html#f-four-flavours">Taiko</a> · <a href="../chains/gnosis.html#f-four-flavours">Gnosis</a> · <a href="../chains/scroll.html#f-four-flavours">Scroll</a></p></div>
+<div class="finding"><h3 id="f-proof-constraints-leak">Proof-system constraints leak into consensus — and they expire<a class="anchor" href="#f-proof-constraints-leak">#</a></h3><p class="lede">A proof system's constraints leak into consensus rules by unrelated mechanisms — and they are not permanent, so the claim needs a DATE, not just a chain name.</p><p>Runs the arc backwards: MODEXP disabled at forkID 8 and never restored. The leak is visible to <code>eth_call</code>.</p><p class="tags"><a href="../axes/precompiles.html#f-proof-constraints-leak">Full note · Precompiles</a> · also on <a href="../chains/op-stack.html#f-proof-constraints-leak">OP Stack</a> · <a href="../chains/linea.html#f-proof-constraints-leak">Linea</a> · <a href="../chains/zksync-era.html#f-proof-constraints-leak">zkSync</a> · <a href="../chains/scroll.html#f-proof-constraints-leak">Scroll</a> · <a href="../chains/taiko.html#f-proof-constraints-leak">Taiko</a></p></div>
+<div class="finding"><h3 id="f-p256-silent-invalid">P-256 verification returns empty output on five chains, for five reasons<a class="anchor" href="#f-p256-silent-invalid">#</a></h3><p class="lede">EIP-7951 signals an invalid signature by returning empty output — byte-identical to what a call to an absent precompile returns. Where <code>0x0100</code> is empty, every P-256 verification against it reports "invalid" with no revert and no error, and a passkey wallet ported there is broken but looks merely strict.</p><p>P256VERIFY is implemented as <code>p256Verify_zkevm</code> and present only in a forkID that has never activated, so <code>0x0100</code> answers empty.</p><p class="tags"><a href="../axes/cryptography.html#f-p256-silent-invalid">Full note · Cryptography</a> · also on <a href="../chains/hyperliquid.html#f-p256-silent-invalid">Hyperliquid</a> · <a href="../chains/sei.html#f-p256-silent-invalid">Sei</a> · <a href="../chains/sonic.html#f-p256-silent-invalid">Sonic</a> · <a href="../chains/injective.html#f-p256-silent-invalid">Injective</a></p></div>
+<div class="finding"><h3 id="f-fork-activation-mechanisms">At least thirteen ways a chain decides a feature is active<a class="anchor" href="#f-fork-activation-mechanisms">#</a></h3><p class="lede">"When does feature X become active on chain Y" has no general answer. Mainnet uses a timestamp; reading a fork timestamp is not a portable method, because on much of this dataset there is no timestamp and on some of it no client-side schedule to read at all.</p><p>The <code>forkID</code> is not in the client. It is announced by an EVENT ON ETHEREUM L1, applies from a BATCH number, and is translated to an L2 block only at sync time — and forkID 10 covered zero batches while still changing two consensus rules.</p><p class="tags"><a href="../axes/eips.html#f-fork-activation-mechanisms">Full note · EIP activation set</a> · also on <a href="../chains/op-stack.html#f-fork-activation-mechanisms">OP Stack</a> · <a href="../chains/avalanche-c.html#f-fork-activation-mechanisms">Avax C</a> · <a href="../chains/arbitrum.html#f-fork-activation-mechanisms">Arbitrum</a> · <a href="../chains/polygon.html#f-fork-activation-mechanisms">Polygon</a> · <a href="../chains/kaia.html#f-fork-activation-mechanisms">Kaia</a> · <a href="../chains/sonic.html#f-fork-activation-mechanisms">Sonic</a> · <a href="../chains/moonbeam.html#f-fork-activation-mechanisms">Moonbeam</a> · <a href="../chains/zksync-era.html#f-fork-activation-mechanisms">zkSync</a> · <a href="../chains/cosmos-evm.html#f-fork-activation-mechanisms">Cosmos EVM</a> · <a href="../chains/monad.html#f-fork-activation-mechanisms">Monad</a> · <a href="../chains/tron.html#f-fork-activation-mechanisms">Tron</a> · <a href="../chains/hyperliquid.html#f-fork-activation-mechanisms">Hyperliquid</a></p></div>
+<div class="finding"><h3 id="f-second-meter-failures">A second resource meter, and five ways it fails your transaction<a class="anchor" href="#f-second-meter-failures">#</a></h3><p class="lede">Gas is no longer the only thing a transaction can run out of, and the failure modes share nothing. A transaction can be rejected, truncated away, silently dropped, or charged for work it never did, and only one of those is visible as an ordinary revert.</p><p><strong>Discards with no receipt</strong> — no revert, no charge, and the hash is blacklisted from the pool afterwards.</p><p class="tags"><a href="../axes/fees-envelope.html#f-second-meter-failures">Full note · Fees &amp; envelope</a> · also on <a href="../chains/taiko.html#f-second-meter-failures">Taiko</a> · <a href="../chains/linea.html#f-second-meter-failures">Linea</a> · <a href="../chains/moonbeam.html#f-second-meter-failures">Moonbeam</a> · <a href="../chains/megaeth.html#f-second-meter-failures">MegaETH</a> · <a href="../chains/sonic.html#f-second-meter-failures">Sonic</a></p></div>
+<div class="finding"><h3 id="f-stale-coordinates">Four of fifteen candidate clients were at the wrong address<a class="anchor" href="#f-stale-coordinates">#</a></h3><p class="lede">The repository coordinates a chain publishes are not durable, and the drift is invisible until a clone fails. Of fifteen chains scheduled in one pass, four were not where the backlog said. Pinning a commit protects a fact once found; it does not help you find the client.</p><p><code>0xPolygonHermez/zkevm-node</code> is <strong>archived</strong> and replaced by a different client, <code>0xPolygon/cdk-erigon</code>, whose contracts moved to a third org.</p><p class="tags"><a href="../method.html#f-stale-coordinates">Full note · Reference</a> · also on <a href="../chains/gnosis.html#f-stale-coordinates">Gnosis</a> · <a href="../chains/injective.html#f-stale-coordinates">Injective</a> · <a href="../chains/mantle.html#f-stale-coordinates">Mantle</a> · <a href="../chains/linea.html#f-stale-coordinates">Linea</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">12</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000003</code> RIPEMD160</td><td><div class="wrap">Disabled since forkID 7 Etrog (block 9890792). `ripemd160hash_zkevm{enabled: false}` returns ErrUnsupportedPrecompile, and IsErrTypeRevert() classifies that error as a REVERT — so the frame is reverted and the CALLER KEEPS THE FORWARDED GAS. RequiredGas also returns 0 when disabled, so nothing is pre-charged either. Measured: a STATICCALL forwarding 10000 gas to 0x03 consumes 122 gas total, identical to the disabled 0x05 and only 60 less than working 0x02.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000005</code> MODEXP</td><td><div class="wrap">THE FORK-GATED ONE. MODEXP was ENABLED at forkID 7 Etrog (`bigModExp_zkevm{enabled: true, eip2565: true}`) and DISABLED at forkID 8 Elderberry (`enabled: false`) — the same address, working then not working, with no Ethereum fork name attached to either side and nothing in a chainspec to read. The change lands at block 10742147. Any archive replay, any historical simulation, and any contract that used modexp before that height and still exists is affected. It is scheduled to come BACK at forkID 13 Durian, which has never activated. A precompile that is present, then absent, then present again, on an axis no Ethereum tool models.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x0000000000000000000000000000000000000009</code> BLAKE2F</td><td><div class="wrap">Disabled since forkID 7 Etrog and never scheduled to return — forkID 13 Durian still carries `blake2F_zkevm{enabled: false}`. Same revert-with-gas-returned mechanism as 0x03 and 0x05.</div></td></tr><tr><td><span class="pill">system_contracts</span></td><td><code>0x000000000000000000000000000000005ca1ab1e</code> L2 "scalable" state account</td><td><div class="wrap">A CATEGORY THE SCHEMA DOES NOT HAVE. This address has NO BYTECODE — eth_getCode returns 0x — yet it holds the values that three opcodes read, and the protocol writes it before every block. Slot 0 is the block number, slot 1 is the base of a blockNumber-&gt;stateRoot mapping, slot 2 is the timestamp, slot 3 is the block-info root. It is not a precompile (no native code, no dispatch) and not a system contract in this schema&#x27;s sense (no EVM bytecode). It is a protocol-owned storage account, and it is the mechanism behind the BLOCKHASH and NUMBER divergences below. Recorded here because leaving it out would hide the cause of two silent opcode redefinitions.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-1559</td><td><div class="wrap">London is unreachable. The header has NO baseFeePerGas field at all — not zero, absent — and the BASEFEE opcode (0x48) is an invalid opcode. Type-0x02 transactions are rejected from the pool with DiscardReason UnsupportedTx. Any fee estimator, wallet or bridge that assumes EIP-1559 exists on an EVM chain in 2026 fails here, and it fails at submission rather than at inclusion.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-6780</td><td><div class="wrap">DELIBERATELY declined, and the declining is commented in the source: Cancun&#x27;s instruction-set builder for this chain has `//enable6780(&amp;instructionSet)` commented out with the reason &quot;SELFDESTRUCT replaced by SENDALL&quot;. Cancun is unreachable anyway, but the intent is recorded: SELFDESTRUCT here is neither mainnet&#x27;s pre-Cancun SELFDESTRUCT nor EIP-6780&#x27;s. See opcodes.modified.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-1052</td><td><div class="wrap">EXTCODEHASH is REDEFINED, not repriced. opExtCodeHash_zkevm returns the ZERO HASH for any address with GetCodeSize()==0, where EIP-1052 returns keccak256(&quot;&quot;) = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 for an existing account with no code and zero only for a non-existent one. On chain 1101 the two cases are indistinguishable. Live-proven on an account holding 1.17 ETH: BALANCE returns 0x10470379026fd4e7 and EXTCODEHASH returns 0x00..00 at the same block. Every &quot;is this address a contract?&quot; and &quot;does this account exist?&quot; check written against EIP-1052 gets a wrong answer with no error.</div></td></tr><tr><td><span class="pill">header_fields</span></td><td>header <code>stateRoot</code></td><td><div class="wrap">Not a Keccak Merkle-Patricia root. The state trie is a POSEIDON sparse Merkle tree (the smt/ package), so stateRoot is a field element — observed values start with a low byte for exactly that reason (0x02df6fea..., 0x94c51a12...). eth_getProof does not return an Ethereum MPT proof, and no mainnet light client or storage-proof verifier can check it. This is also why BLOCKHASH returning a state root is not merely the wrong value — it is a value from a different hash function.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> BLOCKHASH</td><td><div class="wrap">RETURNS THE STATE ROOT, NOT THE BLOCK HASH. opBlockhash_zkevm ignores the header chain entirely and reads keccak256(blockNumber, 1) from 0x...5ca1ab1e&#x27;s storage, which the protocol populates with each block&#x27;s STATE ROOT. Proven live at the pinned block: BLOCKHASH(33391889) returns 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d, which is block 33391889&#x27;s `stateRoot`; its `hash` is 0xeae67882ae615883e1f2b20a98478a709976c42ec4e99d57389f5f262c604731. The two are both 32 bytes, both look like hashes, and neither reverts. Any commit-reveal scheme, randomness beacon, or L1-anchoring contract that compares BLOCKHASH against a hash obtained over JSON-RPC is silently wrong. There is also no visible 256-block window: the lookup is a storage read, so old heights answer too.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> EXTCODEHASH</td><td><div class="wrap">returns zero for every account with no code, existing or not — see eips.1052.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> SELFDESTRUCT</td><td><div class="wrap">Replaced wholesale by SENDALL semantics: opSendAll_zkevm moves the entire balance to the beneficiary and STOPS. It does NOT mark the account for deletion, does not clear code or storage, and does not zero the nonce — the comment on the function is literally &quot;removed the actual self destruct at the end&quot;. This is neither mainnet&#x27;s pre-Cancun SELFDESTRUCT nor EIP-6780&#x27;s same-transaction form; it is a third behaviour at the same opcode, active since forkID 4, and EIP-6780 is commented out in the source specifically to keep it. A self-destructing proxy pattern ported here keeps its code and keeps answering calls after &quot;destruction&quot;.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> LOG1-LOG4</td><td><div class="wrap">The log-data encoding changed THREE TIMES on a forkID axis, and one of the three is a bug that was enshrined rather than fixed. forkID 4-7: data is zero-padded at the end to a multiple of 32. forkID 8-11: `applyHexPadBug` hex-encodes the last word, right-pads the STRING to 64 characters, strips LEADING &#x27;0&#x27; CHARACTERS, then re-pads and truncates — a nibble-level shift that corrupts the tail of any log whose data length is not a multiple of 32. forkID 12: no transformation at all, the bug is gone. So the same contract emitting the same event produces three different `data` fields depending on height, and an indexer re-deriving logs for blocks 10742147-19175238 must reproduce the bug to match the chain. Log INDEXING also changed: forkID 4-7 restart logIndex at zero per transaction instead of per block.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>THE ONLY ACTIVATION MECHANISM IN THIS DATASET THAT IS NOT IN THE CLIENT AT ALL. The Ethereum ladder is frozen at Berlin by a chainspec of sentinels; everything that actually changes is gated on <code>forkID</code>, a small integer that is announced by an EVENT ON ETHEREUM L1 (UpdateZkEVMVersion / rollup-manager upgrade), applies from a BATCH number, and is only translated into an L2 BLOCK number at sync time by UpdateZkEVMBlockCfg reading the node's local L1-derived database. cdk-erigon ships no fork schedule for chain 1101 — <code>hermez.json</code> contains not one forkID field. A node's own <code>chain.Config</code> fork blocks are constructed at runtime from what it saw on L1. Consequences the other five mechanisms do not have: (a) the fork schedule is mutable from L1 with no L2 client release; (b) the canonical unit is the batch, and the block number is derived, so "which fork was block N on" is answerable only by a node that has synced L1; (c) a forkID can be SKIPPED, and one was — forkID 10 has zero batches, and UpdateZkEVMBlockCfg silently assigns it the previous fork's block number ("using last set block number"), so IsForkID10() is true from forkID 9's block for a fork that never happened. Compare: OP Stack enforces timestamp equality, Avalanche assigns timestamps, Arbitrum gates on ArbOS version, Polygon PoS on block numbers, Moonbeam swaps a WASM blob with no version at all. forkID is an L1 event indexed by batch.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>forkID 4</code></td><td><span class="pill">active</span></td><td>L1 forkID 4, batches 2-813266</td><td>berlin</td><td><div class="wrap">genesis EVM: Berlin instruction set, LOG data zero-padded to 32 bytes, log index restarts per transaction, SELFDESTRUCT replaced by SENDALL, CALLDATALOAD/CALLDATACOPY zkevm-incompatible variants</div></td></tr><tr><td><code>forkID 5 Dragonfruit</code></td><td><span class="pill">active</span></td><td>L1 forkID 5, batches 813267-1228916</td><td>—</td><td><div class="wrap">adds PUSH0 (EIP-3855, a SHANGHAI opcode) without Shanghai; restores stock CALLDATALOAD/CALLDATACOPY/STATICCALL; introduces the effective-gas-price byte</div></td></tr><tr><td><code>forkID 6 IncaBerry</code></td><td><span class="pill">active</span></td><td>L1 forkID 6, batches 1228917-1984749</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>forkID 7 Etrog</code></td><td><span class="pill">active</span></td><td>L1 forkID 7, batches 1984750-1998874</td><td>—</td><td><div class="wrap">batch format gains changeL2Block; block gas limit jumps to 2^50; RIPEMD160 and BLAKE2F disabled, MODEXP still enabled</div></td></tr><tr><td><code>forkID 8 Elderberry</code></td><td><span class="pill">active</span></td><td>L1 forkID 8, batches 1998875-2001442</td><td>—</td><td><div class="wrap">DISABLES MODEXP; stops writing PostState into receipts; log index becomes per-block; replaces the log zero-padding with applyHexPadBug</div></td></tr><tr><td><code>forkID 9 Elderberry2</code></td><td><span class="pill">active</span></td><td>L1 forkID 9, batches 2001443-2128918</td><td>—</td><td><div class="wrap"></div></td></tr><tr><td><code>forkID 10</code></td><td><span class="pill">skipped</span></td><td>never sequenced — zero batches</td><td>—</td><td><div class="wrap">The gap is real: forkID 9 ends at batch 2128918 and forkID 11 begins at 2128919. The client still has IsForkID10() gates (the PUSH1-terminated-code rejection ends there, the counter budget doubles there) and UpdateZkEVMBlockCfg makes them true from forkID 9&#x27;s block. A fork that never ran still moved two consensus rules.</div></td></tr><tr><td><code>forkID 11</code></td><td><span class="pill">active</span></td><td>L1 forkID 11, batches 2128919-2150229</td><td>—</td><td><div class="wrap">prover step budget doubles again to 2^25 and the safety margin drops to 1.25%</div></td></tr><tr><td><code>forkID 12 Banana</code></td><td><span class="pill">active</span></td><td>L1 forkID 12, batches 2150230-onwards — CURRENT</td><td>—</td><td><div class="wrap">the live fork. Drops the log-data mangling entirely; moves CREATE&#x27;s access-list insertion before the snapshot; adds the last-opcode replay list. Precompile set is still forkID 8&#x27;s.</div></td></tr><tr><td><code>forkID 13 Durian</code></td><td><span class="pill">pending</span></td><td>implemented in cdk-erigon v2.64.2, never announced on L1 for chain 1101</td><td>—</td><td><div class="wrap">would RE-ENABLE MODEXP and add P256VERIFY at 0x0100. Fully coded, unreachable. This is why 0x0100 is `pending` rather than `removed`.</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> params/chainspecs/hermez.json:londonBlock, erigon-lib/chain/zk_constants.go:ForkID12Banana, zk/utils/utils.go:UpdateZkEVMBlockCfg</p>
+<h2 id="eips">EIP deltas <span class="pill">20</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-1052"><td><a href="https://eips.ethereum.org/EIPS/eip-1052">EIP-1052</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">EXTCODEHASH is REDEFINED, not repriced. opExtCodeHash_zkevm returns the ZERO HASH for any address with GetCodeSize()==0, where EIP-1052 returns keccak256(&quot;&quot;) = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 for an existing account with no code and zero only for a non-existent one. On chain 1101 the two cases are indistinguishable. Live-proven on an account holding 1.17 ETH: BALANCE returns 0x10470379026fd4e7 and EXTCODEHASH returns 0x00..00 at the same block. Every &quot;is this address a contract?&quot; and &quot;does this account exist?&quot; check written against EIP-1052 gets a wrong answer with no error.<p class="src"><b>src</b> core/vm/instructions_zkevm.go:opExtCodeHash_zkevm · <b>live</b> eth_call EXTCODEHASH(0xd6f0feeaab8eac205b182d51ae05b588a132be5a) @ 33391890 -&gt; 0x00..00, BALANCE same address -&gt; 0x10470379026fd4e7</p></div></td></tr><tr id="eips-1153"><td><a href="https://eips.ethereum.org/EIPS/eip-1153">EIP-1153</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">TSTORE/TLOAD invalid — Cancun unreachable<p class="src"><b>live</b> eth_call TSTORE @ 33391890 -&gt; error `invalid opcode: TSTORE`</p></div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-removed" title="removed — silent divergence">➖</span></td><td></td><td><div class="wrap">London is unreachable. The header has NO baseFeePerGas field at all — not zero, absent — and the BASEFEE opcode (0x48) is an invalid opcode. Type-0x02 transactions are rejected from the pool with DiscardReason UnsupportedTx. Any fee estimator, wallet or bridge that assumes EIP-1559 exists on an EVM chain in 2026 fails here, and it fails at submission rather than at inclusion.<p class="src"><b>src</b> params/chainspecs/hermez.json:londonBlock, zk/txpool/pool.go:validateTx · <b>live</b> eth_getBlockByNumber @ 33391890 -&gt; no baseFeePerGas key; eth_call BASEFEE @ 33391890 -&gt; error -32000 `invalid opcode: BASEFEE`</p></div></td></tr><tr id="eips-2565"><td><a href="https://eips.ethereum.org/EIPS/eip-2565">EIP-2565</a></td><td><span class="s-modified" title="modified">⚠️</span></td><td></td><td><div class="wrap">MODEXP carries eip2565 pricing but the precompile itself is disabled at the live fork — see 0x05<p class="src"><b>src</b> core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry</p></div></td></tr><tr id="eips-2929"><td><a href="https://eips.ethereum.org/EIPS/eip-2929">EIP-2929</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">Berlin access lists active; precompile addresses are pre-warmed, which is measurable — see precompiles</div></td></tr><tr id="eips-2930"><td><a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">type 0x01 access-list transactions are the newest type this chain accepts</div></td></tr><tr id="eips-3198"><td><a href="https://eips.ethereum.org/EIPS/eip-3198">EIP-3198</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BASEFEE opcode absent with 1559. Confirmed by execution, not by reading a table.<p class="src"><b>live</b> eth_call 0x4860005260206000f3 @ 33391890 -&gt; error `invalid opcode: BASEFEE`</p></div></td></tr><tr id="eips-3529"><td><a href="https://eips.ethereum.org/EIPS/eip-3529">EIP-3529</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">London&#x27;s refund reduction is not reached; Berlin refund rules stand.<p class="src"><b>src</b> params/chainspecs/hermez.json:londonBlock</p></div></td></tr><tr id="eips-3541"><td><a href="https://eips.ethereum.org/EIPS/eip-3541">EIP-3541</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">The one London EIP that IS live, and it is live by accident of code shape rather than by fork gate. createZkEvm rejects returned code beginning 0xEF UNCONDITIONALLY — upstream Erigon guards the same check with `IsLondon`, and the zkEVM copy dropped the guard. So chain 1101 enforces a London rule it never activated, and an EOF-prefixed deploy that would succeed under a strict Berlin client fails here.<p class="src"><b>src</b> core/vm/evm_zkevm.go:createZkEvm</p></div></td></tr><tr id="eips-3855"><td><a href="https://eips.ethereum.org/EIPS/eip-3855">EIP-3855</a></td><td><span class="s-added" title="added">➕</span></td><td></td><td><div class="wrap">PUSH0, a Shanghai opcode, reached at forkID 5 Dragonfruit — years before, and independently of, any Shanghai activation that will never come. Live-verified.<p class="src"><b>src</b> core/vm/jump_table_zkevm.go:newForkID5DragonfruitInstructionSet · <b>live</b> eth_call 0x5f60005260206000f3 @ 33391890 -&gt; 0x00..00 (executes)</p></div></td></tr><tr id="eips-3860"><td><a href="https://eips.ethereum.org/EIPS/eip-3860">EIP-3860</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">initcode metering is gated on isShanghai in the pool and Shanghai never activates.<p class="src"><b>src</b> zk/txpool/pool.go:validateTx</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">beacon-roots contract address is an empty account<p class="src"><b>live</b> eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 33391890 -&gt; 0x</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BLOBHASH invalid, no blob header fields, blob txs rejected TypeNotActivated<p class="src"><b>src</b> zk/txpool/pool.go:validateTx · <b>live</b> eth_call BLOBHASH @ 33391890 -&gt; error `invalid opcode: BLOBHASH`</p></div></td></tr><tr id="eips-4895"><td><a href="https://eips.ethereum.org/EIPS/eip-4895">EIP-4895</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no withdrawals; the header has no withdrawalsRoot.<p class="src"><b>live</b> eth_getBlockByNumber @ 33391890 -&gt; header keys are exactly the pre-London set</p></div></td></tr><tr id="eips-5656"><td><a href="https://eips.ethereum.org/EIPS/eip-5656">EIP-5656</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">MCOPY invalid<p class="src"><b>live</b> eth_call MCOPY @ 33391890 -&gt; error `invalid opcode: MCOPY`</p></div></td></tr><tr id="eips-6780"><td><a href="https://eips.ethereum.org/EIPS/eip-6780">EIP-6780</a></td><td><span class="s-removed" title="removed — silent divergence">➖</span></td><td></td><td><div class="wrap">DELIBERATELY declined, and the declining is commented in the source: Cancun&#x27;s instruction-set builder for this chain has `//enable6780(&amp;instructionSet)` commented out with the reason &quot;SELFDESTRUCT replaced by SENDALL&quot;. Cancun is unreachable anyway, but the intent is recorded: SELFDESTRUCT here is neither mainnet&#x27;s pre-Cancun SELFDESTRUCT nor EIP-6780&#x27;s. See opcodes.modified.<p class="src"><b>src</b> core/vm/jump_table_zkevm.go:newNapoliInstructionSetZk</p></div></td></tr><tr id="eips-7516"><td><a href="https://eips.ethereum.org/EIPS/eip-7516">EIP-7516</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">BLOBBASEFEE invalid<p class="src"><b>live</b> eth_call BLOBBASEFEE @ 33391890 -&gt; error `invalid opcode: BLOBBASEFEE`</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">SetCode txs rejected TypeNotActivated; Prague unreachable<p class="src"><b>src</b> zk/txpool/pool.go:validateTx</p></div></td></tr><tr id="eips-7823"><td><a href="https://eips.ethereum.org/EIPS/eip-7823">EIP-7823</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Not applicable in either direction and deliberately not guessed. MODEXP is disabled outright at the live fork, so there is no operand bound to compare with EIP-7823&#x27;s 1024 bytes. If forkID 13 Durian ever activates, bigModExp_zkevm has no width cap in its Run path and this becomes `removed`, but that is a prediction and not a measurement.</div></td></tr><tr id="eips-7939"><td><a href="https://eips.ethereum.org/EIPS/eip-7939">EIP-7939</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">CLZ undefined<p class="src"><b>live</b> eth_call 0x1e @ 33391890 -&gt; error `opcode 0x1e not defined`</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">3</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>ZERO added type bytes, THREE removed ones. Chain 1101 accepts exactly 0x00 and 0x01. It took nothing from the 0x7f ceiling that Arbitrum (0x78), Base (0x79), OP Stack (0x7e) and Polygon PoS (0x7f) have been consuming — its envelope is mainnet's minus three types. The census at block 33391890 shows type 0x0 only. The interesting encoding is not in the EIP-2718 envelope at all. Inside the batch data posted to L1, cdk-erigon uses a SECOND, incompatible one-byte type space: legacy transactions are written as bare concatenated fields with no envelope at all, a non-legacy transaction is prefixed with <code>fullRlpTxType</code> = 15 (0x0f), and 11 (0x0b) introduces a <code>changeL2Block</code> pseudo-transaction. Those bytes are not EIP-2718 types and collide with mainnet's allocated low range. See non_evm_transactions.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x02"><td><code>0x02</code></td><td><span class="s-removed" title="removed">➖</span></td><td>DynamicFeeTransaction</td><td><div class="wrap"><div>Explicitly rejected at pool admission: `if !isLondon &amp;&amp; txn.Type == 0x2 { return UnsupportedTx }`, and isLondon is permanently false. Not &quot;unsupported at this height&quot; — unsupported by construction.</div><p class="src"><b>src</b> zk/txpool/pool.go:validateTx, zk/txpool/pool.go:UnsupportedTx</p></div></td></tr><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BlobTransaction</td><td><div class="wrap"><div>TypeNotActivated; Cancun unreachable</div><p class="src"><b>src</b> zk/txpool/pool.go:validateTx</p></div></td></tr><tr id="tx-types-0x04"><td><code>0x04</code></td><td><span class="s-removed" title="removed">➖</span></td><td>SetCodeTransaction</td><td><div class="wrap"><div>TypeNotActivated; Prague unreachable</div><p class="src"><b>src</b> zk/txpool/pool.go:validateTx</p></div></td></tr></tbody></table></div>
+<h2 id="non-evm-transactions">Transactions outside EIP-2718<a class="anchor" href="#non-evm-transactions">#</a></h2>
+<div class="note"><p>Two protocol records that carry no EIP-2718 type byte. Both live in the L1 batch data rather than in the L2 transaction list, so an indexer reading the canonical data with an Ethereum transaction decoder cannot see either.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code>changeL2Block</code></td><td>changeL2Block block-boundary record</td></tr><tr><td><code>injected-batch</code></td><td>injected batch (batch 1)</td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>No delta. cdk-erigon uses stock Erigon <code>MakeSigner</code> and stock secp256k1 sender recovery; nothing in zk/ or the *_zkevm.go EVM touches the signing path. This row's divergences are all downstream of authorization: what the EVM does once the sender is known, and what the sequencer will pay attention to. One thing worth naming precisely so it is not mistaken for an authorization finding: the gas price a sender SIGNS is not the gas price they are CHARGED. The sequencer attaches a one-byte "effective gas price percentage" to every transaction and the state transition rewrites gasPrice, feeCap and tip to <code>signed * (ep+1) / 256</code>. That is a fee-model divergence (see fee_model), not an authorization one — the signature still covers the original values and the sender is still recovered from them.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> core/types/transaction_signing.go:MakeSigner</p></div></td></tr><tr><td><code>secp256r1</code></td><td><span class="pill">never</span></td><td><span class="s-inherited">none</span></td><td><div class="wrap">Recorded to make the absence explicit rather than let it default. P256VERIFY exists in this client but ONLY inside PrecompiledContractsForkID13Durian, a map no block on chain 1101 has ever selected. So unlike the eleven rows that carry 0x0100, here the address is an ordinary empty account: eth_call returns success with empty output, which is byte-identical to EIP-7951&#x27;s &quot;invalid signature&quot;. A P-256 key cannot authorize a transaction and no contract can verify one either.<p class="src"><b>src</b> core/vm/contracts_zkevm.go:PrecompiledContractsForkID13Durian · <b>live</b> eth_call 0x0100 @ 33391890 -&gt; 0x (success, empty)</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">6</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>ZERO added addresses. Three tombstones, and the tombstones are the whole story. Two structural points worth carrying into the aggregate tables: (1) The disable switch is a FIELD ON THE PRECOMPILE, not a missing map entry: <code>&amp;bigModExp_zkevm{enabled: false}</code>. The address stays in the map, so it stays in the warm access list, so it stays cheap to touch — and it reverts. That is why the gas signature above works. (2) Polygon's tombstone fails DIFFERENTLY from Scroll's. Both chains disable RIPEMD160 and BLAKE2F for prover reasons; Scroll's disabled precompiles raise a non-revert error that BURNS ALL FORWARDED GAS, and its 0x03 is even charged the full RIPEMD160 price before failing. Polygon's raise an error that IsErrTypeRevert() treats as a revert: nothing is pre-charged and every forwarded wei of gas comes back. Two chains, the same three-precompile decision, opposite gas semantics. A caller that wraps the call in a try/catch survives on Polygon and is drained on Scroll. And nothing here is a per-block work budget: unlike Linea, which lets RIPEMD160 run in eth_call and vetoes it at block-building time, Polygon's disabled precompiles fail identically in eth_call and on chain. Simulation and execution agree. That is the one respect in which this is the FRIENDLIEST of the four prover-constrained rows.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0x03"><td><code>0x03</code></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td>RIPEMD160</td><td><div class="wrap"><div>Disabled since forkID 7 Etrog (block 9890792). `ripemd160hash_zkevm{enabled: false}` returns ErrUnsupportedPrecompile, and IsErrTypeRevert() classifies that error as a REVERT — so the frame is reverted and the CALLER KEEPS THE FORWARDED GAS. RequiredGas also returns 0 when disabled, so nothing is pre-charged either. Measured: a STATICCALL forwarding 10000 gas to 0x03 consumes 122 gas total, identical to the disabled 0x05 and only 60 less than working 0x02.</div><p class="src"><b>src</b> core/vm/contracts_zkevm.go:ripemd160hash_zkevm, core/vm/errors.go:ErrUnsupportedPrecompile, core/vm/errors.go:IsErrTypeRevert · <b>live</b> eth_call @ 33391890 -&gt; error -32000 `unsupported precompile`; STATICCALL success flag 0, 122 gas consumed of 10000 forwarded</p></div></td></tr><tr id="precompiles-0x05"><td><code>0x05</code></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td>MODEXP</td><td><div class="wrap"><div>THE FORK-GATED ONE. MODEXP was ENABLED at forkID 7 Etrog (`bigModExp_zkevm{enabled: true, eip2565: true}`) and DISABLED at forkID 8 Elderberry (`enabled: false`) — the same address, working then not working, with no Ethereum fork name attached to either side and nothing in a chainspec to read. The change lands at block 10742147. Any archive replay, any historical simulation, and any contract that used modexp before that height and still exists is affected. It is scheduled to come BACK at forkID 13 Durian, which has never activated. A precompile that is present, then absent, then present again, on an axis no Ethereum tool models.</div><p class="src"><b>src</b> core/vm/contracts_zkevm.go:bigModExp_zkevm, core/vm/contracts_zkevm.go:PrecompiledContractForkID7Etrog, core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry, core/vm/contracts_zkevm.go:PrecompiledContractsForkID13Durian · <b>live</b> eth_call @ 33391890 -&gt; error -32000 `unsupported precompile`; STATICCALL success flag 0, 122 gas consumed of 10000 forwarded</p></div></td></tr><tr id="precompiles-0x09"><td><code>0x09</code></td><td><span class="s-tombstoned" title="tombstoned — silent divergence">⊘</span></td><td>BLAKE2F</td><td><div class="wrap"><div>Disabled since forkID 7 Etrog and never scheduled to return — forkID 13 Durian still carries `blake2F_zkevm{enabled: false}`. Same revert-with-gas-returned mechanism as 0x03 and 0x05.</div><p class="src"><b>src</b> core/vm/contracts_zkevm.go:blake2F_zkevm, core/vm/contracts_zkevm.go:PrecompiledContractsForkID13Durian · <b>live</b> eth_call @ 33391890 -&gt; error -32000 `unsupported precompile`</p></div></td></tr><tr id="precompiles-0x0a"><td><code>0x0a</code></td><td><span class="s-removed" title="removed">➖</span></td><td>KZG_POINT_EVALUATION / BLS12-381 base (the control case)</td><td><div class="wrap"><div>THE CONTROL FOR THE TOMBSTONE DISTINCTION, and it separates by GAS as well as by outcome. 0x0a is not in any forkID map, so it is an ordinary empty account: the call SUCCEEDS with empty output. And because Berlin&#x27;s access list pre-warms only the addresses in the precompile set, 0x0a is COLD — the same STATICCALL that costs 122 gas at 0x03/0x05 costs 2622 at 0x0a, a 2500-gas cold-access difference. So on this chain the tombstone/removed distinction is visible three ways at one block: outcome (revert vs success), return data (empty vs empty — useless), and access cost (warm vs cold). The gas channel is the one that still works when the other two agree.</div><p class="src"><b>src</b> core/vm/evm_zkevm.go:precompile_zkevm · <b>live</b> eth_call 0x0a @ 33391890 -&gt; 0x (success); STATICCALL success flag 1, 2622 gas consumed vs 122 at 0x05</p></div></td></tr><tr id="precompiles-0x0b"><td><code>0x0b</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLS12_G1ADD (EIP-2537, 0x0b-0x11)</td><td><div class="wrap"><div>Never adopted; Prague is unreachable. Same empty-account behaviour as 0x0a.</div><p class="src"><b>src</b> core/vm/evm_zkevm.go:precompile_zkevm · <b>live</b> eth_call @ 33391890 -&gt; 0x (success, empty)</p></div></td></tr><tr id="precompiles-0x0100"><td><code>0x0100</code></td><td><span class="s-pending" title="pending">◌</span></td><td>P256VERIFY</td><td><div class="wrap"><div>Implemented as `p256Verify_zkevm{enabled: true}` and present in exactly one map — PrecompiledContractsForkID13Durian — which no block has selected. Coded, unreachable, and currently an empty account.</div><p class="src"><b>src</b> core/vm/contracts_zkevm.go:PrecompiledContractsForkID13Durian · <b>live</b> eth_call @ 33391890 -&gt; 0x (success, empty)</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">2</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>Note the test used. <code>eth_getCode</code> alone does not decide precompile-vs-contract on this dataset — Flare, Sonic, Cosmos EVM and Moonbeam all write decoy code at precompile addresses. Here the classification is made from the SOURCE map (precompile_zkevm's four forkID maps) and the probe is used only to confirm: every address in those maps returns 0x, and the two addresses above are absent from them. 0x5ca1ab1e returning 0x is therefore evidence of a third thing — a storage-only protocol account — not evidence that it is a precompile.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x5ca1ab1e"><td><code>0x5ca1ab1e</code></td><td><span class="s-added" title="added — silent divergence">➕</span></td><td>L2 &quot;scalable&quot; state account</td><td><div class="wrap"><div>A CATEGORY THE SCHEMA DOES NOT HAVE. This address has NO BYTECODE — eth_getCode returns 0x — yet it holds the values that three opcodes read, and the protocol writes it before every block. Slot 0 is the block number, slot 1 is the base of a blockNumber-&gt;stateRoot mapping, slot 2 is the timestamp, slot 3 is the block-info root. It is not a precompile (no native code, no dispatch) and not a system contract in this schema&#x27;s sense (no EVM bytecode). It is a protocol-owned storage account, and it is the mechanism behind the BLOCKHASH and NUMBER divergences below. Recorded here because leaving it out would hide the cause of two silent opcode redefinitions.</div><p class="src"><b>src</b> core/state/intra_block_state_zkevm.go:ADDRESS_SCALABLE_L2, core/state/intra_block_state_zkevm.go:GetBlockStateRoot · <b>live</b> eth_getCode @ 33391890 -&gt; 0x; eth_getStorageAt slot 0 -&gt; 0x1fd8512 (= the head block number), slot 2 -&gt; 0x6a47db80 (= the head timestamp)</p></div></td></tr><tr id="system-contracts-0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa"><td><code>0xa40d5f56745a118d0906a34e69aec8c0db1cb8fa</code></td><td><span class="s-added" title="added">➕</span></td><td>L2 GlobalExitRootManager</td><td><div class="wrap"><div>Real bytecode (2113 bytes, an upgradeable proxy). The protocol writes L1-block-hash and GER-timestamp entries into its storage directly from the state transition rather than by calling it — see system_transactions.</div><p class="src"><b>src</b> core/state/intra_block_state_zkevm.go:GER_MANAGER_ADDRESS · <b>live</b> eth_getCode @ 33391890 -&gt; 0x60806040526004361061004e... (4226 hex chars)</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th>Note</th></tr></thead><tbody><tr><td>pre-block scalable state write</td><td><div class="wrap">Before every block the state transition writes the block number, timestamp, previous block&#x27;s state root and block-info root into 0x...5ca1ab1e, and writes GER/L1-block-hash entries into the GER manager&#x27;s storage. These are direct SetState calls from the client, not calls to a contract — there is no caller, no gas, no receipt, and nothing appears in eth_getBlockByNumber. They are, however, what NUMBER and BLOCKHASH return.<p class="src"><b>src</b> core/state/intra_block_state_zkevm.go:ScalableSetTimestamp, core/state/intra_block_state_zkevm.go:WriteGerManagerL1BlockHash, core/blockchain_zkevm.go:PrepareBlockTxExecution</p></div></td></tr></tbody></table></div>
+<h2 id="opcodes">Opcodes <span class="pill">14</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>The EVM is a parallel implementation, not a patch set: core/vm carries a full shadow tree (contracts_zkevm.go, evm_zkevm.go, instructions_zkevm.go, interpreter_zkevm.go, jump_table_zkevm.go, gas_table_zkevm.go, operations_acl_zkevm.go) selected by NewZkEVM. Diffing cdk-erigon against upstream Erigon file-by-file therefore shows almost no changes to the EVM — the divergence is in files upstream does not have.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Op</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BASEFEE</td><td><div class="wrap">0x48 undefined — London unreachable<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `invalid opcode: BASEFEE`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>TLOAD/TSTORE</td><td><div class="wrap">0x5c/0x5d undefined<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `invalid opcode: TSTORE`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>MCOPY</td><td><div class="wrap">0x5e undefined<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `invalid opcode: MCOPY`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLOBHASH</td><td><div class="wrap">0x49 undefined<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `invalid opcode: BLOBHASH`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BLOBBASEFEE</td><td><div class="wrap">0x4a undefined<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `invalid opcode: BLOBBASEFEE`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>CLZ</td><td><div class="wrap">0x1e undefined<p class="src"><b>live</b> eth_call @ 33391890 -&gt; `opcode 0x1e not defined`</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-removed" title="removed">➖</span></td><td>SENDALL</td><td><div class="wrap">Worth stating because it looks like an addition and is not. cdk-erigon DEFINES opcode 0xfb as SENDALL and then wires it to INVALID in the live instruction set (`instructionSet[SENDALL] = instructionSet[INVALID]`). The name exists in the disassembler, the opcode does not exist in the EVM. A tracer that decodes 0xfb as SENDALL will label an invalid opcode as a valid one.<p class="src"><b>src</b> core/vm/opcodes_zkevm.go:SENDALL, core/vm/jump_table_zkevm.go:newForkID4InstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>BLOCKHASH</td><td><div class="wrap">RETURNS THE STATE ROOT, NOT THE BLOCK HASH. opBlockhash_zkevm ignores the header chain entirely and reads keccak256(blockNumber, 1) from 0x...5ca1ab1e&#x27;s storage, which the protocol populates with each block&#x27;s STATE ROOT. Proven live at the pinned block: BLOCKHASH(33391889) returns 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d, which is block 33391889&#x27;s `stateRoot`; its `hash` is 0xeae67882ae615883e1f2b20a98478a709976c42ec4e99d57389f5f262c604731. The two are both 32 bytes, both look like hashes, and neither reverts. Any commit-reveal scheme, randomness beacon, or L1-anchoring contract that compares BLOCKHASH against a hash obtained over JSON-RPC is silently wrong. There is also no visible 256-block window: the lookup is a storage read, so old heights answer too. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/vm/instructions_zkevm.go:opBlockhash_zkevm, core/state/intra_block_state_zkevm.go:GetBlockStateRoot · <b>live</b> eth_call BLOCKHASH(0x1fd8511) @ 33391890 -&gt; 0x02df6fea...e67d; eth_getBlockByNumber 0x1fd8511 -&gt; stateRoot 0x02df6fea...e67d, hash 0xeae67882...4731</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>NUMBER</td><td><div class="wrap">Reads slot 0 of 0x...5ca1ab1e rather than the header&#x27;s number. The values agree on the canonical chain, so this is not a live divergence in result — it is a divergence in SOURCE, and it means NUMBER is state-dependent: a re-execution against a state where that slot was not written returns the wrong height without error.<p class="src"><b>src</b> core/vm/instructions_zkevm.go:opNumber_zkevm · <b>live</b> eth_call NUMBER @ 33391890 -&gt; 0x1fd8512</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>DIFFICULTY / PREVRANDAO</td><td><div class="wrap">hardcoded to zero, not read from the header.<p class="src"><b>src</b> core/vm/instructions_zkevm.go:opDifficulty_zkevm · <b>live</b> eth_call DIFFICULTY @ 33391890 -&gt; 0x00..00</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>EXTCODEHASH</td><td><div class="wrap">returns zero for every account with no code, existing or not — see eips.1052. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/vm/instructions_zkevm.go:opExtCodeHash_zkevm</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>SELFDESTRUCT</td><td><div class="wrap">Replaced wholesale by SENDALL semantics: opSendAll_zkevm moves the entire balance to the beneficiary and STOPS. It does NOT mark the account for deletion, does not clear code or storage, and does not zero the nonce — the comment on the function is literally &quot;removed the actual self destruct at the end&quot;. This is neither mainnet&#x27;s pre-Cancun SELFDESTRUCT nor EIP-6780&#x27;s same-transaction form; it is a third behaviour at the same opcode, active since forkID 4, and EIP-6780 is commented out in the source specifically to keep it. A self-destructing proxy pattern ported here keeps its code and keeps answering calls after &quot;destruction&quot;. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/vm/instructions_zkevm.go:opSendAll_zkevm, core/vm/jump_table_zkevm.go:newForkID4InstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>LOG1-LOG4</td><td><div class="wrap">The log-data encoding changed THREE TIMES on a forkID axis, and one of the three is a bug that was enshrined rather than fixed. forkID 4-7: data is zero-padded at the end to a multiple of 32. forkID 8-11: `applyHexPadBug` hex-encodes the last word, right-pads the STRING to 64 characters, strips LEADING &#x27;0&#x27; CHARACTERS, then re-pads and truncates — a nibble-level shift that corrupts the tail of any log whose data length is not a multiple of 32. forkID 12: no transformation at all, the bug is gone. So the same contract emitting the same event produces three different `data` fields depending on height, and an indexer re-deriving logs for blocks 10742147-19175238 must reproduce the bug to match the chain. Log INDEXING also changed: forkID 4-7 restart logIndex at zero per transaction instead of per block. <span class="pill s-removed">silent</span><p class="src"><b>src</b> core/types/log_zkevm.go:ApplyPaddingToLogsData, core/types/log_zkevm.go:applyHexPadBug, core/vm/jump_table_zkevm.go:newForkID8InstructionSet</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>code ending in PUSH1 (pre-forkID 10)</td><td><div class="wrap">Not an opcode change but a validity rule at the same layer: before forkID 10, a CALL to any account whose bytecode&#x27;s last byte is 0x60 returns ErrInvalidCode outright — &quot;up to fork 10 we cannot handle a contract code that ends with just a push and nothing to push to the stack&quot;. A deployed, well-formed contract could be permanently uncallable because of its last byte. Lifted at forkID 10 — a forkID that never ran, so in practice it lifted when forkID 11 assigned it a block.<p class="src"><b>src</b> core/vm/evm_zkevm.go:call_zkevm</p></div></td></tr></tbody></table></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas AND eight zk counters</code></td></tr><tr><td>Fee market</td><td>none — no EIP-1559, no base fee, no base-fee header field</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;effective gas price percentage&#x27;, &#x27;note&#x27;: &#x27;A ONE-BYTE MULTIPLIER THE SEQUENCER CHOOSES, applied to the price the sender signed. CalculateEffectiveGas computes `signed * (ep+1) / 256`, and GetTxContext applies it to gasPrice, feeCap AND tip before execution, from forkID 5 Dragonfruit onward. ep=255 means &quot;charge the full signed price&quot;; ep=0 means charge 1/256 of it. The byte is carried in the L1 batch data and the data stream, so it is consensus, not policy. The consequence is that on this chain the fee a transaction pays is not derivable from the transaction: you must read the receipt\&#x27;s effectiveGasPrice, and a signature over a gasPrice is not a commitment to that gasPrice.&#x27;, &#x27;src&#x27;: &#x27;core/state_transition.go:CalculateEffectiveGas, core/state_processor_zkevm.go:GetTxContext, zk/types/zk_types.go:EFFECTIVE_GAS_PRICE_MAX_VAL&#x27;, &#x27;src_live&#x27;: &#x27;eth_getTransactionByHash 0xcf681aad @ 33391890 -&gt; gasPrice 0x989680; eth_getBlockReceipts 0x1fd8000 -&gt; effectiveGasPrice 0x989680 (ep=255 on that transaction)&#x27;}, {&#x27;name&#x27;: &#x27;zk counters (the second meter)&#x27;, &#x27;severity&#x27;: &#x27;high&#x27;, &#x27;note&#x27;: &#x27;EIGHT prover-side resources are metered alongside gas: totalSteps, arith, binary, memAlign, keccaks, padding, poseidon, sha256. They are budgeted PER BATCH, and the budget is a function of forkID: totalSteps is 2^23 below forkID 10, 2^24 at forkID 10, 2^25 from forkID 11 — minus a fixed 200 and then minus a safety margin of 5% by default, 2.5% at forkID 10, 1.25% at forkID 11. Note that `safetyPercentages` has no entry for forkID 12, so the LIVE fork falls back to the 5% default: the margin tightened at 11 and loosened again at 12. The other seven limits are derived from totalSteps by fixed ratios (arith = steps&gt;&gt;5, binary = steps&gt;&gt;4, keccaks = floor(steps/155286)*44, poseidon = floor(steps/31), sha256 = floor((steps-1)/31488)*7, padding = floor(steps/56)).&#x27;, &#x27;src&#x27;: &#x27;core/vm/zk_counters_limits.go:getCounterLimits, core/vm/zk_counters_limits.go:getTotalSteps, core/vm/zk_counters_limits.go:applyDeduction&#x27;}, {&#x27;name&#x27;: &#x27;batch data size limit&#x27;, &#x27;note&#x27;: &#x27;120,000 bytes of L1 batch data per batch, hardcoded to match the L1 contract.&#x27;, &#x27;src&#x27;: &#x27;zk/tx/tx.go:LIMIT_120_KB&#x27;}]</td></tr><tr><td>Note</td><td><p>HOW THE COUNTERS FAIL, characterised against the other rows that have a second meter. A transaction whose counters overflow is NOT reverted, NOT charged, and gets NO RECEIPT — CheckForOverflow returns true, the sequencer removes the attempted counters, marks the sender as skipped for the rest of the batch, and moves on. SingleTransactionOverflowCheck then re-runs it alone against an empty batch; if it still overflows, the hash is passed to handleBadTxHashCounter, which increments a persistent per-hash counter, and the transaction is discarded from the pool. So: gas is irrelevant to the outcome, the transaction can be perfectly funded, and the failure is invisible — no revert, no receipt, no error, the transaction simply never appears. That is Linea's shape (unminable, cached as bad) rather than Taiko's (the block is truncated but stays valid) or Moonbeam's (surfaces as OutOfGas with EVM gas left). It differs from Linea's in the resource being metered — Linea budgets arithmetization LINES per block, Polygon budgets prover STEPS per batch — and in one practical way that matters: Linea's zeroed budgets make specific precompiles permanently unminable while they still work in eth_call, whereas Polygon put its permanent refusals in the precompile map where eth_call sees them too. Polygon's counters are a size limit; Linea's are also a feature switch.</p></td></tr></tbody></table></div>
+<h2 id="header-fields">Header fields <span class="pill">7</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>The header is a PRE-LONDON Ethereum header: difficulty, mixHash, nonce, sha3Uncles and totalDifficulty are all present (and all zero or constant), while everything added from London onward is absent. A parser written against a 2026 mainnet header finds five missing fields; a parser written against a 2020 header works.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-basefeepergas"><td><code>baseFeePerGas</code></td><td><span class="s-removed" title="removed">➖</span></td><td>baseFeePerGas</td><td><div class="wrap">absent, not zero — London never activated<p class="src"><b>live</b> eth_getBlockByNumber @ 33391890 -&gt; key absent</p></div></td></tr><tr id="header-fields-withdrawalsroot"><td><code>withdrawalsRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>withdrawalsRoot</td><td><div class="wrap">no Shanghai</div></td></tr><tr id="header-fields-blobgasusedexcessblobgasparentbeaconblockroot"><td><code>blobGasUsed / excessBlobGas / parentBeaconBlockRoot</code></td><td><span class="s-removed" title="removed">➖</span></td><td>blobGasUsed / excessBlobGas / parentBeaconBlockRoot</td><td><div class="wrap">no Cancun</div></td></tr><tr id="header-fields-requestshash"><td><code>requestsHash</code></td><td><span class="s-removed" title="removed">➖</span></td><td>requestsHash</td><td><div class="wrap">no Prague</div></td></tr><tr id="header-fields-gaslimit"><td><code>gasLimit</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>gasLimit</td><td><div class="wrap">2^50 = 1125899906842624, a constant returned by GetBlockGasLimitForFork for any forkID &gt;= 7, not a market-adjusted value. (The source records that forkID 7 briefly used 2^64-1 and that the value was retro-assigned to fork 8 &quot;after a re-hash&quot;.) A block gas limit 37 million times mainnet&#x27;s is not a capacity claim — capacity is set by the zk counters, which the header does not mention. Any throughput or congestion model built on gasLimit is meaningless here.<p class="src"><b>src</b> zk/utils/gas_limit.go:GetBlockGasLimitForFork · <b>live</b> eth_getBlockByNumber @ 33391890 -&gt; gasLimit 0x4000000000000; eth_call GASLIMIT -&gt; same</p></div></td></tr><tr id="header-fields-stateroot"><td><code>stateRoot</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>stateRoot</td><td><div class="wrap">Not a Keccak Merkle-Patricia root. The state trie is a POSEIDON sparse Merkle tree (the smt/ package), so stateRoot is a field element — observed values start with a low byte for exactly that reason (0x02df6fea..., 0x94c51a12...). eth_getProof does not return an Ethereum MPT proof, and no mainnet light client or storage-proof verifier can check it. This is also why BLOCKHASH returning a state root is not merely the wrong value — it is a value from a different hash function. <span class="pill s-removed">silent</span><p class="src"><b>src</b> smt/pkg/smt/smt.go:NewSMT · <b>live</b> eth_getBlockByNumber 0x1fd8511 @ 33391890 -&gt; stateRoot 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d</p></div></td></tr><tr id="header-fields-extradata"><td><code>extraData</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>extraData</td><td><div class="wrap">empty (0x) on every block observed, where mainnet carries client vanity data.<p class="src"><b>live</b> eth_getBlockByNumber @ 33391890 -&gt; extraData 0x</p></div></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">1</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody><tr><td><code>forkID</code></td><td>Polygon zkEVM protocol version (forkID 4-13)</td><td><span class="pill">adopted</span></td><td><div class="wrap">Not an EIP series and not a fork-name series — a monotonic integer with codenames attached from 5 onwards (Dragonfruit, IncaBerry, Etrog, Elderberry, Elderberry2, -, -, Banana, Durian). forkID 4 is the lowest value the client knows; forkIDs 1-3 predate this client. The JSON keys leak the history: ForkID9Elderberry2Block serialises as &quot;forkID9FeijoaBlock&quot; (a codename that was renamed) and ForkID88ElderberryBlock as &quot;forkID88ElderberryBlock&quot; (a typo, still shipped).<p class="src"><b>src</b> erigon-lib/chain/zk_constants.go:ForkID12Banana</p></div></td></tr></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">11</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>BLOCKHASH RETURNS THE STATE ROOT. Not the block hash — the state root of that block, read out of a storage slot. Both are 32 bytes, nothing reverts, and the value looks entirely plausible. Verified at block 33391890: BLOCKHASH(33391889) equals that block&#x27;s `stateRoot` and not its `hash`. Commit-reveal, randomness and anchoring contracts ported here are wrong and silent.</li><li>MODEXP (0x05) IS DISABLED AND USED NOT TO BE. It worked at forkID 7 Etrog and stopped working at forkID 8 Elderberry, block 10742147. RIPEMD160 (0x03) and BLAKE2F (0x09) have been disabled since Etrog. All three REVERT — they do not return empty — and the caller keeps its forwarded gas, which is the opposite of Scroll&#x27;s identical-looking decision. RSA verification, some BLS libraries, and anything using modexp for a modular inverse are dead here.</li><li>THE FORK AXIS IS AN L1 EVENT, NOT A TIMESTAMP OR A BLOCK NUMBER. forkID is announced on Ethereum, applies from a BATCH number, and is turned into an L2 block number only by a node that has synced L1. The client ships no fork schedule for chain 1101 at all. There is no field to read, and `eth_getBlockByNumber` tells you nothing about which semantics were in force. Use zkevm_getForks.</li><li>FORK ID 10 NEVER HAPPENED, AND STILL CHANGED THE RULES. It has zero batches, but UpdateZkEVMBlockCfg assigns any unannounced forkID the previous fork&#x27;s block number, so every `IsForkID10()` gate in the client — including the end of the &quot;code must not end in PUSH1&quot; rejection and a doubling of the prover step budget — became true at forkID 9&#x27;s block. Skipped forks are not no-ops.</li><li>EVENT LOG DATA WAS CORRUPTED BY CONSENSUS FOR BLOCKS 10742147-19175238. `applyHexPadBug` hex-encodes the last 32-byte word of a log&#x27;s data, strips leading &#x27;0&#x27; characters at the string level, then re-pads — mangling the tail of any log whose data is not a multiple of 32 bytes. Before that range the data was zero-padded to 32; after forkID 12 it is untouched. Three encodings of the same field, and the middle one is a bug the chain froze rather than fixed.</li><li>EXTCODEHASH RETURNS ZERO FOR EVERY CODELESS ACCOUNT, funded or not, where EIP-1052 distinguishes &quot;exists with no code&quot; (keccak256 of empty) from &quot;does not exist&quot; (zero). Contract-detection and account-existence checks silently invert.</li><li>SELFDESTRUCT DOES NOT DESTROY ANYTHING. It sends the balance and stops. Code, storage and nonce survive, and the account keeps answering calls. EIP-6780 is explicitly commented out in the source to preserve this.</li><li>THE FEE YOU SIGN IS NOT THE FEE YOU PAY. The sequencer attaches a one-byte &quot;effective gas price percentage&quot; and the state transition rewrites gasPrice, feeCap and tip to signed*(ep+1)/256 before execution. Read effectiveGasPrice from the receipt; do not compute it.</li><li>NO EIP-1559 AT ALL. The header has no baseFeePerGas field, BASEFEE is an invalid opcode, and type-0x02 transactions are rejected from the pool as UnsupportedTx. The chain accepts exactly transaction types 0x00 and 0x01.</li><li>THE STATE TRIE IS A POSEIDON SMT, NOT AN MPT. stateRoot is a field element and eth_getProof does not produce an Ethereum-verifiable proof. Bridges and light clients that verify storage proofs against a Keccak MPT cannot verify anything here.</li><li>THE CHAIN APPEARS TO HAVE STOPPED. The head has been block 33391890, timestamped 2026-07-03, for 52 days across two independent endpoints, and 30,593 batches were produced but never sequenced to L1 — so five and a half million blocks sit above the last finalized one with no proof behind them. Whether this is a sunset or an outage is not established here, but any integration should check liveness before assuming the network is running.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Chain ID 1101 · role: <code>fork</code> · baseline: Berlin · single trusted sequencer, SNARK-verified on L1</strong></p>
+<p>Reference: <a href="https://github.com/0xPolygon/cdk-erigon">0xPolygon/cdk-erigon <code>v2.64.2</code></a> @ <code>03f20326</code>.</p>
+<p>Live probes at block <strong>33391890</strong> (<code>0x1fd8512</code>) on <code>https://zkevm-rpc.com</code>.</p>
+<p>This is <strong>not</strong> the <code>polygon</code> row. Chain 137 is Polygon PoS running <code>bor</code>, a go-ethereum
+fork at Prague with eleven repriced precompiles and one added transaction type. Chain
+1101 shares none of that: different client, different EVM implementation, different state
+trie, different fork axis, and a baseline seven mainnet forks older. The two rows have
+no lineage relationship beyond both descending, separately, from Ethereum.</p>
+<hr />
+<h2>1. The client in <code>CANDIDATES.md</code> is archived, and it was replaced rather than renamed</h2>
+<p><code>0xPolygonHermez/zkevm-node</code> 301-redirects to <code>0xPolygon/zkevm-node</code>, which is
+<strong>archived</strong>, last push <strong>2025-02-11</strong>. Two sibling repos moved further:
+<code>0xPolygonHermez/zkevm-contracts</code> is now <strong><code>agglayer/agglayer-contracts</code></strong> — a different
+organisation — and <code>zkevm-prover</code> is now <code>0xPolygon/zkevm-prover</code>, last touched
+2025-08-29.</p>
+<p>The replacement is not cosmetic. zkevm-node was a Go node driving a separate C++
+prover-executor; the chain now runs <strong>cdk-erigon</strong>, an Erigon fork that implements the
+zkEVM <em>inside</em> the execution client in Go. Confirmed live rather than inferred:</p>
+<pre><code>web3_clientVersion -&gt; &quot;cdk-erigon/v2.61.24/linux-amd64/go1.21.5&quot;
+</code></pre>
+<p>That makes <strong>three consecutive rows</strong> where CANDIDATES.md's coordinates were stale
+(gnosischain/gnosis 404s, InjectiveLabs/injective-core changed orgs, mantlenetworkio
+redirects). Checking that the repo still exists at the recorded path has now been a
+finding four times; it should be step zero, not a formality.</p>
+<p><em>(Pin note: the tag is <code>v2.64.2</code>, the newest non-prerelease. The public endpoint runs
+<code>v2.61.24</code>. This matters more than the usual tag/deployment gap because v2.64.2 contains
+<code>PrecompiledContractsForkID13Durian</code> and the Normalcy/MPT migration, neither of which any
+block on chain 1101 has ever selected. Where the two could differ, the row states what the
+live fork selects.)</em></p>
+<h2>2. <code>forkID</code> is a sixth fork-activation mechanism, and the only one not in the client</h2>
+<p>The Ethereum ladder is frozen by a chainspec of sentinels:</p>
+<pre><code class="language-json">// params/chainspecs/hermez.json
+&quot;berlinBlock&quot;: 0,
+&quot;londonBlock&quot;: 9999999999999999999999999999999999999999999999999,
+&quot;shanghaiTime&quot;: 9999999999999999999999999999999999999999999999999,
+&quot;cancunTime&quot;:   9999999999999999999999999999999999999999999999999,
+&quot;pragueTime&quot;:   9999999999999999999999999999999999999999999999999,
+</code></pre>
+<p>Everything that actually changes is gated on <strong>forkID</strong>, and <code>hermez.json</code> contains not
+one forkID field. <code>UpdateZkEVMBlockCfg</code> builds the node's <code>chain.Config</code> fork blocks <strong>at
+runtime</strong>, from the node's local database of <strong>Ethereum L1 events</strong>. A forkID is announced
+on L1, applies from a <strong>batch</strong> number, and becomes an L2 <strong>block</strong> number only inside a
+node that has synced L1.</p>
+<p>So, against the five mechanisms the dataset already had — OP Stack's timestamp equality,
+Avalanche's timestamps, Arbitrum's ArbOS version, Polygon PoS's block numbers, Moonbeam's
+governance-swapped WASM blob — forkID is a sixth with properties none of them share:</p>
+<ul>
+<li>the schedule is <strong>mutable from L1</strong> with no L2 client release;</li>
+<li>the canonical unit is the <strong>batch</strong>, and the block number is derived, so "which
+  semantics applied at block N" is answerable only with an L1-synced node;</li>
+<li>a forkID can be <strong>skipped</strong>, and one was.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>forkID</th>
+<th>first L2 block</th>
+<th>first batch</th>
+<th>what changed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>1</td>
+<td>2</td>
+<td>Berlin set; SELFDESTRUCT→SENDALL; log data zero-padded; log index per-tx</td>
+</tr>
+<tr>
+<td>5 Dragonfruit</td>
+<td>5,575,557</td>
+<td>813,267</td>
+<td><strong>PUSH0</strong> (a Shanghai opcode); effective-gas-price byte</td>
+</tr>
+<tr>
+<td>6 IncaBerry</td>
+<td>7,261,581</td>
+<td>1,228,917</td>
+<td></td>
+</tr>
+<tr>
+<td>7 Etrog</td>
+<td>9,890,792</td>
+<td>1,984,750</td>
+<td><code>changeL2Block</code>; gas limit → 2^50; <strong>0x03 and 0x09 disabled</strong></td>
+</tr>
+<tr>
+<td>8 Elderberry</td>
+<td>10,742,147</td>
+<td>1,998,875</td>
+<td><strong>0x05 MODEXP disabled</strong>; <code>applyHexPadBug</code>; log index per-block</td>
+</tr>
+<tr>
+<td>9 Elderberry2</td>
+<td>10,985,133</td>
+<td>2,001,443</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>10</strong></td>
+<td><strong>never</strong></td>
+<td><strong>none</strong></td>
+<td><em>skipped — and still changed the rules</em></td>
+</tr>
+<tr>
+<td>11</td>
+<td>16,482,669</td>
+<td>2,128,919</td>
+<td>prover step budget → 2^25</td>
+</tr>
+<tr>
+<td>12 Banana</td>
+<td>19,175,239</td>
+<td>2,150,230</td>
+<td><strong>current</strong>; log mangling removed</td>
+</tr>
+<tr>
+<td>13 Durian</td>
+<td><em>pending</em></td>
+<td>—</td>
+<td>coded in v2.64.2; would re-enable MODEXP and add P256VERIFY</td>
+</tr>
+</tbody>
+</table>
+<p><strong>forkID 10 never happened and still changed consensus.</strong> forkID 9 ends at batch 2128918
+and forkID 11 begins at 2128919 — zero batches in between. But <code>UpdateZkEVMBlockCfg</code>
+assigns any unannounced forkID <em>the previous fork's block number</em> ("using last set block
+number"), so every <code>IsForkID10()</code> gate in the client became true at forkID 9's block.
+Two rules ride on those gates: the end of the "contract code must not end in <code>PUSH1</code>"
+rejection, and a doubling of the prover step budget. A skipped fork is not a no-op.</p>
+<h2>3. Three tombstoned precompiles, and one of them changed status across a forkID</h2>
+<p><code>precompile_zkevm</code> switches on exactly two conditions —
+<code>IsForkID13Durian</code>, then <code>IsForkID8Elderberry</code> — with no branch for 9, 10, 11 or 12. So
+<strong>forkID 8's map has been the live map since block 10,742,147</strong> and still is.</p>
+<pre><code class="language-go">// core/vm/contracts_zkevm.go — PrecompiledContractForkID7Etrog
+{3}: &amp;ripemd160hash_zkevm{enabled: false},
+{5}: &amp;bigModExp_zkevm{enabled: true,  eip2565: true},   // &lt;-- working
+{9}: &amp;blake2F_zkevm{enabled: false},
+
+// PrecompiledContractsForkID8Elderberry
+{3}: &amp;ripemd160hash_zkevm{enabled: false},
+{5}: &amp;bigModExp_zkevm{enabled: false, eip2565: true},   // &lt;-- disabled
+{9}: &amp;blake2F_zkevm{enabled: false},
+</code></pre>
+<p><strong>MODEXP worked, then stopped.</strong> Same address, opposite behaviour, at block 10,742,147,
+with no Ethereum fork name on either side and nothing in a chainspec to read. It is
+scheduled to come back at forkID 13 Durian, which has never activated — so the honest
+description of <code>0x05</code> on this chain is <em>present → absent → (pending) present</em>, on an axis
+no Ethereum tool models. Every archive replay and historical simulation across that height
+is affected.</p>
+<p>Live at block 33391890:</p>
+<pre><code>eth_call 0x03 -&gt; error -32000 &quot;unsupported precompile&quot;
+eth_call 0x05 -&gt; error -32000 &quot;unsupported precompile&quot;
+eth_call 0x09 -&gt; error -32000 &quot;unsupported precompile&quot;
+eth_call 0x0a -&gt; 0x   (success, empty)
+eth_call 0x0100 -&gt; 0x (success, empty)
+</code></pre>
+<h3>The revert-vs-empty question, and a third channel: gas</h3>
+<p><code>ErrUnsupportedPrecompile</code> is classified as a revert by name:</p>
+<pre><code class="language-go">// core/vm/errors.go
+func IsErrTypeRevert(err error) bool {
+    return err == ErrExecutionReverted || err == ErrUnsupportedPrecompile
+}
+</code></pre>
+<p>and <code>call_zkevm</code> only zeroes the caller's gas <code>if !IsErrTypeRevert(err)</code>. <code>RequiredGas</code>
+also returns 0 when disabled, so nothing is pre-charged. Measured with a state-override
+<code>eth_call</code> that <code>STATICCALL</code>s each address forwarding 10,000 gas and returns
+<code>GAS_before − GAS_after</code>:</p>
+<table>
+<thead>
+<tr>
+<th>target</th>
+<th>success flag</th>
+<th>gas consumed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x02</code> SHA256 (works)</td>
+<td>1</td>
+<td><strong>182</strong></td>
+</tr>
+<tr>
+<td><code>0x03</code> RIPEMD160 (tombstoned)</td>
+<td>0</td>
+<td><strong>122</strong></td>
+</tr>
+<tr>
+<td><code>0x05</code> MODEXP (tombstoned)</td>
+<td>0</td>
+<td><strong>122</strong></td>
+</tr>
+<tr>
+<td><code>0x0a</code> (absent)</td>
+<td>1</td>
+<td><strong>2622</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Three readings from one probe at one block:</p>
+<ol>
+<li><strong><code>tombstoned</code> vs <code>removed</code> is directly visible</strong>: <code>0x05</code> reverts, <code>0x0a</code> succeeds
+   empty — Scroll's control case, reproduced on an unrelated chain and client.</li>
+<li><strong>The forwarded gas comes back.</strong> 122 gas is the harness itself; the disabled
+   precompile costs nothing and returns everything. This is the <strong>opposite of Scroll</strong>,
+   whose disabled precompiles raise a non-revert error that burns all forwarded gas, and
+   whose <code>0x03</code> is charged the full RIPEMD160 price before failing. Two chains, the same
+   three-precompile decision, opposite gas semantics — a caller wrapping the call in a
+   try/catch survives here and is drained there.</li>
+<li><strong>A gas channel distinguishes the two even when the outcome does not.</strong> The disable is
+   a <em>field on the precompile object</em> (<code>&amp;bigModExp_zkevm{enabled: false}</code>), not a missing
+   map entry, so the address stays in the map, stays in Berlin's pre-warmed access list,
+   and stays <strong>warm</strong> — 122 gas. An absent address is <strong>cold</strong> — 2622, a 2500-gas
+   difference. Where a chain's tombstone were to return empty rather than revert (the
+   Hyperliquid/Sei silent-failure shape), the warm/cold gas gap would still separate
+   "present but dead" from "never there". That is a detection method this dataset did not
+   have.</li>
+</ol>
+<h3>How this instance of the prover-constraint pattern differs</h3>
+<p>Fourth chain, fourth mechanism:</p>
+<table>
+<thead>
+<tr>
+<th>chain</th>
+<th>mechanism</th>
+<th>fails as</th>
+<th>visible in <code>eth_call</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OP Stack</td>
+<td>caps a single call's <strong>input size</strong></td>
+<td>revert</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Linea</td>
+<td>budgets prover <strong>lines per block</strong></td>
+<td>never selected, no receipt</td>
+<td><strong>no — it succeeds</strong></td>
+</tr>
+<tr>
+<td>Scroll</td>
+<td>disables the precompile, non-revert error</td>
+<td>error, <strong>all gas burned</strong></td>
+<td>yes</td>
+</tr>
+<tr>
+<td><strong>Polygon zkEVM</strong></td>
+<td>disables the precompile, revert-class error</td>
+<td>revert, <strong>gas returned</strong></td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>And on the expiry question Scroll raised: Polygon's restrictions are <strong>still live at the
+pinned block</strong>, not historical. Scroll lifted its 32-byte MODEXP cap at Galileo and its
+BN256 pairing cap at Feynman; zkSync's cap stands; Linea's became EIP-7823. Polygon went
+the other way — it <em>added</em> a restriction at forkID 8 and has not lifted it in four
+forkIDs. The reversal is coded (forkID 13 Durian) and unshipped.</p>
+<p>One respect in which Polygon's version is the <strong>friendliest</strong> of the four: because the
+refusal lives in the precompile map rather than in a block-building budget, <code>eth_call</code>,
+<code>eth_estimateGas</code> and forked-node tests all fail exactly as the chain does. Linea's
+zeroed budgets let RIPEMD160 succeed in simulation and be permanently unminable. Here,
+simulation and execution agree.</p>
+<h2>4. <code>BLOCKHASH</code> returns the state root</h2>
+<p>The sharpest silent divergence on this chain, and it is not a precompile.</p>
+<pre><code class="language-go">// core/vm/instructions_zkevm.go
+func opBlockhash_zkevm(...) {
+    num := scope.Stack.Peek()
+    num.Set(ibs.GetBlockStateRoot(num))     // storage read, not a header lookup
+}
+</code></pre>
+<p><code>GetBlockStateRoot</code> reads <code>keccak256(blockNumber, 1)</code> from the storage of
+<code>0x000000000000000000000000000000005ca1ab1e</code>, which the protocol populates each block
+with that block's <strong>state root</strong>. Proven at the pinned height:</p>
+<pre><code>eth_call BLOCKHASH(33391889)          -&gt; 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d
+eth_getBlockByNumber(0x1fd8511).stateRoot -&gt; 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d
+eth_getBlockByNumber(0x1fd8511).hash      -&gt; 0xeae67882ae615883e1f2b20a98478a709976c42ec4e99d57389f5f262c604731
+</code></pre>
+<p>Both values are 32 bytes, neither reverts, and the wrong one is entirely plausible. Every
+commit-reveal scheme, randomness beacon and L1-anchoring contract that compares
+<code>BLOCKHASH</code> against a hash fetched over JSON-RPC is silently wrong. There is also no
+visible 256-block window — it is a storage read, so arbitrarily old heights answer.</p>
+<p>Worse, the value is not even the same <em>kind</em> of hash. The state trie is a <strong>Poseidon
+sparse Merkle tree</strong> (<code>smt/</code>), not a Keccak MPT — which is why observed state roots begin
+with a low byte, they are field elements. <code>eth_getProof</code> does not return an
+Ethereum-verifiable proof, and no mainnet light client or storage-proof verifier can check
+one.</p>
+<p><code>NUMBER</code> reads slot 0 of the same account and <code>DIFFICULTY</code> is hardcoded to zero.</p>
+<h2>5. A category the schema does not have: a storage-only protocol account</h2>
+<p><code>0x…5ca1ab1e</code> has <strong>no bytecode</strong> — <code>eth_getCode</code> returns <code>0x</code> — and holds consensus-critical
+state that three opcodes read:</p>
+<pre><code>slot 0 -&gt; 0x1fd8512   (= the head block number)
+slot 2 -&gt; 0x6a47db80  (= the head timestamp)
+</code></pre>
+<p>It is not a precompile (no native dispatch, absent from all four forkID maps) and not a
+<code>system_contract</code> in this schema's sense (no EVM bytecode). It is a third thing, and it is
+recorded under <code>system_contracts</code> with the caveat stated, because omitting it would hide
+the mechanism behind two silent opcode redefinitions.</p>
+<p><strong>On the classification test</strong>: the dataset has established that <code>eth_getCode</code> does not
+decide precompile-vs-contract — Flare, Sonic, Cosmos EVM and Moonbeam all write decoy code
+at precompile addresses. Here the classification is made from the <strong>source map</strong>
+(<code>precompile_zkevm</code>'s four forkID maps); the probe only confirms it. <code>0x…5ca1ab1e</code>
+returning <code>0x</code> is evidence of the third category, <em>not</em> evidence that it is a precompile —
+which is exactly the inference the getCode-only test would make.</p>
+<h2>6. Event log data was corrupted by consensus for 8.4 million blocks</h2>
+<p><code>ApplyPaddingToLogsData</code> has three regimes, on a forkID axis:</p>
+<ul>
+<li><strong>forkID 4–7</strong>: <code>data</code> zero-padded at the end to a multiple of 32.</li>
+<li><strong>forkID 8–11</strong> (blocks 10,742,147 – 19,175,238): <code>applyHexPadBug</code> — hex-encode the last
+  32-byte word, right-pad the <em>string</em> to 64 characters, <strong>strip leading <code>'0'</code> characters</strong>,
+  re-prepend zeros, truncate. A nibble-level shift that mangles the tail of any log whose
+  data length is not a multiple of 32.</li>
+<li><strong>forkID 12</strong>: <code>if isForkId12 { return }</code> — no transformation. The bug is gone.</li>
+</ul>
+<p>The function is named <code>applyHexPadBug</code>. It is a bug the chain froze into consensus for
+four forkIDs and then dropped. An indexer re-deriving logs across that range must
+<em>reproduce</em> the bug to match the chain. Log <strong>indexing</strong> changed too: forkID 4–7 restart
+<code>logIndex</code> at zero per transaction rather than per block.</p>
+<p>A related receipt divergence with the same shape: before forkID 8,
+<code>CreateReceiptForBlockInfoTree</code> <strong>forces <code>status = 1</code></strong> on any receipt whose execution
+error was <code>ErrUnsupportedPrecompile</code> — a transaction that reverted on a disabled
+precompile was recorded as successful in the proven block-info tree. The comment reads
+<code>// [hack]TODO: remove this after bug is fixed</code>.</p>
+<h2>7. A Berlin envelope in 2026</h2>
+<p><code>baseline_fork: berlin</code>, derived from the chainspec, not from a blog post. Live-verified,
+opcode by opcode, at the pinned block:</p>
+<pre><code>PUSH0        -&gt; executes            (EIP-3855, Shanghai, arrived at forkID 5)
+BASEFEE      -&gt; invalid opcode
+TSTORE       -&gt; invalid opcode
+MCOPY        -&gt; invalid opcode
+BLOBHASH     -&gt; invalid opcode
+BLOBBASEFEE  -&gt; invalid opcode
+0x1e (CLZ)   -&gt; opcode 0x1e not defined
+GASLIMIT     -&gt; 0x4000000000000  (2^50)
+</code></pre>
+<p>The header has <strong>no <code>baseFeePerGas</code> key at all</strong> — absent, not zero — and no
+<code>withdrawalsRoot</code>, <code>blobGasUsed</code>, <code>excessBlobGas</code>, <code>parentBeaconBlockRoot</code> or
+<code>requestsHash</code>. It is a pre-London Ethereum header: <code>difficulty</code>, <code>mixHash</code>, <code>nonce</code>,
+<code>sha3Uncles</code>, <code>totalDifficulty</code> all present and all constant. A parser written against a
+2020 header works; one written against a 2026 header finds five fields missing.</p>
+<p>Transaction types follow: <code>!isLondon &amp;&amp; txn.Type == 0x2</code> is rejected as <code>UnsupportedTx</code>,
+blob and set-code types as <code>TypeNotActivated</code>. <strong>Chain 1101 accepts exactly <code>0x00</code> and
+<code>0x01</code></strong> — zero added type bytes, three removed. It took nothing from the <code>0x7f</code> ceiling
+that Arbitrum, Base, OP Stack and Polygon PoS have been consuming downward.</p>
+<p>One London EIP <em>is</em> live, by accident of code shape: <code>createZkEvm</code> rejects returned code
+beginning <code>0xEF</code> <strong>unconditionally</strong>, where upstream Erigon guards the same check with
+<code>IsLondon</code>. The zkEVM copy dropped the guard, so the chain enforces EIP-3541 without ever
+activating London.</p>
+<p>The batch encoding has its own, incompatible one-byte type space: legacy transactions are
+written as bare concatenated fields with no envelope, <code>fullRlpTxType = 15</code> prefixes a
+typed transaction, and <code>11</code> introduces a 9-byte <code>changeL2Block</code> record that creates block
+boundaries. Those bytes are not EIP-2718 types; the L1 batch data cannot be parsed with an
+Ethereum transaction decoder.</p>
+<h2>8. Two meters, and the fee you sign is not the fee you pay</h2>
+<p><strong>Effective gas price.</strong> The sequencer attaches a one-byte percentage to every transaction
+and the state transition rewrites <code>gasPrice</code>, <code>feeCap</code> <em>and</em> <code>tip</code> to
+<code>signed × (ep+1) / 256</code> before execution, from forkID 5 onward
+(<code>CalculateEffectiveGas</code>, <code>GetTxContext</code>). <code>ep = 0</code> charges 1/256 of the signed price. The
+byte travels in the L1 batch data, so it is consensus, not policy. <strong>A signature over a
+<code>gasPrice</code> is not a commitment to that <code>gasPrice</code> here</strong>; read <code>effectiveGasPrice</code> from the
+receipt rather than computing it.</p>
+<p><strong>Eight zk counters.</strong> <code>totalSteps, arith, binary, memAlign, keccaks, padding, poseidon,
+sha256</code>, budgeted <strong>per batch</strong>, with the budget a function of forkID: <code>totalSteps</code> is
+2^23 below forkID 10, 2^24 at 10, 2^25 from 11, minus 200 and then minus a safety margin.
+The margin is 5% by default, 2.5% at forkID 10, 1.25% at forkID 11 — and
+<code>safetyPercentages</code> has <strong>no entry for forkID 12</strong>, so the live fork falls back to the 5%
+default. The margin tightened at 11 and loosened again at 12, silently, because a map was
+not updated. The other seven limits are fixed ratios of <code>totalSteps</code>
+(<code>arith = steps&gt;&gt;5</code>, <code>keccaks = floor(steps/155286)*44</code>, <code>poseidon = floor(steps/31)</code>…).</p>
+<p><strong>How the second meter fails</strong>, characterised against the other rows that have one:</p>
+<p>A transaction that overflows counters is <strong>not reverted, not charged, and gets no
+receipt.</strong> <code>CheckForOverflow</code> returns true, the sequencer discards the attempted counters,
+marks the sender skipped for the rest of the batch, and moves on.
+<code>SingleTransactionOverflowCheck</code> then re-runs it alone against an empty batch; if it still
+overflows, <code>handleBadTxHashCounter</code> increments a persistent per-hash counter and the
+transaction is discarded from the pool.</p>
+<p>That is <strong>Linea's shape</strong> (unminable, cached as bad) rather than <strong>Taiko's</strong> (block
+truncated, stays valid) or <strong>Moonbeam's</strong> (surfaces as <code>OutOfGas</code> with EVM gas left). It
+differs from Linea's in the resource — Linea budgets arithmetization <em>lines per block</em>,
+Polygon budgets prover <em>steps per batch</em> — and in one way that matters practically: Linea
+uses zeroed budgets as a feature switch, making specific precompiles permanently unminable
+while they still work in <code>eth_call</code>. Polygon put its permanent refusals in the precompile
+map instead, so its counters are purely a <strong>size limit</strong>. Gas is irrelevant to the outcome
+either way: a perfectly funded transaction simply never appears.</p>
+<h2>9. <code>SELFDESTRUCT</code> does not destroy anything</h2>
+<pre><code class="language-go">// core/vm/instructions_zkevm.go — &quot;removed the actual self destruct at the end&quot;
+func opSendAll_zkevm(...) {
+    if beneficiaryAddr != callerAddr {
+        AddBalance(beneficiaryAddr, balance); SubBalance(callerAddr, balance)
+    }
+    return nil, errStopToken
+}
+</code></pre>
+<p>Balance moves, then STOP. No deletion mark, no code clearing, no storage clearing, no
+nonce reset. This is neither mainnet's pre-Cancun <code>SELFDESTRUCT</code> nor EIP-6780's
+same-transaction form — it is a third behaviour at <code>0xff</code>, live since forkID 4, and
+<code>enable6780</code> is <em>explicitly commented out</em> in the Cancun instruction-set builder with the
+reason given. A self-destructing proxy ported here keeps its code and keeps answering
+calls after "destruction".</p>
+<p>Related trap: cdk-erigon <strong>defines</strong> opcode <code>0xfb</code> as <code>SENDALL</code> in the disassembler and
+then wires it to <code>INVALID</code> in the live instruction set. The mnemonic exists; the opcode
+does not. A tracer will label an invalid opcode as a valid one.</p>
+<p><code>EXTCODEHASH</code> is redefined too: it returns the <strong>zero hash</strong> for any account with no code,
+where EIP-1052 returns <code>keccak256("")</code> for an <em>existing</em> codeless account and zero only
+for a non-existent one. Proven on a funded account at the pinned block — <code>BALANCE</code> returns
+<code>0x10470379026fd4e7</code>, <code>EXTCODEHASH</code> returns zero. Every "is this a contract?" and "does
+this account exist?" check inverts, silently.</p>
+<h2>10. The chain appears to have stopped</h2>
+<p>Recorded as an observation with the evidence attached, not as an editorial. At probe time:</p>
+<pre><code>eth_blockNumber            -&gt; 0x1fd8512  (33,391,890)
+that block's timestamp     -&gt; 1783094144  = 2026-07-03 15:54:44 UTC   (52 days stale)
+eth_syncing                -&gt; false
+finalized block            -&gt; 0x1a67ec0  (27,688,640), timestamp 2025-12-03
+zkevm_batchNumber          -&gt; 0x222f44   (2,240,324)   trusted
+zkevm_virtualBatchNumber   -&gt; 0x21b7c3   (2,209,731)   sequenced to L1
+zkevm_verifiedBatchNumber  -&gt; 0x21b7c3   (2,209,731)   proved on L1
+</code></pre>
+<p>The head did not move across 24 hours, and <code>polygon-zkevm.drpc.org</code> reports the identical
+head — two independent endpoints. <strong>30,593 batches were produced and never posted to L1</strong>,
+and 5,703,250 blocks — 17% of the chain's history — sit above the last finalized block
+with no proof behind them.</p>
+<p><code>chain.live</code> is therefore set to <code>false</code>, the only row in the dataset with that value.
+Whether this is a permanent sunset or a long outage is <strong>not established here</strong>; the
+observation is pinned and reproducible either way.</p>
+<h2>One row, not two: why there is no <code>role: template</code> CDK row</h2>
+<p>The case <em>for</em> one existed and is real. <code>params/chainspecs/xlayer-mainnet.json</code> is
+byte-identical to <code>hermez.json</code> except for <code>ChainName</code> and <code>chainId</code>; <code>zk_chain_config.go</code>
+hardcodes eight chain IDs (195, 196, 1101, 2440, 2442, 10010, 999999, 123) that make
+<code>IsZk()</code> true; and the forkID axis is per-deployment by construction — two CDK chains on
+one client version at different forkIDs genuinely have different precompile sets. That is
+<code>template</code> shape: optional-per-deployment rather than inherited wholesale.</p>
+<p>It was rejected for one reason: <strong>a template row would assert facts about chains from
+which nothing was established.</strong> Emitting <code>role: template</code> for CDK would put X Layer,
+Immutable and Astar zkEVM under a node claiming a disabled MODEXP, a state-root
+<code>BLOCKHASH</code> and a Berlin baseline, and every one of those is a function of <em>that chain's
+own forkID and its own L1 rollup contract</em>, neither of which was read. X Layer runs its
+own fork of this client (the repo ships <code>xlayerconfig-mainnet.yaml.example</code> alongside
+<code>hermezconfig-mainnet.yaml.example</code>, and the OKX fork is not public at the coordinates
+tried).</p>
+<p>And "CDK" is no longer one codebase. <code>0xPolygon/cdk</code> is an orchestrator, not an EVM;
+<code>0xPolygon/cdk-validium-node</code> is a separate node; <code>0xPolygon/cdk-op-reth</code> (pushed
+2026-08-10) puts CDK on the OP Stack with reth. A template row would have to describe a
+family that no longer shares an EVM — precisely the overstatement <code>role: template</code> exists
+to prevent.</p>
+<p>What a future CDK template row would need: one live probe of X Layer's <code>zkevm_getForks</code>
+and <code>eth_call 0x05</code>, to establish whether the forkID axis moves independently per
+deployment. If it does, the shared node holds the <em>mechanism</em> (forkID gating, counters,
+SENDALL, the scalable account) and each chain holds its own forkID — which is exactly the
+<code>template</code> contract. The evidence for that is one probe away and was not gathered here.</p>
+<h2>Not established here</h2>
+<ul>
+<li><strong>Whether the chain is sunset or merely stalled.</strong> Section 10 states what was observed
+  and stops. No L1 archive access was available to date the last <code>sequenceBatches</code>.</li>
+<li><strong>EIP-7823 / MODEXP operand bounds.</strong> Marked <code>unrecorded</code> rather than guessed. MODEXP is
+  disabled outright, so there is no width cap to compare against 1024 bytes. If forkID 13
+  ever activates, <code>bigModExp_zkevm.Run</code> has no width check and this becomes <code>removed</code> —
+  but that is a prediction, not a measurement.</li>
+<li><strong>Whether type-0x01 (access list) transactions actually appear on chain.</strong> The pool
+  accepts them and the source path exists; the block census at the pinned height found
+  only type <code>0x0</code>.</li>
+<li><strong>The precompile extractor.</strong> <code>verify.py</code> reports <code>! NO EXTRACTOR</code> for this slug — the
+  precompile list is taken from a hand-read of four Go maps and confirmed by probe, not
+  cross-checked mechanically.</li>
+<li><strong><code>CREATE2</code> address derivation.</strong> <code>opCreate2_zkevm</code> differs from upstream only in gas
+  bookkeeping and revert-data handling; the derivation itself was not traced to
+  <code>crypto.CreateAddress2</code>, so it is stated nowhere in the row rather than asserted as
+  inherited.</li>
+<li><strong>Whether forkIDs 1–3 existed on mainnet.</strong> <code>ForkID4</code> is the lowest constant the client
+  knows and <code>zkevm_getForks</code> starts at 4.</li>
+</ul>
+<hr />
+<h2>Re-verify</h2>
+<pre><code class="language-sh">git clone --depth 1 --branch v2.64.2 https://github.com/0xPolygon/cdk-erigon
+cd cdk-erigon &amp;&amp; git rev-parse HEAD    # 03f20326c5ae5acf8cac32159dd03aeb244d6913
+
+# the repo moves — both 301 to a different org, one to an archived repo
+curl -sI https://api.github.com/repos/0xPolygonHermez/zkevm-node | grep -i location
+curl -sL https://api.github.com/repos/0xPolygonHermez/zkevm-node  | grep -E '&quot;full_name&quot;|&quot;archived&quot;'
+curl -sL https://api.github.com/repos/0xPolygonHermez/zkevm-contracts | grep '&quot;full_name&quot;'
+
+# baseline: Berlin at 0, everything after London a sentinel
+cat params/chainspecs/hermez.json
+
+# the four forkID precompile maps — note enabled:true at Etrog, enabled:false at Elderberry
+sed -n '48,99p' core/vm/contracts_zkevm.go
+sed -n '29,50p'  core/vm/evm_zkevm.go          # precompile_zkevm: only 13 and 8 are tested
+
+# disabled precompiles raise a REVERT-class error, so gas is returned
+grep -n -A 3 &quot;func IsErrTypeRevert&quot; core/vm/errors.go
+grep -n -B 2 -A 4 &quot;IsErrTypeRevert(err)&quot; core/vm/evm_zkevm.go
+
+# the fork axis is built at runtime from L1, and skipped forks inherit a block
+sed -n '112,143p' zk/utils/utils.go
+cat erigon-lib/chain/zk_constants.go
+
+# BLOCKHASH, NUMBER, DIFFICULTY, EXTCODEHASH, SELFDESTRUCT
+sed -n '/func opExtCodeHash_zkevm/,/^}/p;/func opBlockhash_zkevm(/,/^}/p;/func opNumber_zkevm/,/^}/p;/func opDifficulty_zkevm/,/^}/p;/func opSendAll_zkevm/,/^}/p' core/vm/instructions_zkevm.go
+sed -n '/func (sdb \*IntraBlockState) GetBlockStateRoot/,/^}/p' core/state/intra_block_state_zkevm.go
+grep -n &quot;enable6780&quot; core/vm/jump_table_zkevm.go        # commented out, with the reason
+
+# the enshrined log bug and the forced status=1 receipt
+sed -n '39,92p' core/types/log_zkevm.go
+sed -n '294,302p' core/blockchain_zkevm.go
+
+# two meters
+sed -n '/func CalculateEffectiveGas/,/^}/p' core/state_transition.go
+sed -n '9,32p;82,120p' core/vm/zk_counters_limits.go
+sed -n '653,676p' zk/stages/stage_sequence_execute.go   # overflow -&gt; discarded, never mined
+
+# no 1559, no blobs, no 7702 in the pool
+sed -n '837,842p;896,900p' zk/txpool/pool.go
+cat zk/utils/gas_limit.go
+</code></pre>
+<p>Live probes, all at block <code>33391890</code> (<code>0x1fd8512</code>) on <code>https://zkevm-rpc.com</code>:</p>
+<pre><code class="language-sh">R=https://zkevm-rpc.com; B=0x1fd8512
+c(){ curl -s -X POST $R -H 'content-type: application/json' -d &quot;$1&quot;; echo; }
+
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;web3_clientVersion&quot;,&quot;params&quot;:[]}'   # cdk-erigon, not zkevm-node
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;zkevm_getForks&quot;,&quot;params&quot;:[]}'       # forkID 10 is missing
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;zkevm_getForkId&quot;,&quot;params&quot;:[]}'      # 0xc
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_blockNumber&quot;,&quot;params&quot;:[]}'      # frozen at 0x1fd8512
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getBlockByNumber&quot;,&quot;params&quot;:[&quot;finalized&quot;,false]}'
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;zkevm_batchNumber&quot;,&quot;params&quot;:[]}'
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;zkevm_verifiedBatchNumber&quot;,&quot;params&quot;:[]}'
+
+# tombstoned (error) vs removed (success, empty) — one block, one probe
+for a in 01 02 03 04 05 06 07 08 09 0a; do
+  c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x00000000000000000000000000000000000000$a\&quot;,\&quot;data\&quot;:\&quot;0x\&quot;},\&quot;$B\&quot;]}&quot;
+done
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;0x0000000000000000000000000000000000000100\&quot;,\&quot;data\&quot;:\&quot;0x\&quot;},\&quot;$B\&quot;]}&quot;
+
+# gas channel: STATICCALL forwarding 10000 gas, returns GAS_before - GAS_after
+# 0x05 -&gt; 122 (warm, revert, gas returned) | 0x02 -&gt; 182 | 0x0a -&gt; 2622 (cold, absent)
+A=0x00000000000000000000000000000000deadbeef
+probe(){ c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_call\&quot;,\&quot;params\&quot;:[{\&quot;to\&quot;:\&quot;$A\&quot;,\&quot;gas\&quot;:\&quot;0x100000\&quot;},\&quot;$B\&quot;,{\&quot;$A\&quot;:{\&quot;code\&quot;:\&quot;$1\&quot;}}]}&quot;; }
+probe 0x5a60006000600060006005612710fa505a900360005260206000f3   # 0x05
+probe 0x5a60006000600060006002612710fa505a900360005260206000f3   # 0x02
+probe 0x5a6000600060006000600a612710fa505a900360005260206000f3   # 0x0a
+
+# BLOCKHASH returns the STATE ROOT
+probe 0x6301fd85114060005260206000f3
+c '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getBlockByNumber&quot;,&quot;params&quot;:[&quot;0x1fd8511&quot;,false]}'
+
+# EXTCODEHASH is zero for a funded, codeless account
+probe 0x73d6f0feeaab8eac205b182d51ae05b588a132be5a3f60005260206000f3   # -&gt; 0x00..00
+probe 0x73d6f0feeaab8eac205b182d51ae05b588a132be5a3160005260206000f3   # BALANCE -&gt; non-zero
+
+# Berlin envelope
+probe 0x5f60005260206000f3           # PUSH0        -&gt; executes
+probe 0x4860005260206000f3           # BASEFEE      -&gt; invalid opcode
+probe 0x600160005d5f5c60005260206000f3  # TSTORE     -&gt; invalid opcode
+probe 0x5e60005260206000f3           # MCOPY        -&gt; invalid opcode
+probe 0x4a60005260206000f3           # BLOBBASEFEE  -&gt; invalid opcode
+probe 0x1e60005260206000f3           # CLZ          -&gt; not defined
+probe 0x4560005260206000f3           # GASLIMIT     -&gt; 0x4000000000000
+
+# the storage-only protocol account
+c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x000000000000000000000000000000005ca1ab1e\&quot;,\&quot;$B\&quot;]}&quot;
+for s in 0x0 0x2; do c &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getStorageAt\&quot;,\&quot;params\&quot;:[\&quot;0x000000000000000000000000000000005ca1ab1e\&quot;,\&quot;$s\&quot;,\&quot;$B\&quot;]}&quot;; done
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh polygon-zkevm    # fetch the pinned evidence
+tools/verify.py polygon-zkevm   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/polygon-zkevm/chain.yaml</code> · <code>chains/polygon-zkevm/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

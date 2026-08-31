@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rollkit / Evolve (ev-node + ev-reth) · EVM-intel</title>
+<meta name="description" content="The Plasma row is the near-precedent — an execution layer that is upstream reth — and Rollkit is the instructive contrast. Plasma runs reth UNMODIFIED and the finding was the emptiness.">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Rollkit / Evolve (ev-node + ev-reth)</h1>
+<p class="lede">The Plasma row is the near-precedent — an execution layer that is upstream reth — and Rollkit is the instructive contrast. Plasma runs reth UNMODIFIED and the finding was the emptiness.</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><span class="s-inherited">—  not a chain</span></td></tr><tr><td>Role</td><td><span class="pill">template</span></td></tr><tr><td>Baseline fork</td><td><code>prague</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Forked from</td><td>reth (via evstack/ev-reth); ev-node itself contains no EVM</td></tr><tr><td>Sync point</td><td>ev-reth v0.5.2 pins reth as a Cargo dependency and adds crates around it; it does NOT vendor a modified interpreter. The EVM opcode/gas semantics are upstream reth&#x27;s. Eden mainnet reports `reth/v2.2.0-88505c7/x86_64-unknown-linux-gnu` from `web3_clientVersion` — ev-reth does not rename itself, so a probe CANNOT distinguish an Evolve chain from stock reth by client string.</td></tr><tr><td>Consensus</td><td>Single centralized sequencer (ev-node in aggregator mode). Optional Raft cluster for sequencer HA, not for consensus. Celestia supplies DATA AVAILABILITY and, for the forced-inclusion namespace only, ORDERING. · block time per deployment (pkg/config/defaults.go default 1s; Eden runs 100ms). With LazyMode enabled, blocks are produced only when transactions arrive, plus one heartbeat block every LazyBlockInterval (default 60s).</td></tr><tr><td>Note</td><td><p>NOT A CHAIN. "Rollkit" is now <code>evstack/ev-node</code> — github.com/rollkit/rollkit 301-redirects to github.com/evstack/ev-node, and the product is branded "Evolve". ev-node is a sovereign-rollup node: it sequences, signs and posts to a DA layer (Celestia in practice) and drives a SEPARATE execution client over the Engine API. It is execution-agnostic; the EVM path is the in-repo adapter <code>execution/evm</code> plus a reth fork, <code>evstack/ev-reth</code>. Why <code>template</code> and not <code>stack</code>: every EVM-visible divergence below is per-deployment configuration, not inherited code. ev-reth reads a <code>config.evolve</code> stanza out of the chainspec — base-fee sink, EIP-1559 parameters, contract size limit, deploy allowlist, mint admin, proposer admin — each with its own <code>...ActivationHeight</code> (crates/node/src/config.rs:ChainspecEvolveConfig). ev-node reads block time, lazy mode, sequencer kind and the three Celestia namespaces from per-node config (pkg/config/defaults.go:DefaultConfig). Two Evolve EVM chains can therefore disagree about whether the base fee is burned, how big a contract may be, and whether native token can be minted. No descendant is describable by pointing at this row, which is exactly SCHEMA.md's <code>template</code> test. Nearly every entry below carries <code>availability: optional</code>. IS THE ROW WARRANTED? Yes, but on narrower grounds than op-stack. The shared artifact here is a genuinely shared BINARY PAIR (ev-node + ev-reth, both released and tagged, ev-reth published as ghcr.io/evstack/ev-reth), not a codebase each descendant forks — which is what disqualified Frontier, Polygon CDK and BeaconKit. What is thin is the DESCENDANT LIST: exactly one live EVM deployment could be identified (Eden mainnet, chain 714, run by Celestia's own org), so this row is a template with one confirmed instance. See <code>deployments</code> below.</p></td></tr><tr><td>Lineage note</td><td><p>The Plasma row is the near-precedent — an execution layer that is upstream reth — and Rollkit is the instructive contrast. Plasma runs reth UNMODIFIED and the finding was the emptiness. ev-reth is a real fork: it adds a transaction type, two precompiles, a custom payload builder, a custom consensus rule and a base-fee handler. The EVM <em>interpreter</em> is stock; the <em>block</em> around it is not.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/evstack/ev-node">ev-node (Evolve)</a> <code>v1.2.3</code></td></tr><tr><td>Pinned commit</td><td><code>d76e0dfcb0ffa3384d875fa2538eeb9a5321b335</code></td></tr><tr><td>Language</td><td>go</td></tr><tr><td>Built on</td><td>libp2p, go-header, Celestia DA client; drives the EL over the Engine API</td></tr><tr><td>Companion repos</td><td>https://github.com/evstack/ev-reth v0.5.2</td></tr><tr><td>Client note</td><td><p>v1.2.3 is the newest non-prerelease tag on the monorepo. The EVM adapter is a Go submodule inside it (execution/evm, separately tagged execution/evm/v1.1.1). The redirect from rollkit/rollkit is what establishes the rename; there is no separate <code>rollkit/go-execution-evm</code> any more — it redirects to evstack/go-execution-evm and its code now lives in-tree.</p></td></tr><tr><td>Live probe</td><td><code>https://rpc.eden.gateway.fm/</code> · chain_id 714 · observed at block <code>182440651</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 36 · <code>src_live:</code> 20 · <code>src_doc:</code> 4</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">2</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-ordered-then-invalid">A transaction ordered before it is executed has seven different fates<a class="anchor" href="#f-ordered-then-invalid">#</a></h3><p class="lede">Mainnet checks nonce, balance and gas price <em>before</em> a transaction is ordered, so "ordered but invalid" is not a state it can reach. Every chain that separates ordering from execution has to invent an answer, and the rows here have invented seven. There is no portable answer to "was my transaction included".</p><p><strong>Erases it.</strong> The builder logs a <code>warn!</code> and does not append; <code>eth_getTransactionReceipt</code> returns null forever.</p><p class="tags"><a href="../method.html#f-ordered-then-invalid">Full note · Reference</a> · also on <a href="../chains/conflux.html#f-ordered-then-invalid">Conflux</a> · <a href="../chains/iota-evm.html#f-ordered-then-invalid">IOTA EVM</a> · <a href="../chains/artela.html#f-ordered-then-invalid">Artela</a> · <a href="../chains/taraxa.html#f-ordered-then-invalid">Taraxa</a> · <a href="../chains/autonomys.html#f-ordered-then-invalid">Auto EVM</a> · <a href="../chains/berachain.html#f-ordered-then-invalid">Bera</a> · <a href="../chains/rise.html#f-ordered-then-invalid">RISE</a> · <a href="../chains/megaeth.html#f-ordered-then-invalid">MegaETH</a> · <a href="../chains/monad.html#f-ordered-then-invalid">Monad</a> · <a href="../chains/hedera.html#f-ordered-then-invalid">Hedera</a></p></div>
+<div class="finding"><h3 id="f-finality-tag-is-not-finality">The <code>finalized</code> block tag means something different on every chain that has one<a class="anchor" href="#f-finality-tag-is-not-finality">#</a></h3><p class="lede">Any chain speaking the Engine API inherits Ethereum's <code>safe</code> and <code>finalized</code> block tags whether or not it has anything to put behind them, and the rows here fill them with incompatible meanings — with nothing in the RPC response to tell the cases apart.</p><p>Fills them by arithmetic — <code>safe = head-2</code>, <code>finalized = head-3</code> — under a source comment calling it "a temporary mock value until proper DA-based finalization is wired up". The DA-driven update that would make them meaningful is overwritten by the next block, ten times a second, leaving <code>finalized</code> 0.7 s behind head on a chain whose data layer settles every 6 s: strictly weaker than <code>latest</code> plus a fixed wall-clock delay.</p><p class="tags"><a href="../axes/fees-envelope.html#f-finality-tag-is-not-finality">Full note · Fees &amp; envelope</a> · also on <a href="../chains/autonomys.html#f-finality-tag-is-not-finality">Auto EVM</a> · <a href="../chains/iota-evm.html#f-finality-tag-is-not-finality">IOTA EVM</a> · <a href="../chains/rise.html#f-finality-tag-is-not-finality">RISE</a> · <a href="../chains/megaeth.html#f-finality-tag-is-not-finality">MegaETH</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">7</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">precompiles</span></td><td><code>0x000000000000000000000000000000000000f100</code> Native token mint/burn (INativeToken)</td><td><div class="wrap">mint(address,uint256) and burn(address,uint256) write account balances directly through the EVM internals API — arbitrary, unbacked native supply change, callable by the configured admin and by any address the admin adds to an on-precompile allowlist. There is no event and no log; the README states plainly that these operations emit nothing. Total native supply on a Rollkit chain is therefore not conserved and not auditable from logs. Eden mainnet has this ACTIVE from genesis with the admin set to an upgradeable proxy at 0x...Ad00. Second finding at the same address: this precompile is the only one on the chain that has CODE. ev-reth installs a one-byte `0xFE` bytecode at 0xF100 so `EXTCODESIZE` is 1 and Solidity&#x27;s extcode guard on a typed external call passes. Confirmed live and contrasted against the standard precompiles, which all return empty code. It sits exactly on SCHEMA.md&#x27;s precompile / system_contract boundary and satisfies neither definition cleanly.</div></td></tr><tr><td><span class="pill">precompiles</span></td><td><code>0x000000000000000000000000000000000000f101</code> Proposer control (IProposerControl)</td><td><div class="wrap">setNextProposer(bytes32) stores the ev-node signer that must sign the NEXT block. Execution state therefore selects consensus leadership: an EVM transaction rotates the sequencer. The precompile validates only that the value is non-zero, so a wrong 32 bytes stalls the chain until another rotation. It rejects DELEGATECALL by design (msg.sender would be the original EOA). The dangerous case is BEFORE the activation height, and ev-reth&#x27;s own README says it: a call to 0xF101 is then an ordinary call to an empty account, which SUCCEEDS and writes nothing. A rotation transaction sent one block early gets a status-1 receipt and has no effect. NOT ACTIVE on Eden — nextProposer() returns empty and the address has no code, which is exactly the `availability: optional` case: this row records what a deployment MAY have.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-1559</td><td><div class="wrap">THE BASE FEE IS NOT BURNED. ev-reth intercepts the `reward_beneficiary` hook and credits `base_fee_per_gas * gas_used` to a configured sink address, so total supply is unchanged by fees. The elasticity multiplier and max-change denominator are also chainspec overrides, so the base-fee update rule itself is per-deployment: Eden runs denominator 5000 and elasticity 10 against mainnet&#x27;s 8 and 2, which makes its base fee move ~625x more slowly than mainnet&#x27;s per block. Confirmed live to the wei: at block 182440651, gasUsed 127872 and baseFeePerGas 1480, and the sink&#x27;s balance rose by exactly 189250560 = 1480 * 127872 across that block.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-4788</td><td><div class="wrap">The header field survives; the mechanism does not. ev-node hard-codes `parentBeaconBlockRoot` to the zero hash in every payload it builds, and ev-reth&#x27;s payload builder hard-codes `Some(B256::ZERO)` too. The beacon-roots system contract at 0x000F3df6...Beac02 is NOT deployed, so the ring buffer is never written and never readable. A contract reading `block.parentBeaconBlockRoot` (or the 4788 contract) on a Rollkit chain gets a constant zero, or an empty return, with no revert — which is exactly the silent-wrong-answer class.</div></td></tr><tr><td><span class="pill">eips</span></td><td>EIP-4399</td><td><div class="wrap">PREVRANDAO IS THE BLOCK NUMBER. ev-node computes the prevRandao payload attribute as `common.BigToHash(new(big.Int).SetUint64(blockHeight))` — a one-line function with no entropy input at all. Confirmed live: at heights 182440253-182440258 the mixHash values are 0x...0adfd13d through 0x...0adfd142, i.e. the height, zero-padded. Any contract using `block.prevrandao` as randomness on a Rollkit chain is using a counter that anyone can predict arbitrarily far ahead. It does not revert, does not look constant, and passes a &quot;is it nonzero, is it changing&quot; smoke test.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> PREVRANDAO</td><td><div class="wrap">equals the block number. See eips.4399.</div></td></tr><tr><td><span class="pill">opcodes</span></td><td><code>?</code> TIMESTAMP</td><td><div class="wrap">NOT STRICTLY INCREASING. ev-node passes seconds to the Engine API while producing blocks far faster than 1 Hz, and ev-reth ships a custom consensus rule that accepts `header.timestamp &gt;= parent.timestamp` instead of `&gt;`. On Eden, ten consecutive blocks share one timestamp value. Any contract using block.timestamp as a unique key, a monotonic clock, a rate limiter, or a per-block nonce is wrong here, and wrong silently.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>A deployment has no named hard forks of its own. Upgrading means restarting every node on a new ev-reth binary and, for the <code>evolve</code> stanza, a chainspec edit — which is why each option carries an <code>...ActivationHeight</code> so operators can stage the change. Those activation heights are the closest thing to a fork schedule this framework has, and they are not published in any block header.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>genesis (homestead..prague)</code></td><td><span class="pill">active</span></td><td>1970-01-01</td><td>prague</td><td><div class="wrap"></div></td></tr><tr><td><code>osaka</code></td><td><span class="pill">pending</span></td><td>per-deployment osakaTime; Eden sets 97000000, unreached at the probed block</td><td>osaka</td><td><div class="wrap"></div></td></tr><tr><td><code>amsterdam</code></td><td><span class="pill">pending</span></td><td>per-deployment amsterdamTime; ev-node already speaks engine_forkchoiceUpdatedV4 / getPayloadV6 / newPayloadV5 and derives slotNumber from rollup height</td><td>amsterdam</td><td><div class="wrap"></div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> execution/evm/docker/chain/genesis.json:pragueTime</p>
+<h2 id="eips">EIP deltas <span class="pill">13</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-170"><td><a href="https://eips.ethereum.org/EIPS/eip-170">EIP-170</a></td><td><span class="s-modified" title="modified">⚠️◐</span></td><td></td><td><div class="wrap">The 24576-byte contract size limit is a chainspec value. Default is EIP-170&#x27;s 24 KiB (crates/node/src/config.rs:DEFAULT_CONTRACT_SIZE_LIMIT); Eden mainnet sets 131072, i.e. 128 KiB, active from genesis. This is the second row in this dataset to move EIP-170 (Berachain is the other) and the first where the limit is per-deployment configuration rather than a client constant, so tooling cannot assume a single value for &quot;a Rollkit chain&quot;.<p class="src"><b>src</b> crates/node/src/config.rs:DEFAULT_CONTRACT_SIZE_LIMIT, crates/ev-revm/src/factory.rs:contract_size_limit_for_block · <b>doc</b> <a href="https://github.com/celestiaorg/eden-docs/blob/main/public/eden-artifacts/mainnet/ev-reth.genesis.json">https://github.com/celestiaorg/eden-docs/blob/main/public/eden-artifacts/mainnet/ev-reth.genesis.json</a></p></div></td></tr><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️◐</span></td><td></td><td><div class="wrap">THE BASE FEE IS NOT BURNED. ev-reth intercepts the `reward_beneficiary` hook and credits `base_fee_per_gas * gas_used` to a configured sink address, so total supply is unchanged by fees. The elasticity multiplier and max-change denominator are also chainspec overrides, so the base-fee update rule itself is per-deployment: Eden runs denominator 5000 and elasticity 10 against mainnet&#x27;s 8 and 2, which makes its base fee move ~625x more slowly than mainnet&#x27;s per block. Confirmed live to the wei: at block 182440651, gasUsed 127872 and baseFeePerGas 1480, and the sink&#x27;s balance rose by exactly 189250560 = 1480 * 127872 across that block.<p class="src"><b>src</b> crates/ev-revm/src/base_fee.rs:BaseFeeRedirect, crates/node/src/chainspec.rs:base_fee_elasticity_multiplier · <b>live</b> eth_getBalance(0x0337d738074c83B6133940051490c7c6080a5094) @ 182440650 -&gt; 0x2c6984933f8c568e2, @ 182440651 -&gt; 0x2c6984934040d24e2, delta 189250560 == baseFeePerGas*gasUsed</p></div></td></tr><tr id="eips-2935"><td><a href="https://eips.ethereum.org/EIPS/eip-2935">EIP-2935</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">Prague is active by chainspec timestamp but the history-storage contract at 0x0000F90827F1...002935 has no code, on Eden and in ev-node&#x27;s own example genesis alloc. BLOCKHASH therefore keeps its pre-Prague 256-block window, which at Eden&#x27;s 100ms block time is TWENTY-FIVE SECONDS of history rather than mainnet&#x27;s ~54 minutes.<p class="src"><b>live</b> eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 182440651 -&gt; 0x</p></div></td></tr><tr id="eips-3860"><td><a href="https://eips.ethereum.org/EIPS/eip-3860">EIP-3860</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Whether raising `contractSizeLimit` also raises the EIP-3860 initcode cap (revm normally derives it as 2x the code limit) was not established from source, and no deployment probe distinguishes the two. Deploying a &gt;49152-byte initcode against Eden would settle it.</div></td></tr><tr id="eips-4399"><td><a href="https://eips.ethereum.org/EIPS/eip-4399">EIP-4399</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">PREVRANDAO IS THE BLOCK NUMBER. ev-node computes the prevRandao payload attribute as `common.BigToHash(new(big.Int).SetUint64(blockHeight))` — a one-line function with no entropy input at all. Confirmed live: at heights 182440253-182440258 the mixHash values are 0x...0adfd13d through 0x...0adfd142, i.e. the height, zero-padded. Any contract using `block.prevrandao` as randomness on a Rollkit chain is using a counter that anyone can predict arbitrarily far ahead. It does not revert, does not look constant, and passes a &quot;is it nonzero, is it changing&quot; smoke test.<p class="src"><b>src</b> execution/evm/execution.go:derivePrevRandao · <b>live</b> eth_getBlockByNumber @ 182440253..182440258 -&gt; mixHash 0x...0adfd13d .. 0x...0adfd142, equal to the block number in each case</p></div></td></tr><tr id="eips-4788"><td><a href="https://eips.ethereum.org/EIPS/eip-4788">EIP-4788</a></td><td><span class="s-modified" title="modified — silent divergence">⚠️</span></td><td></td><td><div class="wrap">The header field survives; the mechanism does not. ev-node hard-codes `parentBeaconBlockRoot` to the zero hash in every payload it builds, and ev-reth&#x27;s payload builder hard-codes `Some(B256::ZERO)` too. The beacon-roots system contract at 0x000F3df6...Beac02 is NOT deployed, so the ring buffer is never written and never readable. A contract reading `block.parentBeaconBlockRoot` (or the 4788 contract) on a Rollkit chain gets a constant zero, or an empty return, with no revert — which is exactly the silent-wrong-answer class.<p class="src"><b>src</b> execution/evm/execution.go:buildPayloadAttributes, crates/node/src/builder.rs:parent_beacon_block_root · <b>live</b> eth_getCode(0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02) @ 182440651 -&gt; 0x; eth_getBlockByNumber @ 182440651 -&gt; parentBeaconBlockRoot 0x00..00</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">ev-node passes an empty blob-hash list to every `engine_newPayload` call, so no blob-carrying transaction can be included. blobGasUsed and excessBlobGas are present in the header and permanently zero.<p class="src"><b>src</b> execution/evm/execution.go:processPayload · <b>live</b> eth_getBlockByNumber @ 182440651 -&gt; blobGasUsed 0x0, excessBlobGas 0x0</p></div></td></tr><tr id="eips-4895"><td><a href="https://eips.ethereum.org/EIPS/eip-4895">EIP-4895</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">ev-node always sends an EMPTY withdrawals list in payload attributes, and ev-reth&#x27;s payload builder hard-codes `Some(Default::default())`. withdrawalsRoot is the empty-trie root in every block. Nothing can ever credit balance through the withdrawal path.<p class="src"><b>src</b> execution/evm/execution.go:buildPayloadAttributes · <b>live</b> eth_getBlockByNumber @ 182440651 -&gt; withdrawals [], withdrawalsRoot 0x56e81f17...363b421</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">no beacon chain; requestsHash is the empty-list hash in every block.<p class="src"><b>live</b> eth_getBlockByNumber @ 182440651 -&gt; requestsHash 0xe3b0c442...7852b855</p></div></td></tr><tr id="eips-7002"><td><a href="https://eips.ethereum.org/EIPS/eip-7002">EIP-7002</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">withdrawal-request predeploy absent; there is no validator set to withdraw from.<p class="src"><b>live</b> eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 182440651 -&gt; 0x</p></div></td></tr><tr id="eips-7251"><td><a href="https://eips.ethereum.org/EIPS/eip-7251">EIP-7251</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">consolidation-request predeploy absent.<p class="src"><b>live</b> eth_getCode(0x0000BBdDc7CE488642fb579F8B00f3a590007251) @ 182440651 -&gt; 0x</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">Prague is active and the interpreter is upstream reth; not separately probed.</div></td></tr><tr id="eips-7951"><td><a href="https://eips.ethereum.org/EIPS/eip-7951">EIP-7951</a></td><td><span class="s-pending" title="pending">◌</span></td><td></td><td><div class="wrap">P256VERIFY arrives with Osaka, which Eden schedules at osakaTime 97000000 and had not reached at the probed block. `eth_call` to 0x0100 with 160 zero bytes returned empty output, which does not distinguish &quot;EIP-7951 semantics, invalid signature&quot; from &quot;no precompile at this address&quot;; the row does not claim it either way.<p class="src"><b>live</b> eth_call(0x0100, 160 zero bytes) @ 182440651 -&gt; 0x (ambiguous)</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">2</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap"><div>blob transactions cannot be included; ev-node passes an empty blob-hash list to newPayload. See eips.4844.</div><p class="src"><b>src</b> execution/evm/execution.go:processPayload</p></div></td></tr><tr id="tx-types-0x76"><td><code>0x76</code></td><td><span class="s-added" title="added">➕◐</span></td><td>EvNodeTransaction (batch calls + fee payer)</td><td><div class="wrap"><div>Replaces the single to/value/input triple with a `Vec&lt;Call&gt;` executed ATOMICALLY inside one transaction — if any call reverts the whole batch is journal-reverted — and adds an optional `fee_payer_signature`. Only the first call in a batch may be a contract creation. Two independent signatures with two different domains: the executor signs over domain byte 0x76, the sponsor signs over domain byte 0x78 with the executor&#x27;s address bound in, so a sponsor signature cannot be replayed under a different executor. Sponsored gas is debited from the sponsor and gas REFUNDS are returned to the sponsor, not the sender. `feePayer` appears as an extra field on `eth_getTransactionByHash` and on receipts — a field no standard receipt decoder knows about.</div><p class="src"><b>src</b> crates/ev-primitives/src/tx.rs:EVNODE_TX_TYPE_ID, crates/ev-primitives/src/tx.rs:EVNODE_SPONSOR_DOMAIN, crates/ev-revm/src/handler.rs:batch_calls · <b>live</b> not confirmed on Eden: eth_sendRawTransaction with a stub 0x76 payload @ 182440651 returned the same generic &#x27;failed to decode signed transaction&#x27; as 0x7e and 0x04, so the probe cannot distinguish supported from unsupported</p></div></td></tr></tbody></table></div>
+<h2 id="non-evm-transactions">Transactions outside EIP-2718<a class="anchor" href="#non-evm-transactions">#</a></h2>
+<div class="note"></div>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code>forced_inclusion_blob</code></td><td>raw Celestia blob in the forced-inclusion namespace</td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>2</td></tr><tr><td>Note</td><td><p>Ordinary types are mainnet's. Type 0x76 in its sponsored form carries TWO parties with two different digests — an executor and a fee payer — which makes this the second lineage in this dataset with genuine protocol-level fee delegation, independently of Kaia and with a completely different encoding. The sponsor's signature is not over the transaction the executor signed: it is over a separate preimage prefixed with domain byte 0x78 that includes the executor's recovered address. <code>signers_per_tx: 2</code> counts parties; the unsponsored form has one.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> crates/ev-primitives/src/tx.rs:EVNODE_SPONSOR_DOMAIN</p></div></td></tr><tr><td><code>p256</code></td><td><span class="pill">never</span></td><td><span class="s-inherited">none</span></td><td><div class="wrap">P256VERIFY arrives with Osaka, not yet active on the one live deployment.</div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">2</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="precompiles-0xf100"><td><code>0xf100</code></td><td><span class="s-added" title="added — silent divergence">➕◐</span></td><td>Native token mint/burn (INativeToken)</td><td><div class="wrap"><div>mint(address,uint256) and burn(address,uint256) write account balances directly through the EVM internals API — arbitrary, unbacked native supply change, callable by the configured admin and by any address the admin adds to an on-precompile allowlist. There is no event and no log; the README states plainly that these operations emit nothing. Total native supply on a Rollkit chain is therefore not conserved and not auditable from logs. Eden mainnet has this ACTIVE from genesis with the admin set to an upgradeable proxy at 0x...Ad00. Second finding at the same address: this precompile is the only one on the chain that has CODE. ev-reth installs a one-byte `0xFE` bytecode at 0xF100 so `EXTCODESIZE` is 1 and Solidity&#x27;s extcode guard on a typed external call passes. Confirmed live and contrasted against the standard precompiles, which all return empty code. It sits exactly on SCHEMA.md&#x27;s precompile / system_contract boundary and satisfies neither definition cleanly.</div><p class="src"><b>src</b> crates/ev-precompiles/src/mint.rs:MINT_PRECOMPILE_ADDR, crates/ev-precompiles/src/mint.rs:Bytecode · <b>live</b> eth_getCode(0x..f100) @ 182440651 -&gt; 0xfe, while eth_getCode(0x01/0x04/0x0a/0x0b/0x11) -&gt; 0x; eth_call allowlist(0x0) @ 182440651 -&gt; 32 zero bytes (selector decoded, so the precompile is live)</p></div></td></tr><tr id="precompiles-0xf101"><td><code>0xf101</code></td><td><span class="s-added" title="added — silent divergence">➕◐</span></td><td>Proposer control (IProposerControl)</td><td><div class="wrap"><div>setNextProposer(bytes32) stores the ev-node signer that must sign the NEXT block. Execution state therefore selects consensus leadership: an EVM transaction rotates the sequencer. The precompile validates only that the value is non-zero, so a wrong 32 bytes stalls the chain until another rotation. It rejects DELEGATECALL by design (msg.sender would be the original EOA). The dangerous case is BEFORE the activation height, and ev-reth&#x27;s own README says it: a call to 0xF101 is then an ordinary call to an empty account, which SUCCEEDS and writes nothing. A rotation transaction sent one block early gets a status-1 receipt and has no effect. NOT ACTIVE on Eden — nextProposer() returns empty and the address has no code, which is exactly the `availability: optional` case: this row records what a deployment MAY have.</div><p class="src"><b>src</b> crates/ev-precompiles/src/proposer.rs:PROPOSER_CONTROL_PRECOMPILE_ADDR · <b>live</b> eth_getCode(0x..f101) @ 182440651 -&gt; 0x; eth_call nextProposer() @ 182440651 -&gt; 0x (absent on Eden)</p></div></td></tr></tbody></table></div>
+<h2 id="system-contracts">System contracts <span class="pill">4</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0xad00"><td><code>0xad00</code></td><td><span class="s-added" title="added">➕◐</span></td><td>AdminProxy (mint / proposer admin)</td><td><div class="wrap"><div>The framework&#x27;s recommended pattern is to make the mint admin a CONTRACT rather than an EOA, so the key behind unbacked native minting can be rotated to a multisig without a hard fork. Present with code and storage on Eden mainnet.</div><p class="src"><b>src</b> contracts/script/GenerateAdminProxyAlloc.s.sol:SUGGESTED_ADDRESS · <b>live</b> eth_getCode(0x..ad00) @ 182440651 -&gt; 0x6080604052... (non-empty)</p></div></td></tr><tr id="system-contracts-0xf90827f1c53a10cb7a02335b175320002935"><td><code>0xf90827f1c53a10cb7a02335b175320002935</code></td><td><span class="s-removed" title="removed">➖</span></td><td>History storage (EIP-2935)</td><td><div class="wrap"><div>not in the genesis alloc; see eips.2935.</div><p class="src"><b>live</b> eth_getCode @ 182440651 -&gt; 0x</p></div></td></tr><tr id="system-contracts-0x0f3df6d732807ef1319fb7b8bb8522d0beac02"><td><code>0x0f3df6d732807ef1319fb7b8bb8522d0beac02</code></td><td><span class="s-removed" title="removed">➖</span></td><td>Beacon roots (EIP-4788)</td><td><div class="wrap"><div>not in the genesis alloc; see eips.4788.</div><p class="src"><b>live</b> eth_getCode @ 182440651 -&gt; 0x</p></div></td></tr><tr id="system-contracts-0x0337d738074c83b6133940051490c7c6080a5094"><td><code>0x0337d738074c83b6133940051490c7c6080a5094</code></td><td><span class="s-added" title="added">➕◐</span></td><td>FeeVault (Eden&#x27;s base-fee sink)</td><td><div class="wrap"><div>A real contract, not a burn hole. It is also the block `miner` in every Eden block, because ev-reth defaults suggestedFeeRecipient to the sink when ev-node leaves it zero — so COINBASE is a constant contract address on this chain, and both halves of the fee land there.</div><p class="src"><b>src</b> crates/node/src/builder.rs:base_fee_sink_for_block · <b>live</b> eth_getBlockByNumber @ 182440651 -&gt; miner 0x0337d738...a5094; eth_getCode at that address -&gt; non-empty</p></div></td></tr></tbody></table></div>
+<h2 id="system-transactions">System transactions<a class="anchor" href="#system-transactions">#</a></h2>
+<h2 id="opcodes">Opcodes <span class="pill">4</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>Op</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>PREVRANDAO</td><td><div class="wrap">equals the block number. See eips.4399. <span class="pill s-removed">silent</span><p class="src"><b>src</b> execution/evm/execution.go:derivePrevRandao</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>TIMESTAMP</td><td><div class="wrap">NOT STRICTLY INCREASING. ev-node passes seconds to the Engine API while producing blocks far faster than 1 Hz, and ev-reth ships a custom consensus rule that accepts `header.timestamp &gt;= parent.timestamp` instead of `&gt;`. On Eden, ten consecutive blocks share one timestamp value. Any contract using block.timestamp as a unique key, a monotonic clock, a rate limiter, or a per-block nonce is wrong here, and wrong silently. <span class="pill s-removed">silent</span><p class="src"><b>src</b> crates/evolve/src/consensus.rs:EvolveConsensus, execution/evm/execution.go:buildPayloadAttributes · <b>live</b> eth_getBlockByNumber @ 182440253,182440254,182440255 -&gt; timestamp 0x6a91e1ab on all three; 182440256-182440258 -&gt; 0x6a91e1ac</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>BLOCKHASH</td><td><div class="wrap">Semantics are upstream reth&#x27;s, but the 256-block window means something different at a 100ms block time: ~25 seconds of history rather than ~54 minutes, and EIP-2935&#x27;s extension is unavailable because the history contract is not deployed.<p class="src"><b>live</b> eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 182440651 -&gt; 0x</p></div></td></tr><tr id="opcodes-"><td><code>—</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>COINBASE</td><td><div class="wrap">constant — the configured base-fee sink, not a rotating proposer.<p class="src"><b>src</b> crates/node/src/builder.rs:base_fee_sink_for_block</p></div></td></tr></tbody></table></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>standard EVM gas (upstream reth interpreter)</code></td></tr><tr><td>Fee market</td><td>EIP-1559, with the elasticity multiplier, max-change denominator and initial base fee all overridable per deployment from the chainspec.</td></tr><tr><td>Extra components</td><td>[{&#x27;name&#x27;: &#x27;nonce on failure&#x27;, &#x27;src&#x27;: &#x27;crates/node/src/builder.rs:execute_transaction, crates/node/src/evm_executor.rs:execute_transaction_without_commit&#x27;, &#x27;note&#x27;: &#x27;NONCE ON FAILURE: PRESERVED, and there is no receipt because the transaction is not in the block. `EvolvePayloadBuilder::build_payload` loops over the sequencer\&#x27;s list and matches on `execute_transaction`; the `Err` arm is a `tracing::warn!` and nothing else — no append, no receipt, no gas charge. Nothing is committed for it, because the executor\&#x27;s own entry point is `execute_transaction_without_commit`: the block-gas check and revm\&#x27;s validation (nonce, balance, fee cap) all return `Err` BEFORE any state is written, and the caller only commits on `Ok`. So a transaction the sequencer ordered but the EVM refuses — nonce already consumed, insufficient balance, gas price below the base fee, gas limit over the block\&#x27;s remainder — leaves the account nonce untouched and is freely resubmittable. A REVERT is different and ordinary: it returns `Ok`, is appended, and gets a `status: 0` receipt with the nonce burned.\nThe distinctive part is not the nonce answer but the SILENCE around it. Rollkit is in the &quot;ordered then erased&quot; class with Conflux, IOTA EVM and Artela, but the sender\&#x27;s nonce is safe here in a way it is not on Artela — the transaction was never executed at all, so there is nothing to be inconsistent about. The cost is only that the discrepancy between the sequencer\&#x27;s ordering and the EVM\&#x27;s block is recorded nowhere.&#x27;}, {&#x27;name&#x27;: &#x27;base fee is credited, not burned&#x27;, &#x27;severity&#x27;: &#x27;high&#x27;, &#x27;note&#x27;: &#x27;see eips.1559 — the sink receives base_fee_per_gas * gas_used, verified to the wei.&#x27;, &#x27;src&#x27;: &#x27;crates/ev-revm/src/base_fee.rs:BaseFeeRedirect&#x27;}, {&#x27;name&#x27;: &#x27;protocol-level gas sponsorship&#x27;, &#x27;note&#x27;: &quot;Type 0x76&#x27;s fee payer pays max_fee_per_gas * gas_limit and receives the refund; the executor needs balance only for the value it moves. This is consensus-level sponsorship, not ERC-4337 — contrast Plasma, whose zero-fee path turned out to be a 4337 paymaster.&quot;, &#x27;src&#x27;: &#x27;crates/ev-revm/src/handler.rs:validate_and_deduct_sponsored_tx&#x27;}, {&#x27;name&#x27;: &#x27;gas token supply is mutable&#x27;, &#x27;severity&#x27;: &#x27;high&#x27;, &#x27;note&#x27;: &#x27;the 0xF100 precompile mints and burns the fee token itself, with no log.&#x27;, &#x27;src&#x27;: &#x27;crates/ev-precompiles/src/mint.rs:MINT_PRECOMPILE_ADDR&#x27;}, {&#x27;name&#x27;: &#x27;min_gas_price floor in the payload builder&#x27;, &#x27;note&#x27;: &#x27;the payload builder carries a configurable min_gas_price (default 1 gwei) independent of the base fee; a transaction below it is simply not selected.&#x27;, &#x27;src_doc&#x27;: &#x27;https://github.com/evstack/ev-reth/blob/main/README.md&#x27;}]</td></tr></tbody></table></div>
+<h2 id="header-fields">Header fields <span class="pill">6</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>Separately: the Ethereum header is only half the story. The canonical object the rollup commits to is ev-node's own signed header, posted to Celestia in a different namespace from the block data. The EVM header a JSON-RPC client sees is derived, not consensus.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Name</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="header-fields-mixhashprevrandao"><td><code>mixHash / prevRandao</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>mixHash / prevRandao</td><td><div class="wrap">the block number, zero-padded to 32 bytes.<p class="src"><b>src</b> execution/evm/execution.go:derivePrevRandao</p></div></td></tr><tr id="header-fields-parentbeaconblockroot"><td><code>parentBeaconBlockRoot</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>parentBeaconBlockRoot</td><td><div class="wrap">constant zero hash in every block.<p class="src"><b>src</b> execution/evm/execution.go:buildPayloadAttributes</p></div></td></tr><tr id="header-fields-timestamp"><td><code>timestamp</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>timestamp</td><td><div class="wrap">non-decreasing rather than strictly increasing; repeats across blocks.<p class="src"><b>src</b> crates/evolve/src/consensus.rs:EvolveConsensus</p></div></td></tr><tr id="header-fields-extradata"><td><code>extraData</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>extraData</td><td><div class="wrap">always empty; ev-reth sets extra_data to Default.<p class="src"><b>src</b> crates/node/src/builder.rs:extra_data</p></div></td></tr><tr id="header-fields-miner"><td><code>miner</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>miner</td><td><div class="wrap">the base-fee sink, constant.<p class="src"><b>src</b> crates/node/src/builder.rs:base_fee_sink_for_block</p></div></td></tr><tr id="header-fields-gaslimit"><td><code>gasLimit</code></td><td><span class="s-modified" title="modified">⚠️</span></td><td>gasLimit</td><td><div class="wrap">per-payload, set by ev-node from the PARENT header&#x27;s gas limit unless overridden in the Engine API attributes — so a sequencer can change the block gas limit at will, at any height, with no announcement.<p class="src"><b>src</b> execution/evm/execution.go:buildPayloadAttributes</p></div></td></tr></tbody></table></div>
+<h2 id="non-eip-specs">Own spec series <span class="pill">4</span><a class="anchor" href="#non-eip-specs">#</a></h2>
+<div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th><th>Adoption</th><th>Note</th></tr></thead><tbody></tbody></table></div>
+<h2 id="gotchas">Gotchas <span class="pill">11</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>ordering_a_who_orders</li><li>ordering_b_parallel</li><li>ordering_c_ordered_but_invalid</li><li>ordering_d_preconfirmation</li><li>sequencer_failure_modes</li><li>forced_inclusion_is_not_verified_on_the_p2p_path</li><li>forced_inclusion_may_be_declared_and_not_wired</li><li>lazy_blocks</li><li>no_randomness_at_all</li><li>client_string_does_not_identify_the_chain</li><li>celestia_reorgs_are_not_handled</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p><strong>Pinned evidence.</strong>
+<code>evstack/ev-node</code> <strong>v1.2.3</strong>, commit <code>d76e0dfcb0ffa3384d875fa2538eeb9a5321b335</code>
+(Go; sequencing, DA, the Engine-API driver) and its companion
+<code>evstack/ev-reth</code> <strong>v0.5.2</strong>, commit <code>7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0</code>
+(Rust; the actual EVM). <code>github.com/rollkit/rollkit</code> 301-redirects to
+<code>github.com/evstack/ev-node</code> — the project renamed to <strong>Evolve</strong> and the org to
+<strong>evstack</strong>. <code>rollkit/go-execution-evm</code> likewise redirects; its code is now the
+in-tree module <code>execution/evm</code>.</p>
+<p>Live probe: <strong>Eden mainnet</strong>, <code>https://rpc.eden.gateway.fm/</code>, <code>eth_chainId</code>
+<code>0x2ca</code> (714), <code>web3_clientVersion</code> <code>reth/v2.2.0-88505c7/x86_64-unknown-linux-gnu</code>,
+pinned at <strong>block 182440651</strong> (2026-08-27). Eden is operated by <code>celestiaorg</code>,
+gas token TIA, 100 ms blocks, genesis 2025-12-11. It is the <strong>only</strong> live Evolve
+EVM chain that could be identified, and it was found by searching public genesis
+files for the ev-reth-specific chainspec keys <code>mintAdmin</code> and <code>baseFeeSink</code> — not
+from any evstack ecosystem page, which does not exist.</p>
+<p>Baseline fork: <strong>prague</strong> — by chainspec timestamp, in both ev-node's example
+genesis and Eden's. Evidence path: <code>source</code> for everything the framework fixes,
+<code>src_live</code> for everything Eden's chainspec chooses, because on a <code>template</code> row
+those are different kinds of claim.</p>
+<p>Role: <strong><code>template</code></strong>, not <code>stack</code>. Every EVM-visible divergence below is a
+chainspec or node-config value with its own activation height, so no descendant
+is describable by pointing at this row — SCHEMA.md's exact test.</p>
+<p><strong>Is the framework row warranted?</strong> Yes, narrowly. The three rows CANDIDATES.md
+rejected (Frontier, Polygon CDK, BeaconKit) failed because descendants forked the
+code and shared nothing runnable. Rollkit is the opposite failure mode: the
+descendants <em>would</em> share a real released binary pair, published as
+<code>ghcr.io/evstack/ev-reth</code> — there is simply almost nobody downstream yet. One
+confirmed instance. The row is a template with a very short descendant list, and
+that is stated in <code>deployments</code> rather than papered over.</p>
+<hr />
+<h2>1. The sequencer orders; Celestia only records the order it already chose</h2>
+<p>The single most-muddled claim about sovereign rollups, settled from source.
+ev-node's sequencer drains its own queue, hands the ordered list to the EVM over
+the Engine API, receives a finished block, signs a header, and <em>then</em> posts —
+in two pieces, to two different Celestia namespaces: a signed header to the
+header namespace and the block data to the data namespace
+(<code>block/internal/submitting/da_submitter.go</code>, <code>SubmitHeaders</code> / <code>SubmitData</code>).
+What reaches Celestia is a finished, signed, already-executed block. Celestia's
+own ordering of those blobs is not load-bearing: the rollup's order is carried
+by the signed header chain <em>inside</em> the blobs, and headers and data may land in
+different Celestia blocks and are paired by hash on the way back.</p>
+<p>The exception is real and is the interesting half — see finding 3.</p>
+<h2>2. A validly ordered but invalid transaction is silently erased</h2>
+<p><code>EvolvePayloadBuilder::build_payload</code> (<code>crates/node/src/builder.rs</code>) loops the
+attribute-supplied transaction list and calls <code>execute_transaction</code>. The error
+arm is a <code>tracing::warn!</code> and nothing else:</p>
+<pre><code class="language-rust">Err(err) =&gt; {
+    tracing::warn!(error = %err, tx_hash = %tx.tx_hash(), &quot;transaction execution failed&quot;);
+}
+</code></pre>
+<p>The transaction is not appended to the block. No receipt, no <code>status: 0</code>, no gas
+charged, no trace — indistinguishable from never having been submitted. That
+covers nonce already consumed, insufficient balance, gas price below the base
+fee, and gas limit over the block's remainder. A <em>revert</em> is different and
+ordinary: it returns <code>Ok</code>, is included, and gets a status-0 receipt.</p>
+<p>This joins the "ordered then erased" class (Conflux, IOTA EVM, Artela) and sits
+opposite Taraxa. The mechanism is new, though: on those chains erasure falls out
+of a consensus design, whereas here the sequencer's ordering is only a
+<em>suggestion</em>. The EVM is handed a list and returns a block, and the difference
+between the two is discarded without being recorded anywhere.</p>
+<h2>3. Anyone can write to the forced-inclusion namespace, and there <em>is</em> a rule</h2>
+<p>Forced inclusion (optional, per deployment) makes Celestia the ordering
+authority for one class of transactions: every non-empty blob in the rollup's
+forced-inclusion namespace across a DA <strong>epoch</strong> is collected in DA-height
+order, then blob order within a height
+(<code>block/internal/da/forced_inclusion_retriever.go:RetrieveForcedIncludedTxs</code>).
+Eden's ev-node genesis sets <code>da_epoch_forced_inclusion: 100</code> — roughly ten
+minutes of Celestia blocks per epoch. In <code>--node.based_sequencer</code> mode this is
+the <em>only</em> transaction source and the rollup is a genuinely based rollup.</p>
+<p>Because anyone can pay for a blob in any namespace, the rollup must have a rule
+for ordered bytes that are not a transaction, and it does — fixed by the
+framework, not left to policy. <code>FilterTxs</code> (<code>execution/evm/execution.go</code>)
+RLP-decodes each force-included blob and returns <code>FilterRemove</code> on failure; the
+log line is literally <em>"filtering out invalid transaction (gibberish)"</em>. Same
+verdict for a transaction whose own gas limit exceeds the block gas limit or
+whose size exceeds the blob limit. Removed transactions are consumed from the
+checkpoint and never retried. Valid ones that merely do not fit get
+<code>FilterPostpone</code> and are retried at the next height — so "dropped" and
+"postponed" are distinct outcomes with distinct retry semantics. Garbage cannot
+halt the chain and cannot frame the sequencer.</p>
+<p><strong>The gap, which is a consensus-split risk:</strong> <code>FilterTxs</code> is a method on the
+<em>execution client</em> (<code>core/execution/execution.go:FilterStatus</code>), not a protocol
+rule. ev-node calls it both when building blocks and when auditing the sequencer
+for censorship, and trusts the answer. Two execution clients that disagreed
+about whether a blob decodes would disagree about whether the sequencer censored
+it, and therefore about whether to halt — a liveness split driven by an EL's
+decoder. Latent today, because there is one EVM execution client.</p>
+<h2>4. The <code>finalized</code> tag is a hard-coded height lag, not DA finality</h2>
+<p><code>severity: high</code>, and the sharpest thing in the row. On every block it produces,
+the EVM adapter calls <code>setFinalWithHeight</code>, which sets</p>
+<pre><code>safe      = head - SafeBlockLag       (2)
+finalized = head - FinalizedBlockLag  (3)
+</code></pre>
+<p>by pure arithmetic, with no reference to Celestia. The source comment is candid:
+<em>"This is a temporary mock value until proper DA-based finalization is wired
+up."</em> A DA-driven <code>SetFinal</code> does exist and is called from the submitter, but it
+writes the same field and is overwritten by the next block's height-lag update —
+which on Eden happens ten times a second.</p>
+<p>Observed at the probe: <code>finalized</code> was <strong>7 blocks</strong> behind head and <code>safe</code> <strong>2</strong>
+— 0.7 s and 0.2 s, on a chain whose DA layer produces a block every ~6 s. An
+exchange, bridge or indexer that waits for the <code>finalized</code> tag on a Rollkit chain
+is waiting for almost nothing: it is confirming a block the sequencer may still
+be the only holder of. The honest finality signal is ev-node's own RPC on port
+7331, which the public gateway does not expose.</p>
+<h2>5. <code>PREVRANDAO</code> is the block number</h2>
+<pre><code class="language-go">func (c *EngineClient) derivePrevRandao(blockHeight uint64) common.Hash {
+    return common.BigToHash(new(big.Int).SetUint64(blockHeight))
+}
+</code></pre>
+<p>Confirmed live at six consecutive Eden blocks: <code>mixHash</code> runs
+<code>0x…0adfd13d</code> … <code>0x…0adfd142</code> for heights 182440253–182440258. It is nonzero, it
+changes every block, and it passes any smoke test — while being a counter anyone
+can predict arbitrarily far ahead.</p>
+<p>It fails together with the other two entropy sources. <code>parentBeaconBlockRoot</code> is
+hard-coded to the zero hash on both sides (ev-node's payload attributes and
+ev-reth's payload builder), and the EIP-4788 contract is not deployed at all.
+<code>block.timestamp</code> repeats. <strong>A Rollkit chain has no randomness source</strong>, only
+<code>BLOCKHASH</code> over ~25 seconds of history chosen by a single sequencer.</p>
+<h2>6. <code>block.timestamp</code> is non-decreasing, not increasing</h2>
+<p>ev-node passes seconds to the Engine API while producing blocks far faster than
+1 Hz, so ev-reth ships a <em>custom consensus rule</em> to accept it
+(<code>crates/evolve/src/consensus.rs:EvolveConsensus</code>): <code>header.timestamp &gt;=
+parent.timestamp</code> instead of <code>&gt;</code>. On Eden, ten consecutive blocks share one
+timestamp — verified: 182440253/254/255 all carry <code>0x6a91e1ab</code>, and 256/257/258
+all carry <code>0x6a91e1ac</code>. Any contract using <code>block.timestamp</code> as a unique key, a
+monotonic clock, a rate limiter or a per-block nonce is wrong here, silently.</p>
+<h2>7. Prague is claimed by timestamp and its system contracts are missing</h2>
+<p><code>pragueTime: 0</code> and <code>cancunTime: 0</code>, yet <code>eth_getCode</code> at the beacon-roots
+(<code>0x000F3df6…Beac02</code>), history-storage (<code>0x0000F908…002935</code>), withdrawal-request
+(<code>…007002</code>) and consolidation-request (<code>…007251</code>) addresses all return <code>0x</code>.
+Neither Eden's genesis alloc nor ev-node's own example genesis contains them.
+The consequence with teeth: <strong><code>BLOCKHASH</code> keeps its 256-block window</strong>, which at
+100 ms blocks is <em>twenty-five seconds</em> of history rather than mainnet's ~54
+minutes, and EIP-2935's extension is unavailable to close the gap.</p>
+<p>This generalises past Rollkit: a chain can declare a fork by chainspec timestamp
+while omitting the genesis state the fork assumes, and the documented genesis
+here omits it by default.</p>
+<h2>8. The base fee is credited, not burned — verified to the wei</h2>
+<p><code>crates/ev-revm/src/base_fee.rs:BaseFeeRedirect</code> intercepts <code>reward_beneficiary</code>
+and credits <code>base_fee_per_gas * gas_used</code> to a chainspec-configured sink. At Eden
+block 182440651: <code>gasUsed</code> 127872, <code>baseFeePerGas</code> 1480, and the sink's balance
+rose by exactly <strong>189 250 560</strong> = 1480 × 127872. The sink is also the block
+<code>miner</code> (ev-reth defaults <code>suggestedFeeRecipient</code> to it), so <code>COINBASE</code> is a
+constant contract address and both halves of the fee land in the same place.</p>
+<p>The EIP-1559 <em>update rule</em> is configurable too: Eden runs
+<code>baseFeeMaxChangeDenominator: 5000</code> and <code>baseFeeElasticityMultiplier: 10</code>
+against mainnet's 8 and 2 — a base fee that moves roughly 625× more slowly per
+block.</p>
+<h2>9. Transaction type <code>0x76</code>: atomic batches and a second signer</h2>
+<p>ev-reth adds an EIP-2718 type <code>0x76</code> that replaces <code>to</code>/<code>value</code>/<code>input</code> with a
+<code>Vec&lt;Call&gt;</code> executed atomically (any revert rolls the whole batch back; only the
+first call may be a creation), plus an optional <code>fee_payer_signature</code>. Two
+parties sign two different digests: the executor over domain byte <code>0x76</code>, the
+sponsor over domain byte <code>0x78</code> with the executor's address bound in so the
+sponsor's signature cannot be replayed under a different executor. The sponsor
+pays <code>max_fee_per_gas * gas_limit</code> and <strong>receives the gas refund</strong>. RPC exposes an
+extra <code>feePayer</code> field on transactions <em>and receipts</em> that no standard decoder
+knows about.</p>
+<p>This is the second lineage in the dataset with protocol-level fee delegation and
+two signers on one transaction, arrived at independently of Kaia and encoded
+completely differently. It is also the counter-example to Plasma, whose
+"gasless" path turned out to be ERC-4337: this one is consensus.</p>
+<h2>10. Two precompiles that are not quite precompiles</h2>
+<p><code>0x…F100</code> mints and burns native token directly into account balances, callable
+by a chainspec <code>mintAdmin</code> and by anyone that admin allowlists on the precompile
+itself. <strong>No event, no log</strong> — total native supply on a Rollkit chain is neither
+conserved nor auditable from logs. Active on Eden from genesis, with the admin
+set to an upgradeable proxy at <code>0x…Ad00</code>.</p>
+<p><code>0x…F101</code> stores the ev-node signer that must sign the <em>next</em> block — execution
+state selecting consensus leadership, so an EVM transaction rotates the
+sequencer (ADR-023). Not active on Eden. Its sharp edge is documented in
+ev-reth's own README: <em>before</em> the activation height a call to <code>0xF101</code> is an
+ordinary call to an empty account, which <strong>succeeds and writes nothing</strong> — a
+rotation sent one block early gets a status-1 receipt and has no effect.</p>
+<p>Both install a <strong>one-byte <code>0xFE</code> bytecode</strong> at their address so <code>EXTCODESIZE</code> is
+1 and Solidity's extcode guard on a typed external call passes. Confirmed live:
+<code>eth_getCode(0x…F100)</code> → <code>0xfe</code>, while <code>0x01</code>, <code>0x04</code>, <code>0x0a</code>, <code>0x0b</code>, <code>0x11</code> all
+return <code>0x</code>. They satisfy neither of SCHEMA.md's category definitions cleanly —
+native code at a fixed address, with code in state.</p>
+<h2>11. Censorship enforcement is a halt and a social restart</h2>
+<p>If the sequencer omits a force-included transaction past its grace window (base
+1 epoch, extended up to 4 when DA blocks run full), DA-following full nodes tag
+it malicious and stop, with the message: <em>"sequencer malicious. Restart the node
+with <code>--node.aggregator --node.based_sequencer</code> or keep the chain halted"</em>. No
+slashing, no proof, no automatic fork — a local halt and a human decision to
+restart the network as a based rollup.</p>
+<p>Two caveats make it weaker than it reads. First, <strong>the check runs only on blocks
+obtained from DA</strong>; the syncer's own comment says a P2P-following node cannot
+perform it, "a known limitation described in the ADR". Two honest full nodes of
+the same chain therefore apply <em>different acceptance rules</em> depending on how they
+happened to receive a block. Second, <strong>Eden declares the epoch but the published
+node config has no forced-inclusion namespace</strong> — with none configured,
+<code>HasForcedInclusionNamespace()</code> is false and <code>VerifyForcedInclusionTxs</code> returns
+<code>nil</code>, so a node started from the published artifacts performs no censorship
+check at all.</p>
+<h2>12. The client string does not identify the chain</h2>
+<p>ev-reth reports itself as <code>reth/vX</code> — the fork does not rename the client. None
+of the divergences above are visible from <code>web3_clientVersion</code>, and ev-reth's own
+RPC namespaces (<code>txpoolExt_</code>, <code>evolve_</code>) are filtered out by the public gateway.
+The only reliable fingerprint from outside is behavioural: <code>mixHash</code> equal to the
+block number, plus a one-byte <code>0xfe</code> at <code>0x…F100</code>.</p>
+<h2>Not established here</h2>
+<ul>
+<li><strong>Whether any other live Evolve EVM chain exists.</strong> Forma was checked and
+  refuted (<code>Geth/v1.14.3-stable</code>, chain 984122 — Astria, not Rollkit);
+  "EVOLVE Mainnet" on chainlist (chain 3424, EVO) is an unrelated project. A
+  GitHub code search for the ev-reth-only chainspec keys found exactly one
+  public mainnet genesis. Absence of evidence, not evidence of absence.</li>
+<li><strong>Whether tx type <code>0x76</code> is enabled on Eden.</strong> The public RPC returns the same
+  generic <code>failed to decode signed transaction</code> for a stub <code>0x76</code>, <code>0x7e</code> and
+  <code>0x04</code> payload, so the probe cannot distinguish supported from unsupported.
+  Recorded as <code>availability: optional</code>. A correctly-signed <code>0x76</code> transaction
+  would settle it.</li>
+<li><strong>EIP-3860.</strong> Whether raising <code>contractSizeLimit</code> also raises the initcode cap
+  (revm normally derives it as 2x the code limit) was not established from
+  source. Deploying a &gt;49152-byte initcode against Eden would settle it.</li>
+<li><strong>P256VERIFY.</strong> Osaka is scheduled at <code>osakaTime: 97000000</code> and unreached.
+  <code>eth_call</code> to <code>0x0100</code> with 160 zero bytes returned empty output, which does
+  not distinguish EIP-7951-invalid from address-is-empty. Recorded <code>pending</code>.</li>
+<li><strong>What Eden's operators actually run</strong> for forced inclusion, as distinct from
+  what the published <code>.env</code> configures.</li>
+<li><strong>Whether an ev-node full node exposes a DA-inclusion height publicly.</strong> The
+  gateway exposes only the Ethereum JSON-RPC; port 7331 would give the real
+  finality signal.</li>
+</ul>
+<h2>Re-verify</h2>
+<pre><code class="language-bash"># clones (both are released tags)
+git clone --depth 1 --branch v1.2.3 --single-branch \
+    https://github.com/evstack/ev-node chains/rollkit/repos/ev-node
+git -C chains/rollkit/repos/ev-node rev-parse HEAD   # d76e0dfcb0ffa3384d875fa2538eeb9a5321b335
+git clone --depth 1 --branch v0.5.2 --single-branch \
+    https://github.com/evstack/ev-reth chains/rollkit/repos/ev-reth
+git -C chains/rollkit/repos/ev-reth rev-parse HEAD   # 7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0
+
+# the rename
+curl -sI https://github.com/rollkit/rollkit | grep -i location
+#   location: https://github.com/evstack/ev-node
+
+# (2) invalid tx dropped without a trace
+sed -n '186,190p' chains/rollkit/repos/ev-reth/crates/node/src/builder.rs
+
+# (3) gibberish rule for force-included blobs
+grep -n 'gibberish' chains/rollkit/repos/ev-node/execution/evm/execution.go
+grep -n 'FilterRemove\|FilterPostpone' chains/rollkit/repos/ev-node/core/execution/execution.go
+
+# (4) finalized is a height lag, and says so
+grep -n 'FinalizedBlockLag\|temporary mock' chains/rollkit/repos/ev-node/execution/evm/execution.go
+
+# (5) prevRandao
+grep -n -A2 'func (c \*EngineClient) derivePrevRandao' \
+    chains/rollkit/repos/ev-node/execution/evm/execution.go
+
+# (6) equal-timestamp consensus rule
+grep -n -B2 -A6 'TimestampIsInPast' chains/rollkit/repos/ev-reth/crates/evolve/src/consensus.rs
+
+# (11) the halt message and the grace window
+grep -n 'sequencer malicious' chains/rollkit/repos/ev-node/block/internal/syncing/syncer.go
+grep -n 'baseGracePeriodEpochs uint64\|maxGracePeriodEpochs uint64' \
+    chains/rollkit/repos/ev-node/block/internal/syncing/syncer.go
+
+# Eden's genesis (the chainspec that chooses every optional feature)
+gh api repos/celestiaorg/eden-docs/contents/public/eden-artifacts/mainnet/ev-reth.genesis.json \
+   --jq '.content' | base64 -d | jq '.config.evolve'
+gh api repos/celestiaorg/eden-docs/contents/public/eden-artifacts/mainnet/ev-node.genesis.json \
+   --jq '.content' | base64 -d
+</code></pre>
+<p>Live probes (Eden), with observed answers:</p>
+<pre><code class="language-bash">R=https://rpc.eden.gateway.fm/
+q(){ curl -s -X POST -H 'content-type: application/json' -d &quot;$1&quot; $R; echo; }
+
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;web3_clientVersion&quot;,&quot;params&quot;:[]}'
+#   reth/v2.2.0-88505c7/x86_64-unknown-linux-gnu   &lt;- NOT &quot;ev-reth&quot;
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_chainId&quot;,&quot;params&quot;:[]}'          # 0x2ca
+
+# (5)+(6) prevRandao == block number, and three blocks share one timestamp
+for n in 182440253 182440254 182440255 182440256 182440257 182440258; do
+  q &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$(printf '0x%x' $n)\&quot;,false]}&quot; \
+    | python3 -c &quot;import json,sys;d=json.load(sys.stdin)['result'];print(d['number'],d['mixHash'],d['timestamp'])&quot;
+done
+#   0xadfd13d 0x...0adfd13d 0x6a91e1ab
+#   0xadfd13e 0x...0adfd13e 0x6a91e1ab
+#   0xadfd13f 0x...0adfd13f 0x6a91e1ab
+#   0xadfd140 0x...0adfd140 0x6a91e1ac
+#   0xadfd141 0x...0adfd141 0x6a91e1ac
+#   0xadfd142 0x...0adfd142 0x6a91e1ac
+
+# (4) finalized/safe are a height lag, not DA finality
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getBlockByNumber&quot;,&quot;params&quot;:[&quot;finalized&quot;,false]}'  # head-7 at probe
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getBlockByNumber&quot;,&quot;params&quot;:[&quot;safe&quot;,false]}'       # head-2 at probe
+
+# (7) Prague/Cancun system contracts absent
+for a in 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 \
+         0x0000F90827F1C53a10cb7A02335B175320002935 \
+         0x00000961Ef480Eb55e80D19ad83579A64c007002 \
+         0x0000BBdDc7CE488642fb579F8B00f3a590007251; do
+  q &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$a\&quot;,\&quot;0xadfd2cb\&quot;]}&quot;
+done
+#   all -&gt; 0x
+
+# (10) 0xF100 has code, real precompiles do not; 0xF101 is off on Eden
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getCode&quot;,&quot;params&quot;:[&quot;0x000000000000000000000000000000000000f100&quot;,&quot;0xadfd2cb&quot;]}'  # 0xfe
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getCode&quot;,&quot;params&quot;:[&quot;0x000000000000000000000000000000000000f101&quot;,&quot;0xadfd2cb&quot;]}'  # 0x
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getCode&quot;,&quot;params&quot;:[&quot;0x0000000000000000000000000000000000000001&quot;,&quot;0xadfd2cb&quot;]}'  # 0x
+q '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_call&quot;,&quot;params&quot;:[{&quot;to&quot;:&quot;0x000000000000000000000000000000000000f100&quot;,&quot;data&quot;:&quot;0xa7cd52cb0000000000000000000000000000000000000000000000000000000000000000&quot;},&quot;0xadfd2cb&quot;]}'
+#   0x0000...0000  (selector decoded -&gt; mint precompile is live)
+
+# (8) base fee credited to the sink, exactly
+S=0x0337d738074c83B6133940051490c7c6080a5094
+q &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBalance\&quot;,\&quot;params\&quot;:[\&quot;$S\&quot;,\&quot;0xadfd2ca\&quot;]}&quot;  # 0x2c6984933f8c568e2
+q &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBalance\&quot;,\&quot;params\&quot;:[\&quot;$S\&quot;,\&quot;0xadfd2cb\&quot;]}&quot;  # 0x2c6984934040d24e2
+python3 -c &quot;print(0x2c6984934040d24e2 - 0x2c6984933f8c568e2, 1480*127872)&quot;
+#   189250560 189250560
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh rollkit    # fetch the pinned evidence
+tools/verify.py rollkit   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/rollkit/chain.yaml</code> · <code>chains/rollkit/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

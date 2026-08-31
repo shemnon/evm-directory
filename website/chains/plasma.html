@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plasma · EVM-intel</title>
+<meta name="description" content="NOT A FORK OF A CLIENT, IT IS A CLIENT. Three independent pieces of evidence say the EL is stock upstream reth: (1) Plasma&#x27;s own node-templates repo pins &lt;code&gt;EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth&lt;/code&gt; at &lt;code&gt;v1.11.3&lt;/code&gt; BY DIGEST for mainnet">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<header class="top">
+  <span class="brand"><a href="../index.html">EVM-intel</a></span>
+  <nav><a href="../index.html">Overview</a><a href="../chains/index.html">Chains</a><a href="../axes/eips.html">EIP activation set</a><a href="../axes/precompiles.html">Precompiles</a><a href="../axes/tx-types.html">Transaction types</a><a href="../axes/cryptography.html">Cryptography</a><a href="../axes/opcodes.html">Opcodes</a><a href="../axes/system-contracts.html">System contracts</a><a href="../axes/fees-envelope.html">Fees &amp; envelope</a><a href="../axes/lineage.html">Lineage</a><a href="../silent-divergences.html">Silent divergences</a><a href="../method.html">Reference</a></nav>
+  <details class="picker"><summary id="picker-label">Chains: all</summary><div class="menu"><div class="acts"><button type="button" data-chain-all>All</button><button type="button" data-chain-none>None</button></div><label><input type="checkbox" data-chain-toggle="ethereum" checked> Ethereum</label><label><input type="checkbox" data-chain-toggle="bnb" checked> BNB</label><label><input type="checkbox" data-chain-toggle="polygon" checked> Polygon</label><label><input type="checkbox" data-chain-toggle="avalanche-c" checked> Avax C</label><label><input type="checkbox" data-chain-toggle="avalanche-subnet" checked> Avax subnet</label><label><input type="checkbox" data-chain-toggle="kaia" checked> Kaia</label><label><input type="checkbox" data-chain-toggle="sei" checked> Sei</label><label><input type="checkbox" data-chain-toggle="gnosis" checked> Gnosis</label><label><input type="checkbox" data-chain-toggle="sonic" checked> Sonic</label><label><input type="checkbox" data-chain-toggle="berachain" checked> Bera</label><label><input type="checkbox" data-chain-toggle="flare" checked> Flare</label><label><input type="checkbox" data-chain-toggle="arbitrum" checked> Arbitrum</label><label><input type="checkbox" data-chain-toggle="op-stack" checked> OP Stack</label><label><input type="checkbox" data-chain-toggle="optimism" checked> OP Mainnet</label><label><input type="checkbox" data-chain-toggle="base" checked> Base</label><label><input type="checkbox" data-chain-toggle="worldchain" checked> World</label><label><input type="checkbox" data-chain-toggle="opbnb" checked> opBNB</label><label><input type="checkbox" data-chain-toggle="celo" checked> Celo</label><label><input type="checkbox" data-chain-toggle="mantle" checked> Mantle</label><label><input type="checkbox" data-chain-toggle="megaeth" checked> MegaETH</label><label><input type="checkbox" data-chain-toggle="rise" checked> RISE</label><label><input type="checkbox" data-chain-toggle="linea" checked> Linea</label><label><input type="checkbox" data-chain-toggle="scroll" checked> Scroll</label><label><input type="checkbox" data-chain-toggle="taiko" checked> Taiko</label><label><input type="checkbox" data-chain-toggle="polygon-zkevm" checked> zkEVM</label><label><input type="checkbox" data-chain-toggle="zksync-era" checked> zkSync</label><label><input type="checkbox" data-chain-toggle="rollkit" checked> Rollkit</label><label><input type="checkbox" data-chain-toggle="cosmos-evm" checked> Cosmos EVM</label><label><input type="checkbox" data-chain-toggle="injective" checked> Injective</label><label><input type="checkbox" data-chain-toggle="artela" checked> Artela</label><label><input type="checkbox" data-chain-toggle="moonbeam" checked> Moonbeam</label><label><input type="checkbox" data-chain-toggle="tron" checked> Tron</label><label><input type="checkbox" data-chain-toggle="monad" checked> Monad</label><label><input type="checkbox" data-chain-toggle="hyperliquid" checked> Hyperliquid</label><label><input type="checkbox" data-chain-toggle="hedera" checked> Hedera</label><label><input type="checkbox" data-chain-toggle="conflux" checked> Conflux</label><label><input type="checkbox" data-chain-toggle="taraxa" checked> Taraxa</label><label><input type="checkbox" data-chain-toggle="autonomys" checked> Auto EVM</label><label><input type="checkbox" data-chain-toggle="iota-evm" checked> IOTA EVM</label><label><input type="checkbox" data-chain-toggle="tempo" checked> Tempo</label><label><input type="checkbox" data-chain-toggle="arc" checked> Arc</label><label><input type="checkbox" data-chain-toggle="plasma" checked> Plasma</label></div></details>
+</header>
+<main>
+<h1>Plasma</h1>
+<p class="lede">NOT A FORK OF A CLIENT, IT IS A CLIENT. Three independent pieces of evidence say the EL is stock upstream reth: (1) Plasma's own node-templates repo pins <code>EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth</code> at <code>v1.11.3</code> BY DIGEST for mainnet</p>
+<div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>9745</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>prague</code></td></tr><tr><td>Upstream</td><td><a href="ethereum.html">Ethereum</a></td></tr><tr><td>Ancestry</td><td>ethereum</td></tr><tr><td>Consensus</td><td>PlasmaBFT (pipelined Fast HotStuff), closed source · block time 1s</td></tr><tr><td>Note</td><td><p>THE EMPTY-DELTA ROW. Plasma's execution layer is UPSTREAM reth, unmodified — the same binary Ethereum mainnet nodes run — driven over the Engine API by a closed-source BFT consensus client. Every EVM-visible fact below is therefore mainnet's, and the interesting content of this row is the list of claimed divergences that turn out NOT to be consensus divergences at all. <code>role: fork</code> is the schema's closest fit and overstates the case: nothing was forked.</p></td></tr><tr><td>Lineage note</td><td><p>NOT A FORK OF A CLIENT, IT IS A CLIENT. Three independent pieces of evidence say the EL is stock upstream reth: (1) Plasma's own node-templates repo pins <code>EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth</code> at <code>v1.11.3</code> BY DIGEST for mainnet — an upstream image, not a rebuild; (2) every mainnet block's <code>extraData</code> decodes to the ASCII string <code>reth/v1.11.3/linux</code>, which is exactly reth's <code>default_extra_data()</code> format <code>reth/v{version}/{OS}</code> with no operator override; (3) the public RPC reports <code>reth/v1.8.3-4219741</code>, and <code>4219741</code> is the first seven hex digits of 42197415102b7a20be42e4fe919f024b81ceb55b — the commit that upstream tag v1.8.3 points at. The org's own fork, <code>PlasmaLaboratories/reth</code>, carries NO tags and NO releases, and none of its branches changes consensus: they are upstream syncs, an ExEx that posts XPL balance updates to a webhook (an observer, not a rule), and one <code>eth_feeHistory</code> fix.</p></td></tr></tbody></table></div>
+<h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/paradigmxyz/reth">reth (upstream, unmodified)</a> <code>v1.11.3</code></td></tr><tr><td>Pinned commit</td><td><code>d6324d63e27ef6b7c49cdc9b1977c1b808234c7b</code></td></tr><tr><td>Language</td><td>rust</td></tr><tr><td>Companion repos</td><td>https://github.com/PlasmaLaboratories/node-templates </td></tr><tr><td>Client note</td><td><p>Pinned at the tag Plasma's mainnet node template pins by digest. This row cites upstream reth deliberately: the chain's execution client IS this repo at this tag, and the delta against it is zero. The RPC endpoint probed was still on v1.8.3 while block producers were on v1.11.3 — both upstream tags, so the version skew changes nothing about the state transition.</p></td></tr><tr><td>Live probe</td><td><code>https://rpc.plasma.to</code> · chain_id 9745 · observed at block <code>30724096</code></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 8 · <code>src_live:</code> 11 · <code>src_doc:</code> 4</td></tr></tbody></table></div>
+<h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2>
+<div class="finding"><h3 id="f-no-native-asset">What the EVM does when the gas token is not a native 18-decimal asset<a class="anchor" href="#f-no-native-asset">#</a></h3><p class="lede"><code>msg.value</code>, <code>BALANCE</code>, <code>SELFBALANCE</code>, <code>CALL</code>'s value argument and <code>eth_getBalance</code> all assume one native 18-decimal asset. The rows here break that assumption in different places.</p><p>The null result — the zero-fee stablecoin path is ERC-4337, not consensus, and 0 of 274 sampled transactions paid a zero gas price.</p><p class="tags"><a href="../axes/fees-envelope.html#f-no-native-asset">Full note · Fees &amp; envelope</a> · also on <a href="../chains/tempo.html#f-no-native-asset">Tempo</a> · <a href="../chains/arc.html#f-no-native-asset">Arc</a> · <a href="../chains/celo.html#f-no-native-asset">Celo</a> · <a href="../chains/mantle.html#f-no-native-asset">Mantle</a> · <a href="../chains/gnosis.html#f-no-native-asset">Gnosis</a></p></div>
+<h2 id="silent">Silent divergences <span class="pill">1</span><a class="anchor" href="#silent">#</a></h2>
+<p class="lede">Wrong results with no revert, no error and no signal to the caller.</p>
+<div class="scroll"><table class=""><thead><tr><th>Section</th><th>Entry</th><th>What fails silently</th></tr></thead><tbody><tr><td><span class="pill">fee_model</span></td><td>fee model</td><td><div class="wrap">THE CENTRAL FINDING, AND IT IS A NEGATIVE. The headline claim — a protocol-level paymaster that makes USDT transfers zero-fee, i.e. a state transition with no fee payer — is NOT a consensus divergence on Plasma mainnet, and as of this row it is not live at all. Four independent lines of evidence: (1) STRUCTURAL. The execution client is unmodified upstream reth. There is nowhere for a fee rule keyed to an ERC-20 address to live: no fee-currency field on any transaction type, no client-driven debit/credit calls as on Celo, no ProtocolConfig read as on Arc, no `currency`-field check as on Tempo. A zero-fee transaction would have to pass `max_fee_per_gas &gt;= base_fee` with a base fee of 7 wei, and the sender pays it. (2) EMPIRICAL. Across 274 transactions in 40 consecutive blocks from 30724096, ZERO had `gasPrice: 0x0`. The minimum observed effective price was 8 wei and every transaction had a paying sender. 133 of those 274 were ERC-20 `transfer(...)` calls and they paid gas like everything else. (3) DOCUMENTED. Plasma&#x27;s own mainnet page lists exactly one fee token — &quot;Native Plasma Mainnet Token XPL, Live&quot; — followed by &quot;Plasma will support fee payments in multiple tokens soon.&quot; Custom gas tokens are described in the future tense (&quot;Plasma is building support…&quot;, &quot;Developers will be able to register…&quot;) and zero-fee transfers are marked &quot;currently in development&quot; on the testnet page. (4) WHAT ACTUALLY EXISTS. Sponsorship on Plasma today is ERC-4337 machinery. All three canonical EntryPoints are deployed as ordinary contracts — v0.6 (0x5FF137D4…d2789, 47,380 bytes), v0.7 (0x00000000717 27De2…da032, 32,072 bytes) and v0.8 (0x4337084D…5Ff108, 43,478 bytes) — none of them in the genesis alloc, and the v0.7 EntryPoint received traffic in the sampled window. A bundler paying gas in XPL and being repaid in USDT by a paymaster contract is an application pattern, and it is available on every EVM chain. Recording it as a consensus divergence would be wrong.</div></td></tr></tbody></table></div>
+<h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
+<div class="note"><p>A one-entry timeline. Everything is at genesis; no Plasma-named upgrade exists in the chain config, which is itself the finding — this chain has no fork history to diverge in.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Fork</th><th>Status</th><th>Activated</th><th>Mainnet equivalent</th><th>Note</th></tr></thead><tbody><tr><td><code>genesis (homestead..prague, all at 0)</code></td><td><span class="pill">active</span></td><td>1970-01-01</td><td>prague</td><td><div class="wrap">chain config is Ethereum&#x27;s, with blobs disabled — see eips.4844</div></td></tr></tbody></table></div>
+<p class="src"><b>src</b> node-templates/config/mainnet/genesis.json:pragueTime · <b>live</b> eth_config @ 30724096 -&gt; {current: {activationTime: 0, forkId: 0xfa7ac276}, last: null, next: null}</p>
+<h2 id="eips">EIP deltas <span class="pill">4</span><a class="anchor" href="#eips">#</a></h2>
+<p class="lede">An EIP absent from this table is inherited unchanged.</p>
+<div class="scroll"><table class=""><thead><tr><th>EIP</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="eips-1559"><td><a href="https://eips.ethereum.org/EIPS/eip-1559">EIP-1559</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">Stock EIP-1559, with a 36,000,000 gas limit and blocks running at ~5% of it, so the base fee sits permanently at reth&#x27;s 7-wei floor. Observed 7 wei in twelve consecutive blocks with tips of 1-2 wei. Cheap is not the same as modified: the rule is mainnet&#x27;s and the fee is paid, in XPL, by the transaction sender.<p class="src"><b>live</b> eth_getBlockByNumber 30724096-30724107 @ 30724096 -&gt; baseFeePerGas 0x7 in 12/12, gasLimit 0x2255100 (36,000,000)</p></div></td></tr><tr id="eips-4844"><td><a href="https://eips.ethereum.org/EIPS/eip-4844">EIP-4844</a></td><td><span class="s-removed" title="removed">➖</span></td><td></td><td><div class="wrap">THE ONLY EVM-VISIBLE DIVERGENCE IN THE WHOLE ROW, and it is a config value rather than a code change. The genesis `blobSchedule` sets `max: 0` and `target: 0` for both Cancun and Prague, so no transaction carrying a blob can be accepted: upstream reth&#x27;s pool compares the blob count against `fork_tracker.max_blob_count()` and rejects with `TooManyEip4844Blobs { permitted: 0 }`. The BLOBHASH and BLOBBASEFEE opcodes remain, and `eth_blobBaseFee` returns 1, the correct value for zero excess blob gas. There is no L1 to post blobs to and no DA role for them here.<p class="src"><b>src</b> reth/crates/transaction-pool/src/validate/eth.rs:TooManyEip4844Blobs, node-templates/config/mainnet/genesis.json:blobSchedule · <b>live</b> eth_config @ 30724096 -&gt; blobSchedule {max: 0, target: 0}; eth_feeHistory @ 30724096 -&gt; blobGasUsedRatio [0.0,0.0,0.0], baseFeePerBlobGas 0x1; eth_getBlockByNumber 30724096 -&gt; blobGasUsed 0x0</p></div></td></tr><tr id="eips-6110"><td><a href="https://eips.ethereum.org/EIPS/eip-6110">EIP-6110</a></td><td><span class="s-unrecorded" title="unrecorded">unrecorded</span></td><td></td><td><div class="wrap">Genesis sets `depositContractAddress` to ETHEREUM MAINNET&#x27;s beacon deposit contract, 0x00000000219ab540356cbb839cbe05303d7705fa, and allocates that contract&#x27;s full 12,718-byte bytecode and 31 storage slots into Plasma&#x27;s genesis state; live `eth_config` reports the same address as the chain&#x27;s DEPOSIT_CONTRACT_ADDRESS. On a chain whose validator set is chosen by PlasmaBFT rather than by beacon deposits, what — if anything — consumes the EIP-6110 deposit requests derived from that contract&#x27;s logs is not established, and cannot be from the EL alone.<p class="src"><b>src</b> node-templates/config/mainnet/genesis.json:depositContractAddress · <b>live</b> eth_config @ 30724096 -&gt; systemContracts.DEPOSIT_CONTRACT_ADDRESS 0x00000000219ab540356cbb839cbe05303d7705fa</p></div></td></tr><tr id="eips-7702"><td><a href="https://eips.ethereum.org/EIPS/eip-7702">EIP-7702</a></td><td><span class="s-inherited" title="inherited">=</span></td><td></td><td><div class="wrap">Present because Prague is. Relevant to this row only because Plasma&#x27;s public material describes zero-fee transfers as riding on 4337/7702 account abstraction — application-layer machinery over an unmodified 7702, not a protocol fee rule. See fee_model.<p class="src"><b>src</b> node-templates/config/mainnet/genesis.json:pragueTime</p></div></td></tr></tbody></table></div>
+<h2 id="tx-types">Transaction types <span class="pill">1</span><a class="anchor" href="#tx-types">#</a></h2>
+<div class="note"><p>No added type bytes and no protocol transaction without one. A 274-transaction census over 40 consecutive blocks from 30724096 found only {0x02: 253, 0x00: 21}. There is no Plasma-specific envelope: no fee-currency type as on Celo, no deposit type as on the OP Stack, nothing.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="tx-types-0x03"><td><code>0x03</code></td><td><span class="s-removed" title="removed">➖</span></td><td>BlobTx</td><td><div class="wrap"><div>encodable and decodable by the client, but unusable: max blob count is 0. See eips.4844.</div><p class="src"><b>src</b> reth/crates/transaction-pool/src/validate/eth.rs:TooManyEip4844Blobs</p></div></td></tr></tbody></table></div>
+<h2 id="tx-authorization">Transaction authorization<a class="anchor" href="#tx-authorization">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Key binding</td><td><code>derived</code></td></tr><tr><td>Signers per tx</td><td>1</td></tr><tr><td>Note</td><td><p>Zero delta. Upstream reth's signature recovery, unmodified, so <code>ecrecover(sig) == from</code> is an identity exactly as on mainnet. Sponsored transactions on this chain exist, but they are ERC-4337 UserOperations executed by a bundler through an EntryPoint contract — the outer transaction is an ordinary type-0x02 signed by the bundler, and the protocol never sees a second authorizer.</p></td></tr></tbody></table></div>
+<div class="scroll"><table class=""><thead><tr><th>Scheme</th><th>Authorizes</th><th>Paired verifier</th><th>Note & provenance</th></tr></thead><tbody><tr><td><code>secp256k1</code></td><td><span class="pill">protocol</span></td><td><code>0x01</code></td><td><div class="wrap"><p class="src"><b>src</b> reth/crates/node/core/src/version.rs:CLIENT_CODE</p></div></td></tr></tbody></table></div>
+<h2 id="precompiles">Precompiles <span class="pill">0</span><a class="anchor" href="#precompiles">#</a></h2>
+<div class="note"><p>NOTHING ADDED, NOTHING REMOVED, NOTHING REPRICED. The node's own EIP-7910 <code>eth_config</code> enumeration returns exactly the seventeen Prague precompiles at 0x01-0x11 and no others — in particular no P256VERIFY at 0x0100, which is correct for a chain at Prague rather than Osaka, and no address in any custom range. This is the cleanest "empty precompile delta" measurement in the dataset, because it is the client enumerating itself rather than an address scan that could miss a predicate-based lookup.</p></div>
+<h2 id="system-contracts">System contracts <span class="pill">1</span><a class="anchor" href="#system-contracts">#</a></h2>
+<div class="note"><p>The four Prague system contracts sit at their MAINNET addresses, unchanged: beacon-roots 0x000f3df6…beac02, history-storage 0x0000f908…2935, withdrawal-request 0x00000961…7002, consolidation-request 0x0000bbdd…7251. The rest of the 34-entry genesis alloc is ordinary ecosystem infrastructure deployed at its canonical cross-chain addresses (the deterministic CREATE2 deployer 0x4e59b448…, the immutable CREATE2 factory 0x00000000…439497, Multicall3 0xca11bde0…76ca11) — that is a convenience alloc, not a protocol surface.</p></div>
+<div class="scroll"><table class=""><thead><tr><th>Address</th><th></th><th>Name</th><th>Note & provenance</th></tr></thead><tbody><tr id="system-contracts-0x0a11b005"><td><code>0x0a11b005</code></td><td><span class="s-added" title="added">➕</span></td><td>validator payout Safe (block beneficiary)</td><td><div class="wrap"><div>THE BLOCK BENEFICIARY IS A MULTISIG CONTRACT. Genesis allocates five accounts at 0x…0a11b001-005 whose 172-byte code is the standard Gnosis Safe proxy (masterCopy in slot 0, the `a619486e` masterCopy() short-circuit, then a DELEGATECALL fallback), each carrying eleven storage slots, and four of them hold the entire initial XPL supply (~2.5e27, 2.5e27, 1e27 and 4e27 wei). Blocks name 0x…0a11b004 and 0x…0a11b005 as `miner`, alternating. Nothing executes at the address — fee payment is a balance increment — but a fee recipient that is a Safe rather than a validator key is worth recording, and it means the coinbase address says nothing about who proposed the block.</div><p class="src"><b>src</b> node-templates/config/mainnet/genesis.json:119 · <b>live</b> eth_getBlockByNumber 30724096-30724107 @ 30724096 -&gt; miner 0x…0a11b005 in 11/12 and 0x…0a11b004 in 1/12; eth_getCode 0x…0a11b001 @ 30724096 -&gt; 172-byte Gnosis Safe proxy</p></div></td></tr></tbody></table></div>
+<h2 id="opcodes">Opcodes <span class="pill">0</span><a class="anchor" href="#opcodes">#</a></h2>
+<div class="note"><p>None. The client is upstream reth; the EVM is revm at whatever version that tag vendors, with no Plasma patch anywhere in the tree. The chain's own documentation says the same thing in as many words: "Every opcode, precompile, and execution behavior matches Ethereum mainnet."</p></div>
+<h2 id="fee-model">Fee model<a class="anchor" href="#fee-model">#</a></h2>
+<div class="scroll"><table class="kv"><tbody><tr><td>Metering</td><td><code>gas</code></td></tr><tr><td>Fee market</td><td>EIP-1559, unmodified, base fee pinned at the 7-wei floor</td></tr><tr><td>Extra components</td><td>[]</td></tr><tr><td>Note</td><td><p>THE CENTRAL FINDING, AND IT IS A NEGATIVE. The headline claim — a protocol-level paymaster that makes USDT transfers zero-fee, i.e. a state transition with no fee payer — is NOT a consensus divergence on Plasma mainnet, and as of this row it is not live at all. Four independent lines of evidence: (1) STRUCTURAL. The execution client is unmodified upstream reth. There is nowhere for a fee rule keyed to an ERC-20 address to live: no fee-currency field on any transaction type, no client-driven debit/credit calls as on Celo, no ProtocolConfig read as on Arc, no <code>currency</code>-field check as on Tempo. A zero-fee transaction would have to pass <code>max_fee_per_gas &gt;= base_fee</code> with a base fee of 7 wei, and the sender pays it. (2) EMPIRICAL. Across 274 transactions in 40 consecutive blocks from 30724096, ZERO had <code>gasPrice: 0x0</code>. The minimum observed effective price was 8 wei and every transaction had a paying sender. 133 of those 274 were ERC-20 <code>transfer(...)</code> calls and they paid gas like everything else. (3) DOCUMENTED. Plasma's own mainnet page lists exactly one fee token — "Native Plasma Mainnet Token XPL, Live" — followed by "Plasma will support fee payments in multiple tokens soon." Custom gas tokens are described in the future tense ("Plasma is building support…", "Developers will be able to register…") and zero-fee transfers are marked "currently in development" on the testnet page. (4) WHAT ACTUALLY EXISTS. Sponsorship on Plasma today is ERC-4337 machinery. All three canonical EntryPoints are deployed as ordinary contracts — v0.6 (0x5FF137D4…d2789, 47,380 bytes), v0.7 (0x00000000717 27De2…da032, 32,072 bytes) and v0.8 (0x4337084D…5Ff108, 43,478 bytes) — none of them in the genesis alloc, and the v0.7 EntryPoint received traffic in the sampled window. A bundler paying gas in XPL and being repaid in USDT by a paymaster contract is an application pattern, and it is available on every EVM chain. Recording it as a consensus divergence would be wrong.</p></td></tr></tbody></table></div>
+<p class="src"><b>live</b> eth_getBlockByNumber 30724096-30724135 @ 30724096 -&gt; 274 txs, 0 with gasPrice 0x0, min 8 wei, types {0x02: 253, 0x00: 21}; eth_getCode 0x0000000071727De22E5E9d8BAf0edAc6f37da032 @ 30724096 -&gt; 32072 bytes · <b>doc</b> <a href="https://docs.plasma.org/docs/guides/network-configuration/mainnet-details">https://docs.plasma.org/docs/guides/network-configuration/mainnet-details</a></p>
+<h2 id="header-fields">Header fields <span class="pill">0</span><a class="anchor" href="#header-fields">#</a></h2>
+<div class="note"><p>Ethereum's header exactly, with every Prague field populated: withdrawalsRoot, requestsHash, blobGasUsed/excessBlobGas (both zero), parentBeaconBlockRoot (non-zero — the CL supplies one). <code>extraData</code> carries reth's own default version string rather than anything Plasma-specific.</p></div>
+<h2 id="gotchas">Gotchas <span class="pill">6</span><a class="anchor" href="#gotchas">#</a></h2>
+<ul class="tight"><li>ZERO-FEE USDT IS NOT A CONSENSUS FEATURE HERE. Every sampled transaction paid a fee, the only live fee token is XPL, and the execution client has no code that could implement a fee exemption. Anything that looks free to a user is an ERC-4337 paymaster reimbursing a bundler, at the application layer, on an unmodified EVM.</li><li>Custom gas tokens and confidential payments are ROADMAP. Plasma&#x27;s docs use the future tense for both; the mainnet fee-token table has one row.</li><li>Blob transactions are accepted by the encoder and rejected by the pool: max blob count is 0. Tooling that assumes a Prague chain takes type-0x03 will fail at submission, not at signing.</li><li>`finalized` trailed the head by ~2,662 blocks (~44 minutes) when probed, despite BFT consensus advertising deterministic finality. Whichever component sets the finalized tag over the Engine API is lagging far behind the consensus commit, and that component is closed source.</li><li>The block `miner` is a Gnosis Safe from the genesis alloc, not a validator key. Attribution of blocks to validators is not possible from the header.</li><li>The Ethereum beacon deposit contract is deployed at its mainnet address with real bytecode and storage, and the client is configured to treat it as THE deposit contract, on a chain that does not use beacon deposits for validator selection.</li></ul>
+<h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
+<div class="prose"><p>Pinned: <code>paradigmxyz/reth</code> <strong>v1.11.3</strong> (<code>d6324d63</code>) — upstream, unmodified — with
+<code>PlasmaLaboratories/node-templates</code> (<code>09df1007</code>) as a companion for the mainnet
+genesis and the pinned image digests. Live probe: <code>https://rpc.plasma.to</code>, chain id
+<strong>9745</strong>, block <strong>30724096</strong> (0x1d4d000), 2026-08-25. Baseline fork <strong>prague</strong>.</p>
+<p><strong>Evidence path taken: (a), source — but not the source anyone expected.</strong> The gate
+question was whether a public execution client exists. It does, and it is
+<code>paradigmxyz/reth</code> itself: Plasma's own node template pins
+<code>ghcr.io/paradigmxyz/reth:v1.11.3</code> <strong>by digest</strong> as the mainnet execution image. There
+was no need for the <code>documented</code> path and no justification for it. The org
+(<code>PlasmaLaboratories</code>, not <code>plasma-network</code> or <code>PlasmaNetwork</code> — the latter is an
+unrelated 2019 account with zero repos) does keep a reth fork, but it has <strong>no tags,
+no releases, and no consensus changes</strong>.</p>
+<hr />
+<h2>1. The execution layer is bit-for-bit upstream reth — three independent proofs</h2>
+<ul>
+<li><strong>The operator config.</strong> <code>config/mainnet/.env</code> sets
+  <code>EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth</code>, <code>EXECUTION_TAG=v1.11.3@sha256:523e5c6a…</code>
+  — an upstream image referenced by digest, not a Plasma rebuild.</li>
+<li><strong>The blocks themselves.</strong> Every mainnet block's <code>extraData</code> is
+  <code>0x726574682f76312e31312e332f6c696e7578</code> = the ASCII string <code>reth/v1.11.3/linux</code>.
+  That is exactly <code>default_extra_data()</code> in <code>crates/node/core/src/version.rs</code>
+  (<code>format!("reth/v{}/{}", CARGO_PKG_VERSION, OS)</code>), unaltered by the block producer.</li>
+<li><strong>The RPC's self-report.</strong> <code>web3_clientVersion</code> returns <code>reth/v1.8.3-4219741</code>, and
+  <code>4219741</code> is the prefix of <code>42197415102b7a20be42e4fe919f024b81ceb55b</code>, which is
+  precisely the commit upstream's <code>v1.8.3</code> tag points at.</li>
+</ul>
+<p>The <code>PlasmaLaboratories/reth</code> fork's branches are upstream syncs, an <strong>ExEx</strong> that
+posts XPL balance updates to a webhook (an observer, not a state-transition rule), and
+one <code>eth_feeHistory</code> fix. That fix is itself the tell: it corrects
+<code>blob_gas_used_ratio</code> when <code>max_blob_count == 0</code>, a bug Plasma hit <em>because</em> its own
+genesis disables blobs — and it was upstreamed, co-authored by a reth maintainer. The
+total EL delta of this chain against upstream is a bug fix that upstream accepted.</p>
+<h2>2. The zero-fee USDT paymaster is not a consensus divergence — and is not live</h2>
+<p>This was the question worth the effort, and the answer is a clean negative, argued
+four ways:</p>
+<ul>
+<li><strong>Structural.</strong> Unmodified reth has nowhere to put a fee rule keyed to an ERC-20
+  address. There is no fee-currency transaction field (Celo's <code>0x7b</code>), no client-driven
+  debit/credit calls (Celo), no ProtocolConfig read (Arc), no <code>currency == "USD"</code> check
+  (Tempo). A transaction must satisfy <code>max_fee_per_gas &gt;= base_fee</code> and its sender pays.</li>
+<li><strong>Empirical.</strong> 274 transactions across 40 consecutive blocks from 30724096: <strong>zero</strong>
+  with <code>gasPrice: 0x0</code>. Minimum effective price 8 wei; 133 of the 274 were ERC-20
+  <code>transfer(...)</code> calls, including calls to USDT0 (<code>0xb8ce59fc…625ebb</code>, symbol <code>USDT</code>,
+  6 decimals), and they paid gas like everything else.</li>
+<li><strong>Documented.</strong> Plasma's own mainnet page lists exactly one fee token — "Native
+  Plasma Mainnet Token XPL, Live" — under the line "<em>Plasma will support fee payments
+  in multiple tokens soon.</em>" Custom gas tokens appear only in the future tense
+  ("Plasma is building support…", "Developers <strong>will be able</strong> to register…") and
+  zero-fee USD₮0 transfers are marked "<strong>currently in development</strong>".</li>
+<li><strong>What actually exists.</strong> All three canonical ERC-4337 EntryPoints are deployed as
+  ordinary contracts — v0.6 (<code>0x5FF137D4…</code>, 47,380 bytes), v0.7 (<code>0x00000000717 27De2…</code>,
+  32,072 bytes), v0.8 (<code>0x4337084D…</code>, 43,478 bytes) — none in the genesis alloc, and the
+  v0.7 EntryPoint took traffic in the sampled window. So gas sponsorship on Plasma is
+  bundler machinery available on every EVM chain.</li>
+</ul>
+<p>Recording this as a consensus feature would have put a fabricated fee-model divergence
+into the dataset next to the real ones on Celo, Arc and Tempo. It belongs in none of
+those comparisons.</p>
+<h2>3. The precompile delta is empty, and for once that is <em>measured</em>, not inferred</h2>
+<p>The endpoint supports EIP-7910 <code>eth_config</code>, so the node enumerates itself: exactly
+the seventeen Prague precompiles at <code>0x01</code>–<code>0x11</code>, no <code>0x0100</code>, nothing in any custom
+range, plus the four Prague system contracts at their <strong>mainnet</strong> addresses and
+<code>blobSchedule {max: 0, target: 0}</code>. This sidesteps the trap the dataset has hit six
+times — that <code>eth_getCode</code> cannot distinguish a precompile from a predeploy, and an
+address scan cannot see a predicate-based lookup like Base's. Here the client's own
+active-config enumeration is the evidence, which is strictly stronger than either.</p>
+<h2>4. The one real EVM-visible divergence is a genesis constant, not code</h2>
+<p><code>blobSchedule.max = 0</code> for both Cancun and Prague. Blob transactions are encodable but
+unusable: upstream reth's pool rejects them with <code>TooManyEip4844Blobs { permitted: 0 }</code>.
+<code>eth_blobBaseFee</code> still returns 1 and the header still carries zeroed
+<code>blobGasUsed</code>/<code>excessBlobGas</code>. EIP-4844 is therefore <code>removed</code> — the whole of the
+chain's mainnet-relative EIP delta.</p>
+<h2>5. Where Plasma's divergence actually lives: the closed consensus client</h2>
+<p>Everything distinctive about Plasma — PlasmaBFT (a pipelined Fast HotStuff),
+sub-second deterministic finality, the validator/observer split — is in
+<code>ghcr.io/plasmalaboratories/plasma-consensus-public:1.0.0</code>, a container image with no
+source repo. The EL is a plain Engine-API follower, which is exactly why an unmodified
+reth works. This makes Plasma the dataset's cleanest instance of a chain whose
+consensus layer is novel and whose execution layer is <em>literally</em> Ethereum's — a
+sharper version of the "gas token is the only delta" control case that Gnosis provides,
+because here even the gas token is native.</p>
+<p>Two live oddities came out of that split. <code>finalized</code> trailed the head by ~2,662 blocks
+(~44 minutes) despite BFT finality, so whatever sets the finalized tag over the Engine
+API lags the consensus commit badly. And the block <code>miner</code> is not a validator key: it
+is one of five <strong>Gnosis Safe proxies</strong> allocated at <code>0x…0a11b001</code>–<code>005</code> in genesis
+(172-byte Safe proxy bytecode, eleven storage slots each), four of which hold the entire
+initial XPL supply. Blocks alternate between <code>…0a11b004</code> and <code>…0a11b005</code>, so the
+coinbase field tells you nothing about who proposed the block.</p>
+<h2>6. A curiosity worth a <code>unrecorded</code></h2>
+<p>Genesis sets <code>depositContractAddress</code> to <strong>Ethereum mainnet's</strong> beacon deposit contract
+(<code>0x00000000219ab540…7705fa</code>) and allocates its full 12,718-byte bytecode and 31 storage
+slots; live <code>eth_config</code> reports the same address as the chain's DEPOSIT_CONTRACT_ADDRESS.
+On a chain whose validators are chosen by PlasmaBFT, what consumes the resulting EIP-6110
+deposit requests cannot be established from the EL alone. Left <code>unrecorded</code>.</p>
+<hr />
+<h2>Not established here</h2>
+<ul>
+<li><strong>PlasmaBFT's actual rules.</strong> No source, only a container image. Finality,
+  committee formation, slashing, and the fork-choice fed to the EL are all outside
+  reach; the docs are the only account of them.</li>
+<li><strong>EIP-6110 deposit handling</strong> (finding 6).</li>
+<li><strong>Whether the reth version skew matters.</strong> Producers are on v1.11.3 (per extraData)
+  while the public RPC answers as v1.8.3. Both are upstream tags and neither carries a
+  Plasma patch, so the state transition is the same; but the row is pinned at v1.11.3
+  because that is what the mainnet node template pins.</li>
+<li><strong>Future paymaster semantics.</strong> If Plasma later ships protocol-level custom gas
+  tokens, they cannot ship in an unmodified reth — the appearance of a Plasma-patched
+  EL image in <code>config/mainnet/.env</code> is the signal to re-open this row.</li>
+<li><strong>Millisecond timestamps.</strong> Documented as a planned additional field. Not present in
+  any header observed.</li>
+<li><strong>Confidential payments module.</strong> Documented as in development; nothing on chain.</li>
+</ul>
+<hr />
+<h2>Re-verify</h2>
+<pre><code class="language-sh">cd /Volumes/TendiesTown/EVM-intel
+R=https://rpc.plasma.to; B=0x1d4d000   # 30724096
+
+# --- pins
+git -C chains/plasma/repos/reth rev-parse HEAD             # d6324d63… = upstream v1.11.3
+gh api repos/paradigmxyz/reth/git/ref/tags/v1.11.3 --jq '.object.sha'
+git -C chains/plasma/repos/node-templates rev-parse HEAD   # 09df1007…
+
+# --- the EL is upstream: image pinned by digest, and reth's own extraData format
+grep -E 'EXECUTION_IMAGE|EXECUTION_TAG|CONSENSUS_IMAGE|CONSENSUS_TAG' \
+  chains/plasma/repos/node-templates/config/mainnet/.env
+sed -n '/pub fn default_extra_data/,+3p' \
+  chains/plasma/repos/reth/crates/node/core/src/version.rs
+# --- the fork has no releases and no consensus changes
+gh api repos/PlasmaLaboratories/reth/releases --jq 'length'   # 0
+gh api repos/PlasmaLaboratories/reth/tags --jq 'length'       # 0
+gh api repos/paradigmxyz/reth/commits/4219741 --jq '.sha'     # == upstream v1.8.3
+
+# --- genesis: prague at 0, blobs disabled, mainnet deposit contract
+jq '.config | {chainId, pragueTime, osakaTime, blobSchedule, depositContractAddress}' \
+  chains/plasma/repos/node-templates/config/mainnet/genesis.json
+
+# --- live: client, header, extraData
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;web3_clientVersion&quot;,&quot;params&quot;:[]}' $R
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getBlockByNumber\&quot;,\&quot;params\&quot;:[\&quot;$B\&quot;,false]}&quot; $R \
+  | jq -r '.result | {extraData, miner, baseFeePerGas, gasLimit, requestsHash, blobGasUsed}'
+python3 -c &quot;print(bytes.fromhex('726574682f76312e31312e332f6c696e7578').decode())&quot;
+
+# --- live: the node enumerates its own precompiles and system contracts (finding 3)
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_config&quot;,&quot;params&quot;:[]}' $R \
+  | jq -r '.result.current | {chainId, forkId, activationTime, blobSchedule, systemContracts,
+           precompiles:(.precompiles|keys|sort)}'
+
+# --- live: NO zero-fee transactions (finding 2) — 40 blocks, 274 txs
+python3 - &lt;&lt;'PY'
+import json,urllib.request
+def rpc(m,p):
+    b=json.dumps({&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:m,&quot;params&quot;:p}).encode()
+    r=urllib.request.Request(&quot;https://rpc.plasma.to&quot;,data=b,
+        headers={&quot;content-type&quot;:&quot;application/json&quot;,&quot;user-agent&quot;:&quot;curl/8.7.1&quot;})
+    return json.load(urllib.request.urlopen(r,timeout=20))[&quot;result&quot;]
+n=z=0; types={}; mn=None
+for i in range(40):
+    for t in rpc(&quot;eth_getBlockByNumber&quot;,[hex(0x1d4d000+i),True])[&quot;transactions&quot;]:
+        n+=1; gp=int(t[&quot;gasPrice&quot;],16); z+= gp==0
+        mn = gp if mn is None else min(mn,gp)
+        types[t[&quot;type&quot;]]=types.get(t[&quot;type&quot;],0)+1
+print(&quot;txs&quot;,n,&quot;zero-price&quot;,z,&quot;min gasPrice(wei)&quot;,mn,&quot;types&quot;,types)
+PY
+
+# --- live: the ERC-4337 EntryPoints exist as ordinary contracts (finding 2)
+for a in 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789 \
+         0x0000000071727De22E5E9d8BAf0edAc6f37da032 \
+         0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108; do
+  curl -s -X POST -H 'content-type: application/json' \
+    -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;$a\&quot;,\&quot;$B\&quot;]}&quot; $R \
+    | jq -r '.result|length'; done
+# ...and that none of them is in the genesis alloc
+jq -r '.alloc|keys[]' chains/plasma/repos/node-templates/config/mainnet/genesis.json | grep -i '4337\|71727de2\|5ff137d4' || echo &quot;not in genesis alloc&quot;
+
+# --- live: finalized lag, and the Safe at the coinbase (finding 5)
+curl -s -X POST -H 'content-type: application/json' \
+  -d '{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;eth_getBlockByNumber&quot;,&quot;params&quot;:[&quot;finalized&quot;,false]}' $R \
+  | jq -r '.result.number'
+curl -s -X POST -H 'content-type: application/json' \
+  -d &quot;{\&quot;jsonrpc\&quot;:\&quot;2.0\&quot;,\&quot;id\&quot;:1,\&quot;method\&quot;:\&quot;eth_getCode\&quot;,\&quot;params\&quot;:[\&quot;0x000000000000000000000000000000000a11b005\&quot;,\&quot;$B\&quot;]}&quot; $R \
+  | jq -r '.result'     # Gnosis Safe proxy: masterCopy() short-circuit a619486e + DELEGATECALL
+
+# --- docs: one live fee token, everything else future tense
+curl -s https://docs.plasma.to/llms-full.txt | grep -n -i \
+  'will support fee payments\|currently in development\|is building support'
+
+# --- schema
+tools/.venv/bin/python tools/verify.py 2&gt;&amp;1 | sed -n '/^plasma/,/^$/p'
+</code></pre></div>
+<h2 id="reproduce">Reproduce this row<a class="anchor" href="#reproduce">#</a></h2>
+<pre><code>tools/clone.sh plasma    # fetch the pinned evidence
+tools/verify.py plasma   # re-extract from source, diff against chain.yaml</code></pre>
+<p class="src">Source of record: <code>chains/plasma/chain.yaml</code> · <code>chains/plasma/SUMMARY.md</code></p>
+</main>
+<footer>Generated 2026-08-31</footer>
+<script src="../assets/site.js"></script>
+</body></html>

@@ -417,6 +417,27 @@ Stack descendants inherit the stack row's <code>base_map</code> unless they decl
 clone for every row that has an extractor; a chain with no <code>base_map</code> at all is a build
 error. Chains whose base set comes from an unvendored dependency (coreth/subnet-evm on
 <code>ava-labs/libevm</code>) carry a prose <code>src</code> and are checked by citation only.</p>
+<h2>The transaction envelope (<code>0x00</code>–<code>0x04</code>)</h2>
+<p>The same problem for <code>tx_types</code>: mainnet's EIP-2718 envelope is <code>0x00</code> LegacyTx, <code>0x01</code>
+AccessListTx (EIP-2930), <code>0x02</code> DynamicFeeTx (EIP-1559), <code>0x03</code> BlobTx (EIP-4844), <code>0x04</code>
+SetCodeTx (EIP-7702). A chain that drops EIP-1559 or never shipped blob transactions —
+common — would record nothing, leaving a blank that reads as a difference next to a
+chain that did record it.</p>
+<p>Every chain declares the envelope, condensed:</p>
+<pre><code class="language-yaml">tx_types:
+  envelope:
+    status: inherited
+    present: &quot;0x00-0x02, 0x04&quot;   # which of 0x00-0x04 the network accepts in mainnet
+                                 # shape. &quot;&quot; means none (Tron — no EIP-2718 envelope).
+    src: &quot;derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries&quot;
+    note: &quot;no blob transactions (EIP-4844).&quot;
+</code></pre>
+<p>Expansion, precedence, and the <code>verify.py</code> cross-check are the same as <code>base_map</code>
+(0x00–0x04 instead of 0x01–0x11, no <code>p256verify</code> tail). <code>present</code> states what the
+network <em>accepts</em>, not merely what type constant the client defines — a byte present in
+source but absent from <code>present</code> is the "defined, but rejected" case (<code>0x03</code> on most OP
+Stack chains) and is not an error. OP Stack descendants inherit the stack row's
+<code>envelope</code> unless it would differ.</p>
 <h2>Non-enumerable precompiles</h2>
 <p>Base (from its Beryl upgrade) installs a <code>PrecompileLookup</code> that resolves precompiles
 <strong>by predicate over the address</strong> rather than from a fixed map. Roughly 2^72 addresses
@@ -471,7 +492,8 @@ baseline_fork: osaka      # the mainnet fork this chain claims equivalence to
 forks:        # src, note, timeline[] with activation_time / mainnet_equivalent
 eips:         # EIP number -&gt; {status, note, src}. Mainnet-relative. THE core table.
 non_eip_specs: # chain's own spec series, keyed by adoption:
-tx_types:     # type byte -&gt; {name, status, spec, src}
+tx_types:     # envelope (the 0x00-0x04 EIP-2718 range, condensed); then
+              # type byte -&gt; {name, status, spec, src} for divergences and additions
 tx_authorization:  # what can SIGN a tx — independent of precompiles
 non_evm_transactions:  # protocol txs with no type byte
 precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then

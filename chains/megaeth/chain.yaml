@@ -657,17 +657,37 @@ opcodes:
   added: []
   removed: []
   modified:
-    - op: "0xf1"
-      name: "CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, CREATE2"
-      note: >-
-        (0xf1-0xf5, 0xfa.) 98/100 gas forwarding instead of 63/64; storage gas charged for account and
+    - op: "0xf0"
+      name: "CREATE"
+      note: &megaeth_call_forwarding >-
+        98/100 gas forwarding instead of 63/64; storage gas charged for account and
         contract creation; per-frame budgets for all four resource dimensions forwarded
         at 98/100 from Rex4; from Rex4 a value-transferring CALL/CALLCODE also grants an
         extra 23,000-gas STORAGE_CALL_STIPEND that can only be spent on storage gas and
         is BURNED if unused, because MegaETH's 10x LOG costs make a single LOG1 exceed
         the 2,300-gas EVM stipend and would otherwise break every `transfer()` to a
         contract that emits an event.
-      src: "mega-evm/crates/mega-evm/src/constants.rs:STORAGE_CALL_STIPEND, mega-evm/crates/mega-evm/src/limit/frame_limit.rs:FRAME_LIMIT_NUMERATOR"
+      src: &megaeth_call_forwarding_src "mega-evm/crates/mega-evm/src/constants.rs:STORAGE_CALL_STIPEND, mega-evm/crates/mega-evm/src/limit/frame_limit.rs:FRAME_LIMIT_NUMERATOR"
+    - op: "0xf1"
+      name: "CALL"
+      note: *megaeth_call_forwarding
+      src: *megaeth_call_forwarding_src
+    - op: "0xf2"
+      name: "CALLCODE"
+      note: *megaeth_call_forwarding
+      src: *megaeth_call_forwarding_src
+    - op: "0xf4"
+      name: "DELEGATECALL"
+      note: *megaeth_call_forwarding
+      src: *megaeth_call_forwarding_src
+    - op: "0xf5"
+      name: "CREATE2"
+      note: *megaeth_call_forwarding
+      src: *megaeth_call_forwarding_src
+    - op: "0xfa"
+      name: "STATICCALL"
+      note: *megaeth_call_forwarding
+      src: *megaeth_call_forwarding_src
     - op: "0x55"
       name: "SSTORE"
       note: >-
@@ -678,14 +698,30 @@ opcodes:
         that bucket. No other chain in this dataset prices an opcode by state layout.
       src: "mega-evm/crates/mega-evm/src/constants.rs:SSTORE_SET_STORAGE_GAS_BASE"
     - op: "0xa0"
-      name: "LOG0-LOG4"
-      note: "(0xa0-0xa4.) storage gas at 10x the EVM cost: 3,750 per topic and 80 per data byte, on top of standard compute gas"
-      src: "mega-evm/crates/mega-evm/src/constants.rs:LOG_TOPIC_STORAGE_GAS"
-    - op: "0x43"
-      name: "NUMBER, TIMESTAMP, COINBASE, PREVRANDAO, GASLIMIT, BASEFEE, BLOCKHASH, BLOBBASEFEE, BLOBHASH"
+      name: "LOG0"
+      note: &megaeth_log_gas "storage gas at 10x the EVM cost: 3,750 per topic and 80 per data byte, on top of standard compute gas"
+      src: &megaeth_log_gas_src "mega-evm/crates/mega-evm/src/constants.rs:LOG_TOPIC_STORAGE_GAS"
+    - op: "0xa1"
+      name: "LOG1"
+      note: *megaeth_log_gas
+      src: *megaeth_log_gas_src
+    - op: "0xa2"
+      name: "LOG2"
+      note: *megaeth_log_gas
+      src: *megaeth_log_gas_src
+    - op: "0xa3"
+      name: "LOG3"
+      note: *megaeth_log_gas
+      src: *megaeth_log_gas_src
+    - op: "0xa4"
+      name: "LOG4"
+      note: *megaeth_log_gas
+      src: *megaeth_log_gas_src
+    - op: "0x40"
+      name: "BLOCKHASH"
       severity: high
-      note: >-
-        (0x40-0x45, 0x48-0x4a.) GAS DETENTION. Touching any block-environment opcode caps the transaction's
+      note: &megaeth_detention >-
+        GAS DETENTION. Touching any block-environment opcode caps the transaction's
         remaining COMPUTE gas at 20,000,000 from the point of access (absolute before
         Rex4, relative after). The value returned is correct; the transaction's budget
         silently changes because it read it. A contract that reads `block.timestamp`
@@ -700,12 +736,64 @@ opcodes:
         deliberate omission on the simulation path, not a different spec — and it means
         the one failure mode with no mainnet analogue is invisible to the one estimator
         the chain's docs tell you to trust.
-      src: "mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS, mega-evm/crates/mega-evm/src/evm/result.rs:VolatileDataAccessOutOfGas"
+      src: &megaeth_detention_src "mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS, mega-evm/crates/mega-evm/src/evm/result.rs:VolatileDataAccessOutOfGas"
+    - op: "0x41"
+      name: "COINBASE"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x42"
+      name: "TIMESTAMP"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
       src_live: "eth_call 0x6342..0005 remainingComputeGas() @ 25149945 -> 59943828 with no block-env read and 59943792 after TIMESTAMP;POP (a 36-gas difference, not a cap to 20,000,000); the same value for a gas parameter of 1,600,000 and of 30,000,000, so the compute meter is a fixed 60,000,000 budget decoupled from the request's gas field; a 983,040-iteration loop costing between 25,000,000 and 30,000,000 gas succeeded at gas 0x1C9C380 both with and without a preceding TIMESTAMP read"
+    - op: "0x43"
+      name: "NUMBER"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x44"
+      name: "PREVRANDAO"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x45"
+      name: "GASLIMIT"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x48"
+      name: "BASEFEE"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x49"
+      name: "BLOBHASH"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
+    - op: "0x4a"
+      name: "BLOBBASEFEE"
+      severity: high
+      note: *megaeth_detention
+      src: *megaeth_detention_src
     - op: "0x31"
-      name: "BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH"
-      note: "(0x31, 0x3b, 0x3c, 0x3f.) same detention when the account touched is the block beneficiary; Rex6 extended the coverage"
-      src: "mega-evm/crates/mega-evm/src/access/volatile.rs:VolatileDataAccess"
+      name: "BALANCE"
+      note: &megaeth_beneficiary_detention "same detention when the account touched is the block beneficiary; Rex6 extended the coverage"
+      src: &megaeth_beneficiary_src "mega-evm/crates/mega-evm/src/access/volatile.rs:VolatileDataAccess"
+    - op: "0x3b"
+      name: "EXTCODESIZE"
+      note: *megaeth_beneficiary_detention
+      src: *megaeth_beneficiary_src
+    - op: "0x3c"
+      name: "EXTCODECOPY"
+      note: *megaeth_beneficiary_detention
+      src: *megaeth_beneficiary_src
+    - op: "0x3f"
+      name: "EXTCODEHASH"
+      note: *megaeth_beneficiary_detention
+      src: *megaeth_beneficiary_src
     - op: "0xff"
       name: "SELFDESTRUCT"
       note: "halted with InvalidFEOpcode from MiniRex through Rex1; restored at Rex2 with EIP-6780 semantics"

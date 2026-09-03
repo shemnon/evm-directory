@@ -753,9 +753,10 @@ system_contracts:
 
 opcodes:
   note: >-
-    The instruction table is Besu 25.2.2's Cancun set, then nine operations are REPLACED by
-    Hedera versions in the Dagger module. The replacements are listed here; everything else
-    is stock.
+    The instruction table is Besu 25.2.2's Cancun set, then nine operation classes are
+    REPLACED by Hedera versions in the Dagger module. The replacements are listed here,
+    expanded to one row per opcode byte (so CALL/CALLCODE/DELEGATECALL/STATICCALL and
+    LOG0-LOG4 each get their own row); everything else is stock.
   added: []
   removed: []
   modified:
@@ -826,20 +827,55 @@ opcodes:
       Same halt path as EXTCODESIZE, plus: for an HTS token address it hashes bytecode that
       was SYNTHESISED for that address on demand, and for a plain account it may hash
       account-proxy bytecode whose presence depends on the calling selector.
-  - op: "0xf1/0xf2/0xf4/0xfa"
-    name: "CALL / CALLCODE / DELEGATECALL / STATICCALL"
+  - op: "0xf1"
+    name: CALL
     severity: high
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount"
-    note: >-
+    src: &hedera_msgcall_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount"
+    note: &hedera_msgcall_note >-
       A call to any address in 0x01..0x2EE that is neither a Besu precompile nor a Hedera
       system contract SUCCEEDS with empty output after `frame.clearGasRemaining()` — the
       child frame's entire gas allowance is consumed and nothing is returned. Sending value
       to such an address halts with `INVALID_CONTRACT_ID`. See `precompiles.dynamic_range`.
-  - op: "0xa0-0xa4"
-    name: LOG0-LOG4
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
+  - op: "0xf2"
+    name: CALLCODE
+    severity: high
+    src: *hedera_msgcall_src
+    note: *hedera_msgcall_note
+  - op: "0xf4"
+    name: DELEGATECALL
+    severity: high
+    src: *hedera_msgcall_src
+    note: *hedera_msgcall_note
+  - op: "0xfa"
+    name: STATICCALL
+    severity: high
+    src: *hedera_msgcall_src
+    note: *hedera_msgcall_note
+  - op: "0xa0"
+    name: LOG0
+    src: &hedera_log_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
     divergence: gas
-    note: "Priced at max(Besu cost, Hedera storage-rent cost), where the rent term depends on the live HBAR/USD exchange rate."
+    note: &hedera_log_note "Priced at max(Besu cost, Hedera storage-rent cost), where the rent term depends on the live HBAR/USD exchange rate."
+  - op: "0xa1"
+    name: LOG1
+    src: *hedera_log_src
+    divergence: gas
+    note: *hedera_log_note
+  - op: "0xa2"
+    name: LOG2
+    src: *hedera_log_src
+    divergence: gas
+    note: *hedera_log_note
+  - op: "0xa3"
+    name: LOG3
+    src: *hedera_log_src
+    divergence: gas
+    note: *hedera_log_note
+  - op: "0xa4"
+    name: LOG4
+    src: *hedera_log_src
+    divergence: gas
+    note: *hedera_log_note
 
 header_fields:
   note: >-

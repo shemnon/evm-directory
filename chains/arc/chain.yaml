@@ -238,6 +238,14 @@ non_eip_specs:
     the code by number.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00, 0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844), no EIP-2930 access-list transactions. Derived from the eips map
+      (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
   "0x00": {name: Legacy, status: inherited, note: "60% of transactions in the scanned range — unusually high, and the sampled one is an ERC-20 transfer to the native USDC contract", src_live: "blocks 58728247-58728296 @ 58728247 -> 355 of 586"}
   "0x01": {name: EIP-2930, status: unrecorded, note: "not observed in the scanned range; nothing in the client excludes it"}
   "0x02": {name: EIP-1559, status: inherited, src_live: "blocks 58728247-58728296 @ 58728247 -> 231 of 586"}

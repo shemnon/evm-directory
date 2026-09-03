@@ -441,6 +441,14 @@ non_eip_specs:
   src: artela-evm/vm/contracts.go:PrecompiledContractsBerlin
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x03"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no EIP-7702 set-code
+      transactions. Derived from the eips map (2930/1559/4844/7702); per-type divergences
+      and their evidence are on the rows below.
   "0x00": {name: LegacyTx, status: inherited, src: "x/evm/txs/tx_legacy.go:newLegacyTx"}
   "0x01": {name: AccessListTx, status: inherited, src: "x/evm/txs/tx_access_list.go:newAccessListTx"}
   "0x02": {name: DynamicFeeTx, status: inherited, src: "x/evm/txs/tx_dynamic_fee.go:newDynamicFeeTx"}

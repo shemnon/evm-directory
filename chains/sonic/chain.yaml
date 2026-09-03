@@ -346,6 +346,13 @@ non_eip_specs:
       on the chain costs.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape. Derived from the eips map
+      (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
   note: >-
     NO custom type bytes, and the type-byte frontier README.md tracks is untouched by
     this chain. The interest is entirely in 0x03 and in what has no type byte at all.

@@ -106,28 +106,43 @@ def sortkey(a):
     except Exception: return (1, 0)
 
 
-# --- base precompile map synthesis ---------------------------------------------
-# A chain records the mainnet base range (0x01-0x11 + P256VERIFY at 0x0100) as a
-# condensed `precompiles.base_map` block rather than eighteen near-identical rows.
-# The model expands it here into per-address entries so every renderer shows a
-# verified `=` / `➖` in those cells instead of a blank that only *assumes*
-# mainnet-standard behaviour. An explicit per-address entry always wins over the
-# synthesized one; see SCHEMA.md.
+# --- mainnet base-set synthesis ----------------------------------------------
+# Two address-keyed sections have a mainnet "base set" that most chains carry
+# unchanged and would, under the delta convention, record nothing about — leaving a
+# blank cell that only *assumes* mainnet behaviour and reads as a difference next to
+# a chain that did record it:
+#
+#   precompiles.base_map  — 0x01-0x11 plus P256VERIFY at 0x0100
+#   tx_types.envelope     — the EIP-2718 envelope 0x00-0x04 (Legacy, 2930, 1559,
+#                           4844, 7702)
+#
+# The model expands the condensed block into per-address entries so every renderer
+# shows a verified `=` / `➖`. An explicit per-address entry always wins; see
+# SCHEMA.md ("The base precompile map", "The transaction envelope").
 
+# section -> (block key, address range as ints, optional (tail_addr, tail_field))
+_BASE_SET = {
+    "precompiles": ("base_map", range(0x01, 0x12), (0x100, "p256verify")),
+    "tx_types":    ("envelope", range(0x00, 0x05), None),
+}
 _BASE_NAMES_CACHE = {}
 
-def base_names():
-    """{int addr -> name} for 0x01-0x11 and 0x100, read once from the baseline row
+def base_names(section="precompiles"):
+    """{int addr -> name} for a section's base set, read once from the baseline row
     so the name table is never duplicated."""
-    if not _BASE_NAMES_CACHE:
-        pc = (load().get("ethereum", {}).get("precompiles") or {})
-        for k, v in pc.items():
+    if section not in _BASE_NAMES_CACHE:
+        _, rng, tail = _BASE_SET[section]
+        wanted = set(rng) | ({tail[0]} if tail else set())
+        d = (load().get("ethereum", {}).get(section) or {})
+        m = {}
+        for k, v in d.items():
             if isinstance(v, dict) and str(k).startswith("0x"):
                 try: n = int(str(k), 16)
                 except ValueError: continue
-                if n in range(0x01, 0x12) or n == 0x100:
-                    _BASE_NAMES_CACHE[n] = v.get("name", "")
-    return _BASE_NAMES_CACHE
+                if n in wanted:
+                    m[n] = v.get("name", "")
+        _BASE_NAMES_CACHE[section] = m
+    return _BASE_NAMES_CACHE[section]
 
 
 def _parse_present(spec):
@@ -146,30 +161,30 @@ def _parse_present(spec):
     return out
 
 
-def synth_base(c):
-    """address -> synthetic entry for one chain's base precompile range, from its
-    `precompiles.base_map`. Empty when the chain declares no base_map."""
-    bm = (c.get("precompiles") or {}).get("base_map")
+def synth_base(c, section="precompiles"):
+    """address -> synthetic entry for one chain's mainnet base set in this section,
+    from its `base_map` / `envelope` block. Empty when the chain declares none."""
+    if section not in _BASE_SET:
+        return {}
+    key, rng, tail = _BASE_SET[section]
+    bm = (c.get(section) or {}).get(key)
     if not isinstance(bm, dict):
         return {}
-    names = base_names()
+    names = base_names(section)
     present = _parse_present(bm.get("present"))
     disp = bm.get("status", "inherited")
-    src = bm.get("src")
-    src_live = bm.get("src_live")
-    out = {}
-    for n in range(0x01, 0x12):
-        st = disp if n in present else "removed"
+    src, src_live = bm.get("src"), bm.get("src_live")
+    def entry(n, st):
         e = {"name": names.get(n, ""), "status": st, "_synth": True}
         if src: e["src"] = src
         if src_live: e["src_live"] = src_live
-        out[canon(hex(n))] = e
-    p256 = bm.get("p256verify", False)
-    st = {True: disp, False: "removed", "pending": "pending"}.get(p256, "removed")
-    e = {"name": names.get(0x100, "P256VERIFY"), "status": st, "_synth": True}
-    if src: e["src"] = src
-    if src_live: e["src_live"] = src_live
-    out[canon("0x100")] = e
+        return e
+    out = {canon(hex(n)): entry(n, disp if n in present else "removed") for n in rng}
+    if tail:
+        addr, field = tail
+        val = bm.get(field, False)
+        st = {True: disp, False: "removed", "pending": "pending"}.get(val, "removed")
+        out[canon(hex(addr))] = entry(addr, st)
     return out
 
 
@@ -192,15 +207,15 @@ def _resolve_addr(chains, s, section):
       4. this chain's own explicit entries — always win
     """
     c = chains[s]
-    pc = section == "precompiles"
+    synthy = section in _BASE_SET
     up = c["lineage"].get("upstream")
     stacked = up in chains and is_stack(chains[up])
     out = {}
-    if stacked and pc:
-        for k, v in synth_base(chains[up]).items():
+    if stacked and synthy:
+        for k, v in synth_base(chains[up], section).items():
             out[k] = (v, up)
-    if pc:
-        for k, v in synth_base(c).items():
+    if synthy:
+        for k, v in synth_base(c, section).items():
             if v.get("status") == "inherited":
                 out.setdefault(k, (v, s))
             else:
@@ -220,7 +235,8 @@ def _resolve_addr(chains, s, section):
 
 def addr_rows(chains, section):
     """Collect address->{slug: entry} across chains, resolving stack inheritance
-    and (for precompiles) synthesizing each chain's base precompile map."""
+    and, for precompiles and tx_types, synthesizing each chain's mainnet base set
+    (base_map / envelope)."""
     table, origin = {}, {}
     for s in order(chains):
         for k, (v, who) in _resolve_addr(chains, s, section).items():

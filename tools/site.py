@@ -407,9 +407,11 @@ def entry_meta(e):
 def addr_section(chains, slug, section, heading, anchor):
     """One chain's complete effective set for an address-keyed section."""
     eff = model.effective(chains, slug, section)
-    dyn = (chains[slug].get(section) or {}).get("dynamic_range")
-    sec_note = (chains[slug].get(section) or {}).get("note")
-    bmap = (chains[slug].get(section) or {}).get("base_map") if section == "precompiles" else None
+    sec = chains[slug].get(section) or {}
+    dyn = sec.get("dynamic_range")
+    sec_note = sec.get("note")
+    bmap = sec.get("base_map") if section == "precompiles" else \
+           sec.get("envelope") if section == "tx_types" else None
     if not eff and not dyn and not sec_note and not bmap:
         return ""
     rows, ids = [], []
@@ -428,15 +430,22 @@ def addr_section(chains, slug, section, heading, anchor):
     if sec_note:
         out.append(note(markdown(flat(sec_note))))
     if isinstance(bmap, dict):
-        pres = esc(bmap.get("present", "—"))
-        p256 = bmap.get("p256verify", False)
-        p256s = {True: "present", False: "absent", "pending": "pending"}.get(p256, "absent")
-        body = (f'<p><b>Base map</b> — <code>0x01</code>–<code>0x11</code>: '
-                f'<code>{pres}</code> {esc(bmap.get("status", "inherited"))}; '
-                f'P256VERIFY at <code>0x0100</code>: {p256s}.</p>')
+        pres = esc(bmap.get("present") or "none")
+        if section == "precompiles":
+            p256 = bmap.get("p256verify", False)
+            p256s = {True: "present", False: "absent", "pending": "pending"}.get(p256, "absent")
+            body = (f'<p><b>Base map</b> — <code>0x01</code>–<code>0x11</code>: '
+                    f'<code>{pres}</code> {esc(bmap.get("status", "inherited"))}; '
+                    f'P256VERIFY at <code>0x0100</code>: {p256s}.</p>')
+            lbl = "base map"
+        else:
+            body = (f'<p><b>Transaction envelope</b> — EIP-2718 types '
+                    f'<code>0x00</code>–<code>0x04</code> accepted in mainnet shape: '
+                    f'<code>{pres}</code>.</p>')
+            lbl = "envelope"
         if bmap.get("note"):
             body += f'<p>{esc(flat(bmap["note"]))}</p>'
-        out.append(note(body + provenance(bmap, on_chain=True), "note", "base map"))
+        out.append(note(body + provenance(bmap, on_chain=True), "note", lbl))
     if rows:
         out.append(table(["Address", "", "Name", "Note & provenance"],
                          [[r[0], r[1], r[2], f'<div class="wrap">{r[3]}</div>'] for r in rows],
@@ -869,6 +878,14 @@ def page_tx_types(chains):
     g, rows_in, tab, org = addr_grid(chains, "tx_types", "txtypes-grid",
                                      "Transaction types", "tx-types")
     B = [g]
+    B.append(note(
+        '<p>The EIP-2718 envelope <code>0x00</code>–<code>0x04</code> (Legacy, 2930, '
+        '1559, 4844, 7702) is shown for <b>every</b> chain, from an <code>envelope</code> '
+        'each row declares: <span class="s-inherited">=</span> accepted in mainnet shape, '
+        '<span class="s-removed">➖</span> not accepted. Turn on <i>hide rows where every '
+        'chain agrees</i> to collapse the types no chain diverges on. Rows above '
+        '<code>0x04</code> list only the chains that define a byte there.</p>',
+        "note", "the envelope"))
     B.append(axis_notes(chains, "tx-types"))
 
     # ---- byte-range occupancy -------------------------------------------

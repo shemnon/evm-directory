@@ -277,6 +277,15 @@ non_eip_specs:
       ForkID88ElderberryBlock as "forkID88ElderberryBlock" (a typo, still shipped).
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x01"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844), no EIP-7702 set-code transactions, no EIP-1559 dynamic-fee transactions.
+      Derived from the eips map (2930/1559/4844/7702); per-type divergences and their
+      evidence are on the rows below.
   "0x02":
     name: DynamicFeeTransaction
     status: removed

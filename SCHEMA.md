@@ -338,6 +338,33 @@ clone for every row that has an extractor; a chain with no `base_map` at all is 
 error. Chains whose base set comes from an unvendored dependency (coreth/subnet-evm on
 `ava-labs/libevm`) carry a prose `src` and are checked by citation only.
 
+## The transaction envelope (`0x00`–`0x04`)
+
+The same problem for `tx_types`: mainnet's EIP-2718 envelope is `0x00` LegacyTx, `0x01`
+AccessListTx (EIP-2930), `0x02` DynamicFeeTx (EIP-1559), `0x03` BlobTx (EIP-4844), `0x04`
+SetCodeTx (EIP-7702). A chain that drops EIP-1559 or never shipped blob transactions —
+common — would record nothing, leaving a blank that reads as a difference next to a
+chain that did record it.
+
+Every chain declares the envelope, condensed:
+
+```yaml
+tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"   # which of 0x00-0x04 the network accepts in mainnet
+                                 # shape. "" means none (Tron — no EIP-2718 envelope).
+    src: "derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries"
+    note: "no blob transactions (EIP-4844)."
+```
+
+Expansion, precedence, and the `verify.py` cross-check are the same as `base_map`
+(0x00–0x04 instead of 0x01–0x11, no `p256verify` tail). `present` states what the
+network *accepts*, not merely what type constant the client defines — a byte present in
+source but absent from `present` is the "defined, but rejected" case (`0x03` on most OP
+Stack chains) and is not an error. OP Stack descendants inherit the stack row's
+`envelope` unless it would differ.
+
 ## Non-enumerable precompiles
 
 Base (from its Beryl upgrade) installs a `PrecompileLookup` that resolves precompiles
@@ -407,7 +434,8 @@ baseline_fork: osaka      # the mainnet fork this chain claims equivalence to
 forks:        # src, note, timeline[] with activation_time / mainnet_equivalent
 eips:         # EIP number -> {status, note, src}. Mainnet-relative. THE core table.
 non_eip_specs: # chain's own spec series, keyed by adoption:
-tx_types:     # type byte -> {name, status, spec, src}
+tx_types:     # envelope (the 0x00-0x04 EIP-2718 range, condensed); then
+              # type byte -> {name, status, spec, src} for divergences and additions
 tx_authorization:  # what can SIGN a tx — independent of precompiles
 non_evm_transactions:  # protocol txs with no type byte
 precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then

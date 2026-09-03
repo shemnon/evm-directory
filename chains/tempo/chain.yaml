@@ -291,6 +291,14 @@ non_eip_specs:
     specification repository rather than on a website.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   "0x00": {name: Legacy, status: modified, note: "accepted, but `value` must be zero and the fee is charged in the default TIP-20 fee token — a legacy transaction on Tempo cannot move any asset by itself", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope"}
   "0x01": {name: EIP-2930, status: modified, note: "same value/fee-token caveat as 0x00", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope"}
   "0x02": {name: EIP-1559, status: modified, note: "same value/fee-token caveat. maxFeePerGas is in attodollars. Observed live: 3 of 7 transactions in the scanned range.", src: "crates/primitives/src/transaction/envelope.rs:TempoTxEnvelope", src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> tx 0x265549d2... type 0x2, value 0x0, receipt feeToken 0x20c0...0000"}

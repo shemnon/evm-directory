@@ -85,6 +85,15 @@ non_eip_specs:
      note: "activation by on-chain SR governance proposal, not by client release"}
 
 tx_types:
+  envelope:
+    status: inherited
+    present: ""
+    src: actuator/src/main/java/org/tron/core/vm/ (no EIP-2718 envelope in java-tron)
+    note: >-
+      Tron has no EIP-2718 typed-transaction envelope at all — every Tron transaction is a
+      protobuf `Transaction` message. 0x00-0x04 are absent; a call to eth_sendRawTransaction
+      with an RLP legacy or typed payload is not the Tron transaction path. See
+      non_evm_transactions.
   note: >-
     Tron has NO EIP-2718 typed-transaction envelope and no RLP transaction encoding.
     Transactions are protobuf messages carrying one of 43 ContractType values. Only

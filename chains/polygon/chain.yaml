@@ -86,6 +86,14 @@ non_eip_specs:
       G2 mul x6.4, blake2F GFROUND 22 (vs 1), COLD_SLOAD x2.6, COLD_SSTORE x1.4.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   "0x7f":
     name: StateSyncTx
     status: added

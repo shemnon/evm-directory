@@ -59,6 +59,14 @@ non_eip_specs:
   - {id: BEP-derived, name: BSC cross-chain precompiles, adoption: adopted, fork: fermat}
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844), no EIP-7702 set-code transactions. Derived from the eips map
+      (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
   "0x04": {name: SetCodeTx, status: removed, note: "not defined in this client",
            src: "core/types/transaction.go"}
   "0x7e": {name: DepositTx, status: added, spec: OP Stack, src: core/types/deposit_tx.go:27}

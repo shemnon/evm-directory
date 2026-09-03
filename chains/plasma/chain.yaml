@@ -149,6 +149,14 @@ eips:
     src_live: "eth_config @ 30724096 -> systemContracts.DEPOSIT_CONTRACT_ADDRESS 0x00000000219ab540356cbb839cbe05303d7705fa"
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   "0x03":
     name: BlobTx
     status: removed

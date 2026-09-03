@@ -226,6 +226,15 @@ eips:
     src_live: "eth_getProof @ 12793600 -> -32601 does not exist"
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844), no EIP-7702 set-code transactions, no EIP-1559 dynamic-fee transactions,
+      no EIP-2930 access-list transactions. Derived from the eips map (2930/1559/4844/7702);
+      per-type divergences and their evidence are on the rows below.
   "0x00":
     name: LegacyTx (EIP-155 protected only)
     status: modified

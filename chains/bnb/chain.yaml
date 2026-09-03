@@ -100,6 +100,13 @@ non_eip_specs:
      note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs"}
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape. Derived from the eips map
+      (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
   note: >-
     0x00-0x04, IDENTICAL to mainnet including EIP-7702 SetCodeTx. No BSC-specific
     envelope types. The only chain in this dataset with zero tx-type divergence.

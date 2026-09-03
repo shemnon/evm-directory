@@ -198,6 +198,14 @@ non_eip_specs:
     src: core/types/celo_transaction_signing_forks.go:cel2
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x03"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no EIP-7702 set-code
+      transactions. Derived from the eips map (2930/1559/4844/7702); per-type divergences
+      and their evidence are on the rows below.
   "0x7b":
     name: CeloDynamicFeeTxV2 (CIP-64)
     status: added

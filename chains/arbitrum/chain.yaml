@@ -98,6 +98,14 @@ non_eip_specs:
 
 tx_types:
   # verified: go-ethereum/core/types/transaction.go:48-54
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   "0x64": {name: ArbitrumDepositTx, status: added, note: "L1->L2 deposit",
            src: "go-ethereum/core/types/arb_types.go:ArbitrumDepositTx"}
   "0x65": {name: ArbitrumUnsignedTx, status: added, note: "unsigned, L1-originated",

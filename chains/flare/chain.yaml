@@ -172,6 +172,14 @@ non_eip_specs:
       this clone records them. Deliberately omitted rather than guessed.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844), no EIP-7702 set-code transactions. Derived from the eips map
+      (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
   note: >-
     NO custom type bytes. The EVM envelope is libevm's 0x00-0x03 unchanged; go-flare
     adds no type of its own, which makes it one of the few large non-Ethereum chains

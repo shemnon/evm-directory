@@ -339,6 +339,17 @@ def main():
         else:
             print(f"  pin ok  {head[:8]}")
 
+        # --- every non-baseline row must declare its mainnet base sets, even the
+        # ones with no extractor (the source cross-check below needs one; this
+        # does not) ---
+        if c["chain"].get("role") != "baseline":
+            if (c.get("precompiles") or {}).get("base_map") is None:
+                print("  ! NO BASE MAP — 0x01-0x11 coverage is not declared "
+                      "(add precompiles.base_map)"); problems += 1
+            if (c.get("tx_types") or {}).get("envelope") is None:
+                print("  ! NO ENVELOPE — 0x00-0x04 coverage is not declared "
+                      "(add tx_types.envelope)"); problems += 1
+
         # --- precompiles, both directions ---
         # A new row has no extractor until someone writes one. That is a real gap —
         # its precompile list is taken on trust — so it is reported loudly and
@@ -384,16 +395,10 @@ def main():
             extra = "  +1 dynamic range (not enumerable)" if dyn else ""
             print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
 
-        # --- base map: the 0x01-0x11 + 0x0100 range, declared condensed ---
+        # --- base map: cross-check `present` against the extracted map ---
         bm = (c.get("precompiles") or {}).get("base_map")
         BASE = set(range(0x01, 0x12))
-        if bm is None:
-            if c["chain"].get("role") == "baseline":
-                pass                       # mainnet IS the base map
-            else:
-                print("  ! NO BASE MAP — 0x01-0x11 coverage is not declared "
-                      "(add precompiles.base_map)"); problems += 1
-        elif (ex is not None and (found & BASE)
+        if (bm is not None and ex is not None and (found & BASE)
               and slug not in EXTERNAL_BASE):
             want = parse_present(bm.get("present"))
             for a, v in dec.items():          # explicit base entries count as present
@@ -427,6 +432,23 @@ def main():
                 print(f"  UNLISTED tx type 0x{a:02x} in source but not in chain.yaml"); problems += 1
             if not tmiss and not tunl:
                 print(f"  tx types ok  ({len(tf)} in source)")
+
+        # --- transaction envelope: cross-check `present` against the extracted types ---
+        env = (c.get("tx_types") or {}).get("envelope")
+        ENV = set(range(0x00, 0x05))
+        if env is not None and TXTYPE_DIRS.get(slug) and (tf & ENV):
+            want = parse_present(env.get("present"))
+            for a, v in td.items():
+                if a in ENV and v.get("status") in (None, "inherited", "modified", "added"):
+                    want.add(a)
+            # present must have a code path; a byte in source but not `present` is
+            # the `removed` story (defined, network rejects) and is not an error
+            missing = sorted(f"0x{a:02x}" for a in want - (tf & ENV) - {0x00})
+            if missing:
+                print(f"  ENVELOPE mismatch: declares {missing} present but no type "
+                      f"byte for it in source"); problems += 1
+            else:
+                print(f"  envelope ok  ({len(want)}/5 EIP-2718 types)")
 
         # --- evidence rule, enforced. `src_doc:`/`src_live:` deliberately point
         # OUTSIDE the clone, so they are checked for shape, not for existence.

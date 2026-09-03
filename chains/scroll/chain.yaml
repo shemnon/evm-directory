@@ -251,6 +251,14 @@ eips:
 # there is nothing to record on the adoption axis.
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   "0x7e":
     name: L1MessageTx
     status: added
@@ -283,8 +291,8 @@ tx_types:
     src: "core/types/transaction.go:BlobTxType, core/types/blob_tx.go:BlobTx"
   "0x04":
     name: SetCodeTx
-    status: added
-    note: "EIP-7702, admitted from EuclidV2; the pool additionally requires a non-empty authorization list."
+    status: modified
+    note: "Mainnet's EIP-7702 type, admitted from the EuclidV2 fork (later than mainnet); the pool additionally requires a non-empty authorization list, which mainnet does not."
     src: "core/tx_pool.go:eip7702"
   note: >-
     Live set at the probe height is 0x00, 0x01, 0x02, 0x04 and 0x7e. Scroll took its

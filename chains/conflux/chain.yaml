@@ -622,6 +622,14 @@ non_eip_specs:
     src: "crates/primitives/src/block_header/base_price.rs:compute_next_price"
 
 tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries
+    note: >-
+      The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
+      (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
+      their evidence are on the rows below.
   note: >-
     The eSpace type-byte set is 0x00 / 0x01 / 0x02 / 0x04. There is no 0x03 — the
     decoder has no constant for it — and Conflux adds NO type byte of its own.

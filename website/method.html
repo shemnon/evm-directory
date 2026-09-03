@@ -369,6 +369,41 @@ addresses.</p>
 </ul>
 <p><code>stack</code> and <code>template</code> rows are not chains; this is derivable from <code>role</code>, so there is
 no separate <code>is_chain</code> field.</p>
+<h2>The base precompile map (<code>0x01</code>–<code>0x11</code> + <code>0x0100</code>)</h2>
+<p>Mainnet's precompile range is contiguous <code>0x01</code>–<code>0x11</code> (ECRECOVER through
+<code>BLS12_MAP_FP2_TO_G2</code>) plus P256VERIFY at <code>0x0100</code>. The delta convention would have a
+chain that carries all of them record nothing — and "nothing recorded" is
+indistinguishable from "nobody checked." For a range this load-bearing that is not good
+enough: whether a chain actually has EIP-2537 BLS (<code>0x0b</code>–<code>0x11</code>), KZG at <code>0x0a</code>, or
+P256VERIFY is the single most common integration question.</p>
+<p>Every chain therefore declares the range explicitly, condensed into one block:</p>
+<pre><code class="language-yaml">precompiles:
+  base_map:
+    status: inherited          # disposition of the present addresses: inherited | modified
+    present: &quot;0x01-0x11&quot;       # which of 0x01-0x11 exist at the mainnet address with
+                               # mainnet behaviour. A range, comma-separated ranges, or a
+                               # list: &quot;0x01-0x0a&quot;  ·  &quot;0x01-0x08, 0x0a&quot;  ·  [&quot;0x01&quot;,&quot;0x05&quot;]
+    p256verify: false          # 0x0100: true | false | pending
+    src: &quot;core/vm/contracts.go:PrecompiledContractsPrague&quot;   # the map in THIS clone, or
+                               # a prose pointer when the base set is in a dependency
+    src_live: &quot;...&quot;            # optional
+    note: &quot;EIP-2537 BLS present via Prague; no P256VERIFY (pre-Osaka).&quot;
+</code></pre>
+<p>The model expands this into per-address entries:</p>
+<ul>
+<li>an address in <code>present</code> → synthesized <code>inherited</code> (renders <code>=</code>)</li>
+<li>an address in <code>0x01</code>–<code>0x11</code> <strong>not</strong> in <code>present</code> → synthesized <code>removed</code> (renders <code>➖</code>,
+  never a blank)</li>
+<li><code>p256verify:</code> drives <code>0x0100</code> the same way</li>
+</ul>
+<p>An <strong>explicit</strong> per-address entry always wins over the synthesized one — so a chain that
+reprices <code>0x05</code> or caps <code>0x08</code> still lists that address with its own <code>note</code>, <code>src</code> and
+<code>modified</code>/<code>tombstoned</code> status, and <code>present</code> just says the address exists at all. OP
+Stack descendants inherit the stack row's <code>base_map</code> unless they declare their own.</p>
+<p><code>verify.py</code> cross-checks <code>present</code> against the precompile map extracted from the pinned
+clone for every row that has an extractor; a chain with no <code>base_map</code> at all is a build
+error. Chains whose base set comes from an unvendored dependency (coreth/subnet-evm on
+<code>ava-labs/libevm</code>) carry a prose <code>src</code> and are checked by citation only.</p>
 <h2>Non-enumerable precompiles</h2>
 <p>Base (from its Beryl upgrade) installs a <code>PrecompileLookup</code> that resolves precompiles
 <strong>by predicate over the address</strong> rather than from a fixed map. Roughly 2^72 addresses
@@ -426,7 +461,9 @@ non_eip_specs: # chain's own spec series, keyed by adoption:
 tx_types:     # type byte -&gt; {name, status, spec, src}
 tx_authorization:  # what can SIGN a tx — independent of precompiles
 non_evm_transactions:  # protocol txs with no type byte
-precompiles:  # address -&gt; {name, status, availability, spec, src}
+precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then
+              # address -&gt; {name, status, availability, spec, src} for divergences
+              # and additions; optional dynamic_range for predicate-resolved sets
 system_contracts:
 system_transactions:
 opcodes:      # {added: [], removed: [], modified: []}
@@ -579,6 +616,6 @@ tools/.venv/bin/pip install pyyaml markdown
 webfonts, scripts or images from other hosts, so they render identically offline.</p></div>
 <h2 id="notes">Notes <span class="pill">3</span><a class="anchor" href="#notes">#</a></h2><div class="finding"><h3 id="f-schema-meets-new-axes">Axes the schema does not model<a class="anchor" href="#f-schema-meets-new-axes">#</a></h3><p>Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and omits a second virtual machine. Base's precompiles are not enumerable. opBNB has two parents. Each is recorded explicitly rather than reduced to a zero the schema can hold.</p><p class="tags"><a href="chains/arbitrum.html">Arbitrum</a> · <a href="chains/base.html">Base</a> · <a href="chains/opbnb.html">opBNB</a></p></div><div class="finding"><h3 id="f-stale-coordinates">Four of fifteen candidate clients were at the wrong address<a class="anchor" href="#f-stale-coordinates">#</a></h3><p>The repository coordinates a chain publishes are not durable, and the drift is invisible until a clone fails. Of fifteen chains scheduled in one pass, four were not where the backlog said: <code>gnosischain/gnosis</code> <strong>404s</strong> (the live chainspec is inside Nethermind, while <code>gnosischain/configs</code>' genesis is frozen pre-Merge), <code>InjectiveLabs/injective-core</code> <strong>moved orgs</strong> to <code>InjectiveFoundation</code>, <code>mantlenetworkio</code> <strong>redirects</strong> to <code>mantle-xyz</code>, and <code>0xPolygonHermez/zkevm-node</code> is <strong>archived</strong> and replaced by a different client (<code>0xPolygon/cdk-erigon</code>) whose contracts moved to a third org. Linea had already shown the pattern: Consensys → LFDT-Lineth, hyperledger/besu → besu-eth. In three of the five cases the running network was identified only by asking it — <code>web3_clientVersion</code> — rather than by reading a document. Pinning a commit protects a fact once found; it does not help you find the client.</p><p class="tags"><a href="chains/gnosis.html">Gnosis</a> · <a href="chains/injective.html">Injective</a> · <a href="chains/mantle.html">Mantle</a> · <a href="chains/polygon-zkevm.html">zkEVM</a> · <a href="chains/linea.html">Linea</a></p></div><div class="finding"><h3 id="f-ordered-then-invalid">A transaction ordered before it is executed has seven different fates<a class="anchor" href="#f-ordered-then-invalid">#</a></h3><p>Mainnet checks nonce, balance and gas price <em>before</em> a transaction is ordered, so "ordered but invalid" is not a state it can reach. Every chain that separates ordering from execution has to invent an answer, and ten rows here have invented seven. <strong>Erasure, by four unrelated mechanisms:</strong> Conflux defines a third receipt outcome, <code>TransactionStatus::Skipped</code>, then deletes the transaction from the block, the transaction index and <code>eth_getTransactionReceipt</code> alike; IOTA EVM rejects at the ISC request layer before the EVM is entered, so there is no receipt to write; Artela emits its indexing event from the <em>last</em> ante decorator, so an ante failure leaves the CometBFT index with no entry while the transaction sits provably in the block; Rollkit's builder logs a <code>warn!</code> and does not append. In all four, <code>eth_getTransactionReceipt</code> returns null forever and the transaction is indistinguishable from one never submitted. <strong>Taraxa is the counter-pole:</strong> no skip path at all — included, charged the full gas limit, <code>status: 0</code>. <strong>Autonomys escalates:</strong> the offending transaction poisons its whole <code>Bundle</code>, every valid co-passenger is dropped, and the operator is automatically slashed under <code>SlashedReason::InvalidBundle</code>. <strong>Berachain rejects the block:</strong> the EVM sits behind the Engine API, whose <code>newPayload</code> verdict has no per-transaction skip, so <code>ProcessProposal</code> returns REJECT and the client sees nothing at all. <strong>RISE and MegaETH make the state unreachable</strong>, by opposite routes — RISE admits synchronously and publishes only after executing, MegaETH creates the state inside the builder and resolves it before publication. <strong>Monad charges it</strong>, inside execution. <strong>Hedera bills it without ever executing it, and the bill may land on the node</strong>: fees are charged before the handler is reached, and the split is by <em>who was negligent</em> rather than by what failed — a due-diligence failure (expiry re-checked against the consensus clock, a bad payer signature) debits the submitting <strong>node's</strong> account and the payer nothing, while a duplicate or an unaffordable service fee debits the <strong>payer</strong> and never calls the handler. It is the only row where the node pays for the sender's invalid transaction. A record always exists, because Hedera cannot drop something that reached consensus — but for a wrapped Ethereum transaction the Ethereum hash is written only inside the handler, so the <code>eth_*</code> view is null forever anyway. There is no portable answer to "was my transaction included", and a null receipt means "still pending" on some of these chains, "gone forever" on others, and "gone, and you were charged" on one.</p><p class="tags"><a href="chains/conflux.html">Conflux</a> · <a href="chains/iota-evm.html">IOTA EVM</a> · <a href="chains/artela.html">Artela</a> · <a href="chains/rollkit.html">Rollkit</a> · <a href="chains/taraxa.html">Taraxa</a> · <a href="chains/autonomys.html">Auto EVM</a> · <a href="chains/berachain.html">Bera</a> · <a href="chains/rise.html">RISE</a> · <a href="chains/megaeth.html">MegaETH</a> · <a href="chains/monad.html">Monad</a> · <a href="chains/hedera.html">Hedera</a></p></div>
 </main>
-<footer>Generated 2026-08-31</footer>
+<footer>Generated 2026-09-03</footer>
 <script src="assets/site.js"></script>
 </body></html>

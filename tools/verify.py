@@ -307,6 +307,17 @@ def main():
         for k in totals: totals[k] += prov[k]
         tally = "  ".join(f"{k}={v}" for k, v in prov.items() if v)
 
+        # opcode deltas must be keyed `op:` — the grid, the chain-page anchors and
+        # the silent-divergence index all read that key and nothing else.
+        for kind in ("added", "removed", "modified", "pending", "tombstoned"):
+            for e in (c.get("opcodes") or {}).get(kind) or []:
+                if isinstance(e, dict) and "op" not in e:
+                    print(f"\n{slug}")
+                    print(f"  BAD KEY  opcodes.{kind} entry "
+                          f"'{e.get('name', e.get('opcode', '?'))}' has no `op:` key"
+                          + (f" (found `opcode: {e['opcode']}`)" if "opcode" in e else ""))
+                    problems += 1
+
         if documented:
             # No client exists to clone, so nothing can be re-extracted. This is a
             # declared footing, not a failure: a permanently-red build is one nobody

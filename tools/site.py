@@ -463,7 +463,7 @@ def list_section(chains, slug, section, heading, anchor, keyfield):
     """opcodes / header_fields — {added|removed|modified: [ {…} ]}."""
     d = chains[slug].get(section) or {}
     rows, ids = [], []
-    for kind in ("added", "removed", "modified"):
+    for kind in ("added", "removed", "modified", "pending", "tombstoned"):
         for e in d.get(kind) or []:
             if not isinstance(e, dict): continue
             ids.append(f' id="{esc(anchor_id(section, e.get(keyfield, "?")))}"')
@@ -1135,11 +1135,12 @@ def page_opcodes(chains):
     per = {}
     for s in slugs:
         d = chains[s].get("opcodes") or {}
-        for kind in ("added", "removed", "modified"):
+        for kind in ("added", "removed", "modified", "pending", "tombstoned"):
             for e in d.get(kind) or []:
                 if isinstance(e, dict):
                     per.setdefault(str(e.get("op", "n/a")), []).append((s, kind, e))
     base = model.baseline_opcodes(chains)
+    fork_intro = model.baseline_opcode_forks(chains)
     all_ops = sorted(set(base) | set(per), key=sortkey)
 
     rows, attrs = [], []
@@ -1147,16 +1148,26 @@ def page_opcodes(chains):
         entries = {s: (kind, e) for s, kind, e in per.get(op, [])}
         on_mainnet = (op in base) or any(k in ("removed", "modified")
                                          for k, _ in entries.values())
+        intro = fork_intro.get(op)
         cells, plain = [], []
         for s in slugs:
             if s in entries:
                 kind, e = entries[s]
-                g = "–" if kind == "removed" else "★"
-                cls = "s-removed" if kind == "removed" else "s-added"
+                g, cls = {"removed": ("–", "s-removed"),
+                          "pending": (model.MARK["pending"], "s-pending"),
+                          "tombstoned": (model.MARK["tombstoned"], "s-tombstoned")}.get(
+                              kind, ("★", "s-added"))
                 tip = f'{kind}: {e.get("name", "")}'.strip(": ")
                 plain.append(g)
                 cells.append(cell_link(s, "opcodes", op,
                              f'<span class="{cls}" title="{esc(tip)}">{g}</span>'))
+            elif intro and model.fork_rank(
+                    str(chains[s].get("baseline_fork", "")).lower()) < model.fork_rank(intro):
+                # opcode postdates this chain's baseline fork — nothing there.
+                # a distinct `plain` token keeps the row visible under the
+                # "hide rows where every chain agrees" filter.
+                plain.append("∅")
+                cells.append("")
             else:
                 g = "✓" if on_mainnet else "–"
                 plain.append(g)
@@ -1174,8 +1185,10 @@ def page_opcodes(chains):
          table(head, rows, tid="opcodes-grid", pin=True, row_attrs=attrs, col_chains=[None] + slugs),
          '<p class="legend"><span class="s-inherited">✓</span> present with mainnet '
          'semantics · <span class="s-added">★</span> present and divergent · '
-         '<span class="s-removed">–</span> not present. Cells are as shipped for each '
-         'row\'s pinned client; scheduled forks are not modelled.</p>']
+         f'<span class="s-pending">{model.MARK["pending"]}</span> pending (merged '
+         'upstream, not yet live) · <span class="s-removed">–</span> not present. A '
+         'blank cell means the opcode postdates the chain\'s baseline fork. Cells '
+         'are as shipped for each row\'s pinned client.</p>']
     B.append(axis_notes(chains, "opcodes"))
 
     other = []
@@ -1396,6 +1409,7 @@ def page_index(chains):
 def page_chains_index(chains):
     slugs = order(chains)
     sil = model.silent(chains)
+    _base_ops = set(model.baseline_opcodes(chains))
     B = [h2("Chains", "chains"), filter_box("chainlist")]
     rows = []
     for s in slugs:
@@ -1409,7 +1423,8 @@ def page_chains_index(chains):
              if c["lineage"].get("upstream") in chains else "—"),
             f'<code>{esc(c.get("baseline_fork", "—"))}</code>',
             str(counts["precompiles"]), str(counts["tx_types"]), str(counts["system_contracts"]),
-            str(len((c.get("opcodes") or {}).get("added") or [])),
+            str(sum(1 for e in (c.get("opcodes") or {}).get("added") or []
+                    if isinstance(e, dict) and str(e.get("op")) not in _base_ops)),
             str(len([x for x in sil if x["slug"] == s]) or ""),
         ])
     B.append(table(["Chain", "Role", "Upstream", "Baseline", "Precompiles", "Tx types",

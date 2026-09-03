@@ -513,12 +513,12 @@ opcodes:
   removed: []
   modified:
   - name: PREVRANDAO
-    opcode: "0x44"
+    op: "0x44"
     severity: high
     note: "equals the block number. See eips.4399."
     src: execution/evm/execution.go:derivePrevRandao
   - name: TIMESTAMP
-    opcode: "0x42"
+    op: "0x42"
     severity: high
     note: >-
       NOT STRICTLY INCREASING. ev-node passes seconds to the Engine API while
@@ -531,7 +531,7 @@ opcodes:
     src: crates/evolve/src/consensus.rs:EvolveConsensus, execution/evm/execution.go:buildPayloadAttributes
     src_live: "eth_getBlockByNumber @ 182440253,182440254,182440255 -> timestamp 0x6a91e1ab on all three; 182440256-182440258 -> 0x6a91e1ac"
   - name: BLOCKHASH
-    opcode: "0x40"
+    op: "0x40"
     note: >-
       Semantics are upstream reth's, but the 256-block window means something
       different at a 100ms block time: ~25 seconds of history rather than
@@ -539,7 +539,7 @@ opcodes:
       history contract is not deployed.
     src_live: "eth_getCode(0x0000F90827F1C53a10cb7A02335B175320002935) @ 182440651 -> 0x"
   - name: COINBASE
-    opcode: "0x41"
+    op: "0x41"
     note: constant — the configured base-fee sink, not a rotating proposer.
     src: crates/node/src/builder.rs:base_fee_sink_for_block
 

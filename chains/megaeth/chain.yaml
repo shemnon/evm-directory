@@ -657,9 +657,10 @@ opcodes:
   added: []
   removed: []
   modified:
-    - name: "CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, CREATE2"
+    - op: "0xf1"
+      name: "CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, CREATE2"
       note: >-
-        98/100 gas forwarding instead of 63/64; storage gas charged for account and
+        (0xf1-0xf5, 0xfa.) 98/100 gas forwarding instead of 63/64; storage gas charged for account and
         contract creation; per-frame budgets for all four resource dimensions forwarded
         at 98/100 from Rex4; from Rex4 a value-transferring CALL/CALLCODE also grants an
         extra 23,000-gas STORAGE_CALL_STIPEND that can only be spent on storage gas and
@@ -667,7 +668,8 @@ opcodes:
         the 2,300-gas EVM stipend and would otherwise break every `transfer()` to a
         contract that emits an event.
       src: "mega-evm/crates/mega-evm/src/constants.rs:STORAGE_CALL_STIPEND, mega-evm/crates/mega-evm/src/limit/frame_limit.rs:FRAME_LIMIT_NUMERATOR"
-    - name: "SSTORE"
+    - op: "0x55"
+      name: "SSTORE"
       note: >-
         Compute gas is mainnet's. Storage gas is added on zero->non-zero writes only,
         priced 20,000 x (m-1) where m is the SALT bucket multiplier — a cost that
@@ -675,13 +677,15 @@ opcodes:
         it is free; buckets expand as they fill and the price rises for everyone using
         that bucket. No other chain in this dataset prices an opcode by state layout.
       src: "mega-evm/crates/mega-evm/src/constants.rs:SSTORE_SET_STORAGE_GAS_BASE"
-    - name: "LOG0-LOG4"
-      note: "storage gas at 10x the EVM cost: 3,750 per topic and 80 per data byte, on top of standard compute gas"
+    - op: "0xa0"
+      name: "LOG0-LOG4"
+      note: "(0xa0-0xa4.) storage gas at 10x the EVM cost: 3,750 per topic and 80 per data byte, on top of standard compute gas"
       src: "mega-evm/crates/mega-evm/src/constants.rs:LOG_TOPIC_STORAGE_GAS"
-    - name: "NUMBER, TIMESTAMP, COINBASE, PREVRANDAO, GASLIMIT, BASEFEE, BLOCKHASH, BLOBBASEFEE, BLOBHASH"
+    - op: "0x43"
+      name: "NUMBER, TIMESTAMP, COINBASE, PREVRANDAO, GASLIMIT, BASEFEE, BLOCKHASH, BLOBBASEFEE, BLOBHASH"
       severity: high
       note: >-
-        GAS DETENTION. Touching any block-environment opcode caps the transaction's
+        (0x40-0x45, 0x48-0x4a.) GAS DETENTION. Touching any block-environment opcode caps the transaction's
         remaining COMPUTE gas at 20,000,000 from the point of access (absolute before
         Rex4, relative after). The value returned is correct; the transaction's budget
         silently changes because it read it. A contract that reads `block.timestamp`
@@ -698,10 +702,12 @@ opcodes:
         the chain's docs tell you to trust.
       src: "mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS, mega-evm/crates/mega-evm/src/evm/result.rs:VolatileDataAccessOutOfGas"
       src_live: "eth_call 0x6342..0005 remainingComputeGas() @ 25149945 -> 59943828 with no block-env read and 59943792 after TIMESTAMP;POP (a 36-gas difference, not a cap to 20,000,000); the same value for a gas parameter of 1,600,000 and of 30,000,000, so the compute meter is a fixed 60,000,000 budget decoupled from the request's gas field; a 983,040-iteration loop costing between 25,000,000 and 30,000,000 gas succeeded at gas 0x1C9C380 both with and without a preceding TIMESTAMP read"
-    - name: "BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH"
-      note: "same detention when the account touched is the block beneficiary; Rex6 extended the coverage"
+    - op: "0x31"
+      name: "BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH"
+      note: "(0x31, 0x3b, 0x3c, 0x3f.) same detention when the account touched is the block beneficiary; Rex6 extended the coverage"
       src: "mega-evm/crates/mega-evm/src/access/volatile.rs:VolatileDataAccess"
-    - name: "SELFDESTRUCT"
+    - op: "0xff"
+      name: "SELFDESTRUCT"
       note: "halted with InvalidFEOpcode from MiniRex through Rex1; restored at Rex2 with EIP-6780 semantics"
       src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:SELFDESTRUCT"
   note: >-

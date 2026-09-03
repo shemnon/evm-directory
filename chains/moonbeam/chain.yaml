@@ -835,17 +835,17 @@ system_transactions:
 opcodes:
   added: []
   removed:
-  - {name: BLOBHASH, opcode: "0x49",
+  - {op: "0x49", name: BLOBHASH,
      note: "not a zero-returning stub — the interpreter rejects it as invalid code and the whole execution aborts.",
      src_live: "eth_call CREATE @ 16790908 -> evm error: InvalidCode(Opcode(73))"}
-  - {name: BLOBBASEFEE, opcode: "0x4a",
+  - {op: "0x4a", name: BLOBBASEFEE,
      note: "likewise invalid, not zero-valued.",
      src_live: "eth_call CREATE @ 16790908 -> evm error: InvalidCode(Opcode(74))"}
   modified:
-  - {name: EXTCODESIZE, opcode: "0x3b",
+  - {op: "0x3b", name: EXTCODESIZE,
      note: "returns 5, not 0, at the 36 precompile addresses that carry the registry's dummy code — including all nine of mainnet's own precompiles. EXTCODEHASH and EXTCODECOPY follow.",
      src_live: "eth_call CREATE @ 16790908 with 60013b60005260206000f3 -> 5"}
-  - {name: DIFFICULTY_PREVRANDAO, opcode: "0x44",
+  - {op: "0x44", name: DIFFICULTY_PREVRANDAO,
      note: "always zero; there is no PREVRANDAO source. Randomness is a precompile (0x0809), not an opcode.",
      src_live: "eth_call CREATE @ 16790908 with 4460005260206000f3 -> 0x0"}
 

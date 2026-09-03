@@ -522,15 +522,22 @@ system_transactions:
     src: "core/state/intra_block_state_zkevm.go:ScalableSetTimestamp, core/state/intra_block_state_zkevm.go:WriteGerManagerL1BlockHash, core/blockchain_zkevm.go:PrepareBlockTxExecution"
 
 opcodes:
-  added: []
+  added:
+    - {op: "0x5f", name: PUSH0, fork: "forkID 5 Dragonfruit",
+       note: "EIP-3855, a Shanghai opcode, reached at forkID 5 Dragonfruit — independently of any Shanghai activation, which will never come. See eips.3855.",
+       src: "core/vm/jump_table_zkevm.go:newForkID5DragonfruitInstructionSet",
+       src_live: "eth_call 0x5f60005260206000f3 @ 33391890 -> 0x00..00 (executes)"}
   removed:
-    - {name: BASEFEE, note: "0x48 undefined — London unreachable", src_live: "eth_call @ 33391890 -> `invalid opcode: BASEFEE`"}
-    - {name: TLOAD/TSTORE, note: "0x5c/0x5d undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: TSTORE`"}
-    - {name: MCOPY, note: "0x5e undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: MCOPY`"}
-    - {name: BLOBHASH, note: "0x49 undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: BLOBHASH`"}
-    - {name: BLOBBASEFEE, note: "0x4a undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: BLOBBASEFEE`"}
-    - {name: CLZ, note: "0x1e undefined", src_live: "eth_call @ 33391890 -> `opcode 0x1e not defined`"}
+    - {op: "0x48", name: BASEFEE, note: "0x48 undefined — London unreachable", src_live: "eth_call @ 33391890 -> `invalid opcode: BASEFEE`"}
+    - {op: "0x5c", name: TLOAD, note: "0x5c undefined — Cancun unreachable", src_live: "eth_call TLOAD @ 33391890 -> `invalid opcode: TLOAD`"}
+    - {op: "0x5d", name: TSTORE, note: "0x5d undefined — Cancun unreachable", src_live: "eth_call @ 33391890 -> `invalid opcode: TSTORE`"}
+    - {op: "0x5e", name: MCOPY, note: "0x5e undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: MCOPY`"}
+    - {op: "0x49", name: BLOBHASH, note: "0x49 undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: BLOBHASH`"}
+    - {op: "0x4a", name: BLOBBASEFEE, note: "0x4a undefined", src_live: "eth_call @ 33391890 -> `invalid opcode: BLOBBASEFEE`"}
+    - {op: "0x1e", name: CLZ, note: "0x1e undefined", src_live: "eth_call @ 33391890 -> `opcode 0x1e not defined`"}
+  tombstoned:
     - name: SENDALL
+      op: "0xfb"
       note: >-
         Worth stating because it looks like an addition and is not. cdk-erigon DEFINES
         opcode 0xfb as SENDALL and then wires it to INVALID in the live instruction set
@@ -540,6 +547,7 @@ opcodes:
       src: "core/vm/opcodes_zkevm.go:SENDALL, core/vm/jump_table_zkevm.go:newForkID4InstructionSet"
   modified:
     - name: BLOCKHASH
+      op: "0x40"
       severity: high
       note: >-
         RETURNS THE STATE ROOT, NOT THE BLOCK HASH. opBlockhash_zkevm ignores the header
@@ -557,6 +565,7 @@ opcodes:
       src: "core/vm/instructions_zkevm.go:opBlockhash_zkevm, core/state/intra_block_state_zkevm.go:GetBlockStateRoot"
       src_live: "eth_call BLOCKHASH(0x1fd8511) @ 33391890 -> 0x02df6fea...e67d; eth_getBlockByNumber 0x1fd8511 -> stateRoot 0x02df6fea...e67d, hash 0xeae67882...4731"
     - name: NUMBER
+      op: "0x43"
       note: >-
         Reads slot 0 of 0x...5ca1ab1e rather than the header's number. The values agree
         on the canonical chain, so this is not a live divergence in result — it is a
@@ -566,14 +575,17 @@ opcodes:
       src: "core/vm/instructions_zkevm.go:opNumber_zkevm"
       src_live: "eth_call NUMBER @ 33391890 -> 0x1fd8512"
     - name: DIFFICULTY / PREVRANDAO
+      op: "0x44"
       note: "hardcoded to zero, not read from the header."
       src: "core/vm/instructions_zkevm.go:opDifficulty_zkevm"
       src_live: "eth_call DIFFICULTY @ 33391890 -> 0x00..00"
     - name: EXTCODEHASH
+      op: "0x3f"
       severity: high
       note: "returns zero for every account with no code, existing or not — see eips.1052."
       src: "core/vm/instructions_zkevm.go:opExtCodeHash_zkevm"
     - name: SELFDESTRUCT
+      op: "0xff"
       severity: high
       note: >-
         Replaced wholesale by SENDALL semantics: opSendAll_zkevm moves the entire balance
@@ -586,9 +598,10 @@ opcodes:
         pattern ported here keeps its code and keeps answering calls after "destruction".
       src: "core/vm/instructions_zkevm.go:opSendAll_zkevm, core/vm/jump_table_zkevm.go:newForkID4InstructionSet"
     - name: "LOG1-LOG4"
+      op: "0xa1"
       severity: high
       note: >-
-        The log-data encoding changed THREE TIMES on a forkID axis, and one of the three
+        (0xa1-0xa4.) The log-data encoding changed THREE TIMES on a forkID axis, and one of the three
         is a bug that was enshrined rather than fixed. forkID 4-7: data is zero-padded at
         the end to a multiple of 32. forkID 8-11: `applyHexPadBug` hex-encodes the last
         word, right-pads the STRING to 64 characters, strips LEADING '0' CHARACTERS, then
@@ -600,21 +613,21 @@ opcodes:
         Log INDEXING also changed: forkID 4-7 restart logIndex at zero per transaction
         instead of per block.
       src: "core/types/log_zkevm.go:ApplyPaddingToLogsData, core/types/log_zkevm.go:applyHexPadBug, core/vm/jump_table_zkevm.go:newForkID8InstructionSet"
-    - name: "code ending in PUSH1 (pre-forkID 10)"
-      note: >-
-        Not an opcode change but a validity rule at the same layer: before forkID 10, a
-        CALL to any account whose bytecode's last byte is 0x60 returns ErrInvalidCode
-        outright — "up to fork 10 we cannot handle a contract code that ends with just a
-        push and nothing to push to the stack". A deployed, well-formed contract could be
-        permanently uncallable because of its last byte. Lifted at forkID 10 — a forkID
-        that never ran, so in practice it lifted when forkID 11 assigned it a block.
-      src: "core/vm/evm_zkevm.go:call_zkevm"
   note: >-
     The EVM is a parallel implementation, not a patch set: core/vm carries a full shadow
     tree (contracts_zkevm.go, evm_zkevm.go, instructions_zkevm.go, interpreter_zkevm.go,
     jump_table_zkevm.go, gas_table_zkevm.go, operations_acl_zkevm.go) selected by
     NewZkEVM. Diffing cdk-erigon against upstream Erigon file-by-file therefore shows
     almost no changes to the EVM — the divergence is in files upstream does not have.
+
+
+    Not an opcode change but a validity rule at the same layer: before forkID 10, a
+    CALL to any account whose bytecode's last byte is 0x60 (PUSH1) returns ErrInvalidCode
+    outright — "up to fork 10 we cannot handle a contract code that ends with just a
+    push and nothing to push to the stack" (core/vm/evm_zkevm.go:call_zkevm). A deployed,
+    well-formed contract could be permanently uncallable because of its last byte. Lifted
+    at forkID 10 — a forkID that never ran, so in practice it lifted when forkID 11
+    assigned it a block.
 
 fee_model:
   metering: "gas AND eight zk counters"

@@ -514,13 +514,13 @@ system_transactions:
 
 opcodes:
   added:
-    - {name: CLZ, opcode: "0x1e", fork: galileo, note: "EIP-7939, an Osaka opcode", src: "core/vm/jump_table.go:newGalileoInstructionSet"}
-    - {name: TLOAD, opcode: "0x5c", fork: curie, note: "EIP-1153, a Cancun opcode", src: "core/vm/jump_table.go:newCurieInstructionSet"}
-    - {name: TSTORE, opcode: "0x5d", fork: curie, src: "core/vm/jump_table.go:newCurieInstructionSet"}
-    - {name: MCOPY, opcode: "0x5e", fork: curie, note: "EIP-5656, a Cancun opcode", src: "core/vm/jump_table.go:newCurieInstructionSet"}
+    - {op: "0x1e", name: CLZ, fork: galileo, note: "EIP-7939, an Osaka opcode", src: "core/vm/jump_table.go:newGalileoInstructionSet"}
+    - {op: "0x5c", name: TLOAD, fork: curie, note: "EIP-1153, a Cancun opcode", src: "core/vm/jump_table.go:newCurieInstructionSet"}
+    - {op: "0x5d", name: TSTORE, fork: curie, src: "core/vm/jump_table.go:newCurieInstructionSet"}
+    - {op: "0x5e", name: MCOPY, fork: curie, note: "EIP-5656, a Cancun opcode", src: "core/vm/jump_table.go:newCurieInstructionSet"}
   removed:
     - name: SELFDESTRUCT
-      opcode: "0xff"
+      op: "0xff"
       severity: high
       src: "core/vm/jump_table.go:SELFDESTRUCT"
       src_live: "eth_call @ 34765788 -> `invalid opcode: SELFDESTRUCT`"
@@ -529,11 +529,11 @@ opcodes:
         behavior as INVALID". Not EIP-6780's restriction — total removal, since
         genesis. The only chain in this dataset that removes a mainnet opcode outright
         rather than repricing or restricting it.
-    - {name: BLOBHASH, opcode: "0x49", note: "never added (no 4844)", src_live: "eth_call @ 34765788 -> opcode 0x49 not defined"}
-    - {name: BLOBBASEFEE, opcode: "0x4a", note: "never added (no 4844)", src_live: "eth_call @ 34765788 -> opcode 0x4a not defined"}
+    - {op: "0x49", name: BLOBHASH, note: "never added (no 4844)", src_live: "eth_call @ 34765788 -> opcode 0x49 not defined"}
+    - {op: "0x4a", name: BLOBBASEFEE, note: "never added (no 4844)", src_live: "eth_call @ 34765788 -> opcode 0x4a not defined"}
   modified:
     - name: COINBASE
-      opcode: "0x41"
+      op: "0x41"
       severity: high
       src: "core/vm/instructions.go:opCoinbase, core/vm/evm.go:FeeRecipient, core/evm.go:NewEVMBlockContext"
       src_live: "eth_call @ 34765788 -> COINBASE = 0x5300000000000000000000000000000000000005; eth_getBlockByNumber @ 34765788 -> miner = 0x0000000000000000000000000000000000000000"
@@ -548,7 +548,7 @@ opcodes:
         EIP-3651 then warms the fee vault instead of the miner, so the gas cost of
         touching `block.coinbase` also differs from mainnet.
     - name: BLOCKHASH
-      opcode: "0x40"
+      op: "0x40"
       fork: feynman
       src: "core/vm/instructions.go:opBlockhashPostFeynman"
       note: "Reads the EIP-2935 history contract's storage ring instead of walking headers; the 256-block window is unchanged, so behaviour matches mainnet Prague."

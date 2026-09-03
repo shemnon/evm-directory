@@ -90,7 +90,7 @@ table.kv td { white-space: normal; }
 /* ---- status marks ---- */
 .s-added { color: var(--add); } .s-removed { color: var(--rm); }
 .s-modified { color: var(--mod); } .s-tombstoned { color: var(--tomb); }
-.s-inherited, .s-unrecorded { color: var(--dim); }
+.s-inherited, .s-unrecorded, .s-pending { color: var(--dim); }
 
 /* ---- cards & callouts ---- */
 .grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }

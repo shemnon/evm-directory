@@ -63,14 +63,16 @@ consensus:
     the proving unit and appear as l1BatchNumber / l1BatchTimestamp on each block. The
     field is null until the batch is sealed, so a freshly returned block has no batch.
 
-baseline_fork: osaka
+baseline_fork: cancun
 baseline_note: >-
   A claim about the EVM EMULATOR only, and a partial one. The emulator implements the
-  Cancun opcode set (PUSH0, MCOPY, TLOAD/TSTORE) and stubs the blob opcodes. It does
+  Cancun opcode set (PUSH0, MCOPY, TLOAD/TSTORE) and stubs the blob opcodes; CLZ
+  (0x1e) is an explicit "Unused opcode" case, so it does not reach Osaka. It does
   not implement SELFDESTRUCT or CALLCODE at all, and it caps MODEXP operands far below
-  any Ethereum fork's bound. EraVM itself has no relationship to any Ethereum fork.
-  There is no fork timeline to map: zkSync versions its protocol as numbered protocol
-  versions activated by an L1 upgrade transaction, not as named hard forks.
+  any Ethereum fork's bound (a bound EIP-7823 only introduced at Osaka). EraVM itself
+  has no relationship to any Ethereum fork. There is no fork timeline to map: zkSync
+  versions its protocol as numbered protocol versions activated by an L1 upgrade
+  transaction, not as named hard forks.
 
 forks:
   src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"

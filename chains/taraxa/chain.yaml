@@ -717,6 +717,24 @@ opcodes:
   - {op: "0xb4", name: TSTORE (draft numbering), severity: high,
      note: "as 0xb3. Priced by `gasTLoad` (100).",
      src: "taraxa-evm/core/vm/jump_table.go:TSTORE_OLD"}
+  - {op: "0x46", name: CHAINID,
+     note: "EIP-1344 (Istanbul) — in the flat Californicum table since genesis, ahead of the Constantinople baseline.",
+     src: "taraxa-evm/core/vm/jump_table.go:opChainID"}
+  - {op: "0x47", name: SELFBALANCE,
+     note: "EIP-1884 (Istanbul) — in the flat Californicum table since genesis.",
+     src: "taraxa-evm/core/vm/jump_table.go:opSelfBalance"}
+  - {op: "0x5f", name: PUSH0,
+     note: "EIP-3855 (Shanghai) — in the flat Californicum table since genesis.",
+     src: "taraxa-evm/core/vm/jump_table.go:opPush0"}
+  - {op: "0x5c", name: TLOAD,
+     note: "EIP-1153 final opcode at the standard slot, added at the Cacti fork alongside the still-live draft 0xb3.",
+     src: "taraxa-evm/core/vm/eips.go:fixEIP1153"}
+  - {op: "0x5d", name: TSTORE,
+     note: "EIP-1153 final opcode at the standard slot, added at Cacti alongside the draft 0xb4.",
+     src: "taraxa-evm/core/vm/eips.go:fixEIP1153"}
+  - {op: "0x5e", name: MCOPY,
+     note: "EIP-5656 (Cancun) — enabled at the Ficus fork.",
+     src: "taraxa-evm/core/vm/eips.go:enable5656"}
   removed:
   - {op: "0x48", name: BASEFEE, note: "no EIP-1559 and no base fee to report.", src: "taraxa-evm/core/vm/opcodes.go:SELFBALANCE"}
   - {op: "0x49", name: BLOBHASH, note: "no blobs.", src: "taraxa-evm/core/vm/opcodes.go:MCOPY"}

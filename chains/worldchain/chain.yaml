@@ -39,7 +39,10 @@ consensus:
     returns an invalid block. The builder therefore cannot change state-transition
     rules — only ordering.
 
-baseline_fork: osaka
+# Isthmus (active) is Prague-equivalent and Jovian adds no opcodes; Karst — the
+# OP Stack fork that carries Osaka — is ForkCondition::Never in the pinned spec,
+# and the pinned op-revm (20.0.0) maps Jovian to SpecId::PRAGUE. No Osaka on chain.
+baseline_fork: prague
 
 forks:
   src: crates/chainspec/src/hardfork.rs

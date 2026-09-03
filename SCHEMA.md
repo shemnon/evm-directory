@@ -420,6 +420,38 @@ their origin, so a reader can tell "World Chain has `0x7e`" from "World Chain
 Inheritance is override-by-key: a descendant re-declaring an address or type byte its
 ancestor already declared **replaces** it and must carry a `note` explaining why.
 
+## Opcodes
+
+`opcodes:` holds `added` / `removed` / `modified` / `pending` / `tombstoned` lists of
+per-instruction deltas against **mainnet's Osaka jump table**. Every entry is keyed
+`op:` (a `"0xNN"` string) — the grid, the chain-page anchors and the silent-divergence
+index all read that key and nothing else; `opcode:` is not accepted and `verify.py`
+flags it. Fields: `name` (mnemonic), `note` (**required** for `modified`), optional
+`severity: high` (renders a `silent` pill), an informational `fork:` (which of the
+chain's own forks introduced it), and one of `src:` / `src_live:` / `src_doc:`.
+`pending` = merged upstream but not live on the network; `tombstoned` = the byte is
+defined but wired to INVALID (calling it always fails).
+
+Mainnet's own instruction set is enumerated once, on the `ethereum` row, so the grid
+can render "this chain has ADD, unremarkably" instead of a blank:
+
+```yaml
+opcodes:
+  baseline_set:
+    src: core/vm/jump_table.go:newOsakaInstructionSet
+    opcodes:
+      "0x01": ADD                          # plain string: a frontier-era opcode,
+                                            # present at every baseline fork
+      "0x5f": {name: PUSH0, fork: shanghai} # {name, fork}: fork = the MAINNET fork
+      "0x1e": {name: CLZ, fork: osaka}      # that introduced it
+```
+
+The grid gates a `{name, fork}` opcode **out** of any chain whose `baseline_fork`
+predates `fork` (via `model.fork_rank`) — the cell renders **blank**, not `–`, since
+the opcode simply postdates the chain. A chain that carries the opcode anyway (a
+back-port) records an explicit `opcodes.added` entry, which always wins. An explicit
+`opcodes.removed` renders `–` ("removed, or never adopted").
+
 ## Top-level keys
 
 ```yaml
@@ -443,7 +475,8 @@ precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then
               # and additions; optional dynamic_range for predicate-resolved sets
 system_contracts:
 system_transactions:
-opcodes:      # {added: [], removed: [], modified: []}
+opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed op:;
+              # plus baseline_set on the ethereum row. See "Opcodes" above.
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators

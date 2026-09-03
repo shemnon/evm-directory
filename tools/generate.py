@@ -12,7 +12,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented,
                    client, is_stack, order, canon, addr_rows, sortkey,
-                   entry_label, eip_status, tx_auth)
+                   entry_label, eip_status, tx_auth, baseline_opcodes)
 
 def cell(entry, this_slug, org):
     # HARD RULE: these Markdown tables are aggregates, so they carry NO provenance —
@@ -170,7 +170,10 @@ def gen_matrix(chains):
     row("Modified precompiles", lambda c, s: count(c, "precompiles", lambda x: x == "modified") or "0")
     row("Tombstoned precompiles", lambda c, s: count(c, "precompiles", lambda x: x == "tombstoned") or "0")
     row("Custom tx types", lambda c, s: count(c, "tx_types", lambda x: x == "added") or "0")
-    row("Custom opcodes", lambda c, s: len((c.get("opcodes") or {}).get("added") or []) or "0")
+    _base_ops = set(baseline_opcodes(chains))
+    row("Custom opcodes", lambda c, s: sum(
+        1 for e in (c.get("opcodes") or {}).get("added") or []
+        if isinstance(e, dict) and str(e.get("op")) not in _base_ops) or "0")
     row("System contracts", lambda c, s: sum(1 for k in (c.get("system_contracts") or {})
                                              if str(k).startswith("0x")) or "0")
     row("Txs outside EIP-2718", lambda c, s: "yes" if c.get("non_evm_transactions") else "no")

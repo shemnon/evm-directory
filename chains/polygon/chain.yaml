@@ -215,13 +215,24 @@ system_contracts:
     note: "COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose."
 
 opcodes:
-  added: []
-  removed: []
+  added:
+  - {op: "0x1e", name: CLZ, fork: lisovo,
+     note: "EIP-7939, an Osaka opcode, enabled via enable7939 in the Lisovo/LisovoPro/Chicago jump table on an otherwise-Prague instruction set — Polygon never activates Osaka.",
+     src: "core/vm/jump_table.go:newLisovoInstructionSet"}
+  removed:
+  - {op: "0x49", name: BLOBHASH,
+     note: "enable4844 is commented out of newCancunInstructionSet in bor (\"Disabled in bor\"); 0x49 is undefined. No blob market — see precompiles 0x0a.",
+     src: "core/vm/jump_table.go:newCancunInstructionSet"}
+  - {op: "0x4a", name: BLOBBASEFEE,
+     note: "enable7516 is commented out of newCancunInstructionSet in bor; 0x4a is undefined.",
+     src: "core/vm/jump_table.go:newCancunInstructionSet"}
   modified: []
   note: >-
-    No opcode additions, but PIP-88 surcharges COLD_SLOAD (x2.6) and COLD_SSTORE
-    (x1.4), so SLOAD/SSTORE cost differently from mainnet. Recorded under fee_model
-    and eips rather than as opcode modifications, since semantics are unchanged.
+    CLZ is the one opcode Polygon adds ahead of its baseline fork; the two blob
+    opcodes Cancun would bring are compiled out of bor. Separately, PIP-88
+    surcharges COLD_SLOAD (x2.6) and COLD_SSTORE (x1.4), so SLOAD/SSTORE cost
+    differently from mainnet — recorded under fee_model and eips rather than as
+    opcode modifications, since semantics are unchanged.
 
 fee_model:
   metering: gas

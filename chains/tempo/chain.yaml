@@ -590,7 +590,7 @@ system_transactions:
 opcodes:
   added: []
   removed:
-  - number: "0x4F"
+  - op: "0x4f"
     name: MILLIS_TIMESTAMP
     note: >-
       ADDED AT GENESIS AND REMOVED AT T1C — the only opcode in this dataset that
@@ -602,7 +602,7 @@ opcodes:
       at the baseline; the note is the whole finding.
     src: crates/revm/src/instructions.rs:MILLIS_TIMESTAMP
   modified:
-  - number: "0x55"
+  - op: "0x55"
     name: SSTORE
     note: >-
       Repriced twice and then given a Tempo instruction. TIP-1000 (T1+): a
@@ -613,7 +613,7 @@ opcodes:
       a 245,000-gas credit instead of a refund, and a later creation by the same
       account consumes it. `sstore_clearing_slot_refund` is 0.
     src: crates/revm/src/instructions.rs:gas_credits, crates/revm/src/gas_params.rs:t7_gas_params
-  - number: "0xF0"
+  - op: "0xf0"
     name: CREATE
     note: >-
       500,000 gas from T1 — 15.6x mainnet's 32,000 — under TIP-1000, on the
@@ -624,15 +624,15 @@ opcodes:
       behind `cfg.enable_amsterdam_eip8037`, which is set only in tests — so at
       the probe block the T1 flat costs are what applies.
     src: crates/revm/src/gas_params.rs:CONTRACT_CREATE_COST, crates/revm/src/gas_params.rs:tempo_gas_params_with_amsterdam
-  - number: "0x31"
+  - op: "0x31"
     name: BALANCE
     note: "always returns 0 for every address — there is no native asset. Not disabled, just permanently zero. See gotchas: the RPC does NOT agree with the opcode."
     src_live: "eth_call with state-override code 0x5f3531 5f5260205ff3 (BALANCE of calldata address) @ 36217459 -> 0x00..00"
-  - number: "0x47"
+  - op: "0x47"
     name: SELFBALANCE
     note: "always returns 0. Same reason."
     src_live: "eth_call with state-override code 0x475f5260205ff3 @ 36217459 -> 0x00..00"
-  - number: "0xF1"
+  - op: "0xf1"
     name: CALL
     note: >-
       The value argument is structurally unusable: no account can ever hold a

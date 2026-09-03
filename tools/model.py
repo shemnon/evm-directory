@@ -436,14 +436,32 @@ def tx_auth(chains, s):
     return fields, schemes, origin
 
 
+def _baseline_set(chains):
+    """The raw chains/ethereum/chain.yaml `opcodes.baseline_set.opcodes` map.
+
+    Each value is either a plain name string (a frontier-era opcode, present at
+    every baseline fork) or a `{name, fork}` mapping (fork = the mainnet fork that
+    introduced it, so the grid can gate it out of older chains)."""
+    return ((chains.get("ethereum", {}).get("opcodes") or {})
+            .get("baseline_set") or {}).get("opcodes") or {}
+
+
 def baseline_opcodes(chains):
     """The mainnet instruction set at the baseline fork: {"0x01": "ADD", ...}.
 
     Recorded in chains/ethereum/chain.yaml from the pinned jump table. Without it an
     opcode grid can only show deltas, and every row is divergent by construction —
     there is no way to render "this chain has ADD, unremarkably"."""
-    return ((chains.get("ethereum", {}).get("opcodes") or {})
-            .get("baseline_set") or {}).get("opcodes") or {}
+    return {op: (v if isinstance(v, str) else (v or {}).get("name", ""))
+            for op, v in _baseline_set(chains).items()}
+
+
+def baseline_opcode_forks(chains):
+    """{"0x1e": "osaka", ...} — the mainnet fork that introduced each fork-gated
+    baseline opcode. Only the tagged (`{name, fork}`) entries appear here; plain
+    string entries are frontier-era and never gated."""
+    return {op: v["fork"] for op, v in _baseline_set(chains).items()
+            if isinstance(v, dict) and v.get("fork")}
 
 
 # Mainnet fork order, oldest first. Used to sort and group rows by the fork they

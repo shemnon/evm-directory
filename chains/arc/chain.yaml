@@ -475,7 +475,7 @@ opcodes:
   added: []
   removed: []
   modified:
-  - number: "0xFF"
+  - op: "0xff"
     name: SELFDESTRUCT
     note: >-
       Replaced in the instruction table by an Arc implementation with three
@@ -486,7 +486,7 @@ opcodes:
       selfdestruct that would increase the account's own balance. Three variants
       across Zero5/Zero6/Zero7.
     src: crates/evm/src/opcode.rs:arc_network_selfdestruct_impl
-  - number: "0xF1"
+  - op: "0xf1"
     name: CALL
     note: >-
       Value transfers work normally — Arc HAS a native coin, unlike tempo. What

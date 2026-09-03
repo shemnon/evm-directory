@@ -18,7 +18,7 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
   └── OP Stack (v1.101702.2, osaka) [stack, not a chain]
     └── OP Mainnet (v1.101702.2, osaka)
     └── Base (v1.2.0, osaka)
-    └── World Chain (v2.4.2, osaka)
+    └── World Chain (v2.4.2, prague)
     └── opBNB (v0.5.10, cancun)
     └── Celo (celo-v2.2.4, prague)
     └── Mantle (v1.6.1, osaka)
@@ -73,7 +73,7 @@ Autonomys Auto EVM — no upstream (role: independent)
 | OP Stack | `osaka` | OP fork times are independent config fields, but CheckConfigForkOrder ENFORCES equality with their Ethereum counterparts — a config that violates this is rejected at startup. This makes the  |
 | OP Mainnet | `osaka` | Read from the superchain registry rather than the client, because OP Stack fork times are per-chain configuration, not client constants. |
 | Base | `osaka` | Base is ABSENT from the superchain-registry mainnet configs in this snapshot, unlike OP Mainnet and World Chain, so activation timestamps could not be read from there. Fork ORDER is verified |
-| World Chain | `osaka` | Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec (asserted at crates/chainspec/src/spec |
+| World Chain | `prague` | Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec (asserted at crates/chainspec/src/spec |
 | opBNB | `cancun` | THE DUAL-HERITAGE CASE. lineage.upstream is op-stack by code, but two of its precompiles come from BSC — blsSignatureVerify at 0x66 and cometBFTLightBlockValidate at 0x67, at BSC's addresses |
 | Celo | `prague` | Two fork axes. Ethereum/OP forks come from the embedded superchain registry and are subject to op-geth's CheckConfigForkOrder equality rules (params/config.go:1745 enforces PragueTime == Ist |
 | Mantle | `osaka` | ONE fork axis, not two. Unlike the op-stack row — where CheckConfigForkOrder ENFORCES ShanghaiTime == CanyonTime and PragueTime == IsthmusTime, making the mapping a verified fact — Mantle's  |
@@ -83,7 +83,7 @@ Autonomys Auto EVM — no upstream (role: independent)
 | Scroll | `shanghai` | THREE activation mechanisms in one config. London and Shanghai are block numbers pinned to 0; Bernoulli and Curie are real block numbers; everything from Darwin on is a timestamp. Nothing ma |
 | Taiko Alethia | `osaka` | Two fork axes with different units. Ontake and Pacaya are BLOCK NUMBERS; Shasta and Unzen are TIMESTAMPS. The Ethereum fork schedule is not configurable per network at all — it is derived fr |
 | Polygon zkEVM | `berlin` | THE ONLY ACTIVATION MECHANISM IN THIS DATASET THAT IS NOT IN THE CLIENT AT ALL. The Ethereum ladder is frozen at Berlin by a chainspec of sentinels; everything that actually changes is gated |
-| zkSync Era | `osaka` | Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account / EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no mainnet-equivalence claim to  |
+| zkSync Era | `cancun` | Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account / EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no mainnet-equivalence claim to  |
 | Rollkit / Evolve (ev-node + ev-reth) | `prague` | A deployment has no named hard forks of its own. Upgrading means restarting every node on a new ev-reth binary and, for the `evolve` stanza, a chainspec edit — which is why each option carri |
 | Cosmos EVM (evmd) | `prague` | Two upgrade axes that do not line up, and neither is a timestamp fork in the Ethereum sense. (1) The Ethereum fork level is a per-deployment ChainConfig stored as x/vm module state; it is ge |
 | Injective | `prague` | As on the framework, the Ethereum fork level is x/evm module state rather than client constants, and the real upgrade axis is Cosmos governance-scheduled named upgrades. Injective's delta is |

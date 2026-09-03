@@ -467,6 +467,16 @@ precompiles:
   # but registration is TWO-STEP: a precompile must be BOTH built into the keeper's
   # map at app wiring AND listed in the x/vm module param ActiveStaticPrecompiles.
   # Everything here is therefore `optional` — that is the template property.
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: precompiles/types/defaults.go:DefaultStaticPrecompiles
+    note: >-
+      The base 0x01-0x11 range is the vendored go-ethereum Prague set (BLS12-381
+      present, no EIP-7823/7883 MODEXP bounds). P256VERIFY at 0x0100 is a governance-
+      togglable static precompile (RIP-7212), on by default in evmd — see the 0x0100
+      row. Everything else cosmos/evm adds sits at 0x0100.. / 0x0400 / 0x0800+.
   "0x0000000000000000000000000000000000000100":
     name: P256VERIFY (secp256r1, RIP-7212)
     status: added

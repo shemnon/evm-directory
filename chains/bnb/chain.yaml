@@ -159,6 +159,15 @@ tx_authorization:
 
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsOsaka (LIVE set as of 2026-08-16)
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsOsaka
+    note: >-
+      The full mainnet Osaka base range, unmodified — BLS12-381 (Prague/Pascal),
+      MODEXP with EIP-7823/7883 bounds, P256VERIFY with mainnet gas. The most
+      mainnet-faithful base map in this dataset.
   "0x64":
     name: tmHeaderValidate
     status: added

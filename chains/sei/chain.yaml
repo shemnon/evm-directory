@@ -513,6 +513,19 @@ precompiles:
   # precompiles/setup.go:InitializePrecompiles, which mutates geth's global maps,
   # is only ever called with dryRun=true to harvest ABIs; it is not the live path
   # and it omits solo.
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: false
+    src: >-
+      go-ethereum/core/vm/contracts.go:PrecompiledContractsPrague (the vendored geth
+      fork's precompile switch tops out at Prague)
+    note: >-
+      Full Prague base range — 0x01-0x0a plus EIP-2537 BLS 0x0b-0x11 — but NO
+      P256VERIFY: the fork has no Osaka branch, so 0x0100 is never populated by the
+      built-in map, and Sei's custom precompiles are installed only where the map is
+      empty. Sei DOES have P256VERIFY, at 0x1011 — see that row and the section
+      headline. Sei's thirteen custom precompiles are all at 0x1001-0x1011.
   "0x0000000000000000000000000000000000001001":
     name: bank
     status: added

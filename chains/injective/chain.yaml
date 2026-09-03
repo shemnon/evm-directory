@@ -478,6 +478,17 @@ tx_authorization:
       src: injective-chain/app/ante/ante.go:ConsumeMultisignatureVerificationGas
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: false
+    src: injective-chain/modules/evm/keeper/state_transition.go:NewEVM
+    note: >-
+      `NewEVM` seeds the contract map from `vm.DefaultPrecompiles(cfg.Rules)` — the
+      dependency's Prague set. The base 0x01-0x11 range is that Prague set: BLS12-381
+      present, no Osaka MODEXP bounds. No P256VERIFY: 0x0100 is not in Injective's
+      active precompile set (see the 0x0100 row). Injective's four custom precompiles
+      are at 0x64-0x67, the dataset's worst collision zone — see the section note.
   "0x0000000000000000000000000000000000000064":
     name: bank (Injective)
     status: added

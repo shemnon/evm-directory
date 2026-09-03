@@ -352,6 +352,17 @@ non_evm_transactions:
     change it is), and deliberately NOT here.
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsOsaka
+    note: >-
+      The map is upstream geth's PrecompiledContractsOsaka verbatim — zero added,
+      zero removed, zero repriced. Both KZG at 0x0a and P256VERIFY at 0x0100 arrive
+      through mainnet's own Osaka fork (not RIP-7212), so result AND price match
+      mainnet. From Unzen every precompile call is additionally charged
+      gasUsed x multiplier against a per-block ZK-gas budget — see the section note.
   "0x0000000000000000000000000000000000000100":
     name: P256VERIFY (EIP-7951)
     status: inherited

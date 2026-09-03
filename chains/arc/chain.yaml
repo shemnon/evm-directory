@@ -307,6 +307,15 @@ tx_authorization:
       src: crates/types/src/signing.rs:Ed25519
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: crates/precompiles/src/precompile_provider.rs:ArcPrecompileProvider
+    note: >-
+      revm's Osaka precompile set unchanged for 0x01-0x11 plus P256VERIFY at 0x0100
+      (RIP-7212 semantics, from before mainnet Osaka). Arc's own precompiles are all
+      far above the mainnet range at 0x1800.. / 0x3600.. and are added on top.
   "0x1800000000000000000000000000000000000000":
     name: NativeCoinAuthority
     status: added

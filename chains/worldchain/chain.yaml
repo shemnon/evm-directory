@@ -207,6 +207,17 @@ tx_authorization:
         put at 0x0100 where P256VERIFY already lives (see precompiles."0x0100").
       src: "specs/wips/wip-1001.md:WORLD_CHAIN_ACCOUNT_MANAGER, specs/wips/wip-1001.md:evaluateSessionPolicy, specs/wips/wip-1001.md:WorldChainExecutionTrace, specs/wips/wip-1001.md:BLOCK_VALIDATION_GAS_BUDGET, specs/wips/wip-1001.md:EIP1271_VALIDATION_GAS_LIMIT"
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: inherits OP Stack's op-geth base map (PrecompiledContractsJovian); the
+      world-chain builder tree carries no precompile changes of its own
+    note: >-
+      Live base map is identical to OP Stack's, including all six same-address
+      divergences. WIP-1004 proposes an EdDSA precompile at 0x0100 — the address
+      P256VERIFY already occupies — but that is an unshipped draft to fix, see the
+      0x0100 row.
   "0x0100":
     name: "P256VERIFY (live); EdDSA proposed"
     status: modified

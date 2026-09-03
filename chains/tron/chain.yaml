@@ -146,6 +146,17 @@ tx_authorization:
 
 precompiles:
   # verified: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:133-213
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: true
+    src: actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:getContractForAddress
+    note: >-
+      0x01-0x0a resolve, but THREE of them are collisions that compute a different
+      function under the mainnet name with no error: 0x03 is not RIPEMD160, 0x09 is
+      not BLAKE2F, 0x0a is not KZG (see those rows). Ethereum's real RIPEMD160 /
+      BLAKE2F live at 0x020003 / 0x020009. No EIP-2537 BLS. P256VERIFY at 0x0100 is
+      present (energy-metered). Everything is metered in energy, not gas.
   "0x03":
     name: "Ripempd160 (misnamed)"
     status: modified

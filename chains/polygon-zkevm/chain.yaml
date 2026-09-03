@@ -364,6 +364,17 @@ precompiles:
   # precompile_zkevm tests IsForkID13Durian, then IsForkID8Elderberry — there is no
   # branch for 9, 10, 11 or 12, so forkID 8's map has been the live map since block
   # 10742147 and remains so at the head.
+  base_map:
+    status: inherited
+    present: "0x01-0x02, 0x04, 0x06-0x08"
+    p256verify: pending
+    src: core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry
+    note: >-
+      Berlin-level base (0x01-0x09), but RIPEMD160 (0x03), MODEXP (0x05) and BLAKE2F
+      (0x09) are all tombstoned — a disabled call reverts and returns the forwarded
+      gas — and MODEXP is fork-gated: enabled at Etrog, disabled at Elderberry,
+      scheduled to return at the never-activated Durian. No KZG, no BLS. P256VERIFY
+      at 0x0100 is specified for Durian and thus pending.
   "0x0000000000000000000000000000000000000003":
     name: RIPEMD160
     status: tombstoned

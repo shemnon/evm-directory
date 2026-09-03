@@ -87,6 +87,15 @@ tx_authorization:
         as P256VERIFY on mainnet, arrived at by a different heritage.
       src: "core/vm/contracts.go:blsSignatureVerify, core/types/transaction_signing.go:recoverPlain"
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsFjord
+    note: >-
+      op-geth v0.5.10 stops at Fjord: 0x01-0x0a present, NO EIP-2537 BLS at
+      0x0b-0x11 (Fjord predates Prague), P256VERIFY at 0x0100 at RIP-7212 gas. This
+      is OP Stack's base map frozen at an older client — see lineage.sync_point.
   "0x66":
     name: blsSignatureVerify
     status: added

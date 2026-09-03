@@ -391,6 +391,15 @@ non_evm_transactions:
       is binding.
     src: block/internal/da/forced_inclusion_retriever.go:RetrieveForcedIncludedTxs
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: pending
+    src: ev-reth (op-revm precompile set; Prague base, no P256VERIFY yet)
+    note: >-
+      Full Prague base range from op-revm. P256VERIFY at 0x0100 is pending (EIP-7951
+      not yet live). Rollkit's two optional precompiles are at 0xf100-0xf101 and do
+      not touch the mainnet range — see below.
   "0x000000000000000000000000000000000000f100":
     name: Native token mint/burn (INativeToken)
     status: added

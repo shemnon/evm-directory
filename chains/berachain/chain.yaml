@@ -616,6 +616,16 @@ tx_authorization:
         reader seeing a BLS key in the header may reasonably assume otherwise.
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: src/evm/mod.rs
+    note: >-
+      bera-reth builds its precompile set with the stock revm constructor
+      `Precompiles::new(PrecompileSpecId::from_spec_id(spec))` at Osaka, with no
+      Berachain insertions or removals: the full 0x01-0x11 range plus a working
+      P256VERIFY at 0x0100. Verified live — see the section note below.
   note: >-
     ZERO custom precompiles and zero divergence from mainnet Osaka. bera-reth builds
     its precompile set with the stock revm constructor,

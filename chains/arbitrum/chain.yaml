@@ -212,6 +212,17 @@ tx_authorization:
 
 precompiles:
   # verified: go-ethereum/core/types/arbitrum_signer.go
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: go-ethereum/core/vm/contracts.go:PrecompiledContractsOsaka
+    note: >-
+      The base range is the geth fork's, selected by ArbOS version rather than by
+      timestamp: 0x01-0x0a from ArbOS 20 (Cancun-equivalent), BLS12-381 0x0b-0x11
+      from ArbOS 40 (Prague), P256VERIFY at 0x0100 from ArbOS 30. MODEXP gains the
+      EIP-7823/7883 Osaka bounds at ArbOS 50. Arbitrum One is past ArbOS 50, so the
+      full Osaka base map is live.
   "0x64": {name: ArbSys, status: added, note: "core system precompile: L2->L1 messaging, block numbers",
            src: "precompiles/ArbSys.go:ArbSys"}
   "0x65": {name: ArbInfo, status: added,

@@ -415,6 +415,17 @@ non_evm_transactions:
   filter_src: "runtime/moonbeam/src/lib.rs:NormalFilter"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x09, 0x0b-0x11"
+    p256verify: true
+    src: runtime/moonbeam/src/precompiles.rs
+    note: >-
+      Ethereum's range answers, but 0x01-0x09 are `modified`: each carries a 5-byte
+      dummy CODE (0x60006000fd) so EXTCODESIZE is 5 not 0, flipping every
+      isContract/extcodehash check. KZG at 0x0a is removed (no EIP-4844). BLS12-381
+      0x0b-0x11 are real precompiles with empty code. P256VERIFY at 0x0100 is present
+      (modified). Moonbeam's own precompiles are at 0x0800-0x081a — see the rows.
   note: >-
     47 addresses answer as precompiles, in three bands (0x01-0x0100 Ethereum's,
     0x0400-0x0402 non-Ethereum-but-not-Moonbeam-specific, 0x0800-0x081a

@@ -280,6 +280,48 @@ addresses.
 `stack` and `template` rows are not chains; this is derivable from `role`, so there is
 no separate `is_chain` field.
 
+## The base precompile map (`0x01`–`0x11` + `0x0100`)
+
+Mainnet's precompile range is contiguous `0x01`–`0x11` (ECRECOVER through
+`BLS12_MAP_FP2_TO_G2`) plus P256VERIFY at `0x0100`. The delta convention would have a
+chain that carries all of them record nothing — and "nothing recorded" is
+indistinguishable from "nobody checked." For a range this load-bearing that is not good
+enough: whether a chain actually has EIP-2537 BLS (`0x0b`–`0x11`), KZG at `0x0a`, or
+P256VERIFY is the single most common integration question.
+
+Every chain therefore declares the range explicitly, condensed into one block:
+
+```yaml
+precompiles:
+  base_map:
+    status: inherited          # disposition of the present addresses: inherited | modified
+    present: "0x01-0x11"       # which of 0x01-0x11 exist at the mainnet address with
+                               # mainnet behaviour. A range, comma-separated ranges, or a
+                               # list: "0x01-0x0a"  ·  "0x01-0x08, 0x0a"  ·  ["0x01","0x05"]
+    p256verify: false          # 0x0100: true | false | pending
+    src: "core/vm/contracts.go:PrecompiledContractsPrague"   # the map in THIS clone, or
+                               # a prose pointer when the base set is in a dependency
+    src_live: "..."            # optional
+    note: "EIP-2537 BLS present via Prague; no P256VERIFY (pre-Osaka)."
+```
+
+The model expands this into per-address entries:
+
+- an address in `present` → synthesized `inherited` (renders `=`)
+- an address in `0x01`–`0x11` **not** in `present` → synthesized `removed` (renders `➖`,
+  never a blank)
+- `p256verify:` drives `0x0100` the same way
+
+An **explicit** per-address entry always wins over the synthesized one — so a chain that
+reprices `0x05` or caps `0x08` still lists that address with its own `note`, `src` and
+`modified`/`tombstoned` status, and `present` just says the address exists at all. OP
+Stack descendants inherit the stack row's `base_map` unless they declare their own.
+
+`verify.py` cross-checks `present` against the precompile map extracted from the pinned
+clone for every row that has an extractor; a chain with no `base_map` at all is a build
+error. Chains whose base set comes from an unvendored dependency (coreth/subnet-evm on
+`ava-labs/libevm`) carry a prose `src` and are checked by citation only.
+
 ## Non-enumerable precompiles
 
 Base (from its Beryl upgrade) installs a `PrecompileLookup` that resolves precompiles
@@ -352,7 +394,9 @@ non_eip_specs: # chain's own spec series, keyed by adoption:
 tx_types:     # type byte -> {name, status, spec, src}
 tx_authorization:  # what can SIGN a tx — independent of precompiles
 non_evm_transactions:  # protocol txs with no type byte
-precompiles:  # address -> {name, status, availability, spec, src}
+precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then
+              # address -> {name, status, availability, spec, src} for divergences
+              # and additions; optional dynamic_range for predicate-resolved sets
 system_contracts:
 system_transactions:
 opcodes:      # {added: [], removed: [], modified: []}

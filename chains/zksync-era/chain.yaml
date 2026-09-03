@@ -299,6 +299,17 @@ precompiles:
   # contract that internally issues the EraVM PrecompileCall instruction. Addresses
   # <= 0xff are MASKED to look codeless to the EVM (extcodesize 0, extcodehash
   # keccak("")) while eth_getCode over JSON-RPC returns their real bytecode.
+  base_map:
+    status: inherited
+    present: "0x01-0x02, 0x04-0x08"
+    p256verify: true
+    src: system-contracts/contracts/precompiles/
+    note: >-
+      EraVM has no precompiles in the mainnet sense: 0x01-0x08 are DEPLOYED Yul
+      contracts at the mainnet addresses, ergs-metered, and eth_getCode returns real
+      bytecode. RIPEMD160 (0x03), BLAKE2F (0x09) and the whole 0x0a-0x11 range are
+      tombstoned by an address-space rule — every kernel-space address below 2^16
+      with no deployed code reverts. P256VERIFY at 0x0100 is a deployed contract.
   "0x03":
     name: RIPEMD160
     status: tombstoned

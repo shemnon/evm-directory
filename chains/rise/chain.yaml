@@ -273,6 +273,18 @@ tx_authorization:
       note: "P256VERIFY exists for contracts; a P-256 key cannot authorize a transaction"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src_live: "eth_call @ 20239360: 0x01-0x0a answer; 0x0b returns the point at
+      infinity for 256 zero bytes; 0x0a rejects malformed input with PrecompileError;
+      0x0100 behaves as RIP-7212"
+    note: >-
+      No precompile divergence found, and the search was made. Full Prague base range
+      plus P256VERIFY at 0x0100 (from OP Fjord / RIP-7212, not Osaka). The one
+      caveat: precompile GAS could not be measured from outside — repricing is
+      unrecorded for every address, see gas_schedule.
   "0x0000000000000000000000000000000000000100":
     name: P256VERIFY
     status: inherited

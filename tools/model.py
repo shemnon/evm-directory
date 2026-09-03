@@ -106,39 +106,134 @@ def sortkey(a):
     except Exception: return (1, 0)
 
 
+# --- base precompile map synthesis ---------------------------------------------
+# A chain records the mainnet base range (0x01-0x11 + P256VERIFY at 0x0100) as a
+# condensed `precompiles.base_map` block rather than eighteen near-identical rows.
+# The model expands it here into per-address entries so every renderer shows a
+# verified `=` / `➖` in those cells instead of a blank that only *assumes*
+# mainnet-standard behaviour. An explicit per-address entry always wins over the
+# synthesized one; see SCHEMA.md.
+
+_BASE_NAMES_CACHE = {}
+
+def base_names():
+    """{int addr -> name} for 0x01-0x11 and 0x100, read once from the baseline row
+    so the name table is never duplicated."""
+    if not _BASE_NAMES_CACHE:
+        pc = (load().get("ethereum", {}).get("precompiles") or {})
+        for k, v in pc.items():
+            if isinstance(v, dict) and str(k).startswith("0x"):
+                try: n = int(str(k), 16)
+                except ValueError: continue
+                if n in range(0x01, 0x12) or n == 0x100:
+                    _BASE_NAMES_CACHE[n] = v.get("name", "")
+    return _BASE_NAMES_CACHE
+
+
+def _parse_present(spec):
+    """"0x01-0x0a, 0x0c" / "0x01-0x11" / ["0x01", ...] -> set of ints."""
+    if spec in (None, ""): return set()
+    parts = spec if isinstance(spec, list) else str(spec).split(",")
+    out = set()
+    for p in parts:
+        p = str(p).strip()
+        if not p: continue
+        if "-" in p[2:]:                       # a range, not a leading 0x
+            lo, hi = p.split("-", 1)
+            out |= set(range(int(lo, 16), int(hi, 16) + 1))
+        else:
+            out.add(int(p, 16))
+    return out
+
+
+def synth_base(c):
+    """address -> synthetic entry for one chain's base precompile range, from its
+    `precompiles.base_map`. Empty when the chain declares no base_map."""
+    bm = (c.get("precompiles") or {}).get("base_map")
+    if not isinstance(bm, dict):
+        return {}
+    names = base_names()
+    present = _parse_present(bm.get("present"))
+    disp = bm.get("status", "inherited")
+    src = bm.get("src")
+    src_live = bm.get("src_live")
+    out = {}
+    for n in range(0x01, 0x12):
+        st = disp if n in present else "removed"
+        e = {"name": names.get(n, ""), "status": st, "_synth": True}
+        if src: e["src"] = src
+        if src_live: e["src_live"] = src_live
+        out[canon(hex(n))] = e
+    p256 = bm.get("p256verify", False)
+    st = {True: disp, False: "removed", "pending": "pending"}.get(p256, "removed")
+    e = {"name": names.get(0x100, "P256VERIFY"), "status": st, "_synth": True}
+    if src: e["src"] = src
+    if src_live: e["src_live"] = src_live
+    out[canon("0x100")] = e
+    return out
+
+
+def _addr_layer(c, section):
+    """A row's own explicit address entries for a section, canonicalised."""
+    return {canon(k): v for k, v in (c.get(section) or {}).items()
+            if str(k).startswith("0x")}
+
+
+def _resolve_addr(chains, s, section):
+    """One chain's merged address->(entry, origin) map for a section.
+
+    Layering, low to high:
+      1. stack ancestor's synthesized base map
+      2. this chain's synthesized base map — but a plain `inherited` synth is only a
+         fallback (setdefault), while a `removed`/`pending` synth is a deliberate
+         narrowing of `present` and takes precedence over an inherited explicit entry
+      3. stack ancestor's explicit entries — except where step 2 already recorded a
+         deliberate narrowing
+      4. this chain's own explicit entries — always win
+    """
+    c = chains[s]
+    pc = section == "precompiles"
+    up = c["lineage"].get("upstream")
+    stacked = up in chains and is_stack(chains[up])
+    out = {}
+    if stacked and pc:
+        for k, v in synth_base(chains[up]).items():
+            out[k] = (v, up)
+    if pc:
+        for k, v in synth_base(c).items():
+            if v.get("status") == "inherited":
+                out.setdefault(k, (v, s))
+            else:
+                out[k] = (v, s)                       # deliberate narrowing
+    if stacked:
+        for k, v in _addr_layer(chains[up], section).items():
+            cur = out.get(k)
+            narrowed = (cur and cur[1] == s and isinstance(cur[0], dict)
+                        and cur[0].get("_synth")
+                        and cur[0].get("status") != "inherited")
+            if not narrowed:
+                out[k] = (v, up)
+    for k, v in _addr_layer(c, section).items():
+        out[k] = (v, s)
+    return out
+
+
 def addr_rows(chains, section):
-    """Collect address->{slug: entry} across chains, resolving stack inheritance."""
+    """Collect address->{slug: entry} across chains, resolving stack inheritance
+    and (for precompiles) synthesizing each chain's base precompile map."""
     table, origin = {}, {}
     for s in order(chains):
-        c = chains[s]
-        up = c["lineage"].get("upstream")
-        # inherit from a stack ancestor first, then let own entries override
-        if up in chains and is_stack(chains[up]):
-            for k, v in (chains[up].get(section) or {}).items():
-                if not str(k).startswith("0x"): continue
-                k = canon(k)
-                table.setdefault(k, {})[s] = v
-                origin.setdefault((k, s), up)
-        for k, v in (c.get(section) or {}).items():
-            if not str(k).startswith("0x"): continue
-            k = canon(k)
+        for k, (v, who) in _resolve_addr(chains, s, section).items():
             table.setdefault(k, {})[s] = v
-            origin[(k, s)] = s
+            origin[(k, s)] = who
     return table, origin
 
 
 def effective(chains, s, section):
     """One chain's complete effective set for an address-keyed section:
-    address -> (entry, origin_slug). Inherited stack entries included."""
-    c = chains[s]
-    out = {}
-    up = c["lineage"].get("upstream")
-    if up in chains and is_stack(chains[up]):
-        for k, v in (chains[up].get(section) or {}).items():
-            if str(k).startswith("0x"): out[canon(k)] = (v, up)
-    for k, v in (c.get(section) or {}).items():
-        if str(k).startswith("0x"): out[canon(k)] = (v, s)
-    return out
+    address -> (entry, origin_slug). Inherited stack entries and, for precompiles,
+    the synthesized base map are included."""
+    return _resolve_addr(chains, s, section)
 
 
 def entry_name(entries):

@@ -438,6 +438,17 @@ tx_authorization:
       src: "src/Nethermind/Chains/gnosis.json:eip7951TransitionTimestamp"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: >-
+      upstream Nethermind precompile set (the Gnosis fork ladder overrides fee and
+      blob fields only and touches no precompile)
+    note: >-
+      Zero added, zero removed, zero repriced, zero relocated. Established live as
+      well as from source: eth_getCode at all of 0x01-0x11 and 0x0100 returns 0x at
+      the pinned block, so every one is native code and none is a predeploy.
   "0x0100":
     name: P256VERIFY
     status: inherited

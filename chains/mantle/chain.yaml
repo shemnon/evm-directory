@@ -331,6 +331,16 @@ tx_authorization:
 precompiles:
   # verified against core/vm/contracts.go:PrecompiledContractsMantleArsia,
   # which is defined as `= PrecompiledContractsMantleLimb`.
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsMantleArsia
+    note: >-
+      Inherits OP Stack's base map, then OVERRIDES four of op-geth's divergences
+      back to mainnet: 0x05 MODEXP gets the Osaka bounds, and 0x08 / 0x0c / 0x0e /
+      0x0f drop op-geth's input caps. The result is membership- and semantics-
+      identical to mainnet Osaka — more mainnet-equivalent than its own ancestor.
   "0x05":
     name: MODEXP
     status: inherited

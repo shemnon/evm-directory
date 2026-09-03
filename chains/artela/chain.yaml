@@ -585,6 +585,17 @@ tx_authorization:
       src: app/ante/validator.go:ConsumeMultisignatureVerificationGas
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x09"
+    p256verify: false
+    src: artela-evm/vm/contracts.go:PrecompiledContractsBerlin
+    note: >-
+      The vendored go-ethereum v1.12.0 EVM tops its precompile switch out at
+      `rules.IsBerlin`, so despite a Cancun fork claim the map is Berlin's:
+      0x01-0x09 only, no KZG at 0x0a, no BLS12-381, no P256VERIFY. This same
+      vendored Berlin map also carries 0x64-0x66 (aspcontext / userOpSender /
+      contextWriter), which the keeper-level Aspect story below does not enumerate.
   "0x0000000000000000000000000000000000A27E14":
     name: AspectCore
     status: added

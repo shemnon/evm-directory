@@ -604,6 +604,18 @@ fee_model:
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: false
+    src: >-
+      hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:providePrecompileContractRegistry
+    note: >-
+      `providePrecompileContractRegistry` calls Besu 25.2.2's
+      `MainnetPrecompiledContracts.populateForCancun` and nothing else: 0x01-0x0a
+      stock Cancun, no EIP-2537 BLS, no P256VERIFY (Besu's Cancun map has no 0x0100
+      entry). The divergence is at every OTHER address below 0x2EE — see the sink
+      note below, which also settles the P256VERIFY probe.
   note: >-
     `V067Module.providePrecompileContractRegistry` calls Besu's
     `MainnetPrecompiledContracts.populateForCancun` and NOTHING ELSE — no address is added,

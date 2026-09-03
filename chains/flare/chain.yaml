@@ -271,6 +271,17 @@ tx_authorization:
       src: coreth/precompile/contracts/warp/config.go:VerifyPredicate
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: true
+    src: >-
+      coreth/params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a
+      resolved through the ava-labs/libevm dependency, not vendored in this tree)
+    note: >-
+      coreth's map byte-for-byte: Cancun-level base, 0x01-0x0a present, MODEXP
+      without the Osaka bounds, no EIP-2537 BLS. P256VERIFY at 0x0100 is present,
+      correct and mainnet-priced, gated on Granite rather than Osaka — see 0x0100.
   note: >-
     THE PREDICTION FOR THIS ROW WAS WRONG, AND THAT IS THE FINDING. Flare was
     expected to add FTSO and State Connector PRECOMPILES at 0x1000..0001-0003. It

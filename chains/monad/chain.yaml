@@ -367,6 +367,16 @@ tx_authorization:
       src: "category/execution/ethereum/precompiles.cpp:bls12_pairing_check_execute, category/execution/monad/staking/staking_contract.cpp:precompile_add_validator, category/execution/monad/staking/util/bls.hpp"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: category/execution/ethereum/precompiles.cpp:resolve_precompile
+    note: >-
+      The base 0x01-0x11 range is Monad's own C++ reimplementation: 0x01-0x09
+      always, KZG at 0x0a from the Cancun-equivalent base revision, BLS12-381
+      0x0b-0x11 and P256VERIFY at 0x0100 from MONAD_FOUR (Prague-equivalent, before
+      Monad reached Osaka). No blob market despite the KZG precompile being present.
   "0x0000000000000000000000000000000000001000":
     name: StakingContract
     status: added

@@ -300,6 +300,16 @@ tx_authorization:
         0x01 is untouched, so the scheme and its precompile stay paired.
       src: "core/types/celo_transaction_signing.go:celoSigner, core/types/celo_transaction_signing_tx_funcs.go:dynamicTxSender, core/types/celo_transaction_signing_tx_funcs.go:isChainIDException, core/types/celo_transaction_signing_tx_funcs.go:mainnetChainIDExceptionHash, core/types/celo_transaction_signing_tx_funcs.go:celoLegacyTxFuncs, core/types/celo_transaction_signing_forks.go:deprecatedTxFuncs, core/types/celo_tx_legacy.go:celoTxRlpList"
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsJovian
+    note: >-
+      Inherits OP Stack's base map unchanged — full 0x01-0x11 plus P256VERIFY at
+      0x0100, with op-geth's six same-address divergences. The Celo-specific map is
+      consulted only after the ethereum/OP map misses, so Celo cannot shadow a
+      mainnet address. The one added address is 0xfd — see below.
   "0x00000000000000000000000000000000000000fd":
     name: transfer (CELO token duality)
     status: added

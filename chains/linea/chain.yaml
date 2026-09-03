@@ -233,6 +233,17 @@ precompiles:
   # EVM-level set is stock upstream Besu Osaka:
   # evm/src/main/java/org/hyperledger/besu/evm/precompile/MainnetPrecompiledContracts.java:populateForOsaka
   # Divergence is entirely in what the prover will let into a block.
+  base_map:
+    status: inherited
+    present: "0x01-0x02, 0x04-0x08, 0x0a-0x11"
+    p256verify: true
+    src: linea-besu/package/linea-besu/config/ (stock Besu Osaka precompile set)
+    note: >-
+      The EVM-level set is stock upstream Besu Osaka — BLS12-381 and P256VERIFY at
+      0x0100 present. But RIPEMD160 (0x03) and BLAKE2F (0x09) are effectively removed
+      by a zero trace-limit that makes any call to them unincludable in a block
+      (they still answer under eth_call) — see the 0x03 and 0x09 rows. MODEXP and
+      bn254 pairing are throughput-capped per block, not disabled.
   "0x03":
     name: RIPEMD160
     status: removed

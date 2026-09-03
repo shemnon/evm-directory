@@ -316,6 +316,17 @@ tx_authorization:
       src_live: "eth_call 0x...0100 @ 43575623 <- 160-byte P256 vector generated and verified off-chain (sha256 digest, low-s) -> 0x (empty); Ethereum mainnet control at block 25787579, identical calldata -> 0x00..01 — independently reproduces the eips.7951 probe recorded at 43436288"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x09"
+    p256verify: false
+    src_live: "eth_call @ 43436288: 0x01-0x09 each checked against a known vector or
+      a live Ethereum mainnet control and matched; 0x0a returns the tombstone error;
+      0x0b-0x11 and 0x0100 succeed empty and cost exactly 21000 gas (unallocated)"
+    note: >-
+      Established entirely by probing, since no client is public. 0x01-0x09 behave as
+      mainnet; 0x0a is tombstoned; BLS 0x0b-0x11 and P256VERIFY 0x0100 are absent.
+      The EIP-7823/7883 MODEXP bounds were not probed and stay unrecorded.
   note: >-
     Three regions, established entirely by probing. (1) 0x01-0x09 behave as mainnet —
     ecrecover, sha256, ripemd160, identity, modexp, ecAdd, ecMul, ecPairing and blake2f

@@ -211,6 +211,16 @@ tx_authorization:
       src: "core/types/deposit_tx.go:rawSignatureValues, core/types/deposit_tx.go:sigHash, core/types/transaction_signing.go:DepositTxType, core/types/post_exec_tx.go:PostExecTxType, core/txpool/validation.go:ValidateTransaction, optimism/op-node/rollup/derive/deposits.go:UserDeposits, optimism/op-node/rollup/derive/ecotone_upgrade_transactions.go:L1BlockDeployerAddress, optimism/op-node/rollup/derive/l1_block_info.go:L1InfoDepositerAddress, optimism/packages/contracts-bedrock/src/L1/OptimismPortal2.sol:depositTransaction, optimism/packages/contracts-bedrock/src/vendor/AddressAliasHelper.sol:applyL1ToL2Alias"
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsJovian (newest active set)
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsJovian
+    note: >-
+      Full 0x01-0x11 plus P256VERIFY at 0x0100, but SIX of them diverge from mainnet
+      at the same address — the hardest kind to detect, because address enumeration
+      finds nothing. 0x05 MODEXP (no Osaka bounds), 0x08 bn254 pairing cap, 0x0c /
+      0x0e / 0x0f BLS input caps, 0x0100 gas. See the explicit rows.
   "0x05":
     name: MODEXP
     status: modified

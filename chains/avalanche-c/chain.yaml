@@ -235,6 +235,17 @@ tx_authorization:
 
 precompiles:
   # verified: params/hooks_libevm.go:81-86 (PrecompiledContractsGranite = current)
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: true
+    src: >-
+      params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a resolved
+      through the ava-labs/libevm dependency, not vendored in this tree)
+    note: >-
+      Cancun-level base: 0x01-0x0a present, MODEXP without the EIP-7823/7883 Osaka
+      bounds (see 0x05), no EIP-2537 BLS at 0x0b-0x11 (no Prague). P256VERIFY at
+      0x0100 arrives out of Ethereum fork order, at Granite — see the 0x0100 row.
   "0x05":
     name: MODEXP
     status: modified

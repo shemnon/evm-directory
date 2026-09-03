@@ -429,6 +429,15 @@ non_evm_transactions:
     src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> sharedGasLimit 0x0"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: crates/precompiles/src/lib.rs:extend_tempo_precompiles
+    note: >-
+      reth's Osaka precompile set unchanged for the mainnet range — full 0x01-0x11
+      plus P256VERIFY at 0x0100. Tempo's TIP-20 token precompiles are a predicate-
+      resolved range at 0x20C0.. and do not touch the base map — see dynamic_range.
   dynamic_range:
     name: TIP-20 token precompiles
     status: added

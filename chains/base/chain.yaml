@@ -189,6 +189,16 @@ tx_authorization:
       src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:WEBAUTHN_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:webauthn, crates/execution/eip8130/src/schedule.rs:Eip8130GasSchedule"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: crates/common/precompiles/src/lib.rs
+    note: >-
+      Inherits OP Stack's base map — full 0x01-0x11 plus P256VERIFY at 0x0100 —
+      including all six of op-geth's same-address semantic divergences (0x05 MODEXP,
+      0x08 bn254 pairing cap, 0x0c/0x0e/0x0f BLS caps, 0x0100 gas). Base reimplements
+      the Isthmus BLS and Granite pairing-cap variants in Rust to match op-geth.
   "0x8453000000000000000000000000000000000001":
     name: Activation
     status: added

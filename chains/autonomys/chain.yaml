@@ -408,6 +408,16 @@ non_evm_transactions:
     note: Flips the domain between permissionless and permissioned contract deployment (see system_transactions).
       Also outside the EVM envelope.
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x05"
+    p256verify: false
+    src: domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt
+    note: >-
+      Frontier's pallet-evm precompile set, not geth's: only 0x01-0x05 are present
+      (each backed by a 5-byte REVERT stub in state, so EXTCODESIZE is 5 not 0), and
+      0x06-0x11 plus 0x0100 are absent — a CALL there is an ordinary empty-account
+      success. Per-address detail and gas divergence are on the explicit rows.
   "0x0000000000000000000000000000000000000001":
     name: ECRecover
     status: modified

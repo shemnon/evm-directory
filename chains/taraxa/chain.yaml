@@ -486,6 +486,17 @@ non_evm_transactions:
       which a system transaction pokes.
     src: taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:makeSystemTransactions
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x09, 0x0b-0x11"
+    p256verify: true
+    src: taraxa-evm/core/vm/contracts.go:PrecompiledContractsCacti
+    note: >-
+      The live Cacti map: 0x01-0x09 present (bn254 addresses still on Byzantium
+      pricing — see the explicit rows), KZG at 0x0a a commented-out line so a call
+      succeeds empty, EIP-2537 BLS 0x0b-0x11 present at the mainnet addresses
+      (Ficus had them at 0x0b-0x13 and Cacti realigned — 0x12/0x13 are now removed),
+      and P256VERIFY at 0x0100. MODEXP uses the original EIP-198 pricing.
   "0x0000000000000000000000000000000000000005":
     name: MODEXP
     status: modified

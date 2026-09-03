@@ -148,6 +148,16 @@ tx_authorization:
 
 precompiles:
   # verified: core/vm/contracts.go:PrecompiledContractsChicago (live set)
+  base_map:
+    status: inherited
+    present: "0x01-0x09, 0x0b-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsChicago
+    note: >-
+      Zero custom addresses, eleven repriced ones. 0x06-0x11 all carry PIP-88 gas
+      multipliers (results unchanged, cost 1.5x-6x); 0x0a KZG is absent from the
+      Chicago map (no EIP-4844). P256VERIFY at 0x0100 is present and mainnet-priced.
+      Divergence here is almost entirely cost, not correctness — see the rows.
   "0x06": {name: BN256_ADD, status: modified, divergence: gas, note: "PIP-88 gas x3.6 (540 vs 150)",
            src: "params/protocol_params.go:Bn256AddGasIstanbulPIP88"}
   "0x07": {name: BN256_SCALAR_MUL, status: modified, divergence: gas, note: "PIP-88 gas x2.1 (12600 vs 6000)",

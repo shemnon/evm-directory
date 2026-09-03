@@ -465,6 +465,15 @@ tx_authorization:
 
 precompiles:
   # verified: blockchain/vm/contracts.go:PrecompiledContractsOsaka (newest active set)
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: blockchain/vm/contracts.go:PrecompiledContractsOsaka
+    note: >-
+      Full mainnet Osaka base range, unmodified — BLS12-381 0x0b-0x11 and P256VERIFY
+      at 0x0100 both present. Kaia's own three precompiles were moved OUT of the
+      0x09-0x0b collision they historically occupied to 0x03fd-0x03ff — see 0x09.
   "0x00000000000000000000000000000000000003fd":
     name: vmLog
     status: added

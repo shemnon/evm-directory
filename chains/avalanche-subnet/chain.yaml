@@ -126,6 +126,17 @@ tx_authorization:
 
 precompiles:
   # verified: precompile/contracts/*/module.go — ALL OPT-IN via genesis config key
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: true
+    src: >-
+      params/config_extra.go:SetEthUpgrades (base 0x01-0x0a resolved through the
+      ava-labs/libevm dependency, not vendored in this tree)
+    note: >-
+      Same Cancun-level base as Avalanche C-Chain: 0x01-0x0a present, no BLS12-381,
+      P256VERIFY at 0x0100 via Granite. The opt-in genesis precompiles are all at
+      0x0200.. and do not touch the mainnet range.
   "0x05":
     name: MODEXP
     status: modified

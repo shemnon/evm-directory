@@ -364,6 +364,10 @@ def provenance(e):
     if not isinstance(e, dict):
         return ""
     bits = []
+    if e.get("_synth"):
+        # synthesized from the chain's precompiles.base_map, whose block carries the
+        # full citation — don't repeat that string on every one of 17 rows
+        return '<p class="src"><b>from base_map</b></p>'
     if e.get("src"):
         bits.append(f'<b>src</b> {esc(e["src"])}')
     if e.get("src_live"):
@@ -393,7 +397,8 @@ def addr_section(chains, slug, section, heading, anchor):
     eff = model.effective(chains, slug, section)
     dyn = (chains[slug].get(section) or {}).get("dynamic_range")
     sec_note = (chains[slug].get(section) or {}).get("note")
-    if not eff and not dyn and not sec_note:
+    bmap = (chains[slug].get(section) or {}).get("base_map") if section == "precompiles" else None
+    if not eff and not dyn and not sec_note and not bmap:
         return ""
     rows, ids = [], []
     for a in sorted(eff, key=sortkey):
@@ -410,6 +415,16 @@ def addr_section(chains, slug, section, heading, anchor):
     out = [h2(heading + f' <span class="pill">{len(rows)}</span>', anchor)]
     if sec_note:
         out.append(note(markdown(flat(sec_note))))
+    if isinstance(bmap, dict):
+        pres = esc(bmap.get("present", "—"))
+        p256 = bmap.get("p256verify", False)
+        p256s = {True: "present", False: "absent", "pending": "pending"}.get(p256, "absent")
+        body = (f'<p><b>Base map</b> — <code>0x01</code>–<code>0x11</code>: '
+                f'<code>{pres}</code> {esc(bmap.get("status", "inherited"))}; '
+                f'P256VERIFY at <code>0x0100</code>: {p256s}.</p>')
+        if bmap.get("note"):
+            body += f'<p>{esc(flat(bmap["note"]))}</p>'
+        out.append(note(body + provenance(bmap), "note", "base map"))
     if rows:
         out.append(table(["Address", "", "Name", "Note & provenance"],
                          [[r[0], r[1], r[2], f'<div class="wrap">{r[3]}</div>'] for r in rows],
@@ -808,6 +823,15 @@ def page_precompiles(chains):
     g, rows_in, tab, org = addr_grid(chains, "precompiles", "precompiles-grid",
                                      "Precompiles", "precompiles")
     B = [g]
+    B.append(note(
+        '<p>The mainnet base range <code>0x01</code>–<code>0x11</code> plus P256VERIFY '
+        'at <code>0x0100</code> is shown for <b>every</b> chain, from a <code>base_map</code> '
+        'each row declares and <code>verify.py</code> cross-checks against the pinned '
+        'clone: <span class="s-inherited">=</span> identical, '
+        '<span class="s-removed">➖</span> absent, <span class="s-modified">⚠️</span> '
+        'divergent. Turn on <i>hide rows where every chain agrees</i> to collapse the '
+        'addresses no chain touches. Every other row lists only the chains that diverge '
+        'at that address.</p>', "note", "base range"))
     B.append(axis_notes(chains, "precompiles"))
 
     dyn = [(s, (chains[s].get("precompiles") or {}).get("dynamic_range")) for s in order(chains)]

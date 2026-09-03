@@ -177,6 +177,17 @@ tx_authorization:
       src: "reth/crates/node/core/src/version.rs:CLIENT_CODE"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: false
+    src: upstream reth, unmodified (no precompile changes in this fork)
+    src_live: "eth_config @ 30724096: current.precompiles is exactly {0x01..0x11},
+      no P256VERIFY at 0x0100 (correct for a Prague chain), no custom-range address"
+    note: >-
+      The cleanest empty-delta measurement in the dataset, because it is the client
+      enumerating itself via EIP-7910 rather than an address scan. Full Prague base
+      range, nothing added, removed or repriced.
   note: >-
     NOTHING ADDED, NOTHING REMOVED, NOTHING REPRICED. The node's own EIP-7910
     `eth_config` enumeration returns exactly the seventeen Prague precompiles at

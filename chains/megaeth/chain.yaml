@@ -496,6 +496,16 @@ tx_authorization:
       src_doc: https://docs.megaeth.com/mini-block
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: mega-evm/crates/mega-evm/src/evm/precompiles.rs:mini_rex
+    note: >-
+      op-revm's Isthmus set (full 0x01-0x11 plus P256VERIFY at 0x0100), with two
+      pricing divergences at mainnet addresses: 0x05 MODEXP on the Osaka schedule and
+      0x0a KZG at a flat 100,000 gas. From REX5, every precompile call's forwarded
+      gas is additionally capped at the caller's remaining compute budget.
   "0x05":
     name: MODEXP
     status: modified

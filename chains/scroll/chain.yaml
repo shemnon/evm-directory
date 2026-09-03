@@ -337,6 +337,17 @@ tx_authorization:
       src: "core/vm/contracts.go:p256Verify"
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x02, 0x04-0x08"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsGalileo
+    note: >-
+      Shanghai-level base. RIPEMD160 (0x03) and BLAKE2F (0x09) have been tombstoned
+      since genesis — a call consumes all forwarded gas and errors. No KZG at 0x0a,
+      no EIP-2537 BLS. SHA256 (0x02) and MODEXP (0x05) were tombstoned for the
+      chain's first ~5.2M blocks and only later restored. P256VERIFY at 0x0100 is
+      an `added` precompile (see the 0x0100 row).
   "0x0000000000000000000000000000000000000003":
     name: RIPEMD160
     status: tombstoned

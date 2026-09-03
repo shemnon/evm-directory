@@ -756,6 +756,16 @@ non_evm_transactions:
       all. Only 1/10 of the remaining gas is forwarded into eSpace (`CROSS_SPACE_GAS_RATIO = 10`)
       — a 9/10 retention where the EVM's own CALL keeps 1/64.
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: crates/execution/executor/src/machine/mod.rs:new_builtin_map
+    note: >-
+      `new_builtin_map` builds 0x01-0x11 plus 0x0100, and is called once per space;
+      only 0x01 differs between eSpace and Core Space (see the 0x01 row). KZG at 0x0a
+      and P256VERIFY at 0x0100 were imported by CIP-144 / CIP-167 on a chain with no
+      blob market — `added` relative to Conflux's own history, not to mainnet.
   note: >-
     THE ADDRESS SET IS MAINNET-OSAKA-EQUIVALENT AND SAYS NOTHING. 0x01-0x11 plus
     0x0100, built by `new_builtin_map`, which is called twice — once per space —

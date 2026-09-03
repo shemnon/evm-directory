@@ -427,6 +427,16 @@ tx_authorization:
         precompiles.0x0100.
 
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: pending
+    src: go-ethereum/core/vm/contracts.go:PrecompiledContractsPrague
+    note: >-
+      The 0x01-0x11 set is upstream geth's, unmodified: Tosca's geth_adapter decides
+      membership by looking up geth's own PrecompiledContractsPrague map, so BLS
+      12-381 0x0b-0x11 are present with no repricing or caps. P256VERIFY at 0x0100 is
+      pending (Brio) — and in the silent-P256 class until then, see the 0x0100 row.
   note: >-
     The 0x01-0x11 set is upstream geth's, unmodified: the Sonic geth fork touches
     `core/vm/contracts.go` only to add the `PrecompiledStateContract` interface, and

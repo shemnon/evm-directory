@@ -278,6 +278,21 @@ def declared(c, section):
     return {int(k, 16): v for k, v in (c.get(section) or {}).items()
             if isinstance(k, str) and k.startswith("0x") and isinstance(v, dict)}
 
+def parse_present(spec):
+    """`precompiles.base_map.present` -> set of ints. Mirrors model._parse_present."""
+    if spec in (None, ""): return set()
+    parts = spec if isinstance(spec, list) else str(spec).split(",")
+    out = set()
+    for p in parts:
+        p = str(p).strip()
+        if not p: continue
+        if "-" in p[2:]:
+            lo, hi = p.split("-", 1)
+            out |= set(range(int(lo, 16), int(hi, 16) + 1))
+        else:
+            out.add(int(p, 16))
+    return out
+
 def main():
     problems = 0
     totals = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
@@ -368,6 +383,37 @@ def main():
         if not missing and not unlisted:
             extra = "  +1 dynamic range (not enumerable)" if dyn else ""
             print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
+
+        # --- base map: the 0x01-0x11 + 0x0100 range, declared condensed ---
+        bm = (c.get("precompiles") or {}).get("base_map")
+        BASE = set(range(0x01, 0x12))
+        if bm is None:
+            if c["chain"].get("role") == "baseline":
+                pass                       # mainnet IS the base map
+            else:
+                print("  ! NO BASE MAP — 0x01-0x11 coverage is not declared "
+                      "(add precompiles.base_map)"); problems += 1
+        elif (ex is not None and (found & BASE)
+              and slug not in EXTERNAL_BASE):
+            want = parse_present(bm.get("present"))
+            for a, v in dec.items():          # explicit base entries count as present
+                if a in BASE and v.get("status") in (None, "inherited", "modified"):
+                    want.add(a)
+            src_base = {a for a in found if a in BASE}
+            if bm.get("p256verify") is True or (
+                    0x100 in dec and dec[0x100].get("status")
+                    in (None, "inherited", "modified")):
+                want.add(0x100)
+            if 0x100 in found:
+                src_base.add(0x100)
+            if want != src_base:
+                only_yaml = sorted(f"0x{a:02x}" for a in want - src_base)
+                only_src = sorted(f"0x{a:02x}" for a in src_base - want)
+                print(f"  BASE MAP mismatch: chain.yaml says present={only_yaml or '—'} "
+                      f"extra, source has {only_src or '—'} extra"); problems += 1
+            else:
+                print(f"  base map ok  ({len(src_base & BASE)}/17 base precompiles"
+                      f"{', +P256VERIFY' if 0x100 in src_base else ''})")
 
         # --- tx types ---
         tf, td = ex_txtypes(slug, c), declared(c, "tx_types")

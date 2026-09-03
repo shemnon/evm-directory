@@ -343,6 +343,15 @@ non_evm_transactions:
       an EVM block final, and it is invisible to every Ethereum RPC method.
     src: packages/chain/cons/cons.go:uponTXInputsReady
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: false
+    src: go-ethereum Cancun precompile set, via the wasp ISC EVM emulator
+    note: >-
+      Cancun-level base: 0x01-0x0a present, MODEXP at EIP-2565 pricing with no Osaka
+      bounds, no EIP-2537 BLS (Prague not scheduled), no P256VERIFY. Every base
+      address is also given an explicit row below with its live probe.
   "0x0000000000000000000000000000000000000001": {name: ECRECOVER, status: inherited}
   "0x0000000000000000000000000000000000000002": {name: SHA256, status: inherited, src_live: "eth_call @ 12793600 with empty input -> e3b0c442...b855"}
   "0x0000000000000000000000000000000000000003": {name: RIPEMD160, status: inherited}

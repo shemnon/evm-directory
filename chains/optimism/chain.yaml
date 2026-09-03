@@ -63,6 +63,14 @@ tx_authorization:
     same demonstration this row exists to make elsewhere in the file, applied to the
     axis where a chain is most likely to have quietly diverged.
 precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: true
+    src: core/vm/contracts.go:PrecompiledContractsJovian
+    note: >-
+      Identical to OP Stack, including all six same-address divergences (0x05, 0x08,
+      0x0c, 0x0e, 0x0f, 0x0100). Zero additions. Shares op-stack's op-geth clone.
   note: >-
     Identical to op-stack, including all six modified precompiles. Zero additions.
     Contrast Base, which shares this upstream and diverges substantially.

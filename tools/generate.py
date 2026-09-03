@@ -15,12 +15,15 @@ from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented,
                    entry_label, eip_status, tx_auth)
 
 def cell(entry, this_slug, org):
+    # HARD RULE: these Markdown tables are aggregates, so they carry NO provenance —
+    # no `†` for a fact inherited from a stack ancestor. Where a fact came from is
+    # shown only on that chain's own page. `org` is accepted for signature
+    # compatibility and deliberately unused.
     if entry is None: return ""
     s = MARK.get(entry.get("status", "inherited"), entry.get("status", ""))
     if entry.get("availability") == "optional": s += "◐"
     if entry.get("tombstoned_at"): s += "⏳"
     if entry.get("pending_conflict"): s += "‼️"
-    if org and org != this_slug: s += "†"
     return s
 
 def header(chains, slugs):
@@ -35,8 +38,7 @@ def legend():
     return ("\nLegend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, "
             "different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · "
             "◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · "
-            "‼️ pending allocation conflict · † inherited from a stack ancestor · "
-            "? not recorded\n")
+            "‼️ pending allocation conflict · ? not recorded\n")
 
 def gen_precompiles(chains):
     slugs = order(chains)
@@ -184,9 +186,9 @@ def gen_matrix(chains):
              "*verify*. A chain may carry P256VERIFY while a P-256 key cannot move a "
              "single wei; see [SCHEMA.md](SCHEMA.md).\n")
     L.append("`ᴬᶜ` = reachable only through account-abstraction code: the protocol runs "
-             "the account's own validator, which decides. `†` = inherited from a stack "
-             "ancestor — a chain descending from the OP Stack states only its own deltas, so "
-             "OP Mainnet declares nothing here at all.\n")
+             "the account's own validator, which decides. A chain descending from the OP "
+             "Stack states only its own deltas and inherits the rest; which row declared a "
+             "scheme is shown on that chain's own page, not here.\n")
     L.append("| Chain | Key binding | Signers | Schemes that can authorize |")
     L.append("|---|---|---|---|")
     unpaired = []
@@ -208,16 +210,15 @@ def gen_matrix(chains):
             if a not in ("protocol", "account_code"): continue
             pc = v.get("precompile")
             suffix = " ᴬᶜ" if a == "account_code" else ""
-            dag = "†" if org.get(n) not in (None, s) else ""
+            # no `†`: inheritance origin is provenance, shown only on the chain page
             if a == "protocol" and pc in (None, "none"):
-                auth.append(f"**{n}**{dag} ⚠️")
+                auth.append(f"**{n}** ⚠️")
                 if org.get(n) in (None, s): unpaired.append((name(c), n, v))
             else:
-                auth.append(f"{n}{suffix}{dag}" + (f" (`{pc}`)" if pc not in (None, "none") else ""))
+                auth.append(f"{n}{suffix}" + (f" (`{pc}`)" if pc not in (None, "none") else ""))
         sig = str(fields.get("signers_per_tx", "—"))
         if len(sig) > 24: sig = sig[:22] + "…"
-        kd = "†" if org.get("key_binding") not in (None, s) else ""
-        L.append(f"| {name(c)} | `{fields.get('key_binding','—')}`{kd} | "
+        L.append(f"| {name(c)} | `{fields.get('key_binding','—')}` | "
                  f"{sig} | {', '.join(auth) or '—'} |")
     L.append("")
     L.append("### ⚠️ Authorizes a transaction, with no precompile to verify it\n")

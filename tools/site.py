@@ -169,15 +169,20 @@ LEGEND = ('<p class="legend">'
           '<span class="s-inherited">=</span> same as mainnet · '
           '<span class="s-inherited">=<sup>g</sup></span> same behaviour, different gas · '
           '◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · '
-          '† inherited from a stack ancestor · <span class="s-inherited">?</span> not recorded</p>')
+          '<span class="s-inherited">?</span> not recorded</p>')
 
 
-def mark(entry, this_slug=None, origin=None):
+def mark(entry, this_slug=None, origin=None, aggregate=False):
     """The grid cell for one entry.
 
     A `modified` entry whose divergence is pricing only renders as "same, different
     gas" rather than as a warning: it returns the right answer and costs more, which
-    is a different class of problem from one that returns a different answer."""
+    is a different class of problem from one that returns a different answer.
+
+    HARD RULE: provenance — where a fact came from, including stack-ancestor
+    inheritance (`†`) — appears ONLY on chain-specific pages. `aggregate=True`
+    (every axis/index grid) suppresses it, so two chains that agree on a fact read
+    as identical there regardless of which one declared it."""
     if entry is None:
         return ""
     st = entry.get("status", "inherited")
@@ -189,7 +194,7 @@ def mark(entry, this_slug=None, origin=None):
     if entry.get("availability") == "optional": g += "◐"
     if entry.get("tombstoned_at"): g += "⏳"
     if entry.get("pending_conflict"): g += "‼️"
-    if origin and this_slug and origin != this_slug:
+    if not aggregate and origin and this_slug and origin != this_slug:
         g += "†"; tip += f" (from {origin})"
     if entry.get("severity") == "high": tip += " — silent divergence"
     return f'<span class="s-{esc(cls)}" title="{esc(tip)}">{g}</span>'
@@ -359,9 +364,15 @@ def axis_notes(chains, key, depth=1):
 # per-entry rendering
 # --------------------------------------------------------------------------
 
-def provenance(e):
-    """Where this specific fact came from. Kept on chain pages and per-entry rows."""
-    if not isinstance(e, dict):
+def provenance(e, on_chain=False):
+    """Where this specific fact came from — `src` / `src_live` / `src_doc`, or the
+    base_map it was synthesized from.
+
+    HARD RULE: provenance appears ONLY on chain-specific pages. Every caller outside
+    `chains/<slug>.html` gets an empty string, so aggregate grids and axis pages
+    never show a citation, and two chains that agree on a fact compare as identical
+    there regardless of how each one is evidenced."""
+    if not on_chain or not isinstance(e, dict):
         return ""
     bits = []
     if e.get("_synth"):
@@ -380,6 +391,8 @@ def provenance(e):
 
 
 def entry_meta(e):
+    # axis-page helper only — no provenance (`inherited_from` is deliberately omitted;
+    # it belongs on the chain page)
     bits = []
     st = e.get("status")
     if st: bits.append(f'<span class="pill s-{esc(st)}">{esc(st)}</span>')
@@ -387,7 +400,6 @@ def entry_meta(e):
     for k in ("spec", "fork", "availability", "mechanism", "activation_condition"):
         if e.get(k): bits.append(f'<span class="pill">{esc(k)}: {esc(e[k])}</span>')
     if e.get("tombstoned_at"): bits.append(f'<span class="pill">tombstoned_at: {esc(e["tombstoned_at"])}</span>')
-    if e.get("inherited_from"): bits.append(f'<span class="pill">from {esc(e["inherited_from"])}</span>')
     if e.get("severity") == "high": bits.append('<span class="pill s-removed">silent divergence</span>')
     return " ".join(bits)
 
@@ -409,7 +421,7 @@ def addr_section(chains, slug, section, heading, anchor):
             f'<code>{esc(a)}</code>{inh}',
             mark(e, slug, org),
             esc(e.get("name", "")),
-            f'<div>{esc(flat(e.get("note")))}</div>{provenance(e)}',
+            f'<div>{esc(flat(e.get("note")))}</div>{provenance(e, on_chain=True)}',
         ])
         ids.append(f' id="{esc(anchor_id(section, a))}"')
     out = [h2(heading + f' <span class="pill">{len(rows)}</span>', anchor)]
@@ -424,7 +436,7 @@ def addr_section(chains, slug, section, heading, anchor):
                 f'P256VERIFY at <code>0x0100</code>: {p256s}.</p>')
         if bmap.get("note"):
             body += f'<p>{esc(flat(bmap["note"]))}</p>'
-        out.append(note(body + provenance(bmap), "note", "base map"))
+        out.append(note(body + provenance(bmap, on_chain=True), "note", "base map"))
     if rows:
         out.append(table(["Address", "", "Name", "Note & provenance"],
                          [[r[0], r[1], r[2], f'<div class="wrap">{r[3]}</div>'] for r in rows],
@@ -433,7 +445,7 @@ def addr_section(chains, slug, section, heading, anchor):
         out.append(note(
             f'<p><b>{esc(dyn.get("name", "dynamic range"))}</b> — '
             f'<code>{esc(dyn.get("pattern", ""))}</code></p>'
-            f'<p>{esc(flat(dyn.get("note")))}</p>{provenance(dyn)}',
+            f'<p>{esc(flat(dyn.get("note")))}</p>{provenance(dyn, on_chain=True)}',
             "note", "not enumerable"))
     return "\n".join(out)
 
@@ -452,7 +464,7 @@ def list_section(chains, slug, section, heading, anchor, keyfield):
                 esc(e.get("name", "")),
                 f'<div class="wrap">{esc(flat(e.get("note")))}'
                 f'{" <span class=\"pill s-removed\">silent</span>" if e.get("severity") == "high" else ""}'
-                f'{provenance(e)}</div>',
+                f'{provenance(e, on_chain=True)}</div>',
             ])
     if not rows and not d.get("note"):
         return ""
@@ -564,7 +576,7 @@ def page_chain(chains, slug):
                     f'<div class="wrap">{esc(flat(e.get("note")))}</div>',
                 ])
             B.append(table(["Fork", "Status", "Activated", "Mainnet equivalent", "Note"], rows))
-        B.append(provenance(fk))
+        B.append(provenance(fk, on_chain=True))
 
     # --- EIPs -----------------------------------------------------------
     eips = {k: v for k, v in (c.get("eips") or {}).items() if isinstance(v, dict)}
@@ -578,7 +590,7 @@ def page_chain(chains, slug):
             link = (f'<a href="https://eips.ethereum.org/EIPS/eip-{k}">{esc(lbl)}</a>'
                     if isinstance(k, int) else esc(lbl))
             rows.append([link, mark(e), esc(e.get("name", "")),
-                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e)}</div>'])
+                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e, on_chain=True)}</div>'])
             eids.append(f' id="{esc(anchor_id("eips", k))}"')
         B.append(table(["EIP", "", "Name", "Note & provenance"], rows, row_attrs=eids))
         if (c.get("eips") or {}).get("note"):
@@ -619,7 +631,7 @@ def page_chain(chains, slug):
                 (f'<code>{esc(pc)}</code>' if pc not in (None, "none")
                  else ('<span class="s-removed" title="no precompile can verify what the '
                        'protocol accepts">none ⚠️</span>' if unp else '<span class="s-inherited">none</span>')),
-                f'<div class="wrap">{esc(flat(v.get("note")))}{provenance(v)}</div>',
+                f'<div class="wrap">{esc(flat(v.get("note")))}{provenance(v, on_chain=True)}</div>',
             ])
         B.append(table(["Scheme", "Authorizes", "Paired verifier", "Note & provenance"], rows))
 
@@ -634,7 +646,7 @@ def page_chain(chains, slug):
                  'the reference, not the pricing at any historical fork.</p>')
         B.append(table(["Address", "Name", "Pricing"],
                        [[f'<code>{esc(a)}</code>', esc(e.get("name", "")),
-                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e)}</div>']
+                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e, on_chain=True)}</div>']
                         for a, e in gas]))
 
     B.append(addr_section(chains, slug, "precompiles", "Precompiles", "precompiles"))
@@ -649,7 +661,7 @@ def page_chain(chains, slug):
         if isinstance(ents, list):
             B.append(table(["Name", "Note"],
                            [[esc((e or {}).get("name", "")),
-                             f'<div class="wrap">{esc(flat((e or {}).get("note")))}{provenance(e)}</div>']
+                             f'<div class="wrap">{esc(flat((e or {}).get("note")))}{provenance(e, on_chain=True)}</div>']
                             for e in ents]))
 
     B.append(list_section(chains, slug, "opcodes", "Opcodes", "opcodes", "op"))
@@ -664,7 +676,7 @@ def page_chain(chains, slug):
                      ("Extra components", esc(fm.get("extra_components", None))),
                      ("Gas limit", esc(fm.get("gas_limit", None))),
                      ("Note", markdown(flat(fm.get("note"))) if fm.get("note") else None)]))
-        B.append(provenance(fm))
+        B.append(provenance(fm, on_chain=True))
 
     B.append(list_section(chains, slug, "header_fields", "Header fields", "header-fields", "name"))
 
@@ -674,7 +686,7 @@ def page_chain(chains, slug):
         B.append(table(["ID", "Name", "Adoption", "Note"],
                        [[f'<code>{esc(e.get("id", ""))}</code>', esc(e.get("name", "")),
                          f'<span class="pill">{esc(e.get("adoption", "—"))}</span>',
-                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e)}</div>']
+                         f'<div class="wrap">{esc(flat(e.get("note")))}{provenance(e, on_chain=True)}</div>']
                         for e in nes if isinstance(e, dict)]))
 
     # --- gotchas + summary ------------------------------------------------
@@ -777,7 +789,7 @@ def addr_grid(chains, section, tid, heading, anchor):
         cells, plain = [], []
         for s in slugs:
             e = per.get(s)
-            m = mark(e, s, org.get((a, s)))
+            m = mark(e, s, org.get((a, s)), aggregate=True)
             plain.append(m)
             cells.append(cell_link(s, section, a, m) if e is not None else "")
         rows.append([f'<a href="#e-{esc(rid)}"><code>{esc(a)}</code></a> {esc(label)}'] + cells)
@@ -791,21 +803,22 @@ def addr_grid(chains, section, tid, heading, anchor):
 
 
 def entries_detail(chains, rows_in, org, section):
-    """One expandable block per row: who declares it, how, and on what evidence."""
+    """One expandable block per row: which chains carry it, and what each says.
+
+    HARD RULE: this is an axis page, so it carries NO provenance — no `src`/`live`
+    citation, no `via <origin>` pill, no `†`. Those live only on the chain pages
+    each row links to."""
     out = []
     for a, label, per, rid in rows_in:
         rows = []
         for s in order({k: chains[k] for k in per}):
             e = per[s]
             if not isinstance(e, dict): continue
-            o = org.get((a, s))
             rows.append([
                 f'<a href="../chains/{esc(s)}.html#{esc(anchor_id(section, a))}">'
-                f'{esc(short(s))}</a>' +
-                (f' <span class="pill">via {esc(o)}</span>' if o and o != s else ""),
-                mark(e, s, o),
-                f'<div class="wrap">{entry_meta(e)}<div>{esc(flat(e.get("note")))}</div>'
-                f'{provenance(e)}</div>',
+                f'{esc(short(s))}</a>',
+                mark(e, s, org.get((a, s)), aggregate=True),
+                f'<div class="wrap">{entry_meta(e)}<div>{esc(flat(e.get("note")))}</div></div>',
             ])
         out.append(f'<details class="entry" id="e-{esc(rid)}"><summary>'
                    f'<code>{esc(a)}</code><span class="nm">{esc(label)}</span>'
@@ -961,8 +974,8 @@ def page_eips(chains):
         cells, plain = [], []
         for s in slugs:
             st, o = model.eip_status(chains, s, n)
-            g = GLYPH.get(st, st) + ("†" if o and o != s else "")
-            plain.append(g)
+            g = GLYPH.get(st, st)          # no `†`: inheritance origin is provenance,
+            plain.append(g)                # and provenance lives only on chain pages
             inner = f'<span class="s-{esc(st)}" title="{esc(st)}">{g}</span>'
             e, decl = model.eip_entry(chains, s, n)
             cells.append(cell_link(decl, "eips", n, inner) if e is not None else inner)
@@ -1004,14 +1017,12 @@ def page_eips(chains):
         if not per: continue
         lbl = f"EIP-{n}" if isinstance(n, int) else str(n)
         nm = next((e.get("name", "") for e, _ in per.values() if e.get("name")), "")
-        # an inheriting chain has no row of its own for this EIP; point at the
-        # ancestor that actually declares it
-        tr = [[f'<a href="../chains/{esc(o or s)}.html#{esc(anchor_id("eips", n))}">'
-               f'{esc(short(s))}</a>' +
-               (f' <span class="pill">via {esc(o)}</span>' if o and o != s else ""),
-               mark(e, s, o),
-               f'<div class="wrap">{entry_meta(e)}<div>{esc(flat(e.get("note")))}</div>'
-               f'{provenance(e)}</div>']
+        # an inheriting chain has no row of its own for this EIP; still link it to
+        # its own page (no `via` pill — that origin is provenance, chain-pages only)
+        tr = [[f'<a href="../chains/{esc(s)}.html#{esc(anchor_id("eips", n))}">'
+               f'{esc(short(s))}</a>',
+               mark(e, s, o, aggregate=True),
+               f'<div class="wrap">{entry_meta(e)}<div>{esc(flat(e.get("note")))}</div></div>']
               for s, (e, o) in per.items()]
         B.append(f'<details class="entry" id="eip-{esc(str(n))}"><summary>'
                  f'<code>{esc(lbl)}</code><span class="nm">{esc(nm)}</span>'
@@ -1083,8 +1094,7 @@ def page_cryptography(chains):
         present = [m for m in model.FAMILIES[fam] if m in schemes]
         if not present: continue
         for m in present:
-            tr = [[f'<a href="../chains/{esc(s)}.html#tx-authorization">{esc(short(s))}</a>' +
-                   (f' <span class="pill">via {esc(o)}</span>' if o and o != s else ""),
+            tr = [[f'<a href="../chains/{esc(s)}.html#tx-authorization">{esc(short(s))}</a>',
                    f'<span class="pill">{esc(v.get("authorizes", "—"))}</span>',
                    (f'<code>{esc(v.get("precompile"))}</code>'
                     if v.get("precompile") not in (None, "none")

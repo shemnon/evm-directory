@@ -182,6 +182,22 @@ The cost is that a reader cannot see the mix from the table. `verify.py` prints 
 per-chain tally so the ratio stays visible to anyone maintaining the dataset, and so a
 row quietly drifting toward doc-only evidence is noticeable before it is load-bearing.
 
+### Provenance is chain-page-only (hard rule)
+
+Where a fact came from — its `src` / `src_live` / `src_doc`, the `base_map` it was
+synthesized from, and *which row declared it* when a chain inherits from a stack
+ancestor (the `†` mark, the `via <origin>` pill) — appears **only on that chain's own
+page**. Every aggregate surface (the Markdown tables, every axis grid and its per-entry
+detail, the home page) shows the fact and its `status` mark and nothing about where it
+came from.
+
+The reason is comparison: two chains that agree on a fact must read as identical in a
+grid regardless of how each is evidenced or which ancestor declared it, so that "hide
+rows where every chain agrees" hides them. A cell whose only difference from its
+neighbour is a `†` is a false difference. `tools/generate.py:cell`, `site.py:mark`
+(`aggregate=True`), `site.py:provenance` (`on_chain` defaults false) and
+`site.py:entry_meta` all enforce this.
+
 ## `tx_authorization:` — what can sign a transaction
 
 An axis of its own, independent of `precompiles`. **A precompile that verifies a

@@ -47,8 +47,8 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 | `0x79` Eip8130Tx |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7d` PostExecTx |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded | unrecorded† | unrecorded† | unrecorded† | unrecorded† | unrecorded† | ➖ | unrecorded† | unrecorded† |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  |  |  |  |  |  |  |  | ➕ |  |  | ➕ | ➕† | ➕† | ➕† | ➕ | ➕† | ⚠️ | ➕† | = |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7d` PostExecTx |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  |  |  |  |  |  |  |  | ➕ |  |  | ➕ | ➕ | ➕ | ➕ | ➕ | ➕ | ⚠️ | ➕ | = |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7f` StateSyncTx |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0xff` L1 priority operation (L1->L2) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -57,7 +57,7 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 | `0x7803` TxTypeEthereumBlob |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7804` TxTypeEthereumSetCode |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
-Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · † inherited from a stack ancestor · ? not recorded
+Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · ? not recorded
 
 
 ## Transactions with no type byte

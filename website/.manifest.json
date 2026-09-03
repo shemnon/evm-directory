@@ -773,7 +773,7 @@
   },
   "method.html": {
    "inputs": {
-    "SCHEMA.md": "b2d72f3a13329470",
+    "SCHEMA.md": "38c67507458ed660",
     "SITE.md": "d6848ce8e7811342",
     "chains/arbitrum/chain.yaml": "11558dc718433308",
     "chains/arc/chain.yaml": "f64b48709a599ca3",
@@ -867,5 +867,5 @@
    }
   }
  },
- "renderer": "d1b3eecd55a7eccc"
+ "renderer": "65f247f72b52657b"
 }

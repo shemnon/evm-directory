@@ -255,6 +255,19 @@ already collected. Nothing has to be re-derived.</p>
 <p>The cost is that a reader cannot see the mix from the table. <code>verify.py</code> prints the
 per-chain tally so the ratio stays visible to anyone maintaining the dataset, and so a
 row quietly drifting toward doc-only evidence is noticeable before it is load-bearing.</p>
+<h3>Provenance is chain-page-only (hard rule)</h3>
+<p>Where a fact came from — its <code>src</code> / <code>src_live</code> / <code>src_doc</code>, the <code>base_map</code> it was
+synthesized from, and <em>which row declared it</em> when a chain inherits from a stack
+ancestor (the <code>†</code> mark, the <code>via &lt;origin&gt;</code> pill) — appears <strong>only on that chain's own
+page</strong>. Every aggregate surface (the Markdown tables, every axis grid and its per-entry
+detail, the home page) shows the fact and its <code>status</code> mark and nothing about where it
+came from.</p>
+<p>The reason is comparison: two chains that agree on a fact must read as identical in a
+grid regardless of how each is evidenced or which ancestor declared it, so that "hide
+rows where every chain agrees" hides them. A cell whose only difference from its
+neighbour is a <code>†</code> is a false difference. <code>tools/generate.py:cell</code>, <code>site.py:mark</code>
+(<code>aggregate=True</code>), <code>site.py:provenance</code> (<code>on_chain</code> defaults false) and
+<code>site.py:entry_meta</code> all enforce this.</p>
 <h2><code>tx_authorization:</code> — what can sign a transaction</h2>
 <p>An axis of its own, independent of <code>precompiles</code>. <strong>A precompile that verifies a
 signature scheme is not the same as that scheme being able to authorize a

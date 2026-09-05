@@ -22,12 +22,12 @@ ASSETS = pathlib.Path(__file__).resolve().parent / "assets"
 MANIFEST = OUT / ".manifest.json"
 
 AXES = [
-    ("eips",             "EIP activation set", "Which EIPs are live on each chain, stated against mainnet at that chain's baseline fork."),
     ("precompiles",      "Precompiles",        "Every precompile address in the dataset, per chain and per address."),
     ("tx-types",         "Transaction types",  "EIP-2718 type bytes per chain, and transactions carrying no type byte."),
-    ("cryptography",     "Cryptography",       "Which algorithms can authorize a transaction, and which have a precompile that verifies them."),
     ("opcodes",          "Opcodes",            "The full instruction set per chain, and execution environments that are not the EVM."),
+    ("cryptography",     "Cryptography",       "Which algorithms can authorize a transaction, and which have a precompile that verifies them."),
     ("system-contracts", "System contracts",   "Real bytecode at fixed addresses: predeploys, genesis allocs and client-installed code."),
+    ("eips",             "EIP activation set", "Which EIPs are live on each chain, stated against mainnet at that chain's baseline fork."),
     ("fees-envelope",    "Fees & envelope",    "Metering and fee markets per chain, and header fields that differ from mainnet."),
     ("lineage",          "Lineage",            "Code ancestry and fork ancestry, tracked separately."),
 ]
@@ -57,7 +57,7 @@ def slugify(s):
 
 NAV = [("index.html", "Overview"), ("chains/index.html", "Chains")] + \
       [(f"axes/{k}.html", t) for k, t, _ in AXES] + \
-      [("silent-divergences.html", "Silent divergences"), ("method.html", "Reference")]
+      [("silent-divergences.html", "Silent divergences")]
 
 
 def chain_picker(chains, depth):
@@ -1380,12 +1380,12 @@ def page_index(chains):
             f'<a href="chains/{esc(s)}.html">{esc(name(c))}</a>',
             f'<code>{esc(c["chain"].get("chain_id") or "—")}</code>',
             f'<span class="pill">{esc(c["chain"]["role"])}</span>',
-            ("<em>none public</em>" if documented(c)
-             else f'{esc(client(c, "name"))} <code>{esc(client(c, "version"))}</code>'),
             f'<code>{esc(c.get("baseline_fork", "—"))}</code>',
             str(len([x for x in sil if x["slug"] == s]) or ""),
+            ("<em>none public</em>" if documented(c)
+             else f'{esc(client(c, "name"))} <code>{esc(client(c, "version"))}</code>'),
         ])
-    B.append(table(["Chain", "Chain ID", "Role", "Client", "Baseline", "Silent"],
+    B.append(table(["Chain", "Chain ID", "Role", "Baseline", "Divergences", "Client"],
                    rows, tid="rowlist"))
     B.append('<p class="legend"><code>op-stack</code> and <code>avalanche-subnet</code> are '
              'not chains: one is a shared codebase holding its descendants\' common deltas, '
@@ -1428,7 +1428,7 @@ def page_chains_index(chains):
             str(len([x for x in sil if x["slug"] == s]) or ""),
         ])
     B.append(table(["Chain", "Role", "Upstream", "Baseline", "Precompiles", "Tx types",
-                    "System contracts", "Opcodes", "Silent"], rows, tid="chainlist"))
+                    "System contracts", "Opcodes", "Divergences"], rows, tid="chainlist"))
     B.append('<p class="legend">Counts are the <em>effective</em> set — entries inherited '
              'from a stack ancestor are included.</p>')
     return layout("chains/index.html", "Chains",

@@ -8,15 +8,22 @@
   var toggles = Array.prototype.slice.call(
     document.querySelectorAll("[data-chain-toggle]"));
 
+  // Fingerprint of the current chain universe. A saved selection is only meaningful
+  // against the same set of chains, so when the site is regenerated with chains
+  // added or removed we drop the stored list rather than apply it to stale columns.
+  var universe = toggles.map(function (t) { return t.dataset.chainToggle; })
+                        .sort().join(",");
+
   function load() {
     try {
       var v = JSON.parse(localStorage.getItem(KEY));
-      return Array.isArray(v) ? v : null;
+      if (!v || v.universe !== universe || !Array.isArray(v.list)) return null;
+      return v.list;
     } catch (e) { return null; }
   }
   function save(list) {
     try {
-      if (list) localStorage.setItem(KEY, JSON.stringify(list));
+      if (list) localStorage.setItem(KEY, JSON.stringify({ universe: universe, list: list }));
       else localStorage.removeItem(KEY);
     } catch (e) { /* private browsing — the view still works, it just won't persist */ }
   }

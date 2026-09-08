@@ -14,8 +14,12 @@ provenance tally (src / src_live / src_doc / none), because the aggregate tables
 merge the three kinds and the mix is invisible there by design.
 
 Exit 1 on any drift. Run after `tools/clone.sh`.
+
+`--no-clones` drops every check that reads source and keeps the ones that read
+chain.yaml alone. That is what CI runs, because the clones are 6.1 GiB; it is a
+weaker gate by definition, and says so in its output. See SITE.md.
 """
-import pathlib, re, sys, yaml
+import argparse, pathlib, re, sys, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MAINNET_STD = set(range(0x01, 0x12)) | {0x100}   # 0x01-0x11 plus P256VERIFY
@@ -219,20 +223,34 @@ def check_citations(raw, rs):
     must be within it. File-existence alone let three bad citations through: a stale
     line number, a path relative to the wrong directory, and a sibling that was one
     directory up. Every path in a comma-separated citation is checked, not just the
-    first, which is how the second of those survived."""
+    first, which is how the second of those survived.
+
+    `rs=None` is the clone-less mode (`--no-clones`, used in CI): resolving a path
+    needs the clone, so only the citation's SHAPE is checked — a line ref has to be
+    a real range. That catches `:0` and `:120-90` without fetching 6 GiB of source;
+    it cannot catch a path that does not exist or a line past EOF."""
     bad, nsym, nline, nopath = [], 0, 0, 0
     for m in re.finditer(r"(?<![_\w])src: (.+)", raw):
         found = CITE.findall(m.group(1))
         if not found: nopath += 1      # prose or a bare directory — nothing to resolve
         for path, ref in found:
+            end = None
+            if ref and LINEREF.match(ref):
+                lo, _, hi = ref.partition("-")
+                lo, end = int(lo), int(hi or lo)
+                if lo < 1 or end < lo:
+                    bad.append(f"BAD LINE  {path}:{ref} is not a line range"); continue
+            if rs is None:             # no clones: shape is all that can be checked
+                if end: nline += 1
+                continue
             f = resolve_cite(path, rs)
             if f is None:
                 bad.append(f"BAD SRC   {path} does not exist in any pinned clone"); continue
             if not ref: continue
             body = f.read_text(errors="replace")
-            if LINEREF.match(ref):
+            if end:
                 n = body.count("\n") + 1
-                if int(ref.split("-")[-1]) > n:
+                if end > n:
                     bad.append(f"BAD LINE  {path}:{ref} is past EOF ({n} lines)")
                 else: nline += 1
             elif re.search(rf"\b{re.escape(ref.split('.')[-1])}\b", body):
@@ -294,9 +312,24 @@ def parse_present(spec):
     return out
 
 def main():
+    ap = argparse.ArgumentParser(
+        description="Re-extract facts from the pinned clones and diff them against "
+                    "chain.yaml.",
+        epilog="Run tools/clone.sh first. See SITE.md.")
+    ap.add_argument("--no-clones", action="store_true",
+                    help="skip every check that needs a pinned clone (source "
+                         "extraction, base map, envelope, citation resolution) and "
+                         "run only the checks that read chain.yaml alone")
+    a = ap.parse_args()
+    no_clones = a.no_clones
+
     problems = 0
     totals = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
     skipped, unextracted = [], []
+    if no_clones:
+        print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
+              "  running: pin presence, base-map/envelope declaration, opcode keys,\n"
+              "  tx-authorization vocabulary, citation shape, evidence tally.")
     for f in sorted((ROOT / "chains").glob("*/chain.yaml")):
         slug = f.parent.name
         c = yaml.safe_load(f.read_text())
@@ -338,17 +371,29 @@ def main():
 
         print(f"\n{slug}  ({cl.get('name', '?')} {cl.get('version', '?')})")
 
-        r = repo(slug, c)
-        if r is None:
-            print("  ! no clone — run tools/clone.sh"); problems += 1; continue
-        import subprocess
-        head = subprocess.run(["git", "-C", str(r), "rev-parse", "HEAD"],
-                              capture_output=True, text=True).stdout.strip()
-        if head != c["client"]["commit"]:
-            print(f"  ! PIN MISMATCH: clone {head[:8]}, chain.yaml {c['client']['commit'][:8]}")
-            problems += 1
+        if no_clones:
+            # With no clone there is nothing to compare a pin against, so the pin is
+            # checked for PRESENCE and shape. A row that declares no commit — or a
+            # short one, or a branch name where a commit belongs — is unpinnable
+            # evidence, and that IS catchable without the source.
+            pin = cl.get("commit")
+            if not re.fullmatch(r"[0-9a-f]{40}", str(pin or "")):
+                print(f"  ! NO PIN  client.commit is {pin!r}, want a 40-hex commit")
+                problems += 1
+            else:
+                print(f"  pin declared  {pin[:8]}  (no clone to compare against)")
         else:
-            print(f"  pin ok  {head[:8]}")
+            r = repo(slug, c)
+            if r is None:
+                print("  ! no clone — run tools/clone.sh"); problems += 1; continue
+            import subprocess
+            head = subprocess.run(["git", "-C", str(r), "rev-parse", "HEAD"],
+                                  capture_output=True, text=True).stdout.strip()
+            if head != c["client"]["commit"]:
+                print(f"  ! PIN MISMATCH: clone {head[:8]}, chain.yaml {c['client']['commit'][:8]}")
+                problems += 1
+            else:
+                print(f"  pin ok  {head[:8]}")
 
         # --- every non-baseline row must declare its mainnet base sets, even the
         # ones with no extractor (the source cross-check below needs one; this
@@ -366,110 +411,106 @@ def main():
         # its precompile list is taken on trust — so it is reported loudly and
         # tallied at the end, but it is not drift: failing here would make the build
         # red for every new chain and block the work that closes the gap.
-        ex = EXTRACT.get(slug)
-        if ex is None:
+        ex = None if no_clones else EXTRACT.get(slug)
+        if ex is None and not no_clones:
             print("  ! NO EXTRACTOR — precompile list NOT cross-checked against source")
             unextracted.append(slug)
-            bad, nsym, nline, nopath = check_citations(f.read_text(), roots(slug, c))
-            bad += check_live(f.read_text())
-            for b in bad:
-                print(f"  {b}"); problems += 1
-            if not bad and (nsym or nline):
-                print(f"  citations ok    {nsym} symbol(s) confirmed, "
-                      f"{nline} line ref(s) in range"
-                      + (f", {nopath} citing no path" if nopath else ""))
-            print(f"  evidence  {tally}")
-            continue
-        found, dec = ex(), declared(c, "precompiles")
-        # a dynamic range is a predicate, not an address; nothing to enumerate
-        dyn = (c.get("precompiles") or {}).get("dynamic_range")
-        # entries a chain declares as removed/pending are expected NOT to be in source
-        expect = {a for a, v in dec.items()
-                  if v.get("status") in (None, "added", "modified", "tombstoned", "inherited")
-                  # inherited from a stack ancestor: verified in the ancestor's repo
-                  and not v.get("inherited_from")}
-        if slug in EXTERNAL_BASE:
-            expect = {a for a in expect if a not in set(range(0x01, 0x12))}
-        missing = {a for a in expect if a not in found}
-        # Some sources define precompiles and system contracts in one file (Arbitrum's
-        # arbitrum_signer.go), so the extractor cannot tell the categories apart.
-        # Check membership in either; category discipline is a review concern, not
-        # something the extractor can adjudicate.
-        elsewhere = set(declared(c, "system_contracts"))
-        unlisted = {a for a in found if a not in dec and a not in elsewhere
-                    and a not in MAINNET_STD}
-        for a in sorted(missing):
-            print(f"  MISSING  precompile 0x{a:02x} declared but not found in source"); problems += 1
-        for a in sorted(unlisted):
-            print(f"  UNLISTED precompile 0x{a:02x} in source but not in chain.yaml"); problems += 1
-        if not missing and not unlisted:
-            extra = "  +1 dynamic range (not enumerable)" if dyn else ""
-            print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
+        if ex is not None:
+            found, dec = ex(), declared(c, "precompiles")
+            # a dynamic range is a predicate, not an address; nothing to enumerate
+            dyn = (c.get("precompiles") or {}).get("dynamic_range")
+            # entries a chain declares as removed/pending are expected NOT to be in source
+            expect = {a for a, v in dec.items()
+                      if v.get("status") in (None, "added", "modified", "tombstoned", "inherited")
+                      # inherited from a stack ancestor: verified in the ancestor's repo
+                      and not v.get("inherited_from")}
+            if slug in EXTERNAL_BASE:
+                expect = {a for a in expect if a not in set(range(0x01, 0x12))}
+            missing = {a for a in expect if a not in found}
+            # Some sources define precompiles and system contracts in one file (Arbitrum's
+            # arbitrum_signer.go), so the extractor cannot tell the categories apart.
+            # Check membership in either; category discipline is a review concern, not
+            # something the extractor can adjudicate.
+            elsewhere = set(declared(c, "system_contracts"))
+            unlisted = {a for a in found if a not in dec and a not in elsewhere
+                        and a not in MAINNET_STD}
+            for a in sorted(missing):
+                print(f"  MISSING  precompile 0x{a:02x} declared but not found in source"); problems += 1
+            for a in sorted(unlisted):
+                print(f"  UNLISTED precompile 0x{a:02x} in source but not in chain.yaml"); problems += 1
+            if not missing and not unlisted:
+                extra = "  +1 dynamic range (not enumerable)" if dyn else ""
+                print(f"  precompiles ok  ({len(found)} in source, {len(dec)} declared){extra}")
 
-        # --- base map: cross-check `present` against the extracted map ---
-        bm = (c.get("precompiles") or {}).get("base_map")
-        BASE = set(range(0x01, 0x12))
-        if (bm is not None and ex is not None and (found & BASE)
-              and slug not in EXTERNAL_BASE):
-            want = parse_present(bm.get("present"))
-            for a, v in dec.items():          # explicit base entries count as present
-                if a in BASE and v.get("status") in (None, "inherited", "modified"):
-                    want.add(a)
-            src_base = {a for a in found if a in BASE}
-            if bm.get("p256verify") is True or (
-                    0x100 in dec and dec[0x100].get("status")
-                    in (None, "inherited", "modified")):
-                want.add(0x100)
-            if 0x100 in found:
-                src_base.add(0x100)
-            if want != src_base:
-                only_yaml = sorted(f"0x{a:02x}" for a in want - src_base)
-                only_src = sorted(f"0x{a:02x}" for a in src_base - want)
-                print(f"  BASE MAP mismatch: chain.yaml says present={only_yaml or '—'} "
-                      f"extra, source has {only_src or '—'} extra"); problems += 1
-            else:
-                print(f"  base map ok  ({len(src_base & BASE)}/17 base precompiles"
-                      f"{', +P256VERIFY' if 0x100 in src_base else ''})")
+            # --- base map: cross-check `present` against the extracted map ---
+            bm = (c.get("precompiles") or {}).get("base_map")
+            BASE = set(range(0x01, 0x12))
+            if (bm is not None and (found & BASE)
+                  and slug not in EXTERNAL_BASE):
+                want = parse_present(bm.get("present"))
+                for a, v in dec.items():          # explicit base entries count as present
+                    if a in BASE and v.get("status") in (None, "inherited", "modified"):
+                        want.add(a)
+                src_base = {a for a in found if a in BASE}
+                if bm.get("p256verify") is True or (
+                        0x100 in dec and dec[0x100].get("status")
+                        in (None, "inherited", "modified")):
+                    want.add(0x100)
+                if 0x100 in found:
+                    src_base.add(0x100)
+                if want != src_base:
+                    only_yaml = sorted(f"0x{a:02x}" for a in want - src_base)
+                    only_src = sorted(f"0x{a:02x}" for a in src_base - want)
+                    print(f"  BASE MAP mismatch: chain.yaml says present={only_yaml or '—'} "
+                          f"extra, source has {only_src or '—'} extra"); problems += 1
+                else:
+                    print(f"  base map ok  ({len(src_base & BASE)}/17 base precompiles"
+                          f"{', +P256VERIFY' if 0x100 in src_base else ''})")
 
-        # --- tx types ---
-        tf, td = ex_txtypes(slug, c), declared(c, "tx_types")
-        if TXTYPE_DIRS.get(slug):
-            texp = {a for a, v in td.items() if v.get("status") in (None, "added", "modified", "inherited")}
-            tmiss = {a for a in texp if a not in tf}
-            tunl = {a for a in tf if a not in td and a > 0x04}
-            for a in sorted(tmiss):
-                print(f"  MISSING  tx type 0x{a:02x} declared but not in source"); problems += 1
-            for a in sorted(tunl):
-                print(f"  UNLISTED tx type 0x{a:02x} in source but not in chain.yaml"); problems += 1
-            if not tmiss and not tunl:
-                print(f"  tx types ok  ({len(tf)} in source)")
+            # --- tx types ---
+            tf, td = ex_txtypes(slug, c), declared(c, "tx_types")
+            if TXTYPE_DIRS.get(slug):
+                texp = {a for a, v in td.items() if v.get("status") in (None, "added", "modified", "inherited")}
+                tmiss = {a for a in texp if a not in tf}
+                tunl = {a for a in tf if a not in td and a > 0x04}
+                for a in sorted(tmiss):
+                    print(f"  MISSING  tx type 0x{a:02x} declared but not in source"); problems += 1
+                for a in sorted(tunl):
+                    print(f"  UNLISTED tx type 0x{a:02x} in source but not in chain.yaml"); problems += 1
+                if not tmiss and not tunl:
+                    print(f"  tx types ok  ({len(tf)} in source)")
 
-        # --- transaction envelope: cross-check `present` against the extracted types ---
-        env = (c.get("tx_types") or {}).get("envelope")
-        ENV = set(range(0x00, 0x05))
-        if env is not None and TXTYPE_DIRS.get(slug) and (tf & ENV):
-            want = parse_present(env.get("present"))
-            for a, v in td.items():
-                if a in ENV and v.get("status") in (None, "inherited", "modified", "added"):
-                    want.add(a)
-            # present must have a code path; a byte in source but not `present` is
-            # the `removed` story (defined, network rejects) and is not an error
-            missing = sorted(f"0x{a:02x}" for a in want - (tf & ENV) - {0x00})
-            if missing:
-                print(f"  ENVELOPE mismatch: declares {missing} present but no type "
-                      f"byte for it in source"); problems += 1
-            else:
-                print(f"  envelope ok  ({len(want)}/5 EIP-2718 types)")
+            # --- transaction envelope: cross-check `present` against the extracted types ---
+            env = (c.get("tx_types") or {}).get("envelope")
+            ENV = set(range(0x00, 0x05))
+            if env is not None and TXTYPE_DIRS.get(slug) and (tf & ENV):
+                want = parse_present(env.get("present"))
+                for a, v in td.items():
+                    if a in ENV and v.get("status") in (None, "inherited", "modified", "added"):
+                        want.add(a)
+                # present must have a code path; a byte in source but not `present` is
+                # the `removed` story (defined, network rejects) and is not an error
+                missing = sorted(f"0x{a:02x}" for a in want - (tf & ENV) - {0x00})
+                if missing:
+                    print(f"  ENVELOPE mismatch: declares {missing} present but no type "
+                          f"byte for it in source"); problems += 1
+                else:
+                    print(f"  envelope ok  ({len(want)}/5 EIP-2718 types)")
 
         # --- evidence rule, enforced. `src_doc:`/`src_live:` deliberately point
         # OUTSIDE the clone, so they are checked for shape, not for existence.
         raw = f.read_text()
-        bad, nsym, nline, nopath = check_citations(raw, roots(slug, c))
+        bad, nsym, nline, nopath = check_citations(
+            raw, None if no_clones else roots(slug, c))
         bad += check_live(raw) + check_tx_auth(c)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):
-            print(f"  citations ok    {nsym} symbol(s) confirmed, "
+            # no_clones cannot confirm a symbol at all, so it says what it did do
+            # rather than borrowing the wording of a check it did not run
+            print(f"  citations shape ok  {nline} line ref(s) well-formed"
+                  if no_clones else
+                  f"  citations ok    {nsym} symbol(s) confirmed, "
                   f"{nline} line ref(s) in range"
                   + (f", {nopath} citing no path" if nopath else ""))
         print(f"  evidence  {tally}")
@@ -486,8 +527,13 @@ def main():
     if unextracted:
         print(f"! NO EXTRACTOR, precompiles unchecked: {', '.join(unextracted)}")
         print("  these rows' precompile lists are taken on trust — write an extractor")
+    if no_clones:
+        print("! --no-clones: NOTHING here was checked against source. The pinned "
+              "clones are\n  the only thing that can catch drift; run "
+              "`tools/clone.sh && tools/verify.py` locally.")
     print('DRIFT: ' + str(problems) + ' problem(s)' if problems
-          else 'clean — chain.yaml matches source')
+          else 'clean — chain.yaml is internally consistent (source NOT checked)'
+          if no_clones else 'clean — chain.yaml matches source')
     return 1 if problems else 0
 
 if __name__ == "__main__":

@@ -1,0 +1,35 @@
+name: Dataset checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - run: pip install -r tools/requirements.txt
+
+      # MATRIX.md, PRECOMPILES.md, TX-TYPES.md and LINEAGE.md are generated
+      # output. Catch a chain.yaml edit that never re-ran generate.py.
+      - name: Verify the Markdown tables are current
+        run: python3 tools/generate.py --check
+
+      # --no-clones, deliberately: the pinned clones are 6.1 GiB across 41 repos,
+      # which is past what the Actions cache can hold and slower to fetch than the
+      # rest of CI put together. This runs the checks that read chain.yaml alone;
+      # the source cross-check is a local gate. See SITE.md, "Keeping it honest in CI".
+      - name: Verify chain.yaml is internally consistent
+        if: ${{ !cancelled() }}
+        run: python3 tools/verify.py --no-clones

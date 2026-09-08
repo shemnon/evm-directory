@@ -76,6 +76,9 @@ tools/.venv/bin/python tools/generate.py    # the four top-level Markdown tables
 tools/.venv/bin/python tools/site.py --all  # the website
 ```
 
+Both take `--check`, which renders as usual but writes nothing and exits 1 if the tree
+is out of date — that is what CI runs; see [Keeping it honest in CI](#keeping-it-honest-in-ci).
+
 `generate.py` and `site.py` read the dataset through the same `tools/model.py` — the
 same ordering, the same address canonicalisation, the same stack-inheritance and
 EIP-resolution rules — so the Markdown tables and the website cannot drift apart on
@@ -94,14 +97,61 @@ rebuild.
 
 ## Keeping it honest in CI
 
+Three gates. Each writes nothing and exits non-zero with the list of what is wrong.
+
 ```
-tools/verify.py                 # re-extract facts from source, diff against chain.yaml
+tools/generate.py --check       # fail if the four Markdown tables are stale
 tools/site.py --check           # fail if website/ does not match the dataset
+tools/verify.py --no-clones     # fail if a chain.yaml contradicts itself
 ```
 
-`--check` writes nothing and exits non-zero with the list of pages that would change,
-so a commit that edits `chain.yaml` without rebuilding the site is caught rather than
-silently shipping a stale page.
+`.github/workflows/checks.yml` runs the first and the third on every push and pull
+request. `site.py --check` runs in `pages.yml`, on push to `main`, before the site is
+published.
+
+The two staleness gates work differently, deliberately. `generate.py --check` renders
+all four tables into memory and compares them **byte for byte** against what is
+committed, so it is exact and needs no state in the tree. `site.py --check` compares
+input hashes through `website/.manifest.json`, because re-rendering 30-odd pages to
+throw them away costs more than hashing their inputs. Either way, a commit that edits
+`chain.yaml` and forgets to re-run the generator is caught rather than silently
+shipping a stale table or a stale page.
+
+### Why CI does not clone the sources
+
+`verify.py`'s real work — re-extracting precompiles and tx types from source and
+diffing them against `chain.yaml` — needs the pinned clones, and those are **6.1 GiB
+across 41 repositories**. Even shallow (`clone.sh` uses `--depth 1`), that is past what
+an Actions cache entry can usefully hold, and slower to fetch than the rest of CI put
+together. Caching by pin hash does not fix the cold run, and the pins move on every
+client bump, so cold runs would not be rare.
+
+So CI runs `tools/verify.py --no-clones`, which keeps every check that reads
+`chain.yaml` alone and skips every check that reads source:
+
+| Runs in CI (`--no-clones`) | Needs a clone — local only |
+|---|---|
+| `client.commit` is present and a full 40-hex pin | that pin matches the clone's `HEAD` |
+| `precompiles.base_map` and `tx_types.envelope` are declared | their `present:` matches the extracted map |
+| opcode deltas are keyed `op:` | precompiles MISSING / UNLISTED against source |
+| the `tx_authorization` vocabulary (the `authorizes: no` YAML-1.1 trap) | tx types MISSING / UNLISTED against source |
+| `src_live:` citations carry a block height | `src:` paths resolve inside a pinned clone |
+| `src:` line refs are well-formed ranges (`:0`, `:120-90`) | line refs are within the file; symbols appear in it |
+| the evidence tally (src / src_live / src_doc / none) | |
+
+The distinction is stated in the output rather than left to be inferred: `--no-clones`
+prints what it is skipping, and its clean summary reads `chain.yaml is internally
+consistent (source NOT checked)` — never `matches source`.
+
+Drift between `chain.yaml` and the source it cites is therefore **not** a CI gate. It is
+caught by the full run:
+
+```
+tools/clone.sh && tools/verify.py     # ~6 GiB of clones, then the source cross-check
+```
+
+Run that locally before opening a PR that touches a `chain.yaml`, and after any client
+version bump.
 
 ## Dependencies
 

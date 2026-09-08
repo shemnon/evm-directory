@@ -8,7 +8,7 @@ tables show each chain's complete effective set, with origin marked.
 Loading, ordering and address canonicalisation live in `model.py`, shared with
 `site.py`, so the Markdown tables and the website cannot disagree about them.
 """
-import sys, pathlib
+import argparse, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented,
                    client, is_stack, order, canon, addr_rows, sortkey,
@@ -30,9 +30,13 @@ def header(chains, slugs):
     h = "| Address | " + " | ".join(SHORT.get(s, name(chains[s])) for s in slugs) + " |"
     return h + "\n|" + "---|" * (len(slugs) + 1)
 
+# The generators render into memory and hand the text here; whether it lands on
+# disk is decided once, in main(). That is what makes `--check` exact: it diffs
+# the very bytes a real run would write, rather than a hash of the inputs.
+OUTPUTS = {}
+
 def write(path, text):
-    (ROOT / path).write_text(text)
-    print(f"  wrote {path} ({len(text.splitlines())} lines)")
+    OUTPUTS[path] = text
 
 def legend():
     return ("\nLegend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, "
@@ -250,7 +254,39 @@ def gen_matrix(chains):
         L.append("")
     write("MATRIX.md", "\n".join(L) + "\n")
 
-if __name__ == "__main__":
+def main():
+    ap = argparse.ArgumentParser(
+        description="Regenerate the four top-level Markdown tables from "
+                    "chains/*/chain.yaml.",
+        epilog="With no arguments, writes MATRIX.md, PRECOMPILES.md, TX-TYPES.md "
+               "and LINEAGE.md. See SITE.md.")
+    ap.add_argument("--check", action="store_true",
+                    help="exit 1 if any table is out of date; write nothing")
+    ap.add_argument("-q", "--quiet", action="store_true")
+    a = ap.parse_args()
+
     ch = load()
-    print(f"loaded {len(ch)} chain files")
+    if not a.quiet: print(f"loaded {len(ch)} chain files")
     gen_matrix(ch); gen_precompiles(ch); gen_txtypes(ch); gen_lineage(ch)
+
+    if a.check:
+        # Byte comparison against what is committed. A file that is missing counts
+        # as stale, so `--check` on a tree with no tables fails rather than passes.
+        stale = [p for p, text in OUTPUTS.items()
+                 if not (ROOT / p).exists() or (ROOT / p).read_text() != text]
+        if stale:
+            print(f"tables are STALE — {len(stale)} file(s) would change:")
+            for p in stale: print(f"  {p}")
+            print("run tools/generate.py")
+            return 1
+        print(f"tables are up to date ({len(OUTPUTS)} files)")
+        return 0
+
+    for p, text in OUTPUTS.items():
+        (ROOT / p).write_text(text)
+        if not a.quiet: print(f"  wrote {p} ({len(text.splitlines())} lines)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

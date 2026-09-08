@@ -650,6 +650,8 @@ given page actually reads.</p>
 <pre><code>tools/.venv/bin/python tools/generate.py    # the four top-level Markdown tables
 tools/.venv/bin/python tools/site.py --all  # the website
 </code></pre>
+<p>Both take <code>--check</code>, which renders as usual but writes nothing and exits 1 if the tree
+is out of date — that is what CI runs; see <a href="#keeping-it-honest-in-ci">Keeping it honest in CI</a>.</p>
 <p><code>generate.py</code> and <code>site.py</code> read the dataset through the same <code>tools/model.py</code> — the
 same ordering, the same address canonicalisation, the same stack-inheritance and
 EIP-resolution rules — so the Markdown tables and the website cannot drift apart on
@@ -663,12 +665,77 @@ every page stale and be useless as a CI gate.</p>
 <p>Because the hashes are over content, <code>touch</code> does nothing: only a real edit triggers a
 rebuild.</p>
 <h2>Keeping it honest in CI</h2>
-<pre><code>tools/verify.py                 # re-extract facts from source, diff against chain.yaml
+<p>Three gates. Each writes nothing and exits non-zero with the list of what is wrong.</p>
+<pre><code>tools/generate.py --check       # fail if the four Markdown tables are stale
 tools/site.py --check           # fail if website/ does not match the dataset
+tools/verify.py --no-clones     # fail if a chain.yaml contradicts itself
 </code></pre>
-<p><code>--check</code> writes nothing and exits non-zero with the list of pages that would change,
-so a commit that edits <code>chain.yaml</code> without rebuilding the site is caught rather than
-silently shipping a stale page.</p>
+<p><code>.github/workflows/checks.yml</code> runs the first and the third on every push and pull
+request. <code>site.py --check</code> runs in <code>pages.yml</code>, on push to <code>main</code>, before the site is
+published.</p>
+<p>The two staleness gates work differently, deliberately. <code>generate.py --check</code> renders
+all four tables into memory and compares them <strong>byte for byte</strong> against what is
+committed, so it is exact and needs no state in the tree. <code>site.py --check</code> compares
+input hashes through <code>website/.manifest.json</code>, because re-rendering 30-odd pages to
+throw them away costs more than hashing their inputs. Either way, a commit that edits
+<code>chain.yaml</code> and forgets to re-run the generator is caught rather than silently
+shipping a stale table or a stale page.</p>
+<h3>Why CI does not clone the sources</h3>
+<p><code>verify.py</code>'s real work — re-extracting precompiles and tx types from source and
+diffing them against <code>chain.yaml</code> — needs the pinned clones, and those are <strong>6.1 GiB
+across 41 repositories</strong>. Even shallow (<code>clone.sh</code> uses <code>--depth 1</code>), that is past what
+an Actions cache entry can usefully hold, and slower to fetch than the rest of CI put
+together. Caching by pin hash does not fix the cold run, and the pins move on every
+client bump, so cold runs would not be rare.</p>
+<p>So CI runs <code>tools/verify.py --no-clones</code>, which keeps every check that reads
+<code>chain.yaml</code> alone and skips every check that reads source:</p>
+<table>
+<thead>
+<tr>
+<th>Runs in CI (<code>--no-clones</code>)</th>
+<th>Needs a clone — local only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>client.commit</code> is present and a full 40-hex pin</td>
+<td>that pin matches the clone's <code>HEAD</code></td>
+</tr>
+<tr>
+<td><code>precompiles.base_map</code> and <code>tx_types.envelope</code> are declared</td>
+<td>their <code>present:</code> matches the extracted map</td>
+</tr>
+<tr>
+<td>opcode deltas are keyed <code>op:</code></td>
+<td>precompiles MISSING / UNLISTED against source</td>
+</tr>
+<tr>
+<td>the <code>tx_authorization</code> vocabulary (the <code>authorizes: no</code> YAML-1.1 trap)</td>
+<td>tx types MISSING / UNLISTED against source</td>
+</tr>
+<tr>
+<td><code>src_live:</code> citations carry a block height</td>
+<td><code>src:</code> paths resolve inside a pinned clone</td>
+</tr>
+<tr>
+<td><code>src:</code> line refs are well-formed ranges (<code>:0</code>, <code>:120-90</code>)</td>
+<td>line refs are within the file; symbols appear in it</td>
+</tr>
+<tr>
+<td>the evidence tally (src / src_live / src_doc / none)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The distinction is stated in the output rather than left to be inferred: <code>--no-clones</code>
+prints what it is skipping, and its clean summary reads <code>chain.yaml is internally
+consistent (source NOT checked)</code> — never <code>matches source</code>.</p>
+<p>Drift between <code>chain.yaml</code> and the source it cites is therefore <strong>not</strong> a CI gate. It is
+caught by the full run:</p>
+<pre><code>tools/clone.sh &amp;&amp; tools/verify.py     # ~6 GiB of clones, then the source cross-check
+</code></pre>
+<p>Run that locally before opening a PR that touches a <code>chain.yaml</code>, and after any client
+version bump.</p>
 <h2>Dependencies</h2>
 <p>Python 3 with <code>pyyaml</code> and <code>markdown</code>:</p>
 <pre><code>python3 -m venv tools/.venv

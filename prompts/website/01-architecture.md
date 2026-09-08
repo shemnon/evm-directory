@@ -5,7 +5,6 @@
 ```
 website/
   index.html                    Overview
-  method.html                   Reference — the schema, and how the site is built
   silent-divergences.html       every severity: high entry, summarised
   chains/index.html             the chain list
   chains/<slug>.html            one per row in chains/ (19 today)
@@ -33,7 +32,7 @@ the destination for notes tagged with that axis. Wide layout.
 **Chain pages** answer every question about one chain. This is the only place
 provenance, evidence footing and long prose belong. Normal width.
 
-**Index pages** — Overview, Chains, Silent divergences, Reference — route and summarise.
+**Index pages** — Overview, Chains, Silent divergences — route and summarise.
 They hold no per-entry detail.
 
 ## Adding an axis
@@ -47,7 +46,7 @@ They hold no per-entry detail.
 
 ## Navigation
 
-One row: `Overview · Chains · <every axis in AXES order> · Silent divergences ·
-Reference`, then the chain picker pushed to the right. The current page is marked. The
+One row: `Overview · Chains · <every axis in AXES order> · Silent divergences`, then
+the chain picker pushed to the right. The current page is marked. The
 bar is sticky; anchored elements carry enough `scroll-margin-top` to clear it and the
 sticky table header beneath it.

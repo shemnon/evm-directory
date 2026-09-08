@@ -5,7 +5,7 @@ specified in [03-grids.md](03-grids.md), headed with the axis name.
 
 ## Overview — `index.html`
 
-1. **Axes** — one card per axis plus Silent divergences and Reference. Title links,
+1. **Axes** — one card per axis plus Silent divergences. Title links,
    one-line description.
 2. **Chains** — filterable table: chain, chain ID, role, client, baseline, count of
    silent divergences. A footnote that `op-stack` and `avalanche-subnet` are not chains.
@@ -72,8 +72,10 @@ Categorical summaries only: **by section** (entries, which chains) and **by chai
 (entries, which sections), then a compact list of every entry linking to the chain page.
 No note text — detail lives in the drill-down. No statistics tiles.
 
-## Reference — `method.html`
+## Method is not a page
 
-Renders `SCHEMA.md` and `SITE.md`, then notes tagged `axis: method`. Nothing else. This
-is the only page whose subject is method, which is why the nav calls it Reference and the
-data pages never discuss it.
+The site carries no page about itself. `SCHEMA.md`, `SITE.md` and `METHOD.md` are
+repo-only documents: useful to someone reading or extending the dataset, noise to
+someone who arrived with a question about a chain. Every note in `findings.yaml`
+therefore names one of the eight axes and renders on that axis page; a note with no
+axis page is a build error, not a note that lands on a method page.

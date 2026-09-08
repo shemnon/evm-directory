@@ -28,11 +28,10 @@ Expected scope, and worth asserting after changes:
 
 | changed | rebuilds |
 |---|---|
-| one `chains/<slug>/chain.yaml` | that chain page, all axis pages, Overview, both indexes, Reference — **not** the other 18 chain pages |
+| one `chains/<slug>/chain.yaml` | that chain page, all axis pages, Overview, both indexes — **not** the other 18 chain pages |
 | one `chains/<slug>/SUMMARY.md` | that chain page only |
 | `chains/op-stack/chain.yaml` | the above, plus its five descendants |
 | `findings.yaml` | Overview, axis pages, and every chain page (chain-scoped there) |
-| `SCHEMA.md` / `SITE.md` | `method.html` only |
 | generator or assets | everything |
 
 `findings.yaml` is an input to *every* chain page, not only the ones a note currently
@@ -52,4 +51,4 @@ it is byte-identical for the same inputs on any machine. Without it in the tree,
 Pair it with `tools/verify.py`, which checks the dataset against pinned source.
 
 The footer of every page reads `Generated <date>` — no rebuild instructions, no links to
-methodology. Those live in `SITE.md`, rendered on the Reference page.
+methodology. Those live in `SITE.md`, which the site does not render.

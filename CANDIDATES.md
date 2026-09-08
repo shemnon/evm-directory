@@ -78,7 +78,7 @@ Seven rows added in one pass, selected for **how they order and execute** rather
 cap or mindshare. Five of the seven fail criterion 1 outright; they are here because the
 question "what happens to a transaction that is ordered and then turns out to be invalid"
 had no portable answer, and these are the chains that answer it differently. The result is
-[`ordered-then-invalid`](findings.yaml) — seven distinct fates across ten rows.
+[`ordered-then-invalid`](METHOD.md#a-transaction-ordered-before-it-is-executed-has-seven-different-fates) — seven distinct fates across ten rows.
 
 | Chain | Row | What it turned out to be |
 |---|---|---|

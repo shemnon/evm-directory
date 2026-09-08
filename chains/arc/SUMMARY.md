@@ -275,7 +275,7 @@ Source over comment, as usual.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel/chains/arc/repos/arc-node
+cd /Volumes/TendiesTown/EVM-Directory/chains/arc/repos/arc-node
 git rev-parse HEAD          # 79b6fddf18345732007bb94b4af3add4c2efd12d
 git describe --tags         # v0.7.3
 grep -n 'reth-chainspec' Cargo.toml    # tag = "v1.11.3"

@@ -360,7 +360,7 @@ validator, and nothing observable at the client.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://mainnet.megaeth.com/rpc; B=0x17b7900   # 24869120
 
 # --- pins

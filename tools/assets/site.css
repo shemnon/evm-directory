@@ -1,4 +1,4 @@
-/* EVM-intel — dense reference styling. No external assets, no webfonts:
+/* EVM Directory — dense reference styling. No external assets, no webfonts:
    the site must render identically from file://, GitHub Pages, or a subpath. */
 :root {
   --bg: #fbfbfa;  --panel: #fff;      --ink: #16181d;   --dim: #5b6472;

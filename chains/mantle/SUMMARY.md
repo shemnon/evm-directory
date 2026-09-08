@@ -271,7 +271,7 @@ registry says why in one line: `Interop → MantleNoSupport`.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 G=chains/mantle/repos/op-geth
 V=chains/mantle/repos/mantle-v2
 

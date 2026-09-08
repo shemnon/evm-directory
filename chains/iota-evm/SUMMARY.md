@@ -311,7 +311,7 @@ class.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://json-rpc.evm.iotaledger.net; A=https://api.evm.iotaledger.net; B=0xc33700   # 12793600
 
 # --- pins

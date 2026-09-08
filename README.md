@@ -1,4 +1,4 @@
-# EVM-intel
+# EVM Directory
 
 A master table of EVM differences across major EVM chains, built from **pinned source
 clones, not documentation**.

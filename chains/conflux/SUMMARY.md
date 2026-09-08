@@ -404,7 +404,7 @@ the "narrower" prediction measured the wrong axis.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://evm.confluxrpc.com; C=https://main.confluxrpc.com; B=0x9423188   # 155333000
 rpc(){ curl -s -X POST -H 'content-type: application/json' \
        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}" "${3:-$R}"; }

@@ -385,14 +385,14 @@
   },
   "chains/arc.html": {
    "inputs": {
-    "chains/arc/SUMMARY.md": "89c418188d10afbb",
+    "chains/arc/SUMMARY.md": "049594df4fe92809",
     "chains/arc/chain.yaml": "116b8a58cf1caf24",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
   },
   "chains/artela.html": {
    "inputs": {
-    "chains/artela/SUMMARY.md": "fdddde86da128a2f",
+    "chains/artela/SUMMARY.md": "091c173c0b5c0338",
     "chains/artela/chain.yaml": "553892ca3bffcc2c",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -450,7 +450,7 @@
   },
   "chains/conflux.html": {
    "inputs": {
-    "chains/conflux/SUMMARY.md": "4da3f58f321078d6",
+    "chains/conflux/SUMMARY.md": "efd5c3ea96a1ac7c",
     "chains/conflux/chain.yaml": "10414e9d2da64bec",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -552,7 +552,7 @@
   },
   "chains/iota-evm.html": {
    "inputs": {
-    "chains/iota-evm/SUMMARY.md": "b08074eb2eabefa4",
+    "chains/iota-evm/SUMMARY.md": "743ca0cd68eb93ff",
     "chains/iota-evm/chain.yaml": "d8ebdb70482b2b5a",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -573,7 +573,7 @@
   },
   "chains/mantle.html": {
    "inputs": {
-    "chains/mantle/SUMMARY.md": "fe623d8123d1bf0c",
+    "chains/mantle/SUMMARY.md": "78595216e909fe14",
     "chains/mantle/chain.yaml": "cd401e9afe0dc21f",
     "chains/op-stack/chain.yaml": "9c343d5fc5917ecc",
     "findings.yaml": "7ee8d06e7d218a2e"
@@ -581,7 +581,7 @@
   },
   "chains/megaeth.html": {
    "inputs": {
-    "chains/megaeth/SUMMARY.md": "a8354793fc399dd9",
+    "chains/megaeth/SUMMARY.md": "6e0afe3236a61661",
     "chains/megaeth/chain.yaml": "931246c9a412d7b7",
     "chains/op-stack/chain.yaml": "9c343d5fc5917ecc",
     "findings.yaml": "7ee8d06e7d218a2e"
@@ -626,7 +626,7 @@
   },
   "chains/plasma.html": {
    "inputs": {
-    "chains/plasma/SUMMARY.md": "b1074dbd25f2623c",
+    "chains/plasma/SUMMARY.md": "530de60e3f130e83",
     "chains/plasma/chain.yaml": "9ca8a8b32ed12039",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -648,7 +648,7 @@
   "chains/rise.html": {
    "inputs": {
     "chains/op-stack/chain.yaml": "9c343d5fc5917ecc",
-    "chains/rise/SUMMARY.md": "d72edb604abdd90b",
+    "chains/rise/SUMMARY.md": "4bbacd73dc3a7f52",
     "chains/rise/chain.yaml": "3c8161acd1a59031",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -676,7 +676,7 @@
   },
   "chains/sonic.html": {
    "inputs": {
-    "chains/sonic/SUMMARY.md": "0b5e1b3b6ce0c07c",
+    "chains/sonic/SUMMARY.md": "478c457630805d83",
     "chains/sonic/chain.yaml": "9f3e08e449523a09",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -697,7 +697,7 @@
   },
   "chains/tempo.html": {
    "inputs": {
-    "chains/tempo/SUMMARY.md": "2fba24296246e9c9",
+    "chains/tempo/SUMMARY.md": "3f82c571e1dfc5ae",
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "findings.yaml": "7ee8d06e7d218a2e"
    }
@@ -867,5 +867,5 @@
    }
   }
  },
- "renderer": "6960f5e6c4c443b4"
+ "renderer": "9e98f44d70c50fb8"
 }

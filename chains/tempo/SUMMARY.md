@@ -318,7 +318,7 @@ Nothing directly, but two framings need widening:
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel/chains/tempo/repos/tempo
+cd /Volumes/TendiesTown/EVM-Directory/chains/tempo/repos/tempo
 git rev-parse HEAD          # 11b2eec62345a9a045d977255a5d93f66114e9e3
 git describe --tags         # v1.13.1
 

@@ -319,7 +319,7 @@ On Artela the RLP bytes do not survive, so the original cannot be recovered to c
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel/chains/artela/repos
+cd /Volumes/TendiesTown/EVM-Directory/chains/artela/repos
 
 # --- pins -------------------------------------------------------------------
 for d in artela artela-evm aspect-core aspect-runtime artela-cosmos-sdk; do
@@ -410,7 +410,7 @@ curl -s -o /dev/null -w '%{http_code}\n' https://docs.artela.network  # -> 526
 curl -s -o /dev/null -w '%{http_code}\n' https://artscan.artela.network # -> 521
 
 # --- validate ---------------------------------------------------------------
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 tools/.venv/bin/python -c "import yaml;yaml.safe_load(open('chains/artela/chain.yaml'))"
 tools/.venv/bin/python tools/verify.py 2>&1 | sed -n '/^artela/,/^$/p'
 #   pin ok  0de86198

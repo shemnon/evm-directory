@@ -87,12 +87,12 @@ def layout(path, title, lede, body, wide=False, depth=None, chains=None):
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{esc(title)} · EVM-intel</title>
+<title>{esc(title)} · EVM Directory</title>
 <meta name="description" content="{esc(flat(lede))[:300]}">
 <link rel="stylesheet" href="{r}assets/site.css">
 </head><body>
 <header class="top">
-  <span class="brand"><a href="{r}index.html">EVM-intel</a></span>
+  <span class="brand"><a href="{r}index.html">EVM Directory</a></span>
   <nav>{nav}</nav>
   {picker}
 </header>
@@ -1401,7 +1401,7 @@ def page_index(chains):
              f'<a href="chains/{esc(s)}.html">{esc(short(s))}</a>'
              for s in f["slugs"] if s in chains) or "—") + "</div>"]
         for f in load_notes(chains)]))
-    return layout("index.html", "EVM-intel",
+    return layout("index.html", "EVM Directory",
                   "EVM differences across major EVM chains, stated as deltas against "
                   "Ethereum Mainnet.", "\n".join(B))
 

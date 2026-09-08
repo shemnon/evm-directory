@@ -299,7 +299,7 @@ itself part of the row's shape.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://rpc.risechain.com; B=0x134d400          # 20239360
 
 # --- pins (rise-node is the only TAGGED repo in the org)

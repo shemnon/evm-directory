@@ -133,7 +133,7 @@ deposit requests cannot be established from the EL alone. Left `unrecorded`.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://rpc.plasma.to; B=0x1d4d000   # 30724096
 
 # --- pins

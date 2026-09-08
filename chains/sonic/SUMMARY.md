@@ -411,7 +411,7 @@ removes `msg.Value` from the balance test and leaves the nonce test alone.
 ## Re-verify
 
 ```sh
-cd /Volumes/TendiesTown/EVM-intel
+cd /Volumes/TendiesTown/EVM-Directory
 R=https://rpc.soniclabs.com
 B=0x4a6f493            # 78050451
 

@@ -673,105 +673,95 @@ opcodes:
     never implemented by this interpreter.
   src: "rust-evm/runtime/src/lib.rs:osaka"
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    severity: high
+    src: "domains/client/block-preprocessor/src/lib.rs:batch_check_bundle_validity, domains/client/block-preprocessor/src/lib.rs:BundleValidity, domains/client/block-preprocessor/src/lib.rs:InvalidBundleType"
+    note: >-
+      NONCE ON FAILURE: PRESERVED — FOR THE OFFENDER AND FOR EVERY CO-PASSENGER — BECAUSE
+      NOTHING IN THE BUNDLE EVER EXECUTES. Established from Autonomys' own source, not
+      inferred from a sibling row. `batch_check_bundle_validity` returns a `BundleValidity`,
+      and the caller handles the two arms very differently. `ValidWithSigner(..)` pushes an
+      `InboxedBundle::valid` AND does `valid_extrinsics.extend(..)`.
+      `Invalid(invalid_bundle_type)` pushes ONLY an `InboxedBundle::invalid` marker and
+      never touches `valid_extrinsics`. So a bundle classified `UndecodableTx`,
+      `OutOfRangeTx`, `IllegalTx` (the fee/nonce/balance case), `InvalidXDM`,
+      `InherentExtrinsic` or `InvalidBundleWeight` contributes ZERO extrinsics to the domain
+      block. No transaction in it is executed, so no account nonce anywhere in that bundle
+      advances, no fee is charged, and no receipt exists: `eth_getTransactionReceipt` is
+      null forever for all of them and they can be resubmitted at the same nonces. THE BLAST
+      RADIUS IS THE UNUSUAL PART, NOT THE NONCE. One stale-nonce transaction discards every
+      valid, correctly-signed, already-ordered transaction packed beside it — but discards
+      them harmlessly, in the sense that the axis measures: nothing was consumed. Compare
+      Conflux, which erases only the offending transaction, and Artela, where the
+      transaction is executed far enough to spend the nonce and take the fee and is then
+      hidden. Autonomys is the widest erasure in the dataset and simultaneously one of the
+      safest for the sender's nonce. THE COST FALLS ON THE OPERATOR INSTEAD.
+      `pallet_domains` collects `invalid_bundle_authors` from the receipt's `InboxedBundle`
+      entries and slashes them automatically on confirmation. "Your transaction had a stale
+      nonce" is not an outcome a transaction can have here; it is a protocol violation
+      attributed to whoever bundled it.
+  duplicate_inclusion:
+    verdict: benign
+    severity: high
+    src: "crates/sp-domains/src/extrinsics.rs:deduplicate_and_shuffle_extrinsics, domains/client/block-preprocessor/src/lib.rs:preprocess_consensus_block, domains/client/block-preprocessor/src/lib.rs:check_extrinsics_and_do_pre_dispatch, crates/sp-domains/src/bundle.rs:InvalidBundleType, crates/pallet-domains/src/bundle_storage_fund.rs:refund_storage_fee"
+    note: >-
+      DUPLICATE INCLUSION: BENIGN, AND EXPLICITLY NOT A SLASHABLE OFFENCE. Established from
+      Autonomys' own source at the pinned commit, not inferred from a sibling row. Operators
+      build bundles independently from their own view of the pool, so two of them bundling
+      the same transaction into one consensus block is a normal race. It is resolved AFTER
+      bundle validity, not during it, and that ordering is the whole finding.
+      `preprocess_consensus_block` first calls `compile_bundles_to_extrinsics`, which
+      classifies each bundle on its own — `check_extrinsics_and_do_pre_dispatch` runs
+      against the PARENT DOMAIN BLOCK state and maintains its storage-buffer side effects
+      only WITHIN one bundle — so both bundles see the same parent nonce, both pass, and
+      both are recorded as `InboxedBundle::valid`. Only then is
+      `deduplicate_and_shuffle_extrinsics` applied to the concatenation of every valid
+      bundle's extrinsics: it walks them in bundle order with a `seen` list, drops any
+      extrinsic equal to one already kept, and shuffles what survives with the
+      consensus-block randomness. The FIRST occurrence in bundle order executes; the second
+      never enters the domain block's extrinsic list at all. A DUPLICATE IS NOT AN
+      `InvalidBundleType`. The enum has exactly six variants — `UndecodableTx`,
+      `OutOfRangeTx`, `IllegalTx`, `InvalidXDM`, `InherentExtrinsic`, `InvalidBundleWeight`
+      — and none of them is duplication. Since the bundle is never marked invalid, its
+      author never reaches `invalid_bundle_authors` and `do_mark_operators_as_slashed` is
+      never called with `SlashedReason::InvalidBundle` for it. This is the important
+      negative: on this chain a stale nonce inside a bundle IS a slashable protocol
+      violation (see `nonce on failure` above), so it would have been entirely consistent
+      for a duplicate to be one too. It is not. WHAT A CLIENT OBSERVES: the losing copy is
+      indistinguishable from never submitted — same shape as Conflux and Sonic — but for a
+      different reason. It is not executed-then-erased and not nonce-rejected; it is removed
+      by a byte-equality filter before the domain block exists. There is exactly one
+      receipt, under the one transaction hash, for the surviving copy, and the sender pays
+      exactly one fee. WHO PAYS: the operator that bundled the loser, a little, and only in
+      storage. `charge_bundle_storage_fee` burns from the operator's bundle storage fund in
+      proportion to `bundle.size()` at submission time, before any deduplication has
+      happened, so the duplicate's bytes are paid for. `refund_storage_fee` then returns
+      each operator a share of the domain block's collected storage fees in proportion to
+      BYTES SUBMITTED rather than extrinsics that survived, and `do_reward_operators` pays
+      the set of operators that submitted bundles for the confirmed domain block without
+      reference to how much of their payload was deduplicated. So the duplicate is close to
+      cost-neutral for its author and mildly dilutive for everyone else. Contrast Taraxa,
+      where pre-Aspen a DAG block earned NOTHING unless it contributed a unique transaction:
+      Autonomys pays for the bundle, not for the contribution. LIMIT OF THE MECHANISM: the
+      filter is `seen.contains(uxt)` on the encoded extrinsic, so it catches only
+      BYTE-IDENTICAL repeats. Two different transactions from the same sender at the same
+      nonce, bundled by two operators, are not duplicates by this test and both survive into
+      the domain block; what the domain runtime then does with the second is unrecorded
+  ordered_then_invalid:
+    verdict: escalated
+    src: "domains/client/block-preprocessor/src/lib.rs:batch_check_bundle_validity, domains/client/block-preprocessor/src/lib.rs:BundleValidity, domains/client/block-preprocessor/src/lib.rs:InvalidBundleType"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      here.
+
 fee_model:
   metering: "gas, converted to Substrate Weight at a fixed 25,000 ps/gas"
   fee_market: "Substrate SlowAdjustingFeeUpdate over domain-block WEIGHT fullness, plus a consensus-chain storage fee — not EIP-1559"
   extra_components:
-  - name: nonce on failure
-    severity: high
-    src: "domains/client/block-preprocessor/src/lib.rs:batch_check_bundle_validity, domains/client/block-preprocessor/src/lib.rs:BundleValidity, domains/client/block-preprocessor/src/lib.rs:InvalidBundleType"
-    note: >-
-      NONCE ON FAILURE: PRESERVED — FOR THE OFFENDER AND FOR EVERY CO-PASSENGER
-      — BECAUSE NOTHING IN THE BUNDLE EVER EXECUTES. Established from
-      Autonomys' own source, not inferred from a sibling row.
-
-      `batch_check_bundle_validity` returns a `BundleValidity`, and the caller
-      handles the two arms very differently. `ValidWithSigner(..)` pushes an
-      `InboxedBundle::valid` AND does `valid_extrinsics.extend(..)`.
-      `Invalid(invalid_bundle_type)` pushes ONLY an `InboxedBundle::invalid`
-      marker and never touches `valid_extrinsics`. So a bundle classified
-      `UndecodableTx`, `OutOfRangeTx`, `IllegalTx` (the fee/nonce/balance case),
-      `InvalidXDM`, `InherentExtrinsic` or `InvalidBundleWeight` contributes ZERO
-      extrinsics to the domain block. No transaction in it is executed, so no
-      account nonce anywhere in that bundle advances, no fee is charged, and no
-      receipt exists: `eth_getTransactionReceipt` is null forever for all of
-      them and they can be resubmitted at the same nonces.
-
-      THE BLAST RADIUS IS THE UNUSUAL PART, NOT THE NONCE. One stale-nonce
-      transaction discards every valid, correctly-signed, already-ordered
-      transaction packed beside it — but discards them harmlessly, in the sense
-      that the axis measures: nothing was consumed. Compare Conflux, which erases
-      only the offending transaction, and Artela, where the transaction is
-      executed far enough to spend the nonce and take the fee and is then hidden.
-      Autonomys is the widest erasure in the dataset and simultaneously one of
-      the safest for the sender's nonce.
-
-      THE COST FALLS ON THE OPERATOR INSTEAD. `pallet_domains` collects
-      `invalid_bundle_authors` from the receipt's `InboxedBundle` entries and
-      slashes them automatically on confirmation. "Your transaction had a stale
-      nonce" is not an outcome a transaction can have here; it is a protocol
-      violation attributed to whoever bundled it.
-  - name: duplicate inclusion
-    severity: high
-    src: "crates/sp-domains/src/extrinsics.rs:deduplicate_and_shuffle_extrinsics, domains/client/block-preprocessor/src/lib.rs:preprocess_consensus_block, domains/client/block-preprocessor/src/lib.rs:check_extrinsics_and_do_pre_dispatch, crates/sp-domains/src/bundle.rs:InvalidBundleType, crates/pallet-domains/src/bundle_storage_fund.rs:refund_storage_fee"
-    note: >-
-      DUPLICATE INCLUSION: BENIGN, AND EXPLICITLY NOT A SLASHABLE OFFENCE.
-      Established from Autonomys' own source at the pinned commit, not inferred
-      from a sibling row.
-
-      Operators build bundles independently from their own view of the pool, so
-      two of them bundling the same transaction into one consensus block is a
-      normal race. It is resolved AFTER bundle validity, not during it, and that
-      ordering is the whole finding. `preprocess_consensus_block` first calls
-      `compile_bundles_to_extrinsics`, which classifies each bundle on its own —
-      `check_extrinsics_and_do_pre_dispatch` runs against the PARENT DOMAIN
-      BLOCK state and maintains its storage-buffer side effects only WITHIN one
-      bundle — so both bundles see the same parent nonce, both pass, and both are
-      recorded as `InboxedBundle::valid`. Only then is
-      `deduplicate_and_shuffle_extrinsics` applied to the concatenation of every
-      valid bundle's extrinsics: it walks them in bundle order with a `seen`
-      list, drops any extrinsic equal to one already kept, and shuffles what
-      survives with the consensus-block randomness. The FIRST occurrence in
-      bundle order executes; the second never enters the domain block's extrinsic
-      list at all.
-
-      A DUPLICATE IS NOT AN `InvalidBundleType`. The enum has exactly six
-      variants — `UndecodableTx`, `OutOfRangeTx`, `IllegalTx`, `InvalidXDM`,
-      `InherentExtrinsic`, `InvalidBundleWeight` — and none of them is
-      duplication. Since the bundle is never marked invalid, its author never
-      reaches `invalid_bundle_authors` and `do_mark_operators_as_slashed` is
-      never called with `SlashedReason::InvalidBundle` for it. This is the
-      important negative: on this chain a stale nonce inside a bundle IS a
-      slashable protocol violation (see `nonce on failure` above), so it would
-      have been entirely consistent for a duplicate to be one too. It is not.
-
-      WHAT A CLIENT OBSERVES: the losing copy is indistinguishable from never
-      submitted — same shape as Conflux and Sonic — but for a different reason.
-      It is not executed-then-erased and not nonce-rejected; it is removed by a
-      byte-equality filter before the domain block exists. There is exactly one
-      receipt, under the one transaction hash, for the surviving copy, and the
-      sender pays exactly one fee.
-
-      WHO PAYS: the operator that bundled the loser, a little, and only in
-      storage. `charge_bundle_storage_fee` burns from the operator's bundle
-      storage fund in proportion to `bundle.size()` at submission time, before
-      any deduplication has happened, so the duplicate's bytes are paid for.
-      `refund_storage_fee` then returns each operator a share of the domain
-      block's collected storage fees in proportion to BYTES SUBMITTED rather
-      than extrinsics that survived, and `do_reward_operators` pays the set of
-      operators that submitted bundles for the confirmed domain block without
-      reference to how much of their payload was deduplicated. So the duplicate
-      is close to cost-neutral for its author and mildly dilutive for everyone
-      else. Contrast Taraxa, where pre-Aspen a DAG block earned NOTHING unless it
-      contributed a unique transaction: Autonomys pays for the bundle, not for
-      the contribution.
-
-      LIMIT OF THE MECHANISM: the filter is `seen.contains(uxt)` on the encoded
-      extrinsic, so it catches only BYTE-IDENTICAL repeats. Two different
-      transactions from the same sender at the same nonce, bundled by two
-      operators, are not duplicates by this test and both survive into the
-      domain block; what the domain runtime then does with the second is
-      unrecorded here.
   - name: gas is a conversion, not a meter
     severity: high
     src: "domains/primitives/evm-tracker/src/lib.rs:WEIGHT_PER_GAS, domains/runtime/evm/src/lib.rs:GasWeightMapping"

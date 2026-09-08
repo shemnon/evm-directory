@@ -609,6 +609,85 @@ opcodes:
     `debug_traceTransaction` and the block that contains the transaction were
     produced by two different EVMs.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: burned
+    severity: high
+    src: "go-ethereum/core/state_transition.go:InsufficientBalanceIsNotAnError, go-ethereum/core/state_transition.go:SetNonce"
+    note: >-
+      NONCE ON FAILURE: BURNED, with a receipt. Sonic's balance precheck omits `msg.Value`
+      in two places — the gas purchase and clause 6 of the pre-check — under the in-source
+      note "insufficient balance for **topmost** call isn't a consensus error in Opera,
+      unlike Ethereum. Such transaction will revert and consume sender's gas." A transaction
+      that can afford its FEE but not its VALUE therefore passes admission, reaches
+      `st.state.SetNonce(msg.From, ...+1)` in the state transition, and fails inside
+      execution. Fee charged, NONCE BURNED, receipt present with `status: 0`. On mainnet the
+      same transaction is never included and the nonce is preserved for a free resubmit;
+      here the nonce is gone and the sender must re-fund the account before resending at
+      nonce+1. Monad reaches the identical rule from deferred execution; Conflux burns the
+      nonce on this failure and preserves it on another.
+  duplicate_inclusion:
+    verdict: deduplicated
+    severity: high
+    src: "gossip/scrambler/tx_scrambler.go:analyseEntryList, gossip/c_block_callbacks.go:txPositions, gossip/blockproc/evmmodule/evm.go:Finalize, gossip/emitter/txs.go:isMyTxTurn, gossip/emitter/scheduler/scheduler.go:Schedule"
+    note: >-
+      DUPLICATE INCLUSION: DEDUPLICATED BY HASH DURING BLOCK DERIVATION, THE SECOND COPY
+      ERASED, AND THE FEE PAID ENTIRELY TO THE FIRST EMITTER. Lachesis is a leaderless DAG:
+      validators emit `events` concurrently and the same transaction reaching two emitters
+      is a normal occurrence, not an attack. Sonic answers it at four layers, only two of
+      which are consensus. (1) EMISSION, node-local. `isMyTxTurn` runs a deterministic
+      lottery — a stake-weighted permutation seeded by `hash(sender, nonce/32, epoch)`,
+      indexed by the 8-second round since the transaction was first seen — and a validator
+      emits only when the permutation names it, skipping validators it believes are offline.
+      The in-source rationale is "try to not include the same tx simultaneously by different
+      validators". It is a HEURISTIC: two validators disagreeing about who is offline, or
+      straddling a round change, both emit. Nothing rejects the resulting event. (2) BLOCK
+      DERIVATION, consensus, only in the multi-emitter path. `c_block_callbacks.go`
+      concatenates the transactions of every event in the confirmed Atropos set and hands
+      them to `scrambler.GetExecutionOrder`; `analyseEntryList` walks that list with a
+      `seenHashes` set and drops every repeat, keeping the FIRST. The salt that scrambles
+      the surviving order is the XOR of the unique hashes, so it is a function of the SET
+      and not of the arrival order — dedup is what makes the ordering deterministic across
+      nodes, not a side effect of it. (3) EXECUTION, consensus, and the only defence against
+      a duplicate that spans two blocks. The scrambler's set is per-block, so an event
+      confirmed into block N+1 carrying a transaction already executed in block N is not
+      caught above. It runs, fails the nonce precheck, and returns
+      `ProcessedTransaction{Receipt: nil}` — a SKIP. `Finalize` then builds the stored block
+      from the receipt-bearing entries only, so the skipped copy is absent from
+      `eth_getBlockByNumber`, has no receipt, and gets no `SetTxPosition` index entry. Only
+      the `chain/txs/skipped` meter records it. The client states the rule outright at
+      `isPermissible`: "Permissible transactions may still be rejected by the block
+      processor due to nonce or balance issues. In such cases, the transaction is considered
+      a skipped transaction." (4) SINGLE-PROPOSER MODE HAS NO HASH DEDUP AT ALL. When
+      `SingleProposerBlockFormation` is on, `proposal.Transactions` comes from
+      `extractProposalForNextBlock` and NEVER reaches the scrambler; the proposer's
+      `Schedule` trial-runs candidates and "will only accept the first that can be
+      successfully processed, ignoring the rest", which excludes a duplicate by executing it
+      rather than by recognising it. That is a proposer-local heuristic; layer (3) remains
+      the consensus backstop. Sonic therefore has two block-formation modes with two
+      different duplicate mechanisms, reached by an on-chain rules toggle. WHO IS PAID: only
+      the first emitter. `txPositions` is built by iterating the confirmed events in order
+      under the comment "If tx was met in multiple events, then assign to first ordered
+      event", and the resulting `EventCreator` is the `originator` passed to `OnNewReceipt`,
+      which credits `ValidatorStates[originator].Originated` with the whole fee for epoch
+      settlement through `sealEpoch(..., originatedTxsFee, ...)`. A validator that emits a
+      duplicate earns nothing from it and is not penalised for it — no slash, no cheater
+      record, only the gas power it spent carrying the transaction in its event. Same shape
+      as Taraxa, where fees go strictly to the first includer. WHAT A CLIENT SEES: the same
+      as Conflux at the `eth_*` layer — the second copy is simply not there,
+      indistinguishable from never submitted — but UNLIKE Conflux the evidence survives one
+      level down. The DAG event that carried the duplicate is stored intact and
+      `dag_getEventPayload(<id>, true)` still lists the transaction in it. That is Taraxa's
+      outcome, reached through a different mechanism: visible in the DAG, absent from the
+      executed list. THE NONCE-WAIVER INTERACTION: layer (3) is a nonce check, so it cannot
+      protect the paths where Sonic waives nonce checks. `TxAsMessage` sets
+      `SkipNonceChecks: true` for internal transactions, which would make a replayed
+      internal transaction execute twice. It is not reachable in practice because internal
+      transactions are minted deterministically by `DriverTxPreTransactor.PopInternalTxs`
+      during block processing rather than carried in events, so no emitter can duplicate
+      one. The `InsufficientBalanceIsNotAnError` precheck does NOT interact: it removes
+      `msg.Value` from the balance test and leaves the nonce test untouched.
+
 fee_model:
   metering: gas
   fee_market: "time-based exponential on gas-per-second; floor from on-chain MinBaseFee"
@@ -640,102 +719,6 @@ fee_model:
         execution. Fees accrue to the protocol and are redistributed to validators
         once per epoch through SFC's `sealEpoch(…, originatedTxsFee, …)`. "Who was
         paid for this block" has no answer at block granularity.
-    - name: nonce on failure
-      severity: high
-      src: "go-ethereum/core/state_transition.go:InsufficientBalanceIsNotAnError, go-ethereum/core/state_transition.go:SetNonce"
-      note: >-
-        NONCE ON FAILURE: BURNED, with a receipt. Sonic's balance precheck omits
-        `msg.Value` in two places — the gas purchase and clause 6 of the
-        pre-check — under the in-source note "insufficient balance for
-        **topmost** call isn't a consensus error in Opera, unlike Ethereum. Such
-        transaction will revert and consume sender's gas." A transaction that
-        can afford its FEE but not its VALUE therefore passes admission, reaches
-        `st.state.SetNonce(msg.From, ...+1)` in the state transition, and fails
-        inside execution. Fee charged, NONCE BURNED, receipt present with
-        `status: 0`. On mainnet the same transaction is never included and the
-        nonce is preserved for a free resubmit; here the nonce is gone and the
-        sender must re-fund the account before resending at nonce+1. Monad
-        reaches the identical rule from deferred execution; Conflux burns the
-        nonce on this failure and preserves it on another.
-    - name: duplicate inclusion
-      severity: high
-      src: "gossip/scrambler/tx_scrambler.go:analyseEntryList, gossip/c_block_callbacks.go:txPositions, gossip/blockproc/evmmodule/evm.go:Finalize, gossip/emitter/txs.go:isMyTxTurn, gossip/emitter/scheduler/scheduler.go:Schedule"
-      note: >-
-        DUPLICATE INCLUSION: DEDUPLICATED BY HASH DURING BLOCK DERIVATION, THE
-        SECOND COPY ERASED, AND THE FEE PAID ENTIRELY TO THE FIRST EMITTER.
-        Lachesis is a leaderless DAG: validators emit `events` concurrently and
-        the same transaction reaching two emitters is a normal occurrence, not an
-        attack. Sonic answers it at four layers, only two of which are consensus.
-
-        (1) EMISSION, node-local. `isMyTxTurn` runs a deterministic lottery — a
-        stake-weighted permutation seeded by `hash(sender, nonce/32, epoch)`,
-        indexed by the 8-second round since the transaction was first seen — and a
-        validator emits only when the permutation names it, skipping validators it
-        believes are offline. The in-source rationale is "try to not include the
-        same tx simultaneously by different validators". It is a HEURISTIC: two
-        validators disagreeing about who is offline, or straddling a round change,
-        both emit. Nothing rejects the resulting event.
-
-        (2) BLOCK DERIVATION, consensus, only in the multi-emitter path.
-        `c_block_callbacks.go` concatenates the transactions of every event in the
-        confirmed Atropos set and hands them to `scrambler.GetExecutionOrder`;
-        `analyseEntryList` walks that list with a `seenHashes` set and drops every
-        repeat, keeping the FIRST. The salt that scrambles the surviving order is
-        the XOR of the unique hashes, so it is a function of the SET and not of the
-        arrival order — dedup is what makes the ordering deterministic across
-        nodes, not a side effect of it.
-
-        (3) EXECUTION, consensus, and the only defence against a duplicate that
-        spans two blocks. The scrambler's set is per-block, so an event confirmed
-        into block N+1 carrying a transaction already executed in block N is not
-        caught above. It runs, fails the nonce precheck, and returns
-        `ProcessedTransaction{Receipt: nil}` — a SKIP. `Finalize` then builds the
-        stored block from the receipt-bearing entries only, so the skipped copy is
-        absent from `eth_getBlockByNumber`, has no receipt, and gets no
-        `SetTxPosition` index entry. Only the `chain/txs/skipped` meter records it.
-        The client states the rule outright at `isPermissible`: "Permissible
-        transactions may still be rejected by the block processor due to nonce or
-        balance issues. In such cases, the transaction is considered a skipped
-        transaction."
-
-        (4) SINGLE-PROPOSER MODE HAS NO HASH DEDUP AT ALL. When
-        `SingleProposerBlockFormation` is on, `proposal.Transactions` comes from
-        `extractProposalForNextBlock` and NEVER reaches the scrambler; the
-        proposer's `Schedule` trial-runs candidates and "will only accept the first
-        that can be successfully processed, ignoring the rest", which excludes a
-        duplicate by executing it rather than by recognising it. That is a
-        proposer-local heuristic; layer (3) remains the consensus backstop. Sonic
-        therefore has two block-formation modes with two different duplicate
-        mechanisms, reached by an on-chain rules toggle.
-
-        WHO IS PAID: only the first emitter. `txPositions` is built by iterating
-        the confirmed events in order under the comment "If tx was met in multiple
-        events, then assign to first ordered event", and the resulting
-        `EventCreator` is the `originator` passed to `OnNewReceipt`, which credits
-        `ValidatorStates[originator].Originated` with the whole fee for epoch
-        settlement through `sealEpoch(..., originatedTxsFee, ...)`. A validator
-        that emits a duplicate earns nothing from it and is not penalised for it —
-        no slash, no cheater record, only the gas power it spent carrying the
-        transaction in its event. Same shape as Taraxa, where fees go strictly to
-        the first includer.
-
-        WHAT A CLIENT SEES: the same as Conflux at the `eth_*` layer — the second
-        copy is simply not there, indistinguishable from never submitted — but
-        UNLIKE Conflux the evidence survives one level down. The DAG event that
-        carried the duplicate is stored intact and
-        `dag_getEventPayload(<id>, true)` still lists the transaction in it. That
-        is Taraxa's outcome, reached through a different mechanism: visible in the
-        DAG, absent from the executed list.
-
-        THE NONCE-WAIVER INTERACTION: layer (3) is a nonce check, so it cannot
-        protect the paths where Sonic waives nonce checks. `TxAsMessage` sets
-        `SkipNonceChecks: true` for internal transactions, which would make a
-        replayed internal transaction execute twice. It is not reachable in
-        practice because internal transactions are minted deterministically by
-        `DriverTxPreTransactor.PopInternalTxs` during block processing rather than
-        carried in events, so no emitter can duplicate one. The
-        `InsufficientBalanceIsNotAnError` precheck does NOT interact: it removes
-        `msg.Value` from the balance test and leaves the nonce test untouched.
     - name: fee-only balance precheck
       severity: high
       src: go-ethereum/core/state_transition.go:buyGas

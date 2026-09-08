@@ -543,35 +543,41 @@ opcodes:
     note: constant — the configured base-fee sink, not a rotating proposer.
     src: crates/node/src/builder.rs:base_fee_sink_for_block
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    src: "crates/node/src/builder.rs:execute_transaction, crates/node/src/evm_executor.rs:execute_transaction_without_commit"
+    note: >-
+      NONCE ON FAILURE: PRESERVED, and there is no receipt because the transaction is not in
+      the block. `EvolvePayloadBuilder::build_payload` loops over the sequencer's list and
+      matches on `execute_transaction`; the `Err` arm is a `tracing::warn!` and nothing else
+      — no append, no receipt, no gas charge. Nothing is committed for it, because the
+      executor's own entry point is `execute_transaction_without_commit`: the block-gas
+      check and revm's validation (nonce, balance, fee cap) all return `Err` BEFORE any
+      state is written, and the caller only commits on `Ok`. So a transaction the sequencer
+      ordered but the EVM refuses — nonce already consumed, insufficient balance, gas price
+      below the base fee, gas limit over the block's remainder — leaves the account nonce
+      untouched and is freely resubmittable. A REVERT is different and ordinary: it returns
+      `Ok`, is appended, and gets a `status: 0` receipt with the nonce burned. The
+      distinctive part is not the nonce answer but the SILENCE around it. Rollkit is in the
+      "ordered then erased" class with Conflux, IOTA EVM and Artela, but the sender's nonce
+      is safe here in a way it is not on Artela — the transaction was never executed at all,
+      so there is nothing to be inconsistent about. The cost is only that the discrepancy
+  ordered_then_invalid:
+    verdict: erased
+    src: "crates/node/src/builder.rs:execute_transaction, crates/node/src/evm_executor.rs:execute_transaction_without_commit"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      between the sequencer's ordering and the EVM's block is recorded nowhere.
+
 fee_model:
   metering: standard EVM gas (upstream reth interpreter)
   fee_market: >-
     EIP-1559, with the elasticity multiplier, max-change denominator and
     initial base fee all overridable per deployment from the chainspec.
   extra_components:
-  - name: nonce on failure
-    src: "crates/node/src/builder.rs:execute_transaction, crates/node/src/evm_executor.rs:execute_transaction_without_commit"
-    note: >-
-      NONCE ON FAILURE: PRESERVED, and there is no receipt because the
-      transaction is not in the block. `EvolvePayloadBuilder::build_payload`
-      loops over the sequencer's list and matches on `execute_transaction`; the
-      `Err` arm is a `tracing::warn!` and nothing else — no append, no receipt,
-      no gas charge. Nothing is committed for it, because the executor's own
-      entry point is `execute_transaction_without_commit`: the block-gas check
-      and revm's validation (nonce, balance, fee cap) all return `Err` BEFORE any
-      state is written, and the caller only commits on `Ok`. So a transaction the
-      sequencer ordered but the EVM refuses — nonce already consumed,
-      insufficient balance, gas price below the base fee, gas limit over the
-      block's remainder — leaves the account nonce untouched and is freely
-      resubmittable. A REVERT is different and ordinary: it returns `Ok`, is
-      appended, and gets a `status: 0` receipt with the nonce burned.
-
-      The distinctive part is not the nonce answer but the SILENCE around it.
-      Rollkit is in the "ordered then erased" class with Conflux, IOTA EVM and
-      Artela, but the sender's nonce is safe here in a way it is not on Artela —
-      the transaction was never executed at all, so there is nothing to be
-      inconsistent about. The cost is only that the discrepancy between the
-      sequencer's ordering and the EVM's block is recorded nowhere.
   - name: base fee is credited, not burned
     severity: high
     note: see eips.1559 — the sink receives base_fee_per_gas * gas_used, verified to the wei.

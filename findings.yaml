@@ -808,9 +808,99 @@
     path is ERC-4337, not consensus, and 0 of 274 sampled transactions paid a zero gas
     price.
 
+- id: ordered-then-invalid
+  title: A transaction ordered before it is executed has seven different fates
+  axis: ordering
+  rank: 24
+  lede: >-
+    Mainnet checks nonce, balance and gas price *before* a transaction is ordered, so
+    "ordered but invalid" is not a state it can reach. Every chain that separates
+    ordering from execution has to invent an answer, and the rows here have invented
+    seven. There is no portable answer to "was my transaction included".
+  chains:
+    conflux: >-
+      **Erases it.** A third receipt outcome, `TransactionStatus::Skipped`, then deletes
+      the transaction from the block, the transaction index and
+      `eth_getTransactionReceipt` alike — so it is indistinguishable from a transaction
+      never submitted, forever.
+    iota-evm: >-
+      **Erases it.** Rejection happens at the ISC request layer before the EVM is
+      entered, so there is no receipt to write and none ever appears.
+    artela: >-
+      **Erases it.** The indexing event is emitted from the *last* ante decorator, so an
+      ante failure leaves the CometBFT index with no entry while the transaction sits
+      provably in the block.
+    rollkit: >-
+      **Erases it.** The builder logs a `warn!` and does not append;
+      `eth_getTransactionReceipt` returns null forever.
+    taraxa: >-
+      **The counter-pole:** no skip path at all. The transaction is included, charged
+      the full gas limit, and gets a `status: 0` receipt.
+    autonomys: >-
+      **Escalates.** The offending transaction poisons its whole `Bundle`, every valid
+      co-passenger is dropped, and the operator is automatically slashed under
+      `SlashedReason::InvalidBundle`.
+    berachain: >-
+      **Rejects the block.** The EVM sits behind the Engine API, whose `newPayload`
+      verdict has no per-transaction skip, so `ProcessProposal` returns REJECT and the
+      client sees nothing at all.
+    rise: >-
+      **Makes the state unreachable** — it admits synchronously and publishes only after
+      executing, so the ordered-but-invalid state never exists to be observed.
+    megaeth: >-
+      **Makes the state unreachable** by the opposite route — the state is created
+      inside the builder and resolved before publication.
+    monad: >-
+      **Charges it**, inside execution.
+    hedera: >-
+      **Bills it without ever executing it, and the bill may land on the node.** Fees
+      are charged before the handler is reached, and the split is by *who was negligent*
+      rather than by what failed: a due-diligence failure (expiry re-checked against the
+      consensus clock, a bad payer signature) debits the submitting **node's** account
+      and the payer nothing, while a duplicate or an unaffordable service fee debits the
+      **payer** and never calls the handler. It is the only row where the node pays for
+      the sender's invalid transaction. A record always exists, because Hedera cannot
+      drop something that reached consensus — but for a wrapped Ethereum transaction the
+      Ethereum hash is written only inside the handler, so the `eth_*` view is null
+      forever anyway.
+  body: >-
+    Mainnet checks nonce, balance and gas price *before* a transaction is ordered, so
+    "ordered but invalid" is not a state it can reach. Every chain that separates
+    ordering from execution has to invent an answer, and ten rows here have invented
+    seven. **Erasure, by four unrelated mechanisms:** Conflux defines a third receipt
+    outcome, `TransactionStatus::Skipped`, then deletes the transaction from the block,
+    the transaction index and `eth_getTransactionReceipt` alike; IOTA EVM rejects at the
+    ISC request layer before the EVM is entered, so there is no receipt to write; Artela
+    emits its indexing event from the *last* ante decorator, so an ante failure leaves
+    the CometBFT index with no entry while the transaction sits provably in the block;
+    Rollkit's builder logs a `warn!` and does not append. In all four,
+    `eth_getTransactionReceipt` returns null forever and the transaction is
+    indistinguishable from one never submitted. **Taraxa is the counter-pole:** no skip
+    path at all — included, charged the full gas limit, `status: 0`. **Autonomys
+    escalates:** the offending transaction poisons its whole `Bundle`, every valid
+    co-passenger is dropped, and the operator is automatically slashed under
+    `SlashedReason::InvalidBundle`. **Berachain rejects the block:** the EVM sits behind
+    the Engine API, whose `newPayload` verdict has no per-transaction skip, so
+    `ProcessProposal` returns REJECT and the client sees nothing at all. **RISE and
+    MegaETH make the state unreachable**, by opposite routes — RISE admits synchronously
+    and publishes only after executing, MegaETH creates the state inside the builder and
+    resolves it before publication. **Monad charges it**, inside execution. **Hedera bills
+    it without ever executing it, and the bill may land on the node**: fees are charged
+    before the handler is reached, and the split is by *who was negligent* rather than by
+    what failed — a due-diligence failure (expiry re-checked against the consensus clock, a
+    bad payer signature) debits the submitting **node's** account and the payer nothing,
+    while a duplicate or an unaffordable service fee debits the **payer** and never calls
+    the handler. It is the only row where the node pays for the sender's invalid
+    transaction. A record always exists, because Hedera cannot drop something that reached
+    consensus — but for a wrapped Ethereum transaction the Ethereum hash is written only
+    inside the handler, so the `eth_*` view is null forever anyway. There is no portable
+    answer to "was my transaction included", and a null receipt means "still pending" on
+    some of these chains, "gone forever" on others, and "gone, and you were charged" on
+    one.
+
 - id: cometbft-el-boundary
   title: Same consensus engine, opposite failure mode — the Engine API is the discriminator
-  axis: lineage
+  axis: ordering
   rank: 25
   lede: >-
     Two chains run the same consensus engine, CometBFT, and must answer the same
@@ -849,7 +939,7 @@
 
 - id: finality-tag-is-not-finality
   title: The `finalized` block tag means something different on every chain that has one
-  axis: fees-envelope
+  axis: ordering
   rank: 26
   lede: >-
     Any chain speaking the Engine API inherits Ethereum's `safe` and `finalized` block
@@ -900,7 +990,7 @@
 
 - id: preconfirmation-sentinels
   title: Three sentinels for "this block does not exist yet", and one reaches unmodified clients
-  axis: fees-envelope
+  axis: ordering
   rank: 27
   lede: >-
     A chain that publishes a transaction's result before its enclosing block is sealed
@@ -940,7 +1030,7 @@
 
 - id: dag-ordering-confiscates
   title: Chains that fix inclusion before balances are known confiscate rather than reject
-  axis: fees-envelope
+  axis: ordering
   rank: 28
   lede: >-
     On mainnet a transaction that cannot cover `gas_limit * gas_price` is simply not
@@ -976,7 +1066,7 @@
 
 - id: duplicate-transactions
   title: What counts as "the same transaction" is not the same question on every chain
-  axis: tx-types
+  axis: ordering
   rank: 29
   lede: >-
     Where many proposers build blocks at once, the same transaction landing in more than
@@ -1082,7 +1172,7 @@
 
 - id: nonce-burned-without-execution
   title: A failed transaction may spend your nonce and show you nothing
-  axis: fees-envelope
+  axis: ordering
   rank: 30
   lede: >-
     On mainnet the question cannot arise: an invalid transaction is never included, so

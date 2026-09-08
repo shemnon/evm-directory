@@ -354,27 +354,35 @@ opcodes:
     behavioural sample, not an enumeration.
   src_live: "eth_call 0x4360019003405f5260205ff3 (BLOCKHASH(number-1)) @ 20239360 -> 0x381b2539b4e614c13c5c787fa2eeacd62e038e5450030295cdcb17f112b2dfac == eth_getBlockByNumber(20239360).parentHash; eth_call 0x465f5260205ff3 (CHAINID) @ 20239360 -> 0x1039; eth_call 0x445f5260205ff3 (PREVRANDAO) @ 20239360 -> the header mixHash"
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    src_live: "eth_sendRawTransactionSync from a fresh empty account @ 20277800 -> -32003 'insufficient funds for gas * price + value: have 0 want 1000009876132000'; gasPrice 1 wei -> -32000 'max fee per gas less than block base fee'; chainId 1 -> -32000 'invalid chain ID'; eth_getTransactionReceipt for all three @ 20277800 -> null; eth_getTransactionCount for that account @ 20277800 -> 0x0"
+    note: >-
+      NONCE ON FAILURE: PRESERVED, because the ordered-but-invalid state cannot arise. RISE
+      does not separate ordering from execution: a shred is published only AFTER execution,
+      and admission is synchronous, so an invalid transaction is rejected at
+      `eth_sendRawTransaction` / `eth_sendRawTransactionSync` and never enters an ordering.
+      Probed live from a freshly generated, correctly signed, empty account — insufficient
+      balance, gas price below the base fee, and wrong chain id each returned a JSON-RPC
+      error, produced no receipt and emitted no shred; the account's nonce stayed at 0. This
+      is the mainnet answer reached by a different route, and the opposite pole from
+      Conflux, IOTA EVM and Artela, which order first and erase afterwards. A transaction
+      that IS admitted and then reverts is ordinary: `status: 0x0`, gas charged, nonce
+  ordered_then_invalid:
+    verdict: unreachable
+    src_live: "eth_sendRawTransactionSync from a fresh empty account @ 20277800 -> -32003 'insufficient funds for gas * price + value: have 0 want 1000009876132000'; gasPrice 1 wei -> -32000 'max fee per gas less than block base fee'; chainId 1 -> -32000 'invalid chain ID'; eth_getTransactionReceipt for all three @ 20277800 -> null; eth_getTransactionCount for that account @ 20277800 -> 0x0"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      burned, receipt present (103 of 2,452 sampled shred receipts).
+
 fee_model:
   metering: "standard EVM gas, one dimension"
   fee_market: "EIP-1559 with elasticity 1 and denominator 1, floored by Jovian minBaseFee; base fee is constant at 415,300 wei in practice"
   block_gas_limit: 1500000000
   extra_components:
-  - name: nonce on failure
-    src_live: "eth_sendRawTransactionSync from a fresh empty account @ 20277800 -> -32003 'insufficient funds for gas * price + value: have 0 want 1000009876132000'; gasPrice 1 wei -> -32000 'max fee per gas less than block base fee'; chainId 1 -> -32000 'invalid chain ID'; eth_getTransactionReceipt for all three @ 20277800 -> null; eth_getTransactionCount for that account @ 20277800 -> 0x0"
-    note: >-
-      NONCE ON FAILURE: PRESERVED, because the ordered-but-invalid state cannot
-      arise. RISE does not separate ordering from execution: a shred is published
-      only AFTER execution, and admission is synchronous, so an invalid
-      transaction is rejected at `eth_sendRawTransaction` /
-      `eth_sendRawTransactionSync` and never enters an ordering. Probed live from
-      a freshly generated, correctly signed, empty account — insufficient
-      balance, gas price below the base fee, and wrong chain id each returned a
-      JSON-RPC error, produced no receipt and emitted no shred; the account's
-      nonce stayed at 0. This is the mainnet answer reached by a different route,
-      and the opposite pole from Conflux, IOTA EVM and Artela, which order first
-      and erase afterwards. A transaction that IS admitted and then reverts is
-      ordinary: `status: 0x0`, gas charged, nonce burned, receipt present (103 of
-      2,452 sampled shred receipts).
   - name: L1 data fee
     status: removed
     severity: high

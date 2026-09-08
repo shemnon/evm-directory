@@ -72,6 +72,14 @@ Categorical summaries only: **by section** (entries, which chains) and **by chai
 (entries, which sections), then a compact list of every entry linking to the chain page.
 No note text — detail lives in the drill-down. No statistics tiles.
 
+## Ordering & execution — `axes/ordering.html`
+
+One row per lifecycle question, chains as columns, each cell a `verdict:` from
+`tx_lifecycle:`. The `ethereum` column is the baseline — mainnet reaches none of these
+states, because validation precedes ordering — and every other column is a delta against
+it. An empty cell is `—` ("not established"), never `=` ("as mainnet"): silence here is
+absence of evidence, and the two must not look alike.
+
 ## Method is not a page
 
 The site carries no page about itself. `SCHEMA.md`, `SITE.md` and `METHOD.md` are

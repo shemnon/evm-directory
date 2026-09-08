@@ -123,67 +123,6 @@ consensus:
     `floor(consensusSecond / blockPeriod)` (blockPeriod = 2 s) increases while the node is
     already iterating an ordered round. Block number is therefore a COUNT OF TWO-SECOND
     BUCKETS, not a chain of committed objects, and no quorum ever votes on one.
-  ordering:
-    note: >-
-      (a) ORDERING COMMITS BEFORE EXECUTION, ABSOLUTELY AND IRREVOCABLY. Virtual voting
-      finalises the order of a round's transactions with no reference whatsoever to their
-      content, validity, payer balance, nonce or gas. `HandleWorkflow.handleRound` then
-      iterates the already-ordered rounds and calls `handlePlatformTransaction` for each
-      transaction in turn, using the PLATFORM-ASSIGNED consensus time (HIP-993) as
-      `consensusNow`. Ordering and execution are not merely separated, they are performed
-      by different modules with no feedback path: nothing execution discovers can change,
-      delay, reorder or remove a transaction that consensus has already timestamped.
-      Unlike Monad, where consensus commits a list and the state root catches up three
-      heights later, there is no state root at all to catch up — see `header_fields`.
-    parallelism: >-
-      (b) EXECUTION IS SEQUENTIAL AND DETERMINISTIC. `handleRound` runs one
-      `handlePlatformTransaction` at a time in consensus order on a single handle thread;
-      there is no optimistic execution, no speculative parallelism and no conflict
-      resolution, so the "would two implementations disagree" question does not arise from
-      scheduling. The parallelism in Hedera is in gossip and in virtual voting, both of
-      which run BEFORE and INDEPENDENTLY of execution.
-    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/HandleWorkflow.java:handlePlatformTransaction, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch"
-  ordered_then_invalid:
-    answer: "charged a fee anyway, with a record — and WHO is charged depends on WHY it is invalid"
-    severity: high
-    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:chargeCreator, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/dispatch/DispatchValidator.java:creatorErrorIfKnown, hedera-node/hedera-app/src/main/java/com/hedera/node/app/fees/AppFeeCharging.java:charge"
-    note: >-
-      (c) THE CENTRAL QUESTION, and Hedera's answer is a THIRD ONE the dataset did not yet
-      hold: the transaction is neither erased nor executed-and-failed — it is BILLED
-      WITHOUT BEING EXECUTED, and the bill may land on the SUBMITTING NODE instead of the
-      sender. `DispatchProcessor.processDispatch` has exactly two arms.
-      (1) `!validation.creatorDidDueDiligence()` -> `chargeCreator`, which charges
-      `dispatch.fees().networkFee()` to THE NODE ACCOUNT that submitted the transaction and
-      charges the payer NOTHING. This arm covers a transaction whose valid-start window has
-      expired by the time it reaches consensus (`getExpiryError` re-runs `checkTimeBox`
-      against `consensusNow`), an invalid payer signature, and every ingest-level due
-      diligence failure. The node eats the cost of having relayed something that consensus
-      later found unusable.
-      (2) otherwise `chargePayer(...)` runs FIRST, then `alreadyFailed(...)` decides whether
-      `tryHandle` is called at all. A payer who cannot cover the service fee, an
-      unauthorised payer, a failed signature check, or a DUPLICATE all short-circuit here:
-      fees are already taken, `streamBuilder().status(...)` is set to the failure code, and
-      the handler NEVER RUNS. If `tryHandle` does run and throws `HandleException`, the
-      stack is rolled back and `chargePayer` is called AGAIN, so a transaction that fails
-      inside execution is charged too.
-      In all cases a RECORD IS WRITTEN. Hedera has no notion of "dropped without trace"
-      once consensus has been reached; the record stream contains an entry with a
-      `ResponseCodeEnum` status for every transaction that got a consensus timestamp.
-      What an ETHEREUM client sees is a different question — see `gotchas`.
-  preconfirmation:
-    answer: "none, and none needed"
-    note: >-
-      (d) THERE IS NO PRECONFIRMATION AND NO REORG. Hashgraph gives aBFT finality in the
-      round in which a transaction receives its consensus timestamp; there is no
-      probabilistic head, no fork choice and no state that can be revisited. Correspondingly
-      there is nothing here of the MegaETH `0xffff..ff` receipt shape. The honest answer to
-      "can a receipt change later" is NO. What DOES change is availability: the relay serves
-      `eth_getTransactionReceipt` out of the MIRROR NODE, which ingests record files
-      asynchronously, so a receipt is `null` for a while after the transaction is already
-      irreversibly final. A null receipt on Hedera means "the mirror node has not caught up
-      yet", never "it might still be pending" and never "it is gone forever" — the opposite
-      of Conflux, IOTA EVM, Artela and Rollkit, where null is permanent.
-    src_live: "eth_getBlockByNumber @ 99380446 for tags latest, safe, finalized and pending returned four byte-identical block objects (number 0x5ec6cea in that sample); there is no lag between them because there is no unfinalised state"
 
 baseline_fork: cancun
 baseline_note: >-
@@ -462,6 +401,98 @@ non_evm_transactions:
   - {id: 72, name: CrsPublication, status: added, note: "hinTS/history-proof ceremony traffic — consensus machinery submitted as ordinary transactions"}
   full_list_src: hapi/hedera-protobuf-java-api/src/main/proto/services/transaction.proto:ethereumTransaction
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    severity: high
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeForGas, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeGasForAbortedTransaction, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/TransactionProcessor.java:computeInvolvedPartiesOrAbort, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/ContextTransactionProcessor.java:maybeChargeFeesAndReturnOutcome"
+    note: >-
+      NONCE ON FAILURE: PRESERVED IN BOTH FAILURE MODES, AND HBAR IS TAKEN ANYWAY. Hedera
+      keeps two independent counters and only one of them is an EVM nonce, so the axis has
+      to be answered twice. THE EVM NONCE moves in exactly one place:
+      `CustomGasCharging.chargeForGas` does `sender.incrementNonce()` immediately after the
+      gas charge, and only `if (transaction.isEthereumTransaction())`. Everything that
+      aborts before that line leaves it alone. A WRONG NONCE ABORTS BEFORE THAT LINE.
+      `computeInvolvedPartiesOrAbort` runs first and does `validateTrue(transaction.nonce()
+      == parties.sender().getNonce(), WRONG_NONCE)`; the HandleException it throws never
+      reaches `chargeForGas`. `ContextTransactionProcessor.maybeChargeFeesAndReturnOutcome`
+      then calls `chargeGasForAbortedTransaction`, which for an Ethereum transaction bills
+      the intrinsic gas TO THE RELAYER, not to the sender, and does NOT touch the nonce —
+      and the aborted result carries `withSignerNonce(sender.getNonce())`, the unchanged
+      value. SENDER'S NONCE PRESERVED; the relayer pays. A DUPLICATE NEVER EXECUTES, so the
+      EVM nonce is likewise untouched. `DispatchValidator` short-circuits on
+      `DUPLICATE_TRANSACTION` and `tryHandle` IS NEVER CALLED, so no `chargeForGas`, no
+      `incrementNonce`. But the PAYER IS STILL BILLED the node and network fees (service
+      waived), and because `ethereum_hash` is written into the record only by
+      `EthereumTransactionHandler.handle`, the duplicate's record has no Ethereum hash — so
+      `eth_getTransactionByHash` and `eth_getTransactionReceipt` are NULL for that
+      occurrence forever while the HBAR debit is real and visible over HAPI. WHY IT CANNOT
+      BECOME ARTELA'S BUG. Hedera's transaction IDENTITY is `(payer account, valid-start
+      timestamp)`, not `(sender, nonce)`. Duplicate detection, fee charging and expiry all
+      key on that TransactionID, and it is an entirely separate mechanism from the EVM nonce
+      — neither one can advance the other. So the charged-but-invisible failure that strands
+      a sender elsewhere strands nothing here: the money is gone, but the nonce sequence is
+      intact and the next transaction goes through. Re-broadcasting the SAME signed Ethereum
+      transaction is not even a Hedera duplicate — it gets a new valid-start and therefore a
+      new TransactionID — so it is dispatched, fails `WRONG_NONCE`, and is billed by the
+  ordering:
+    verdict: commits_first
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/HandleWorkflow.java:handlePlatformTransaction, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch"
+    note: >-
+      (a) ORDERING COMMITS BEFORE EXECUTION, ABSOLUTELY AND IRREVOCABLY. Virtual voting
+      finalises the order of a round's transactions with no reference whatsoever to their
+      content, validity, payer balance, nonce or gas. `HandleWorkflow.handleRound` then
+      iterates the already-ordered rounds and calls `handlePlatformTransaction` for each
+      transaction in turn, using the PLATFORM-ASSIGNED consensus time (HIP-993) as
+      `consensusNow`. Ordering and execution are not merely separated, they are performed by
+      different modules with no feedback path: nothing execution discovers can change,
+      delay, reorder or remove a transaction that consensus has already timestamped. Unlike
+      Monad, where consensus commits a list and the state root catches up three heights
+      later, there is no state root at all to catch up — see `header_fields`.
+  ordered_then_invalid:
+    verdict: billed
+    answer: "charged a fee anyway, with a record — and WHO is charged depends on WHY it is invalid"
+    severity: high
+    src: "hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:processDispatch, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/DispatchProcessor.java:chargeCreator, hedera-node/hedera-app/src/main/java/com/hedera/node/app/workflows/handle/dispatch/DispatchValidator.java:creatorErrorIfKnown, hedera-node/hedera-app/src/main/java/com/hedera/node/app/fees/AppFeeCharging.java:charge"
+    note: >-
+      (c) THE CENTRAL QUESTION, and Hedera's answer is a THIRD ONE the dataset did not yet
+      hold: the transaction is neither erased nor executed-and-failed — it is BILLED WITHOUT
+      BEING EXECUTED, and the bill may land on the SUBMITTING NODE instead of the sender.
+      `DispatchProcessor.processDispatch` has exactly two arms. (1)
+      `!validation.creatorDidDueDiligence()` -> `chargeCreator`, which charges
+      `dispatch.fees().networkFee()` to THE NODE ACCOUNT that submitted the transaction and
+      charges the payer NOTHING. This arm covers a transaction whose valid-start window has
+      expired by the time it reaches consensus (`getExpiryError` re-runs `checkTimeBox`
+      against `consensusNow`), an invalid payer signature, and every ingest-level due
+      diligence failure. The node eats the cost of having relayed something that consensus
+      later found unusable. (2) otherwise `chargePayer(...)` runs FIRST, then
+      `alreadyFailed(...)` decides whether `tryHandle` is called at all. A payer who cannot
+      cover the service fee, an unauthorised payer, a failed signature check, or a DUPLICATE
+      all short-circuit here: fees are already taken, `streamBuilder().status(...)` is set
+      to the failure code, and the handler NEVER RUNS. If `tryHandle` does run and throws
+      `HandleException`, the stack is rolled back and `chargePayer` is called AGAIN, so a
+      transaction that fails inside execution is charged too. In all cases a RECORD IS
+      WRITTEN. Hedera has no notion of "dropped without trace" once consensus has been
+      reached; the record stream contains an entry with a `ResponseCodeEnum` status for
+      every transaction that got a consensus timestamp. What an ETHEREUM client sees is a
+      different question — see `gotchas`.
+  preconfirmation:
+    verdict: none
+    answer: "none, and none needed"
+    src_live: "eth_getBlockByNumber @ 99380446 for tags latest, safe, finalized and pending returned four byte-identical block objects (number 0x5ec6cea in that sample); there is no lag between them because there is no unfinalised state"
+    note: >-
+      (d) THERE IS NO PRECONFIRMATION AND NO REORG. Hashgraph gives aBFT finality in the
+      round in which a transaction receives its consensus timestamp; there is no
+      probabilistic head, no fork choice and no state that can be revisited. Correspondingly
+      there is nothing here of the MegaETH `0xffff..ff` receipt shape. The honest answer to
+      "can a receipt change later" is NO. What DOES change is availability: the relay serves
+      `eth_getTransactionReceipt` out of the MIRROR NODE, which ingests record files
+      asynchronously, so a receipt is `null` for a while after the transaction is already
+      irreversibly final. A null receipt on Hedera means "the mirror node has not caught up
+      yet", never "it might still be pending" and never "it is gone forever" — the opposite
+      of Conflux, IOTA EVM, Artela and Rollkit, where null is permanent.
+      other mechanism entirely.
+
 fee_model:
   severity: high
   note: >-
@@ -526,49 +557,6 @@ fee_model:
       that built the transaction used 1.11e12. Same failure shape as IOTA EVM's zero
       `GASPRICE`, one field over.
   extra_components:
-  - name: nonce on failure
-    severity: high
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeForGas, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCharging.java:chargeGasForAbortedTransaction, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/TransactionProcessor.java:computeInvolvedPartiesOrAbort, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/ContextTransactionProcessor.java:maybeChargeFeesAndReturnOutcome"
-    note: >-
-      NONCE ON FAILURE: PRESERVED IN BOTH FAILURE MODES, AND HBAR IS TAKEN
-      ANYWAY. Hedera keeps two independent counters and only one of them is an
-      EVM nonce, so the axis has to be answered twice.
-
-      THE EVM NONCE moves in exactly one place: `CustomGasCharging.chargeForGas`
-      does `sender.incrementNonce()` immediately after the gas charge, and only
-      `if (transaction.isEthereumTransaction())`. Everything that aborts before
-      that line leaves it alone.
-
-      A WRONG NONCE ABORTS BEFORE THAT LINE. `computeInvolvedPartiesOrAbort`
-      runs first and does
-      `validateTrue(transaction.nonce() == parties.sender().getNonce(),
-      WRONG_NONCE)`; the HandleException it throws never reaches `chargeForGas`.
-      `ContextTransactionProcessor.maybeChargeFeesAndReturnOutcome` then calls
-      `chargeGasForAbortedTransaction`, which for an Ethereum transaction bills
-      the intrinsic gas TO THE RELAYER, not to the sender, and does NOT touch the
-      nonce — and the aborted result carries `withSignerNonce(sender.getNonce())`,
-      the unchanged value. SENDER'S NONCE PRESERVED; the relayer pays.
-
-      A DUPLICATE NEVER EXECUTES, so the EVM nonce is likewise untouched.
-      `DispatchValidator` short-circuits on `DUPLICATE_TRANSACTION` and
-      `tryHandle` IS NEVER CALLED, so no `chargeForGas`, no
-      `incrementNonce`. But the PAYER IS STILL BILLED the node and network fees
-      (service waived), and because `ethereum_hash` is written into the record
-      only by `EthereumTransactionHandler.handle`, the duplicate's record has no
-      Ethereum hash — so `eth_getTransactionByHash` and
-      `eth_getTransactionReceipt` are NULL for that occurrence forever while the
-      HBAR debit is real and visible over HAPI.
-
-      WHY IT CANNOT BECOME ARTELA'S BUG. Hedera's transaction IDENTITY is
-      `(payer account, valid-start timestamp)`, not `(sender, nonce)`. Duplicate
-      detection, fee charging and expiry all key on that TransactionID, and it is
-      an entirely separate mechanism from the EVM nonce — neither one can advance
-      the other. So the charged-but-invisible failure that strands a sender
-      elsewhere strands nothing here: the money is gone, but the nonce sequence
-      is intact and the next transaction goes through. Re-broadcasting the SAME
-      signed Ethereum transaction is not even a Hedera duplicate — it gets a new
-      valid-start and therefore a new TransactionID — so it is dispatched, fails
-      `WRONG_NONCE`, and is billed by the other mechanism entirely.
   - name: HAPI fee (node + network + service)
     note: >-
       Every transaction, EVM or not, is charged a three-part HAPI fee ON TOP OF GAS: the

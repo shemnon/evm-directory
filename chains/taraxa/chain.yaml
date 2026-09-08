@@ -763,6 +763,41 @@ opcodes:
      note: "pre-Cancun semantics: unconditional account deletion, plus the 24,000-gas refund that London removed.",
      src: "taraxa-evm/core/vm/instructions.go:opSuicide"}
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: burned
+    severity: high
+    src: "taraxa-evm/core/vm/evm.go:ErrInsufficientBalanceForGas, taraxa-evm/core/vm/evm.go:ErrNonceTooLow, taraxa-evm/core/vm/evm.go:ErrIntrinsicGas, taraxa-evm/core/vm/evm.go:consensusErr"
+    note: >-
+      NONCE ON FAILURE: BURNED — and from Cornus it is SET, not incremented, so one failing
+      transaction can burn an unbounded range of nonces. Every case below produces a
+      `status: 0` RECEIPT: `EVM.Main` returns a `ConsensusErr`, `finalize_` turns that into
+      the status bit, and the transaction is in the block, the transactions trie and the
+      receipts trie. There is no skip path and no erasure, which is the opposite pole from
+      Conflux. CANNOT AFFORD `gas_limit * gas_price` — the transaction is NOT rejected.
+      `available_funds_gas = balance / gas_price` is computed, that much is subtracted
+      (everything but sub-gas-price dust), and from Cornus, if `tx.nonce >= account.nonce`,
+      `caller.SetNonce(tx.Nonce + 1)`. Balance confiscated, NONCE BURNED, receipt with
+      `gasUsed = available_funds_gas`. INTRINSIC GAS NOT COVERED, or `gas_cap <
+      gas_intrinsic` — from Cornus both arms call `caller.SetNonce(tx.Nonce + 1)` before
+      returning. FULL GAS LIMIT charged, NONCE BURNED, receipt. NONCE TOO LOW — the fee is
+      already subtracted, then `consensusErr(ret, gas_cap, ErrNonceTooLow)` returns WITHOUT
+      touching the nonce (it is already ahead). Full gas limit charged, account nonce
+      unchanged, receipt. THE SET-NOT-INCREMENT IS THE DANGEROUS PART. Nonce skipping is
+      permanently enabled — the `tx.nonce > sender_nonce + 1` check is commented out above
+      the line "Nonce skipping is permanently enabled now" — and every write is
+      `SetNonce(tx.Nonce + 1)`, on the success path as well as the failure paths. So a
+      transaction with nonce 1,000,000 from an account at nonce 3 burns nonces 3 through
+      999,999 in one shot, whether it succeeds or dies underfunded.
+  ordered_then_invalid:
+    verdict: charged
+    src: "taraxa-evm/core/vm/evm.go:ErrInsufficientBalanceForGas, taraxa-evm/core/vm/evm.go:ErrNonceTooLow, taraxa-evm/core/vm/evm.go:ErrIntrinsicGas, taraxa-evm/core/vm/evm.go:consensusErr"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      `eth_getTransactionCount` is a next-nonce oracle here and nothing else.
+
 fee_model:
   metering: single gas dimension, Constantinople schedule with EIP-1884's three prices
   fee_market: >-
@@ -782,40 +817,6 @@ fee_model:
       fees. `block.coinbase` therefore does not identify who was paid, which is the
       opposite of every fork-of-geth row in this dataset.
     src: "taraxa-node/libraries/core_libs/consensus/src/rewards/block_stats.cpp:initFeeByTrxHash, taraxa-node/libraries/core_libs/consensus/src/rewards/block_stats.cpp:addTransaction"
-  - name: nonce on failure
-    severity: high
-    src: "taraxa-evm/core/vm/evm.go:ErrInsufficientBalanceForGas, taraxa-evm/core/vm/evm.go:ErrNonceTooLow, taraxa-evm/core/vm/evm.go:ErrIntrinsicGas, taraxa-evm/core/vm/evm.go:consensusErr"
-    note: >-
-      NONCE ON FAILURE: BURNED — and from Cornus it is SET, not incremented, so
-      one failing transaction can burn an unbounded range of nonces. Every case
-      below produces a `status: 0` RECEIPT: `EVM.Main` returns a `ConsensusErr`,
-      `finalize_` turns that into the status bit, and the transaction is in the
-      block, the transactions trie and the receipts trie. There is no skip path
-      and no erasure, which is the opposite pole from Conflux.
-
-      CANNOT AFFORD `gas_limit * gas_price` — the transaction is NOT rejected.
-      `available_funds_gas = balance / gas_price` is computed, that much is
-      subtracted (everything but sub-gas-price dust), and from Cornus, if
-      `tx.nonce >= account.nonce`, `caller.SetNonce(tx.Nonce + 1)`. Balance
-      confiscated, NONCE BURNED, receipt with `gasUsed = available_funds_gas`.
-
-      INTRINSIC GAS NOT COVERED, or `gas_cap < gas_intrinsic` — from Cornus both
-      arms call `caller.SetNonce(tx.Nonce + 1)` before returning. FULL GAS LIMIT
-      charged, NONCE BURNED, receipt.
-
-      NONCE TOO LOW — the fee is already subtracted, then
-      `consensusErr(ret, gas_cap, ErrNonceTooLow)` returns WITHOUT touching the
-      nonce (it is already ahead). Full gas limit charged, account nonce
-      unchanged, receipt.
-
-      THE SET-NOT-INCREMENT IS THE DANGEROUS PART. Nonce skipping is permanently
-      enabled — the `tx.nonce > sender_nonce + 1` check is commented out above
-      the line "Nonce skipping is permanently enabled now" — and every write is
-      `SetNonce(tx.Nonce + 1)`, on the success path as well as the failure paths.
-      So a transaction with nonce 1,000,000 from an account at nonce 3 burns
-      nonces 3 through 999,999 in one shot, whether it succeeds or dies
-      underfunded. `eth_getTransactionCount` is a next-nonce oracle here and
-      nothing else.
   - name: "a failed PRECOMPILE keeps its remaining gas"
     note: >-
       `EVM.Call` zeroes the remaining gas on error only when `precompiled == nil`.

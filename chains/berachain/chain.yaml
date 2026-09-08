@@ -829,38 +829,43 @@ opcodes:
     No opcode divergence. CLZ (EIP-7939) is present because Osaka is, and was
     verified live. Berachain's EVM-level deltas are limits and fees, not opcodes.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    src: "src/engine/builder.rs:default_berachain_payload, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
+    note: >-
+      NONCE ON FAILURE: PRESERVED, and there is no receipt because there is no block.
+      Berachain does not separate ordering from execution in the way that makes this
+      question dangerous elsewhere: the proposer's own EL builds the list BY executing as it
+      appends, so an invalid transaction never reaches a payload. In
+      `default_berachain_payload`, `execute_transaction` returning `InvalidTx` is handled
+      inline — `is_nonce_too_low()` logs "skipping nonce too low transaction" and
+      `continue`s, anything else calls `best_txs.mark_invalid` (dropping the transaction's
+      descendants) and `continue`s. Nothing is committed for either, so the account nonce is
+      untouched and the transaction stays resubmittable at the same nonce. IF ONE SURVIVES
+      INTO A PROPOSED BLOCK ANYWAY — a faulty or Byzantine proposer — `engine_newPayload` is
+      ALL-OR-NOTHING: there is no per-transaction skip, the payload is INVALID, and
+      `process_proposal` answers CometBFT with `PROCESS_PROPOSAL_STATUS_REJECT`. beacon-kit
+      ships `TestProcessProposal_BadBlock_IsRejected` for exactly this case. The height is
+      re-proposed by the next proposer, and single-slot finality means the committed chain
+      never contains the bad block. So the innocent co-passengers of the invalid transaction
+      also keep their nonces — nothing was executed — and an RPC client observes nothing at
+      all: no receipt, no status-0 receipt, no orphan block, no reorg. This is the benign
+      pole of the axis, and it is the direct opposite of Artela, where the transaction is in
+  ordered_then_invalid:
+    verdict: block_rejected
+    src: "src/engine/builder.rs:default_berachain_payload, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      a committed block, its nonce is spent, and the RPC hides it.
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 with a per-fork base-fee floor and a 6x slower change denominator"
   src: "src/chainspec/mod.rs:next_block_base_fee"
   extra_components:
-    - name: nonce on failure
-      src: "src/engine/builder.rs:default_berachain_payload, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
-      note: >-
-        NONCE ON FAILURE: PRESERVED, and there is no receipt because there is no
-        block. Berachain does not separate ordering from execution in the way that
-        makes this question dangerous elsewhere: the proposer's own EL builds the
-        list BY executing as it appends, so an invalid transaction never reaches a
-        payload. In `default_berachain_payload`, `execute_transaction` returning
-        `InvalidTx` is handled inline — `is_nonce_too_low()` logs "skipping nonce
-        too low transaction" and `continue`s, anything else calls
-        `best_txs.mark_invalid` (dropping the transaction's descendants) and
-        `continue`s. Nothing is committed for either, so the account nonce is
-        untouched and the transaction stays resubmittable at the same nonce.
-
-        IF ONE SURVIVES INTO A PROPOSED BLOCK ANYWAY — a faulty or Byzantine
-        proposer — `engine_newPayload` is ALL-OR-NOTHING: there is no
-        per-transaction skip, the payload is INVALID, and
-        `process_proposal` answers CometBFT with
-        `PROCESS_PROPOSAL_STATUS_REJECT`. beacon-kit ships
-        `TestProcessProposal_BadBlock_IsRejected` for exactly this case. The height
-        is re-proposed by the next proposer, and single-slot finality means the
-        committed chain never contains the bad block. So the innocent co-passengers
-        of the invalid transaction also keep their nonces — nothing was executed —
-        and an RPC client observes nothing at all: no receipt, no status-0 receipt,
-        no orphan block, no reorg. This is the benign pole of the axis, and it is
-        the direct opposite of Artela, where the transaction is in a committed
-        block, its nonce is spent, and the RPC hides it.
     - name: base-fee floor
       src: "src/chainspec/mod.rs:next_block_base_fee"
       note: >-

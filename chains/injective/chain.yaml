@@ -749,71 +749,58 @@ opcodes:
     overrides of the framework's values, and two of them (BASEFEE, GASLIMIT)
     disagree with the header field that names the same quantity.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: burned
+    severity: high
+    src: "injective-chain/modules/evm/ante/eth_ante.go:CheckEthSenderNonce, injective-chain/modules/evm/ante/eth_ante.go:NewEthAnteHandler, injective-chain/modules/evm/keeper/msg_server.go:EthereumTx, injective-chain/modules/evm/keeper/state_transition.go:ApplyTransaction, injective-chain/modules/evm/rpc/backend/blocks.go:EthMsgsFromTendermintBlock, injective-chain/modules/evm/rpc/backend/tx_info.go:GetTransactionReceipt"
+    note: >-
+      NONCE ON FAILURE: BURNED, and Injective is a PARTIAL version of the framework's
+      erasure — checked against Injective's own tree, not inherited on faith, because
+      Injective does NOT run the framework's ante chain or its RPC filter. The nonce lives
+      in the ante handler. `NewEthAnteHandler` runs Injective's own hand-rolled sequence —
+      ValidateEthBasic, VerifyEthSig, VerifyEthAccount, CheckEthCanTransfer,
+      CheckEthGasConsume, then `CheckEthSenderNonce`, which merges the equality check into
+      the increment ("we merged the nonce verification to nonce increment") and calls
+      `acc.SetSequence(nonce + 1)`. There is no `MonoDecorator` and no `IncrementNonce` in
+      this tree. Cosmos SDK commits the ante writes before running the message, so past that
+      point the fee deduction and the bumped sequence stand whatever execution does. Three
+      outcomes: (1) ANTE FAILURE — wrong nonce, bad signature, cannot afford the fee, cannot
+      transfer. The ante cache is discarded: NONCE PRESERVED, no fee taken. No `ethereum_tx`
+      event is ever emitted, so `eth_getTransactionReceipt` is NULL. (2) EVM REVERT /
+      out-of-gas inside the EVM — ApplyTransaction returns a response carrying `VmError`,
+      the msg server emits the event, ABCI code 0. NONCE BURNED, receipt exists with
+      `status: 0`. (And with `RefundGas` disabled the sender pays the full gas limit — see
+      "no gas refunds".) (3) POST-ANTE ERROR — `ApplyTransaction` returns a Go error rather
+      than a response: `failed to commit stateDB`, the `ErrGasOverflow` refund guards, the
+      `MsgEthereumTx GasLimit is higher than remaining tx GasLimit` guard for messages
+      arriving through wasm/authz/ica, or any panic converted to an error by the SDK's
+      recovery middleware. FEE TAKEN AND NONCE BURNED, and `keeper.EthereumTx` returns
+      before it reaches the `sdk.NewAttribute( AttributeKeyEthereumTxHash, response.Hash)`
+      block — so no `ethereum_tx` event reaches the CometBFT indexer, `GetTxByEthHash`
+      fails, and `eth_getTransactionReceipt` returns NULL. The sender is charged, loses the
+      nonce, and has no receipt to prove it. WHERE INJECTIVE DIVERGES FROM THE FRAMEWORK,
+      AND IT IS THE HALF THAT HELPS. Injective emits `ethereumTxHash` from the MSG SERVER,
+      where Cosmos EVM emits it from a dedicated last ante decorator and Artela from its
+      last ante decorator — so Injective loses the receipt on outcome (3) where Cosmos EVM
+      loses it on outcomes (1) and (3). More importantly, `EthMsgsFromTendermintBlock` HAS
+      NO RESULT FILTER AT ALL: it decodes every transaction in the CometBFT block and
+      returns every `MsgEthereumTx` it finds, with no `TxSuccessOrExceedsBlockGasLimit`
+      gate. Cosmos EVM's `EthMsgsFromCometBlock` and Artela's equivalent both gate on that
+      predicate and drop the transaction from `eth_getBlockByNumber` entirely. Injective's
+      copy of `TxSuccessOrExceedsBlockGasLimit` exists in `rpc/types/utils.go` but is used
+      in exactly one place — a decode shortcut inside `queryTendermintTxIndexer` — and never
+      as an inclusion filter. SO: NOT the full Artela combination. The nonce is burned and
+      the fee is taken with no receipt, but the transaction is still LISTED IN THE BLOCK, so
+      a sender who scans `eth_getBlockByNumber` can see that their nonce was spent. On
+      Artela and on Cosmos EVM's outcome (3) it is gone from the block as well, and the gap
+      is unobservable. Injective also closes Artela's ordinary-bytecode trigger:
+      `BlockContext.Random` is `&zero`, not nil, so PREVRANDAO does not nil-dereference.
+
 fee_model:
   metering: EVM gas, converted to Cosmos gas for block accounting
   fee_market: "none in consensus; an optional node-local mempool floor (Osmosis Mempool1559), disabled by default"
   extra_components:
-  - name: nonce on failure
-    severity: high
-    src: "injective-chain/modules/evm/ante/eth_ante.go:CheckEthSenderNonce, injective-chain/modules/evm/ante/eth_ante.go:NewEthAnteHandler, injective-chain/modules/evm/keeper/msg_server.go:EthereumTx, injective-chain/modules/evm/keeper/state_transition.go:ApplyTransaction, injective-chain/modules/evm/rpc/backend/blocks.go:EthMsgsFromTendermintBlock, injective-chain/modules/evm/rpc/backend/tx_info.go:GetTransactionReceipt"
-    note: >-
-      NONCE ON FAILURE: BURNED, and Injective is a PARTIAL version of the
-      framework's erasure — checked against Injective's own tree, not inherited on
-      faith, because Injective does NOT run the framework's ante chain or its RPC
-      filter.
-
-      The nonce lives in the ante handler. `NewEthAnteHandler` runs Injective's own
-      hand-rolled sequence — ValidateEthBasic, VerifyEthSig, VerifyEthAccount,
-      CheckEthCanTransfer, CheckEthGasConsume, then `CheckEthSenderNonce`, which
-      merges the equality check into the increment ("we merged the nonce
-      verification to nonce increment") and calls `acc.SetSequence(nonce + 1)`.
-      There is no `MonoDecorator` and no `IncrementNonce` in this tree. Cosmos SDK
-      commits the ante writes before running the message, so past that point the fee
-      deduction and the bumped sequence stand whatever execution does.
-
-      Three outcomes:
-
-      (1) ANTE FAILURE — wrong nonce, bad signature, cannot afford the fee, cannot
-      transfer. The ante cache is discarded: NONCE PRESERVED, no fee taken. No
-      `ethereum_tx` event is ever emitted, so `eth_getTransactionReceipt` is NULL.
-
-      (2) EVM REVERT / out-of-gas inside the EVM — ApplyTransaction returns a
-      response carrying `VmError`, the msg server emits the event, ABCI code 0.
-      NONCE BURNED, receipt exists with `status: 0`. (And with `RefundGas` disabled
-      the sender pays the full gas limit — see "no gas refunds".)
-
-      (3) POST-ANTE ERROR — `ApplyTransaction` returns a Go error rather than a
-      response: `failed to commit stateDB`, the `ErrGasOverflow` refund guards, the
-      `MsgEthereumTx GasLimit is higher than remaining tx GasLimit` guard for
-      messages arriving through wasm/authz/ica, or any panic converted to an error
-      by the SDK's recovery middleware. FEE TAKEN AND NONCE BURNED, and
-      `keeper.EthereumTx` returns before it reaches the `sdk.NewAttribute(
-      AttributeKeyEthereumTxHash, response.Hash)` block — so no `ethereum_tx` event
-      reaches the CometBFT indexer, `GetTxByEthHash` fails, and
-      `eth_getTransactionReceipt` returns NULL. The sender is charged, loses the
-      nonce, and has no receipt to prove it.
-
-      WHERE INJECTIVE DIVERGES FROM THE FRAMEWORK, AND IT IS THE HALF THAT HELPS.
-      Injective emits `ethereumTxHash` from the MSG SERVER, where Cosmos EVM emits
-      it from a dedicated last ante decorator and Artela from its last ante
-      decorator — so Injective loses the receipt on outcome (3) where Cosmos EVM
-      loses it on outcomes (1) and (3). More importantly,
-      `EthMsgsFromTendermintBlock` HAS NO RESULT FILTER AT ALL: it decodes every
-      transaction in the CometBFT block and returns every `MsgEthereumTx` it finds,
-      with no `TxSuccessOrExceedsBlockGasLimit` gate. Cosmos EVM's
-      `EthMsgsFromCometBlock` and Artela's equivalent both gate on that predicate and
-      drop the transaction from `eth_getBlockByNumber` entirely. Injective's copy of
-      `TxSuccessOrExceedsBlockGasLimit` exists in `rpc/types/utils.go` but is used in
-      exactly one place — a decode shortcut inside `queryTendermintTxIndexer` — and
-      never as an inclusion filter.
-
-      SO: NOT the full Artela combination. The nonce is burned and the fee is taken
-      with no receipt, but the transaction is still LISTED IN THE BLOCK, so a sender
-      who scans `eth_getBlockByNumber` can see that their nonce was spent. On Artela
-      and on Cosmos EVM's outcome (3) it is gone from the block as well, and the gap
-      is unobservable. Injective also closes Artela's ordinary-bytecode trigger:
-      `BlockContext.Random` is `&zero`, not nil, so PREVRANDAO does not
-      nil-dereference.
   - name: no gas refunds
     severity: high
     src: injective-chain/modules/evm/keeper/gas.go:RefundGas

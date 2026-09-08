@@ -55,6 +55,25 @@ LIFECYCLE = [
 LIFECYCLE_TITLE = {k: t for k, t, _ in LIFECYCLE}
 
 
+def lifecycle(chains, slug):
+    """A chain's effective lifecycle answers. A row whose `lineage.upstream` names a
+    stack node inherits that node's answers key by key, and overrides the ones it
+    states itself — the same override-by-key rule the address sections use. Returns
+    {key: (entry, origin_slug)}; origin != slug means inherited."""
+    out = {}
+    chain = [slug]
+    seen = {slug}
+    up = chains[slug]["lineage"].get("upstream")
+    while up in chains and is_stack(chains[up]) and up not in seen:
+        chain.append(up); seen.add(up)
+        up = chains[up]["lineage"].get("upstream")
+    for s in reversed(chain):                       # ancestor first, descendant wins
+        for k, v in (chains[s].get("tx_lifecycle") or {}).items():
+            if isinstance(v, dict):
+                out[k] = (v, s)
+    return out
+
+
 # --------------------------------------------------------------------------
 # html helpers
 # --------------------------------------------------------------------------
@@ -695,17 +714,20 @@ def page_chain(chains, slug):
     B.append(list_section(chains, slug, "opcodes", "Opcodes", "opcodes", "op"))
 
     # --- transaction lifecycle -------------------------------------------
-    tl = c.get("tx_lifecycle") or {}
+    tl = lifecycle(chains, slug)
     if tl:
         B.append(h2(f'Ordering &amp; execution <span class="pill">{len(tl)}</span>',
                     "tx-lifecycle"))
         B.append(table(["Question", "Verdict", "What happens"],
                        [[esc(LIFECYCLE_TITLE.get(k, k)),
                          (f'<span class="pill">{esc(d["verdict"])}</span>'
-                          if isinstance(d, dict) and d.get("verdict") else "—"),
+                          + ("" if o == slug else
+                             f' <span class="s-inherited" title="inherited">from '
+                             f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')),
                          f'<div class="wrap">{markdown(flat(d.get("answer") or d.get("note")))}'
                          f'{provenance(d, on_chain=True)}</div>']
-                        for k, _, _ in LIFECYCLE if (d := tl.get(k)) and isinstance(d, dict)]))
+                        for k, _, _ in LIFECYCLE if (do := tl.get(k)) for d, o in [do]
+                        if isinstance(d, dict) and d.get("verdict")]))
 
     # --- fee model & header fields ---------------------------------------
     fm = c.get("fee_model") or {}
@@ -1324,13 +1346,14 @@ def page_ordering(chains):
     for key, label, blurb in LIFECYCLE:
         cells, plain = [], []
         for s in slugs:
-            d = (chains[s].get("tx_lifecycle") or {}).get(key)
+            d, origin = lifecycle(chains, s).get(key, (None, s))
             v = d.get("verdict") if isinstance(d, dict) else None
             plain.append(v or "—")
             if v:
+                mark = "" if origin == s else f' <span class="s-inherited" title="inherited from {esc(origin)}">=</span>'
                 cells.append(cell_link(s, "tx-lifecycle", key,
                              f'<span class="pill" title="{esc(flat(d.get("answer") or d.get("note")))[:400]}">'
-                             f'{esc(v)}</span>'))
+                             f'{esc(v)}</span>{mark}'))
             else:
                 cells.append('<span class="s-inherited" title="not established">—</span>')
         if any(p != "—" for p in plain):

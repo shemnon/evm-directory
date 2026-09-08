@@ -516,6 +516,23 @@ opcodes:
     No opcode divergence, and no second VM. Flare's changes live entirely in the
     state transition, the fee accounting and the genesis allocation.
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    src: "coreth/miner/worker.go:commitTransactions, coreth/core/state_transition.go:preCheck"
+    note: >-
+      The proposer executes each transaction as it appends it: an invalid one is popped out
+      of the candidate set and never reaches the block, so the ordered-but-invalid state is
+      not reachable and the nonce is untouched. If one reached a proposed block anyway,
+      `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
+      against this row's own pinned client rather than assumed from the family.
+  nonce_on_failure:
+    verdict: preserved
+    src: "coreth/miner/worker.go:commitTransactions, coreth/core/state_transition.go:preCheck"
+    note: >-
+      Preserved. Nothing is committed for a transaction the builder rejected, so the account
+      nonce is untouched and the sender resubmits at the same nonce.
+
 fee_model:
   metering: gas
   fee_market: ACP-176 dynamic fee (coreth), with a Flare-specific per-call override

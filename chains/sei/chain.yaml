@@ -716,6 +716,56 @@ opcodes:
     Every divergence above is a value fed into an unmodified opcode — the class
     of difference that address- and opcode-enumeration both miss entirely.
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: split
+    severity: high
+    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    note: >-
+      SPLIT, AND SEI TIES THE TWO ARMS TO THE NONCE. The EVM ante handler registers a
+      `DeliverTxCallback` that bumps the sender's nonce even when the ante handler FAILS —
+      but only if the tx's nonce equalled the account nonce at entry. `EndBlock` then writes
+      a stub receipt for an ante-failed EVM tx IF AND ONLY IF the nonce was bumped. So:
+      insufficient funds / fee below minimum / init-code too large / gas over block max AT
+      THE CORRECT NONCE -> nonce burned, and a stub receipt IS written and IS returned by
+      `eth_getTransactionReceipt`, carrying only txHash, transactionIndex, blockNumber and
+      vmError, with gasUsed = 0 and effectiveGasPrice = 0 as the chain's own discriminator
+      for "never reached the VM". WRONG NONCE (too low or too high) -> `ErrWrongSequence` in
+      the ante, NO nonce bump, NO receipt: the tx is in the Tendermint block and
+      `eth_getTransactionReceipt` returns null forever. Sei therefore does NOT have Artela's
+      burned-nonce-with-no-receipt combination — burning a nonce and minting a receipt are
+      gated on the same condition.
+  nonce_on_failure:
+    verdict: split
+    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    note: >-
+      Split on the same condition as the receipt: burned when the tx arrived at the correct
+      nonce (and then a stub receipt exists), preserved when the nonce was wrong (and then
+      there is no receipt at all).
+  ordering:
+    verdict: commits_first
+    src: "sei-tendermint/internal/mempool/tx.go:txStore, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas"
+    note: >-
+      ORDERING COMMITS BEFORE EXECUTION, AND THE APPLICATION DOES NOT CHOOSE THE ORDER.
+      There is no `PrepareProposal`, so block contents are selected entirely inside
+      sei-tendermint's mempool by the proposer and the application never gets to reorder,
+      insert or drop. The mempool is EVM-aware — it indexes by (sender, EVM nonce), keeps at
+      most one tx per nonce, calls back into the app for `EvmNonce`/`EvmBalance`, and marks
+      a tx ready only when every lower nonce is ready-or-executed AND balance >= required.
+      `ProcessProposal` can still REJECT the whole block on a protobuf decode failure or on
+      sum(GasWanted) exceeding the block max gas. Everything else is decided at execution.
+  preconfirmation:
+    verdict: none
+    src: "app/app.go:ProcessProposalHandler, app/app.go:FinalizeBlocker"
+    note: >-
+      NO PRECONFIRMATIONS AND NO EARLY RECEIPTS — but there IS optimistic block processing.
+      `ProcessProposal` starts a full `ProcessBlock` in a goroutine against the proposal
+      before the block is committed, and `FinalizeBlock` reuses that result only if the
+      proposal hash matches and the run did not abort; otherwise it re-executes from
+      scratch. Nothing is published from the speculative run: the block-header notifier only
+      stashes inside `FinalizeBlock` and publishes at Commit. No receipt or block ever
+      changes after it is returned.
+
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting
   fee_market: >-

@@ -619,6 +619,23 @@ opcodes:
     in Rust reaches the same set.
   src: "src/Nethermind/Nethermind.Specs/GnosisForks/19_OsakaGnosis.cs:OsakaGnosis"
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    src: "src/Nethermind/Nethermind.Consensus/Processing/BlockProcessor.BlockProductionTransactionPicker.cs"
+    note: >-
+      The proposer executes each transaction as it appends it: an invalid one is popped out
+      of the candidate set and never reaches the block, so the ordered-but-invalid state is
+      not reachable and the nonce is untouched. If one reached a proposed block anyway,
+      `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
+      against this row's own pinned client rather than assumed from the family.
+  nonce_on_failure:
+    verdict: preserved
+    src: "src/Nethermind/Nethermind.Consensus/Processing/BlockProcessor.BlockProductionTransactionPicker.cs"
+    note: >-
+      Preserved. Nothing is committed for a transaction the builder rejected, so the account
+      nonce is untouched and the sender resubmits at the same nonce.
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559, mainnet parameters, base fee COLLECTED not burned"

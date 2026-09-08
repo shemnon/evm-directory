@@ -553,6 +553,29 @@ opcodes:
       src: "core/vm/instructions.go:opBlockhashPostFeynman"
       note: "Reads the EIP-2935 history contract's storage ring instead of walking headers; the 256-block window is unchanged, so behaviour matches mainnet Prague."
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: erased
+    severity: high
+    src: "miner/scroll_worker.go:skipTransaction, miner/scroll_worker.go:onTxFailing, miner/scroll_worker.go:processTxns, core/rawdb/accessors_skipped_txs.go:ReadSkippedTransaction"
+    note: >-
+      ERASED FROM THE ETHEREUM VIEW, AND FOR L1 MESSAGES THE ORDER WAS ALREADY FIXED ON L1.
+      An ordinary L2 transaction is popped by the builder like mainnet. An L1 MESSAGE is
+      different: its position is fixed by the L1 message queue, not by the sequencer, so the
+      ordered-then-invalid state genuinely arises. When one exceeds the prover's circuit
+      capacity, `skipTransaction` advances `nextL1MsgIndex` PAST it and writes it to a
+      `SkippedTransaction` table in the node's own database. The message is permanently
+      passed over: it is not in the block, `eth_getTransactionReceipt` returns null forever,
+      and the only way to see it is the non-standard skipped-transaction accessor — a side
+      channel no Ethereum client knows to read.
+  nonce_on_failure:
+    verdict: preserved
+    src: "miner/scroll_worker.go:processTxns, miner/scroll_worker.go:processTxn"
+    note: >-
+      Preserved. Nothing is committed for a skipped transaction or a popped one, so the
+      account nonce is untouched. L1 messages are sequenced by queue index rather than by
+      account nonce, so a skipped message does not disturb the sender's nonce either.
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 on L2, with baseFeeOverhead/baseFeeScalar read from a predeploy's storage"

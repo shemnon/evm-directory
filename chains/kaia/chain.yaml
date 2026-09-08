@@ -621,6 +621,23 @@ opcodes:
     opcode carries a second cost — see fee_model.computation_cost — so the
     instruction set is identical while the cost model is two-dimensional.
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    src: "work/worker.go:commitTransactions"
+    note: >-
+      The proposer executes each transaction as it appends it: an invalid one is popped out
+      of the candidate set and never reaches the block, so the ordered-but-invalid state is
+      not reachable and the nonce is untouched. If one reached a proposed block anyway,
+      `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
+      against this row's own pinned client rather than assumed from the family.
+  nonce_on_failure:
+    verdict: preserved
+    src: "work/worker.go:commitTransactions"
+    note: >-
+      Preserved. Nothing is committed for a transaction the builder rejected, so the account
+      nonce is untouched and the sender resubmits at the same nonce.
+
 fee_model:
   metering: "gas AND computation cost (two independent meters, both enforced)"
   fee_market: "KIP-71 bounded dynamic base fee from Magma; a FIXED governance price before it"

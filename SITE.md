@@ -32,8 +32,6 @@ python3 -m http.server -d website 8000     # then http://localhost:8000
 | `chains/<slug>/chain.yaml` | that chain's page, and every axis page |
 | `chains/<slug>/SUMMARY.md` | the "Full write-up" section of that chain's page |
 | `findings.yaml` | the home page, the axis pages, and every chain a finding names |
-| `SCHEMA.md` | `method.html` |
-| `SITE.md` | `method.html` (this file) |
 | `tools/assets/site.css`, `site.js` | copied to `website/assets/` |
 
 `findings.yaml` is the one **content** file in the pipeline — the place where a human
@@ -50,11 +48,10 @@ always just `tools/site.py`. It hashes every page's declared inputs into
 
 | You changed | Run | What rebuilds |
 |---|---|---|
-| one `chains/<slug>/chain.yaml` | `tools/site.py` | 13 pages: that chain page, all 8 axis pages, home, both indexes, `method.html` — **not** the other 18 chain pages |
+| one `chains/<slug>/chain.yaml` | `tools/site.py` | 12 pages: that chain page, all 8 axis pages, home and both indexes — **not** the other 18 chain pages |
 | one `chains/<slug>/SUMMARY.md` | `tools/site.py` | that chain page only |
 | `chains/op-stack/chain.yaml` | `tools/site.py` | the above, **plus its five descendants** (Base, Celo, opBNB, OP Mainnet, World Chain), since they inherit its entries |
 | `findings.yaml` | `tools/site.py` | home, axis pages, and every chain page |
-| `SCHEMA.md` or `SITE.md` | `tools/site.py` | `method.html` only |
 | `tools/site.py`, `model.py`, or an asset | `tools/site.py` | **everything** — the HTML is a function of the code too |
 
 `findings.yaml` is an input to *every* chain page, not only the ones currently named in

@@ -240,8 +240,9 @@ else. Same field, same JSON key, three meanings across the dataset.
 ## Website
 
 A browsable static site is generated into [`website/`](website/) — one page per chain,
-plus an axis page for each of the eight axes, an index of every silent divergence, and
-the method. Nothing in it is hand-edited.
+plus an axis page for each of the eight axes and an index of every silent divergence.
+Nothing in it is hand-edited. The site carries data only: the schema, the build model
+and the method notes stay in this repo and are not published.
 
 ```
 tools/site.py            # incremental — rebuild only what changed
@@ -254,8 +255,9 @@ python3 -m http.server -d website 8000
 Findings live in [`findings.yaml`](findings.yaml), the one content file in the pipeline:
 a finding is written once and surfaces on the home page, on its axis page, and on the
 page of every chain it names — as the full cross-chain survey on the first two, and as
-that chain's own slice of it on the third. See [SITE.md](SITE.md) for the full build
-model.
+that chain's own slice of it on the third. Every finding names one of the eight axes;
+methodology notes go in [METHOD.md](METHOD.md) instead. See [SITE.md](SITE.md) for the
+full build model.
 
 The site's *structure* has its own source: [`prompts/website/`](prompts/website/)
 specifies the information architecture, the grid semantics, the data-model contract and
@@ -270,6 +272,7 @@ chains/<slug>/
   SUMMARY.md     findings, caveats, and re-verification commands
   repos/         pinned shallow clones (gitignored; evidence, not content)
 findings.yaml       the narrative layer: what the dataset means
+METHOD.md           method notes — repo-only, deliberately not on the site
 website/            generated static site (see SITE.md)
 tools/model.py      the shared data model both generators read
 tools/generate.py   regenerates the four top-level tables

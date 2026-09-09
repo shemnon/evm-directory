@@ -22,8 +22,9 @@ The site is a dry reference. It states what the data holds and stops.
 commit, whether the row rests on source, documentation or live probes, and how to
 re-verify it. That is a fact about the chain, and it is the only methodology on the site.
 
-**The Reference page** renders `SCHEMA.md` and `SITE.md`. Its subject *is* method, which
-is why it exists and why nothing else discusses it.
+Everything else about method — the schema, the build, the notes about what the schema
+cannot hold — is repo-only, in `SCHEMA.md`, `SITE.md` and `METHOD.md`. The site does not
+render them and does not link to them.
 
 ## Notes
 

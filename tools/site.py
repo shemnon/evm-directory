@@ -240,7 +240,7 @@ def teaser(text, limit=240):
 
 
 LINK_MAP = {
-    "SCHEMA.md": "method.html", "README.md": "index.html",
+    "README.md": "index.html",
     "MATRIX.md": "index.html", "PRECOMPILES.md": "axes/precompiles.html",
     "TX-TYPES.md": "axes/tx-types.html", "LINEAGE.md": "axes/lineage.html",
 }
@@ -265,7 +265,7 @@ def relink(body, depth):
         if base in LINK_MAP:
             return f'href="{r}{LINK_MAP[base]}{frag}"'
         if re.fullmatch(r"(?:axes|chains)/[a-z0-9-]+\.html|"
-                        r"index\.html|method\.html|silent-divergences\.html", base):
+                        r"index\.html|silent-divergences\.html", base):
             return f'href="{r}{base}{frag}"'
         return m.group(0)
 
@@ -290,6 +290,9 @@ def load_notes(chains=None):
     is for."""
     fs = yaml.safe_load((ROOT / "findings.yaml").read_text()) or []
     for f in fs:
+        if f.get("axis") not in AXIS_TITLE:
+            sys.exit(f"findings.yaml: {f['id']}: axis: {f.get('axis')!r} has no page. "
+                     f"Every note renders on an axis page; methodology goes in METHOD.md.")
         ch = f.get("chains")
         if isinstance(ch, dict):
             f["slugs"], f["gloss"] = list(ch), dict(ch)
@@ -306,9 +309,7 @@ def load_notes(chains=None):
 
 
 def axis_href(f, depth):
-    r = rel(depth)
-    return ((f'{r}method.html' if f["axis"] == "method"
-             else f'{r}axes/{esc(f["axis"])}.html') + f'#f-{esc(f["id"])}')
+    return f'{rel(depth)}axes/{esc(f["axis"])}.html#f-{esc(f["id"])}'
 
 
 def note_html(f, chains, depth, show_axis=True):
@@ -316,10 +317,7 @@ def note_html(f, chains, depth, show_axis=True):
     r = rel(depth)
     tags = []
     if show_axis:
-        if f.get("axis") in AXIS_TITLE:
-            tags.append(f'<a href="{r}axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>')
-        elif f.get("axis") == "method":
-            tags.append(f'<a href="{r}method.html">Reference</a>')
+        tags.append(f'<a href="{r}axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>')
     for s in f["slugs"]:
         if s in chains:
             tags.append(f'<a href="{r}chains/{esc(s)}.html">{esc(short(s))}</a>')
@@ -341,7 +339,7 @@ def note_scoped_html(f, chains, slug, depth=1):
         B.append(relink(markdown(flat(f["gloss"][slug])), depth))
     elif not f["gloss"]:
         B.append(relink(markdown(flat(f["body"])), depth))   # single-chain note
-    axis = AXIS_TITLE.get(f["axis"], "Reference")
+    axis = AXIS_TITLE[f["axis"]]
     tags = [f'<a href="{axis_href(f, depth)}">Full note · {esc(axis)}</a>']
     others = [s for s in f["slugs"] if s != slug and s in chains]
     if others:
@@ -1367,8 +1365,6 @@ def page_index(chains):
         for k, t, d in AXES) +
         '<div class="card"><h3><a href="silent-divergences.html">Silent divergences</a></h3>'
         '<p>Entries that produce a wrong result with no revert, no error and no signal.</p></div>'
-        '<div class="card"><h3><a href="method.html">Reference</a></h3>'
-        '<p>The schema the dataset is written in, and how the site is built.</p></div>'
         + "</div>")
 
     B.append(h2("Chains", "chains"))
@@ -1393,10 +1389,8 @@ def page_index(chains):
 
     B.append(h2("Notes", "notes"))
     B.append(table(["Subject", "Axis", "Chains"], [
-        [f'<a href="{"method.html" if f["axis"] == "method" else f"axes/{esc(f['axis'])}.html"}'
-         f'#f-{esc(f["id"])}">{inline_md(f["title"])}</a>',
-         (f'<a href="method.html">Reference</a>' if f["axis"] == "method"
-          else f'<a href="axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>'),
+        [f'<a href="axes/{esc(f["axis"])}.html#f-{esc(f["id"])}">{inline_md(f["title"])}</a>',
+         f'<a href="axes/{esc(f["axis"])}.html">{esc(AXIS_TITLE[f["axis"]])}</a>',
          f'<div class="wrap">' + (", ".join(
              f'<a href="chains/{esc(s)}.html">{esc(short(s))}</a>'
              for s in f["slugs"] if s in chains) or "—") + "</div>"]
@@ -1474,19 +1468,6 @@ def page_silent(chains):
                   "\n".join(B), wide=True)
 
 
-def page_method(chains):
-    B = []
-    for title, anchor, path in [("Schema", "schema", "SCHEMA.md"),
-                                ("Building this site", "rebuild", "SITE.md")]:
-        f = ROOT / path
-        if not f.exists(): continue
-        txt = re.sub(r"\A#\s+[^\n]*\n", "", f.read_text())
-        B.append(h2(title, anchor))
-        B.append(render_md(txt, 0))
-    B.append(axis_notes(chains, "method", depth=0))
-    return layout("method.html", "Reference",
-                  "The schema the dataset is written in, and how this site is built.",
-                  "\n".join(x for x in B if x))
 # --------------------------------------------------------------------------
 # page registry + incremental build
 # --------------------------------------------------------------------------
@@ -1508,8 +1489,6 @@ def registry(chains):
         Page("index.html", all_yaml + [findings], page_index),
         Page("chains/index.html", all_yaml, page_chains_index),
         Page("silent-divergences.html", all_yaml, page_silent),
-        Page("method.html", all_yaml + [findings, ROOT / "SCHEMA.md", ROOT / "SITE.md"],
-             page_method),
     ]
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
                "cryptography": page_cryptography, "opcodes": page_opcodes,

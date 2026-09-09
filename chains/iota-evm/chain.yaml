@@ -530,6 +530,43 @@ opcodes:
       provable from `stateRoot`, and a balance can change with no EVM transaction.
     src: "packages/vm/core/evm/emulator/statedb.go:GetBalance, packages/vm/core/accounts/basetokens.go:getBaseTokens"
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: split
+    severity: high
+    src: "packages/vm/core/evm/evmimpl/internal.go:saveExecutedTx, packages/vm/vmimpl/skipreq.go:earlyCheckReasonToSkip, packages/vm/vmexceptions/exceptions.go:SkipRequestErrors"
+    note: >-
+      NONCE ON FAILURE: SPLIT BY WHICH OF THE TWO REJECTION LAYERS CAUGHT IT, and the split
+      falls on the same line as the receipt. LAYER 1 — ISC request level, before the EVM
+      runs. `earlyCheckReasonToSkip` (bad signature, wrong nonce, gas price below the
+      governance minimum) and the `SkipRequestErrors` set (ISC block gas exhausted, L1
+      transaction size exceeded, sender cannot cover the minimum fee) make `runRequests` log
+      "request skipped (ignored) by the VM" and `continue` WITHOUT incrementing the request
+      index. The EVM never runs, so the nonce is NEVER TOUCHED and nothing is charged — and
+      the transaction is ERASED: no EVM receipt, no blocklog receipt, no transaction index,
+      `eth_getTransactionReceipt` null forever. NONCE PRESERVED, NO RECEIPT. Two mitigations
+      soften it: the RPC re-checks nonce and balance at ingress, and a skipped off-ledger
+      request stays in the pool and is retried until its nonce becomes valid or its 24-hour
+      TTL expires — except a nonce that is too LOW, which is dropped. LAYER 2 — EVM level,
+      once the request runs. REVERT, out-of-gas, or the ISC gas-budget overrun that rewrites
+      an already-successful receipt to `status: 0`. State is rolled back, logs are stripped,
+      gas is charged — and `saveExecutedTx` then reaches past the rollback to put the nonce
+      back: `if receipt.Status != types.ReceiptStatusSuccessful { emulator.IncNonce(...) }`,
+      under the comment "make sure the nonce is incremented if the state was rolled back by
+      the VM". NONCE BURNED, RECEIPT PRESENT with `status: 0`. So the two are consistent
+      here in the way Sei's are and Artela's are not: a receipt means the nonce was spent,
+      no receipt means it was not. What is unusual is that the nonce increment is an
+      EXPLICIT, out-of-band write — because the VM's rollback would otherwise have undone
+      it, the one place in this dataset where the nonce had to be re-applied by hand after a
+  ordered_then_invalid:
+    verdict: erased
+    src: "packages/vm/core/evm/evmimpl/internal.go:saveExecutedTx, packages/vm/vmimpl/skipreq.go:earlyCheckReasonToSkip, packages/vm/vmexceptions/exceptions.go:SkipRequestErrors"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      revert.
+
 fee_model:
   metering: >-
     TWO METERS, and the receipt reports the larger. The EVM meters normally; then
@@ -553,39 +590,6 @@ fee_model:
     `eth_feeHistory`. Ordering is randomized, so bidding higher buys mempool
     proposal priority, never position in the block.
   extra_components:
-  - name: nonce on failure
-    severity: high
-    src: "packages/vm/core/evm/evmimpl/internal.go:saveExecutedTx, packages/vm/vmimpl/skipreq.go:earlyCheckReasonToSkip, packages/vm/vmexceptions/exceptions.go:SkipRequestErrors"
-    description: >-
-      NONCE ON FAILURE: SPLIT BY WHICH OF THE TWO REJECTION LAYERS CAUGHT IT, and
-      the split falls on the same line as the receipt.
-
-      LAYER 1 — ISC request level, before the EVM runs. `earlyCheckReasonToSkip`
-      (bad signature, wrong nonce, gas price below the governance minimum) and
-      the `SkipRequestErrors` set (ISC block gas exhausted, L1 transaction size
-      exceeded, sender cannot cover the minimum fee) make `runRequests` log
-      "request skipped (ignored) by the VM" and `continue` WITHOUT incrementing
-      the request index. The EVM never runs, so the nonce is NEVER TOUCHED and
-      nothing is charged — and the transaction is ERASED: no EVM receipt, no
-      blocklog receipt, no transaction index, `eth_getTransactionReceipt` null
-      forever. NONCE PRESERVED, NO RECEIPT. Two mitigations soften it: the RPC
-      re-checks nonce and balance at ingress, and a skipped off-ledger request
-      stays in the pool and is retried until its nonce becomes valid or its
-      24-hour TTL expires — except a nonce that is too LOW, which is dropped.
-
-      LAYER 2 — EVM level, once the request runs. REVERT, out-of-gas, or the ISC
-      gas-budget overrun that rewrites an already-successful receipt to
-      `status: 0`. State is rolled back, logs are stripped, gas is charged — and
-      `saveExecutedTx` then reaches past the rollback to put the nonce back:
-      `if receipt.Status != types.ReceiptStatusSuccessful { emulator.IncNonce(...) }`,
-      under the comment "make sure the nonce is incremented if the state was
-      rolled back by the VM". NONCE BURNED, RECEIPT PRESENT with `status: 0`.
-
-      So the two are consistent here in the way Sei's are and Artela's are not: a
-      receipt means the nonce was spent, no receipt means it was not. What is
-      unusual is that the nonce increment is an EXPLICIT, out-of-band write —
-      because the VM's rollback would otherwise have undone it, the one place in
-      this dataset where the nonce had to be re-applied by hand after a revert.
   - name: minimum fee per request
     description: >-
       Every request is charged at least 10,000 ISC gas (`BurnCodeMinimumGasPerRequest1P`,

@@ -420,6 +420,44 @@ their origin, so a reader can tell "World Chain has `0x7e`" from "World Chain
 Inheritance is override-by-key: a descendant re-declaring an address or type byte its
 ancestor already declared **replaces** it and must carry a `note` explaining why.
 
+## The transaction lifecycle (`tx_lifecycle:`)
+
+Mainnet checks nonce, balance and gas price **before** a transaction can be ordered, so
+"ordered but invalid" is not a state it can reach. Every chain that separates ordering
+from execution has to invent an answer, and they do not agree. `tx_lifecycle:` holds
+those answers, one key per question, each with its own `verdict:` and evidence:
+
+```yaml
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: erased          # erased | charged | block_rejected | escalated
+                             # | billed | unreachable
+    severity: high
+    src: ...
+    note: >-
+      ...
+  nonce_on_failure:
+    verdict: burned          # preserved | burned | split
+  duplicate_inclusion:
+    verdict: deduplicated    # benign | deduplicated | rejected
+```
+
+`verdict:` is the closed vocabulary the axis grid renders; `note:` (or `answer:`) is the
+prose the chain page renders. Other keys in the same shape: `insufficient_balance`,
+`ordering`, `parallel_execution`, `preconfirmation`.
+
+**The `ethereum` row states the baseline once**, exactly as `opcodes.baseline_set` does:
+`ordered_then_invalid: unreachable`, `nonce_on_failure: preserved`. Every other row is a
+delta against that. An **absent** key means the question is not established for that
+chain — it does **not** mean the chain behaves like mainnet, and the grid renders it
+`—` rather than `=`.
+
+These facts were previously scattered: `nonce on failure` and `duplicate inclusion` sat
+in `fee_model.extra_components` (they are not fee components), and two rows had grown
+ad-hoc `consensus.*` keys for the same question under **different names**
+(`ordered_then_invalid` on one, `ordered_but_invalid` on the other). That divergence is
+what the axis exists to prevent.
+
 ## Opcodes
 
 `opcodes:` holds `added` / `removed` / `modified` / `pending` / `tombstoned` lists of
@@ -477,6 +515,7 @@ system_contracts:
 system_transactions:
 opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed op:;
               # plus baseline_set on the ethereum row. See "Opcodes" above.
+tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators

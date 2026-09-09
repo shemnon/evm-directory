@@ -114,130 +114,6 @@ consensus:
     `gas_used: 0x0` and the empty transaction/receipt roots. Re-measured in the second
     session: 2,384 mini-blocks over 24 consecutive EVM blocks, 99 or 100 per block, and
     2,059 of them (86%) empty.
-  ordering:
-    note: >-
-      (a) ORDERING DOES NOT COMMIT BEFORE EXECUTION. A mini-block is ALREADY-EXECUTED
-      STATE BEING STREAMED, not an order fixed now and executed later. The payload
-      carries a `receipts` array alongside `transactions`, and each receipt already holds
-      `status`, `gasUsed`, `cumulativeGasUsed` and `transactionIndex` — the transaction's
-      FINAL index in the enclosing EVM block — under a `receipt_root` computed over them.
-      A receipt root cannot exist before execution, and `cumulativeGasUsed` is
-      block-level running state that only exists once the transaction has been COMMITTED
-      into the block being built. In the published EVM both are produced inside
-      `MegaBlockExecutor::commit_transaction_outcome`, downstream of the commit-time
-      re-check recorded under `ordered_but_invalid` below. So the all-ones block hash is
-      not a promise about a future execution; it is a finished result missing only its
-      container. This is the same shape as RISE, whose shreds are also published only
-      after execution, and the exact opposite of Monad, where consensus commits the
-      transaction LIST at height N and agrees the state root only at N+3.
-      MINI-BLOCK ORDER IS NEVER REVISED, in the sample: across 24 consecutive
-      fully-observed EVM blocks the concatenated mini-block transaction sequence equalled
-      the sealed block's transaction list exactly — same hashes, same positions, nothing
-      added, nothing removed, nothing reordered — 24 blocks out of 24, 577 transactions.
-      The streamed receipt is field-for-field identical to the final one except
-      `blockHash` — the key SETS are identical — with two consequences. The `logs`
-      differ only because each log carries its own copy of the same `0xffff..ff`
-      sentinel. And `l1Fee` differs for real: the streamed receipt reports a CONSTANT
-      766,561,485 wei (0x2db0cccd) for every transaction regardless of its calldata,
-      while the sealed receipt reports a per-transaction value roughly TWICE as large.
-      `l1GasPrice`, `l1GasUsed`, `l1BaseFeeScalar` and `l1BlobBaseFee` all match; only
-      the derived total is a placeholder. So the preconfirmation is not merely missing a
-      block hash — it under-reports what the transaction actually cost, on the one fee
-      component an OP Stack user cannot predict.
-    src: "mega-evm/crates/mega-evm/src/block/executor.rs:commit_transaction_outcome"
-    src_live: "eth_subscribe miniBlocks vs eth_getBlockByNumber/eth_getBlockReceipts @ 25048478 -> blocks 25048453..25048478 captured, 24 fully observed, 2384 mini-blocks (99 or 100 per EVM block, 2059 empty), 577 transactions; streamed (transactionIndex, hash) sequence == sealed transaction list in 24/24 blocks; streamed-vs-final receipt field diff over 577 receipts = {blockHash: 577, logs: 262, l1Fee: 244}, every other field identical, and identical key sets; second capture of 13 blocks -> l1Fee differed in 131 receipts, streamed value the constant 0x2db0cccd (766,561,485 wei) in every one against final values of 1,533,118,371 / 1,597,241,240 / 1,610,065,813 wei, and the only differing log field was blockHash (149); every streamed receipt blockHash was 0xffff..ff while the streamed TRANSACTION objects in the same payload carried blockHash null"
-    src_doc: https://docs.megaeth.com/mini-block
-  execution:
-    note: >-
-      (b) EXECUTION IS PARALLEL ON THE SEQUENCER, AND THE PARALLELISM IS NOT ITSELF
-      CONSENSUS-VISIBLE — BUT ITS CONFLICT-AVOIDANCE MACHINERY IS, AND THAT IS NEW.
-      stateless-validator's README names "the hyper-optimized, parallel, JIT-compiled
-      executor on sequencer nodes" as one of three MegaETH client implementations, and
-      mega-evm's own AGENTS.md states flatly that "MegaETH incorporates parallel EVM".
-      Nothing in the published EVM re-runs, aborts or retries a transaction on conflict:
-      mega-evm's state transition is sequential and deterministic, and the stateless
-      validator re-executes every sealed block single-threaded on vanilla revm, so two
-      implementations cannot disagree about a result. Every other parallel chain in this
-      dataset stops there — Sei, Monad and RISE's pevm all detect conflicts against a
-      multi-version store and re-run the loser, leaving the state transition untouched.
-      MEGAETH IS THE FIRST ROW WHERE THE SCHEDULER CHANGED THE STATE TRANSITION INSTEAD.
-      Gas detention exists for no other reason: the tree says it "forces transactions that
-      touch volatile data to terminate quickly, reducing parallel execution conflicts
-      without banning the access outright". The 20,000,000 compute-gas cap that a
-      contract incurs for reading `block.timestamp` is a consensus rule whose sole
-      purpose is sequencer throughput, and it is mandatory for every client. The
-      EQUIVALENCE spec — the one that claims Optimism Isthmus equivalence — already
-      carries the block-environment ACCESS TRACKING for the same reason, so even
-      MegaETH's "equivalent" spec is instrumented for a scheduler.
-      What is NOT established is anything about the scheduler itself: how mega-reth
-      partitions transactions, what it does on a genuine read/write conflict, and whether
-      a transaction is ever executed speculatively and thrown away. That code is closed.
-    src: "stateless-validator/README.md:JIT-compiled executor on sequencer nodes, mega-evm/AGENTS.md:MegaETH incorporates parallel EVM, mega-evm/AGENTS.md:reducing parallel execution conflicts without banning the access outright, mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS"
-    src_doc: https://docs.megaeth.com/spec/megaevm/gas-detention
-  ordered_but_invalid:
-    severity: high
-    note: >-
-      (c) THE CENTRAL QUESTION. MegaETH gives THREE different answers depending on which
-      meter fails and which side of the sequencer you stand on, and the published EVM
-      settles all three.
-      (1) SECOND-METER FAILURE AT EXECUTION -> INCLUDED, `status: 0`, GAS REFUNDED. A
-      transaction admitted and ordered whose per-transaction resource budget (compute
-      gas, data size, KV updates, state growth) is exhausted during execution, or whose
-      gas budget is retroactively cut by the detention penalty for reading
-      `block.timestamp`, halts with `KVUpdateLimitExceeded` /
-      `VolatileDataAccessOutOfGas` and is INCLUDED in the block with `status: 0`, no
-      state changes, and its remaining gas PRESERVED AND REFUNDED. So the dual meter and
-      the detention penalty do make a transaction's cost undeterminable at submission
-      time, but they never produce an unincludable transaction — they produce an ordinary
-      failed receipt with an unusual gas line. The receipt cannot express WHICH meter
-      failed: `gasUsed` is compute plus storage combined and there is no halt-reason
-      field.
-      (2) BLOCK-LEVEL LIMIT LOST TO A RACE -> DROPPED AT COMMIT, NO RECEIPT, NO GAS. This
-      is the genuine ordered-then-invalid case and it is a real, tested code path.
-      `commit_transaction_outcome` RE-RUNS `BlockLimiter::pre_execution_check` because
-      "between run_transaction() and commit_transaction_outcome(), other transactions may
-      have been committed, potentially exceeding block limits". On failure it returns an
-      error, the receipt is never built, and the transaction is simply absent from the
-      block. The tree's own test does exactly this: three transactions are executed, two
-      are committed out of order, and the third — which passed every check when it ran —
-      is refused at commit with `TransactionGasLimitMoreThanAvailableBlockGas`; `finish()`
-      returns TWO receipts, not three. The transaction is invalidated by OTHER
-      transactions, not by anything about itself, and it is erased: no receipt, no trace,
-      no gas charged, indistinguishable from never having been submitted.
-      (3) THE SAME CHECK IS WHOLE-BLOCK REJECTION ON THE OTHER SIDE. During block
-      BUILDING an error from `pre_execution_check` means "skip this transaction, try the
-      next" — the module documentation says so in as many words. During block VALIDATION
-      the stateless validator executes the sealed block's transactions strictly in order
-      and maps ANY error from the same function to `ValidationError::BlockReplayFailed`,
-      which rejects the entire block. One function, two meanings, decided by which side
-      of the sequencer is running it. MegaETH therefore holds Conflux-style erasure and
-      Berachain-style whole-block rejection in a single mechanism.
-      WHY (2) IS NOT OBSERVABLE, AND THAT IS THE INTERESTING PART. The receipt is
-      CONSTRUCTED INSIDE `commit_transaction_outcome`, after the re-check passes — so a
-      transaction dropped at commit never has a receipt to stream, and the mini-block
-      preconfirmation is post-commit state by construction. A client therefore cannot see
-      a transaction appear in a mini-block and then vanish from the block. Live, over 577
-      transactions in 24 consecutive blocks, none did. MegaETH thus reaches the same
-      user-visible position as RISE — the ordered-but-invalid state cannot be observed —
-      but by the opposite route: RISE's admission is synchronous so the state never
-      arises, while MegaETH's state DOES arise inside the block builder and is resolved
-      before anything is published.
-      ADMISSION IS SYNCHRONOUS TOO, and the fast path is not a laxer path. Tested live
-      with correctly signed transactions from a fresh zero-balance key: insufficient
-      balance is rejected identically by `eth_sendRawTransaction`,
-      `eth_sendRawTransactionSync` AND `realtime_sendRawTransaction`; a wrong chain id, a
-      gas limit above the per-transaction cap, and a gas limit below MegaETH's 60,000
-      intrinsic are all refused at the RPC boundary with no receipt ever created.
-      NOT ESTABLISHED: nonce and balance invalidation between mini-block and seal. The
-      commit-time re-check covers only the seven BlockLimiter dimensions — it does NOT
-      re-validate nonce or balance — and revm's own nonce/balance validation happens at
-      `run_transaction` time, against whatever state that speculative execution saw.
-      Whether mega-reth's scheduler guarantees that two transactions from the same sender
-      are never executed concurrently, or re-validates the sender before commit, is not in
-      any published repository. See `## Not established here` in SUMMARY.md for the two
-      probes that would settle it.
-    src: "mega-evm/crates/mega-evm/src/block/executor.rs:Re-validate limits at commit time, mega-evm/crates/mega-evm/tests/block_executor/block_limits.rs:test_commit_time_pre_execution_check_parallel_simulation, mega-evm/crates/mega-evm/src/block/limit.rs:pre_execution_check, stateless-validator/crates/stateless-core/src/executor.rs:BlockReplayFailed"
-    src_live: "eth_sendRawTransaction/eth_sendRawTransactionSync/realtime_sendRawTransaction from a fresh zero-balance key @ 25149945 -> all three return -32003 'insufficient funds for gas * price + value: have 0 want 100000000000000'; chainId 1 -> -32000 'RLP decoding failed: Common chain ID ... not matching the derived chain ID 1'; gas limit 20000000000 -> -32000 'exceeds max transaction gas limit'; gas limit 50000 -> -32000 'Gas limit too low. Intrinsic: 60000'; no receipt for any of them. Streamed-then-absent census @ 25048478 -> 0 of 577 transactions"
 
 baseline_fork: prague
 
@@ -807,6 +683,163 @@ opcodes:
     its semantics are identical.
   src: "mega-evm/crates/mega-evm/src/evm/instructions.rs:instruction_table"
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: split
+    severity: high
+    src: "crates/mega-evm/src/block/executor.rs:commit_transaction_outcome, crates/mega-evm/src/block/executor.rs:pre_execution_check"
+    note: >-
+      NONCE ON FAILURE: PRESERVED on the erasure path, BURNED on the failed-receipt path —
+      and the two are told apart exactly the way a mainnet client expects, by whether a
+      receipt exists. See `consensus.ordered_but_invalid` for the three-way split; this
+      entry states what happens to the NONCE in each arm. (1) SECOND-METER FAILURE — a
+      per-transaction resource budget exhausted at execution (`KVUpdateLimitExceeded`,
+      `VolatileDataAccessOutOfGas`, or a gas budget retroactively cut by the timestamp
+      detention penalty). The transaction is INCLUDED with `status: 0` and its remaining gas
+      refunded. The outcome is committed, so the NONCE IS BURNED and a RECEIPT EXISTS. (2)
+      BLOCK-LEVEL LIMIT LOST TO A RACE — the genuine ordered-then-invalid case.
+      `commit_transaction_outcome` RE-RUNS `block_limiter.pre_execution_check(..)?` because
+      "between run_transaction() and commit_transaction_outcome(), other transactions may
+      have been committed, potentially exceeding block limits". The `?` returns before
+      `self.evm.db_mut().commit(state)`, so the executed transaction's ENTIRE state delta —
+      including revm's nonce increment — is DISCARDED. NONCE PRESERVED, no receipt, no gas
+      charged, absent from the block. The transaction is invalidated by OTHER transactions
+      and is freely resubmittable at the same nonce. SO MEGAETH IS NOT ARTELA. Both erase a
+      transaction from the RPC view, but MegaETH erases it because nothing was committed,
+      where Artela erases it after the nonce and fee were committed. Here "no receipt"
+      honestly means "nothing happened". THE PRECONFIRMATION CAVEAT. Mini-block receipts are
+      streamed with `blockHash: 0xffff..ff` before the EVM block is sealed, and a case-(2)
+      transaction is dropped at COMMIT — after execution. A streamed receipt for a
+      transaction that is then dropped would be a preconfirmed nonce burn that never
+      happened; whether the mini-block stream can emit one is NOT ESTABLISHED here. The
+      577-receipt live capture found the streamed (transactionIndex, hash) sequence equal to
+      the sealed transaction list in 24 of 24 blocks, so no such drop was observed — but
+      absence in a 24-block sample does not settle it. What would: a capture spanning a
+      block that actually hits a block-level limit, comparing the streamed sequence against
+  ordering:
+    verdict: executes_first
+    src: "mega-evm/crates/mega-evm/src/block/executor.rs:commit_transaction_outcome"
+    src_live: "eth_subscribe miniBlocks vs eth_getBlockByNumber/eth_getBlockReceipts @ 25048478 -> blocks 25048453..25048478 captured, 24 fully observed, 2384 mini-blocks (99 or 100 per EVM block, 2059 empty), 577 transactions; streamed (transactionIndex, hash) sequence == sealed transaction list in 24/24 blocks; streamed-vs-final receipt field diff over 577 receipts = {blockHash: 577, logs: 262, l1Fee: 244}, every other field identical, and identical key sets; second capture of 13 blocks -> l1Fee differed in 131 receipts, streamed value the constant 0x2db0cccd (766,561,485 wei) in every one against final values of 1,533,118,371 / 1,597,241,240 / 1,610,065,813 wei, and the only differing log field was blockHash (149); every streamed receipt blockHash was 0xffff..ff while the streamed TRANSACTION objects in the same payload carried blockHash null"
+    src_doc: "https://docs.megaeth.com/mini-block"
+    note: >-
+      (a) ORDERING DOES NOT COMMIT BEFORE EXECUTION. A mini-block is ALREADY-EXECUTED STATE
+      BEING STREAMED, not an order fixed now and executed later. The payload carries a
+      `receipts` array alongside `transactions`, and each receipt already holds `status`,
+      `gasUsed`, `cumulativeGasUsed` and `transactionIndex` — the transaction's FINAL index
+      in the enclosing EVM block — under a `receipt_root` computed over them. A receipt root
+      cannot exist before execution, and `cumulativeGasUsed` is block-level running state
+      that only exists once the transaction has been COMMITTED into the block being built.
+      In the published EVM both are produced inside
+      `MegaBlockExecutor::commit_transaction_outcome`, downstream of the commit-time
+      re-check recorded under `ordered_but_invalid` below. So the all-ones block hash is not
+      a promise about a future execution; it is a finished result missing only its
+      container. This is the same shape as RISE, whose shreds are also published only after
+      execution, and the exact opposite of Monad, where consensus commits the transaction
+      LIST at height N and agrees the state root only at N+3. MINI-BLOCK ORDER IS NEVER
+      REVISED, in the sample: across 24 consecutive fully-observed EVM blocks the
+      concatenated mini-block transaction sequence equalled the sealed block's transaction
+      list exactly — same hashes, same positions, nothing added, nothing removed, nothing
+      reordered — 24 blocks out of 24, 577 transactions. The streamed receipt is
+      field-for-field identical to the final one except `blockHash` — the key SETS are
+      identical — with two consequences. The `logs` differ only because each log carries its
+      own copy of the same `0xffff..ff` sentinel. And `l1Fee` differs for real: the streamed
+      receipt reports a CONSTANT 766,561,485 wei (0x2db0cccd) for every transaction
+      regardless of its calldata, while the sealed receipt reports a per-transaction value
+      roughly TWICE as large. `l1GasPrice`, `l1GasUsed`, `l1BaseFeeScalar` and
+      `l1BlobBaseFee` all match; only the derived total is a placeholder. So the
+      preconfirmation is not merely missing a block hash — it under-reports what the
+      transaction actually cost, on the one fee component an OP Stack user cannot predict.
+  parallel_execution:
+    verdict: sequencer
+    src: "stateless-validator/README.md:JIT-compiled executor on sequencer nodes, mega-evm/AGENTS.md:MegaETH incorporates parallel EVM, mega-evm/AGENTS.md:reducing parallel execution conflicts without banning the access outright, mega-evm/crates/mega-evm/src/constants.rs:BLOCK_ENV_ACCESS_COMPUTE_GAS"
+    src_doc: "https://docs.megaeth.com/spec/megaevm/gas-detention"
+    note: >-
+      (b) EXECUTION IS PARALLEL ON THE SEQUENCER, AND THE PARALLELISM IS NOT ITSELF
+      CONSENSUS-VISIBLE — BUT ITS CONFLICT-AVOIDANCE MACHINERY IS, AND THAT IS NEW.
+      stateless-validator's README names "the hyper-optimized, parallel, JIT-compiled
+      executor on sequencer nodes" as one of three MegaETH client implementations, and
+      mega-evm's own AGENTS.md states flatly that "MegaETH incorporates parallel EVM".
+      Nothing in the published EVM re-runs, aborts or retries a transaction on conflict:
+      mega-evm's state transition is sequential and deterministic, and the stateless
+      validator re-executes every sealed block single-threaded on vanilla revm, so two
+      implementations cannot disagree about a result. Every other parallel chain in this
+      dataset stops there — Sei, Monad and RISE's pevm all detect conflicts against a
+      multi-version store and re-run the loser, leaving the state transition untouched.
+      MEGAETH IS THE FIRST ROW WHERE THE SCHEDULER CHANGED THE STATE TRANSITION INSTEAD. Gas
+      detention exists for no other reason: the tree says it "forces transactions that touch
+      volatile data to terminate quickly, reducing parallel execution conflicts without
+      banning the access outright". The 20,000,000 compute-gas cap that a contract incurs
+      for reading `block.timestamp` is a consensus rule whose sole purpose is sequencer
+      throughput, and it is mandatory for every client. The EQUIVALENCE spec — the one that
+      claims Optimism Isthmus equivalence — already carries the block-environment ACCESS
+      TRACKING for the same reason, so even MegaETH's "equivalent" spec is instrumented for
+      a scheduler. What is NOT established is anything about the scheduler itself: how
+      mega-reth partitions transactions, what it does on a genuine read/write conflict, and
+      whether a transaction is ever executed speculatively and thrown away. That code is
+      closed.
+  ordered_then_invalid:
+    verdict: unreachable
+    severity: high
+    src: "mega-evm/crates/mega-evm/src/block/executor.rs:Re-validate limits at commit time, mega-evm/crates/mega-evm/tests/block_executor/block_limits.rs:test_commit_time_pre_execution_check_parallel_simulation, mega-evm/crates/mega-evm/src/block/limit.rs:pre_execution_check, stateless-validator/crates/stateless-core/src/executor.rs:BlockReplayFailed"
+    src_live: "eth_sendRawTransaction/eth_sendRawTransactionSync/realtime_sendRawTransaction from a fresh zero-balance key @ 25149945 -> all three return -32003 'insufficient funds for gas * price + value: have 0 want 100000000000000'; chainId 1 -> -32000 'RLP decoding failed: Common chain ID ... not matching the derived chain ID 1'; gas limit 20000000000 -> -32000 'exceeds max transaction gas limit'; gas limit 50000 -> -32000 'Gas limit too low. Intrinsic: 60000'; no receipt for any of them. Streamed-then-absent census @ 25048478 -> 0 of 577 transactions"
+    note: >-
+      (c) THE CENTRAL QUESTION. MegaETH gives THREE different answers depending on which
+      meter fails and which side of the sequencer you stand on, and the published EVM
+      settles all three. (1) SECOND-METER FAILURE AT EXECUTION -> INCLUDED, `status: 0`, GAS
+      REFUNDED. A transaction admitted and ordered whose per-transaction resource budget
+      (compute gas, data size, KV updates, state growth) is exhausted during execution, or
+      whose gas budget is retroactively cut by the detention penalty for reading
+      `block.timestamp`, halts with `KVUpdateLimitExceeded` / `VolatileDataAccessOutOfGas`
+      and is INCLUDED in the block with `status: 0`, no state changes, and its remaining gas
+      PRESERVED AND REFUNDED. So the dual meter and the detention penalty do make a
+      transaction's cost undeterminable at submission time, but they never produce an
+      unincludable transaction — they produce an ordinary failed receipt with an unusual gas
+      line. The receipt cannot express WHICH meter failed: `gasUsed` is compute plus storage
+      combined and there is no halt-reason field. (2) BLOCK-LEVEL LIMIT LOST TO A RACE ->
+      DROPPED AT COMMIT, NO RECEIPT, NO GAS. This is the genuine ordered-then-invalid case
+      and it is a real, tested code path. `commit_transaction_outcome` RE-RUNS
+      `BlockLimiter::pre_execution_check` because "between run_transaction() and
+      commit_transaction_outcome(), other transactions may have been committed, potentially
+      exceeding block limits". On failure it returns an error, the receipt is never built,
+      and the transaction is simply absent from the block. The tree's own test does exactly
+      this: three transactions are executed, two are committed out of order, and the third —
+      which passed every check when it ran — is refused at commit with
+      `TransactionGasLimitMoreThanAvailableBlockGas`; `finish()` returns TWO receipts, not
+      three. The transaction is invalidated by OTHER transactions, not by anything about
+      itself, and it is erased: no receipt, no trace, no gas charged, indistinguishable from
+      never having been submitted. (3) THE SAME CHECK IS WHOLE-BLOCK REJECTION ON THE OTHER
+      SIDE. During block BUILDING an error from `pre_execution_check` means "skip this
+      transaction, try the next" — the module documentation says so in as many words. During
+      block VALIDATION the stateless validator executes the sealed block's transactions
+      strictly in order and maps ANY error from the same function to
+      `ValidationError::BlockReplayFailed`, which rejects the entire block. One function,
+      two meanings, decided by which side of the sequencer is running it. MegaETH therefore
+      holds Conflux-style erasure and Berachain-style whole-block rejection in a single
+      mechanism. WHY (2) IS NOT OBSERVABLE, AND THAT IS THE INTERESTING PART. The receipt is
+      CONSTRUCTED INSIDE `commit_transaction_outcome`, after the re-check passes — so a
+      transaction dropped at commit never has a receipt to stream, and the mini-block
+      preconfirmation is post-commit state by construction. A client therefore cannot see a
+      transaction appear in a mini-block and then vanish from the block. Live, over 577
+      transactions in 24 consecutive blocks, none did. MegaETH thus reaches the same
+      user-visible position as RISE — the ordered-but-invalid state cannot be observed — but
+      by the opposite route: RISE's admission is synchronous so the state never arises,
+      while MegaETH's state DOES arise inside the block builder and is resolved before
+      anything is published. ADMISSION IS SYNCHRONOUS TOO, and the fast path is not a laxer
+      path. Tested live with correctly signed transactions from a fresh zero-balance key:
+      insufficient balance is rejected identically by `eth_sendRawTransaction`,
+      `eth_sendRawTransactionSync` AND `realtime_sendRawTransaction`; a wrong chain id, a
+      gas limit above the per-transaction cap, and a gas limit below MegaETH's 60,000
+      intrinsic are all refused at the RPC boundary with no receipt ever created. NOT
+      ESTABLISHED: nonce and balance invalidation between mini-block and seal. The
+      commit-time re-check covers only the seven BlockLimiter dimensions — it does NOT
+      re-validate nonce or balance — and revm's own nonce/balance validation happens at
+      `run_transaction` time, against whatever state that speculative execution saw. Whether
+      mega-reth's scheduler guarantees that two transactions from the same sender are never
+      executed concurrently, or re-validates the sender before commit, is not in any
+      published repository. See `## Not established here` in SUMMARY.md for the two probes
+      that would settle it.
+      the sealed list.
+
 fee_model:
   metering: "dual: compute gas + storage gas, drawn from one gas_limit"
   fee_market: "EIP-1559 with elasticity 1 and denominator 1000 (effectively fixed base fee) + inherited OP L1 data fee and operator fee"
@@ -814,48 +847,6 @@ fee_model:
   src: "mega-evm/crates/mega-evm/src/constants.rs:TX_INTRINSIC_STORAGE_GAS"
   src_doc: https://docs.megaeth.com/spec/megaevm/dual-gas-model
   extra_components:
-    - name: nonce on failure
-      severity: high
-      src: "crates/mega-evm/src/block/executor.rs:commit_transaction_outcome, crates/mega-evm/src/block/executor.rs:pre_execution_check"
-      note: >-
-        NONCE ON FAILURE: PRESERVED on the erasure path, BURNED on the failed-receipt
-        path — and the two are told apart exactly the way a mainnet client expects,
-        by whether a receipt exists. See `consensus.ordered_but_invalid` for the
-        three-way split; this entry states what happens to the NONCE in each arm.
-
-        (1) SECOND-METER FAILURE — a per-transaction resource budget exhausted at
-        execution (`KVUpdateLimitExceeded`, `VolatileDataAccessOutOfGas`, or a gas
-        budget retroactively cut by the timestamp detention penalty). The
-        transaction is INCLUDED with `status: 0` and its remaining gas refunded.
-        The outcome is committed, so the NONCE IS BURNED and a RECEIPT EXISTS.
-
-        (2) BLOCK-LEVEL LIMIT LOST TO A RACE — the genuine ordered-then-invalid
-        case. `commit_transaction_outcome` RE-RUNS
-        `block_limiter.pre_execution_check(..)?` because "between run_transaction()
-        and commit_transaction_outcome(), other transactions may have been
-        committed, potentially exceeding block limits". The `?` returns before
-        `self.evm.db_mut().commit(state)`, so the executed transaction's ENTIRE
-        state delta — including revm's nonce increment — is DISCARDED. NONCE
-        PRESERVED, no receipt, no gas charged, absent from the block. The
-        transaction is invalidated by OTHER transactions and is freely
-        resubmittable at the same nonce.
-
-        SO MEGAETH IS NOT ARTELA. Both erase a transaction from the RPC view, but
-        MegaETH erases it because nothing was committed, where Artela erases it
-        after the nonce and fee were committed. Here "no receipt" honestly means
-        "nothing happened".
-
-        THE PRECONFIRMATION CAVEAT. Mini-block receipts are streamed with
-        `blockHash: 0xffff..ff` before the EVM block is sealed, and a case-(2)
-        transaction is dropped at COMMIT — after execution. A streamed receipt
-        for a transaction that is then dropped would be a preconfirmed nonce
-        burn that never happened; whether the mini-block stream can emit one is
-        NOT ESTABLISHED here. The 577-receipt live capture found the streamed
-        (transactionIndex, hash) sequence equal to the sealed transaction list in
-        24 of 24 blocks, so no such drop was observed — but absence in a 24-block
-        sample does not settle it. What would: a capture spanning a block that
-        actually hits a block-level limit, comparing the streamed sequence
-        against the sealed list.
     - name: storage gas
       note: >-
         A second meter for anything that makes the state bigger or must be transmitted:

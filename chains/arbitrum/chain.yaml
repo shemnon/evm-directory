@@ -304,6 +304,23 @@ opcodes:
     0x71. A survey that only diffs jump tables reports "no opcode changes" and
     misses an entire second VM.
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    src: "execution/gethexec/sequencer.go:preTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
+    note: >-
+      The proposer executes each transaction as it appends it: an invalid one is popped out
+      of the candidate set and never reaches the block, so the ordered-but-invalid state is
+      not reachable and the nonce is untouched. If one reached a proposed block anyway,
+      `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
+      against this row's own pinned client rather than assumed from the family.
+  nonce_on_failure:
+    verdict: preserved
+    src: "execution/gethexec/sequencer.go:preTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
+    note: >-
+      Preserved. Nothing is committed for a transaction the builder rejected, so the account
+      nonce is untouched and the sender resubmits at the same nonce.
+
 fee_model:
   metering: gas (plus Stylus "ink" for WASM execution)
   fee_market: ArbOS speed-limit-based L2 pricing

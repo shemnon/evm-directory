@@ -16,6 +16,7 @@ website/
   axes/system-contracts.html    System contracts
   axes/fees-envelope.html       Fees & envelope
   axes/lineage.html             Lineage
+  axes/ordering.html            Ordering & execution
   assets/site.css, site.js
   .nojekyll                     GitHub Pages: do not eat paths beginning with _
   .manifest.json                build state — committed, see 05-build.md

@@ -360,6 +360,25 @@ opcodes:
       "0xfe": INVALID
       "0xff": SELFDESTRUCT
 
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    src: "core/txpool/legacypool/legacypool.go:validateTx, core/state_transition.go:preCheck"
+    note: >-
+      MAINNET BASELINE — THE STATE IS UNREACHABLE BY CONSTRUCTION. Nonce, balance and gas
+      price are checked before a transaction can be ordered: the pool rejects it at
+      `validateTx`, and a block containing one is invalid because `preCheck` fails during
+      execution. So "ordered but invalid" is not a state mainnet can reach, the nonce is
+      always preserved, and the sender resubmits freely. Every other row on this axis is a
+      delta against that, and the divergence appears wherever a chain separates ordering
+      from execution.
+  nonce_on_failure:
+    verdict: preserved
+    src: "core/state_transition.go:preCheck"
+    note: >-
+      Preserved, always: an invalid transaction is never included, so nothing spends the
+      nonce.
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (base fee burned + priority tip)

@@ -30,8 +30,48 @@ AXES = [
     ("eips",             "EIP activation set", "Which EIPs are live on each chain, stated against mainnet at that chain's baseline fork."),
     ("fees-envelope",    "Fees & envelope",    "Metering and fee markets per chain, and header fields that differ from mainnet."),
     ("lineage",          "Lineage",            "Code ancestry and fork ancestry, tracked separately."),
+    ("ordering",         "Ordering & execution", "What happens to a transaction between being ordered and being executed."),
 ]
 AXIS_TITLE = {k: t for k, t, _ in AXES}
+
+# The lifecycle axis. Mainnet cannot reach the ordered-but-invalid state at all —
+# validation precedes ordering — so `unreachable` is the baseline every other
+# verdict is a delta against, and the axis only has rows once a chain splits the two.
+LIFECYCLE = [
+    ("ordered_then_invalid", "Ordered, then invalid",
+     "A transaction fixed in an order, then found invalid when it executes."),
+    ("nonce_on_failure",     "Nonce on failure",
+     "Whether a transaction that did no work still spends the sender's nonce."),
+    ("duplicate_inclusion",  "Duplicate inclusion",
+     "The same transaction landing in more than one block."),
+    ("insufficient_balance", "Insufficient balance",
+     "A sender who cannot cover the gas the order already committed to."),
+    ("ordering",             "Ordering vs. execution",
+     "Whether the order commits before the content is known."),
+    ("parallel_execution",   "Parallel execution", "Consensus-visible concurrency."),
+    ("preconfirmation",      "Preconfirmation",
+     "A result published before its enclosing block is sealed."),
+]
+LIFECYCLE_TITLE = {k: t for k, t, _ in LIFECYCLE}
+
+
+def lifecycle(chains, slug):
+    """A chain's effective lifecycle answers. A row whose `lineage.upstream` names a
+    stack node inherits that node's answers key by key, and overrides the ones it
+    states itself — the same override-by-key rule the address sections use. Returns
+    {key: (entry, origin_slug)}; origin != slug means inherited."""
+    out = {}
+    chain = [slug]
+    seen = {slug}
+    up = chains[slug]["lineage"].get("upstream")
+    while up in chains and is_stack(chains[up]) and up not in seen:
+        chain.append(up); seen.add(up)
+        up = chains[up]["lineage"].get("upstream")
+    for s in reversed(chain):                       # ancestor first, descendant wins
+        for k, v in (chains[s].get("tx_lifecycle") or {}).items():
+            if isinstance(v, dict):
+                out[k] = (v, s)
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -673,6 +713,22 @@ def page_chain(chains, slug):
 
     B.append(list_section(chains, slug, "opcodes", "Opcodes", "opcodes", "op"))
 
+    # --- transaction lifecycle -------------------------------------------
+    tl = lifecycle(chains, slug)
+    if tl:
+        B.append(h2(f'Ordering &amp; execution <span class="pill">{len(tl)}</span>',
+                    "tx-lifecycle"))
+        B.append(table(["Question", "Verdict", "What happens"],
+                       [[esc(LIFECYCLE_TITLE.get(k, k)),
+                         (f'<span class="pill">{esc(d["verdict"])}</span>'
+                          + ("" if o == slug else
+                             f' <span class="s-inherited" title="inherited">from '
+                             f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')),
+                         f'<div class="wrap">{markdown(flat(d.get("answer") or d.get("note")))}'
+                         f'{provenance(d, on_chain=True)}</div>']
+                        for k, _, _ in LIFECYCLE if (do := tl.get(k)) for d, o in [do]
+                        if isinstance(d, dict) and d.get("verdict")]))
+
     # --- fee model & header fields ---------------------------------------
     fm = c.get("fee_model") or {}
     if fm:
@@ -1281,6 +1337,46 @@ def page_fees(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
+def page_ordering(chains):
+    """Mainnet answers every question here by construction: validation runs before
+    ordering, so a transaction that is ordered and then invalid is not a state it can
+    reach. Every row is a chain that separated the two and had to invent an answer."""
+    slugs = order(chains)
+    rows, attrs = [], []
+    for key, label, blurb in LIFECYCLE:
+        cells, plain = [], []
+        for s in slugs:
+            d, origin = lifecycle(chains, s).get(key, (None, s))
+            v = d.get("verdict") if isinstance(d, dict) else None
+            plain.append(v or "—")
+            if v:
+                mark = "" if origin == s else f' <span class="s-inherited" title="inherited from {esc(origin)}">=</span>'
+                cells.append(cell_link(s, "tx-lifecycle", key,
+                             f'<span class="pill" title="{esc(flat(d.get("answer") or d.get("note")))[:400]}">'
+                             f'{esc(v)}</span>{mark}'))
+            else:
+                cells.append('<span class="s-inherited" title="not established">—</span>')
+        if any(p != "—" for p in plain):
+            rows.append([f'<span title="{esc(blurb)}">{esc(label)}</span>'] + cells)
+            attrs.append(uniform_attr(plain))
+    B = [h2(f'Lifecycle <span class="pill">{len(rows)} questions</span>', "lifecycle"),
+         filter_box("lifecycle-grid", uniform=True),
+         table(["Question"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
+                               for s in slugs],
+               rows, tid="lifecycle-grid", pin=True, row_attrs=attrs,
+               col_chains=[None] + slugs),
+         '<p class="legend">Mainnet reaches none of these states: nonce, balance and gas '
+         'price are checked <em>before</em> a transaction can be ordered, so the '
+         '<code>ethereum</code> column is the baseline and reads <code>unreachable</code> / '
+         '<code>preserved</code>. A <code>—</code> means the question is not established for '
+         'that chain, not that it behaves like mainnet. Hover a verdict for the finding; '
+         'follow it for the cited source.</p>']
+    B.append(axis_notes(chains, "ordering"))
+    return layout("axes/ordering.html", "Ordering &amp; execution",
+                  "What happens to a transaction between being ordered and being executed.",
+                  "\n".join(x for x in B if x), wide=True, chains=chains)
+
+
 def page_lineage(chains):
     """Two independent ancestries. A chain's code can descend from one project while
     its consensus rules track a different fork line, and conflating them makes both
@@ -1491,6 +1587,7 @@ def registry(chains):
         Page("silent-divergences.html", all_yaml, page_silent),
     ]
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
+               "ordering": page_ordering,
                "cryptography": page_cryptography, "opcodes": page_opcodes,
                "system-contracts": page_system_contracts, "fees-envelope": page_fees,
                "lineage": page_lineage}

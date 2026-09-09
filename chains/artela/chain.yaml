@@ -892,73 +892,68 @@ opcodes:
     row's opcode risk: the chain answers "which fork are you on" with "Cancun"
     and the answer is wrong in four different directions at once.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: burned
+    severity: high
+    src: "app/ante/evm/basic_checker.go:EthIncrementSenderSequenceDecorator, app/ante/evm/context_checker.go:EthEmitEventDecorator, ethereum/rpc/types/utils.go:TxSuccessOrExceedsBlockGasLimit, ethereum/rpc/blockchain.go:EthMsgsFromCosmosBlock, ethereum/rpc/tx.go:queryCosmosTxIndexer, artela-evm/vm/instructions.go:opRandom"
+    note: >-
+      NONCE ON FAILURE: BURNED, FEE TAKEN, AND THE TRANSACTION ERASED FROM THE ETHEREUM VIEW
+      ENTIRELY. This is the worst combination in the dataset and it is reachable from
+      ORDINARY BYTECODE, not from an edge case. THE CONSEQUENCE, PLAINLY: a sender whose
+      transaction takes this path gets no receipt, no `eth_getTransactionByHash` entry, and
+      no line in `eth_getBlockByNumber`. Every observable says the transaction never
+      happened. But the fee is gone and the account's sequence has advanced. The sender does
+      the only reasonable thing — resubmits at what they still believe is their next nonce —
+      and that resubmission is now nonce-too-low forever. Every subsequent transaction from
+      that account is stuck behind a one-slot gap the sender has no way to see, because the
+      only evidence of it was deleted by the RPC layer. `eth_getTransactionCount` is the
+      sole instrument that reveals it, and nothing prompts anyone to look. HOW IT HAPPENS.
+      The nonce and the fee live in the AnteHandler: `EthIncrementSenderSequenceDecorator`
+      does `acc.SetSequence(nonce + 1)` (with the nonce equality check merged into it), and
+      the SDK commits the ante writes before running the message. `EthEmitEventDecorator`
+      then emits the `ethereum_tx` / `ethereumTxHash` event at the very END of the ante
+      chain, under a comment that states the intended invariant outright: "After eth tx
+      passed ante handler, the fee is deducted and nonce increased, it SHOULDN'T BE IGNORED
+      BY JSON-RPC". The RPC ignores it anyway. `TxSuccessOrExceedsBlockGasLimit` admits only
+      ABCI code 0 or a log matching the literal substring "out of gas in location: block gas
+      meter; gasWanted:". `EthMsgsFromCosmosBlock` applies it and drops the transaction from
+      the block; `queryCosmosTxIndexer` applies it and returns `errors.New("invalid ethereum
+      tx")` even though the ante-emitted event IS in the CometBFT index — so the hash lookup
+      and the receipt lookup both fail on a transaction the node can see. WHY ORDINARY
+      BYTECODE REACHES IT. `BlockContext.Random` is `nil, // not supported`, `opRandom`
+      calls `.Bytes()` on it, and `common.Hash.Bytes` has a VALUE receiver — so executing
+      PREVRANDAO (0x44, and therefore also pre-merge DIFFICULTY) is a nil dereference. The
+      Go panic unwinds into the SDK's `runTx` recovery, which turns it into a
+      transaction-level error whose log is a Go runtime message — not code 0, and not the
+      block-gas sentinel. Any contract that reads `block.prevrandao` or `block.difficulty`
+      burns its caller's nonce and fee and vanishes. THE OTHER PATHS, FOR CONTRAST. An ante
+      failure (stale nonce, insufficient balance, gas price below the current minimum, bad
+      signature) discards the ante cache, so the NONCE IS PRESERVED and no fee is taken —
+      but the transaction is erased by the same filter, so it is equally invisible. An EVM
+      revert returns a response with `VmError`, ABCI code 0, and gets a `status: 0` receipt
+      with the nonce burned. Block-gas-limit exhaustion is the one fee-taken failure the
+      substring whitelist lets back through. OTHER ROWS WITH THIS SHAPE: `cosmos-evm`, the
+      framework Artela forked, has the identical ante-commit and the identical
+      `TxSucessOrExpectedFailure` gate — its outcome (3) is the same erased-and-burned
+      combination, reachable through `failed to commit stateDB` and the refund gas-overflow
+      guards rather than through PREVRANDAO. `injective` has half of it: the nonce is burned
+      and the receipt is lost, but `EthMsgsFromTendermintBlock` applies no filter, so the
+      transaction still appears in the block and the gap is at least observable. Artela is
+  ordered_then_invalid:
+    verdict: erased
+    src: "app/ante/evm/basic_checker.go:EthIncrementSenderSequenceDecorator, app/ante/evm/context_checker.go:EthEmitEventDecorator, ethereum/rpc/types/utils.go:TxSuccessOrExceedsBlockGasLimit, ethereum/rpc/blockchain.go:EthMsgsFromCosmosBlock, ethereum/rpc/tx.go:queryCosmosTxIndexer, artela-evm/vm/instructions.go:opRandom"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      the only row where the gap is invisible AND ordinary bytecode opens it.
+
 fee_model:
   metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"
   src: x/fee/keeper/base_fee.go:CalculateBaseFee
   extra_components:
-  - name: nonce on failure
-    severity: high
-    src: "app/ante/evm/basic_checker.go:EthIncrementSenderSequenceDecorator, app/ante/evm/context_checker.go:EthEmitEventDecorator, ethereum/rpc/types/utils.go:TxSuccessOrExceedsBlockGasLimit, ethereum/rpc/blockchain.go:EthMsgsFromCosmosBlock, ethereum/rpc/tx.go:queryCosmosTxIndexer, artela-evm/vm/instructions.go:opRandom"
-    note: >-
-      NONCE ON FAILURE: BURNED, FEE TAKEN, AND THE TRANSACTION ERASED FROM THE
-      ETHEREUM VIEW ENTIRELY. This is the worst combination in the dataset and it
-      is reachable from ORDINARY BYTECODE, not from an edge case.
-
-      THE CONSEQUENCE, PLAINLY: a sender whose transaction takes this path gets
-      no receipt, no `eth_getTransactionByHash` entry, and no line in
-      `eth_getBlockByNumber`. Every observable says the transaction never
-      happened. But the fee is gone and the account's sequence has advanced. The
-      sender does the only reasonable thing — resubmits at what they still
-      believe is their next nonce — and that resubmission is now nonce-too-low
-      forever. Every subsequent transaction from that account is stuck behind a
-      one-slot gap the sender has no way to see, because the only evidence of it
-      was deleted by the RPC layer. `eth_getTransactionCount` is the sole
-      instrument that reveals it, and nothing prompts anyone to look.
-
-      HOW IT HAPPENS. The nonce and the fee live in the AnteHandler:
-      `EthIncrementSenderSequenceDecorator` does `acc.SetSequence(nonce + 1)`
-      (with the nonce equality check merged into it), and the SDK commits the
-      ante writes before running the message. `EthEmitEventDecorator` then emits
-      the `ethereum_tx` / `ethereumTxHash` event at the very END of the ante
-      chain, under a comment that states the intended invariant outright: "After
-      eth tx passed ante handler, the fee is deducted and nonce increased, it
-      SHOULDN'T BE IGNORED BY JSON-RPC". The RPC ignores it anyway.
-      `TxSuccessOrExceedsBlockGasLimit` admits only ABCI code 0 or a log matching
-      the literal substring "out of gas in location: block gas meter;
-      gasWanted:". `EthMsgsFromCosmosBlock` applies it and drops the transaction
-      from the block; `queryCosmosTxIndexer` applies it and returns
-      `errors.New("invalid ethereum tx")` even though the ante-emitted event IS
-      in the CometBFT index — so the hash lookup and the receipt lookup both fail
-      on a transaction the node can see.
-
-      WHY ORDINARY BYTECODE REACHES IT. `BlockContext.Random` is `nil, // not
-      supported`, `opRandom` calls `.Bytes()` on it, and `common.Hash.Bytes` has
-      a VALUE receiver — so executing PREVRANDAO (0x44, and therefore also
-      pre-merge DIFFICULTY) is a nil dereference. The Go panic unwinds into the
-      SDK's `runTx` recovery, which turns it into a transaction-level error whose
-      log is a Go runtime message — not code 0, and not the block-gas sentinel.
-      Any contract that reads `block.prevrandao` or `block.difficulty` burns its
-      caller's nonce and fee and vanishes.
-
-      THE OTHER PATHS, FOR CONTRAST. An ante failure (stale nonce, insufficient
-      balance, gas price below the current minimum, bad signature) discards the
-      ante cache, so the NONCE IS PRESERVED and no fee is taken — but the
-      transaction is erased by the same filter, so it is equally invisible. An
-      EVM revert returns a response with `VmError`, ABCI code 0, and gets a
-      `status: 0` receipt with the nonce burned. Block-gas-limit exhaustion is
-      the one fee-taken failure the substring whitelist lets back through.
-
-      OTHER ROWS WITH THIS SHAPE: `cosmos-evm`, the framework Artela forked, has
-      the identical ante-commit and the identical
-      `TxSucessOrExpectedFailure` gate — its outcome (3) is the same
-      erased-and-burned combination, reachable through `failed to commit
-      stateDB` and the refund gas-overflow guards rather than through
-      PREVRANDAO. `injective` has half of it: the nonce is burned and the receipt
-      is lost, but `EthMsgsFromTendermintBlock` applies no filter, so the
-      transaction still appears in the block and the gap is at least observable.
-      Artela is the only row where the gap is invisible AND ordinary bytecode
-      opens it.
   - name: minimum gas charge is a fraction of the gas LIMIT
     severity: high
     src: "x/evm/keeper/evm.go:minimumGasUsed, x/fee/types/params.go:DefaultMinGasMultiplier"

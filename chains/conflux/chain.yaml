@@ -897,6 +897,57 @@ opcodes:
     and CLZ on forks; everything else is unconditional.
   src: "crates/execution/vm-interpreter/src/instructions.rs:from_u8_versioned"
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: split
+    severity: high
+    src: "crates/execution/executor/src/executive/fresh_executive.rs:check_all, crates/execution/executor/src/executive/fresh_executive.rs:check_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:inc_sender_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas"
+    note: >-
+      NONCE ON FAILURE: SPLIT WITHIN ONE CHAIN, and the two halves are decided by whether
+      `FreshExecutive::check_all` rejects the transaction before `into_pre_checked` or
+      after. This is the only row in the dataset where both answers are live at once.
+      PRESERVED, NO RECEIPT, NO CHARGE — everything `check_all` rejects becomes
+      `TransactionStatus::Skipped`: nonce-too-low (`check_nonce` → `TxDropError::OldNonce`),
+      nonce-too-high, gas price below the base-fee threshold at the pivot block,
+      sender-does-not-exist, sender-has-code, gas limit below the intrinsic/EIP-7623 floor,
+      and for Core Space an expired epoch window. Execution never starts, so
+      `inc_sender_nonce` is never reached: the account nonce is UNTOUCHED, no gas is
+      charged, and the eSpace RPC erases the transaction outright — the phantom-block
+      builder skips it ("we do not return non-executed transaction"), no transaction index
+      is written, and `eth_getTransactionReceipt` returns null. This is the friendly half:
+      the sender can resubmit at the same nonce freely, and it is what makes duplicate DAG
+      packing harmless — the second copy hits `OldNonce` and is Skipped. BURNED, WITH A
+      RECEIPT, BALANCE CONFISCATED — insufficient balance is NOT one of those checks on
+      mainnet. `check_enough_balance` is called only `if self.context.spec.align_evm`, which
+      is devnet-only, so an underfunded transaction passes into `PreCheckedExecutive`, where
+      `inc_sender_nonce` bumps the nonce and `charge_gas` takes `min(gas_cost, balance)` —
+      the sender's entire remaining balance. `gasUsed` is reported as the FULL GAS LIMIT and
+      the receipt says `status: 0`. NONCE BURNED. SO THE SAME QUESTION HAS TWO ANSWERS
+      DEPENDING ON WHICH VALIDITY RULE BROKE, and the observable signal is inverted from
+      what a mainnet client expects: no receipt means the nonce SURVIVED, a receipt means it
+      was spent along with the balance. Compare Taraxa, which took the opposite design and
+      gives every one of these cases a status-0 receipt with the nonce burned; and Sei,
+      which gates the nonce bump and the receipt on the same condition so the two always
+      agree.
+  insufficient_balance:
+    verdict: confiscated
+    severity: high
+    src: "crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas, crates/execution/executor/src/executive/executed.rs:not_enough_balance_fee_charged"
+    note: >-
+      `actual_gas_cost = min(gas_cost, sender_balance)`. A transaction whose balance cannot
+      cover `gas_limit * gas_price + value` is NOT skipped on mainnet Conflux — the
+      EVM-style precheck runs only when `align_evm` is on. It is executed: the nonce is
+      bumped, the sender's ENTIRE REMAINING BALANCE is confiscated as a partial fee,
+      `gas_used` is recorded as the FULL GAS LIMIT, and the receipt says `status: 0`. This
+  ordered_then_invalid:
+    verdict: erased
+    src: "crates/execution/executor/src/executive/fresh_executive.rs:check_all, crates/execution/executor/src/executive/fresh_executive.rs:check_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:inc_sender_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      is the "charged a partial/penalty fee" outcome, and it is reachable on mainnet.
+
 fee_model:
   metering: gas
   fee_market: "CIP-1559 with two independent per-space base fees, per-DAG-block updates driven by packed gas LIMITS, a 20 gwei eSpace floor, and a DAO-adjustable burn share"
@@ -954,55 +1005,6 @@ fee_model:
     - name: "cross-space gas retention 9/10"
       src: "crates/parameters/src/lib.rs:CROSS_SPACE_GAS_RATIO"
       note: "a cross-space call forwards gas_left/10 into eSpace, against the EVM's 63/64"
-    - name: nonce on failure
-      severity: high
-      src: "crates/execution/executor/src/executive/fresh_executive.rs:check_all, crates/execution/executor/src/executive/fresh_executive.rs:check_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:inc_sender_nonce, crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas"
-      note: >-
-        NONCE ON FAILURE: SPLIT WITHIN ONE CHAIN, and the two halves are decided
-        by whether `FreshExecutive::check_all` rejects the transaction before
-        `into_pre_checked` or after. This is the only row in the dataset where
-        both answers are live at once.
-
-        PRESERVED, NO RECEIPT, NO CHARGE — everything `check_all` rejects becomes
-        `TransactionStatus::Skipped`: nonce-too-low (`check_nonce` →
-        `TxDropError::OldNonce`), nonce-too-high, gas price below the base-fee
-        threshold at the pivot block, sender-does-not-exist, sender-has-code,
-        gas limit below the intrinsic/EIP-7623 floor, and for Core Space an
-        expired epoch window. Execution never starts, so `inc_sender_nonce` is
-        never reached: the account nonce is UNTOUCHED, no gas is charged, and the
-        eSpace RPC erases the transaction outright — the phantom-block builder
-        skips it ("we do not return non-executed transaction"), no transaction
-        index is written, and `eth_getTransactionReceipt` returns null. This is
-        the friendly half: the sender can resubmit at the same nonce freely, and
-        it is what makes duplicate DAG packing harmless — the second copy hits
-        `OldNonce` and is Skipped.
-
-        BURNED, WITH A RECEIPT, BALANCE CONFISCATED — insufficient balance is NOT
-        one of those checks on mainnet. `check_enough_balance` is called only
-        `if self.context.spec.align_evm`, which is devnet-only, so an underfunded
-        transaction passes into `PreCheckedExecutive`, where `inc_sender_nonce`
-        bumps the nonce and `charge_gas` takes `min(gas_cost, balance)` — the
-        sender's entire remaining balance. `gasUsed` is reported as the FULL GAS
-        LIMIT and the receipt says `status: 0`. NONCE BURNED.
-
-        SO THE SAME QUESTION HAS TWO ANSWERS DEPENDING ON WHICH VALIDITY RULE
-        BROKE, and the observable signal is inverted from what a mainnet client
-        expects: no receipt means the nonce SURVIVED, a receipt means it was
-        spent along with the balance. Compare Taraxa, which took the opposite
-        design and gives every one of these cases a status-0 receipt with the
-        nonce burned; and Sei, which gates the nonce bump and the receipt on the
-        same condition so the two always agree.
-    - name: "insufficient balance takes the whole balance"
-      severity: high
-      src: "crates/execution/executor/src/executive/pre_checked_executive.rs:charge_gas, crates/execution/executor/src/executive/executed.rs:not_enough_balance_fee_charged"
-      note: >-
-        `actual_gas_cost = min(gas_cost, sender_balance)`. A transaction whose
-        balance cannot cover `gas_limit * gas_price + value` is NOT skipped on
-        mainnet Conflux — the EVM-style precheck runs only when `align_evm` is on.
-        It is executed: the nonce is bumped, the sender's ENTIRE REMAINING BALANCE
-        is confiscated as a partial fee, `gas_used` is recorded as the FULL GAS
-        LIMIT, and the receipt says `status: 0`. This is the "charged a
-        partial/penalty fee" outcome, and it is reachable on mainnet.
   note: >-
     Conflux is the second row in this dataset (after Monad) whose fee market is
     driven by gas LIMITS rather than gas used, and the first whose base fee is

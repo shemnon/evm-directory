@@ -503,51 +503,51 @@ opcodes:
     opcode delta with a loud note rather than 140 `modified` rows, because no opcode's
     RESULT or GAS differs — see fee_model.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: preserved
+    severity: high
+    src: "core/state_processor.go:ErrZkGasLimitExceeded, core/state_processor.go:RevertToSnapshot, miner/taiko_worker.go:commitL2Transactions"
+    note: >-
+      NONCE ON FAILURE: PRESERVED IN BOTH OF TAIKO'S DROP PATHS, and neither produces a
+      receipt. Worth stating because based sequencing means an L1 batch fixes the
+      transaction list before L2 executes it, so the ordered-then-invalid state genuinely
+      can arise here. AT BUILD TIME — ordinary geth. `commitL2Transactions` handles
+      `core.ErrNonceTooLow` by logging "Skipping transaction with low nonce" and
+      `txs.Shift()`; any other error `txs.Pop()`s the sender's whole remaining queue
+      "because of `nonce-too-high` clause". Nothing is committed for a skipped transaction,
+      so its nonce is untouched. AT DERIVATION — THE ZK-GAS TRUNCATION, which is Taiko's own
+      and has no mainnet analogue. A transaction whose zk-gas cost exceeds the block's
+      remaining 100,000,000 zk-gas budget is not a revert: the interpreter stores
+      `ErrZkGasLimitExceeded` in `result.Err`, and `ApplyTransactionWithEVM` then does
+      `statedb.RevertToSnapshot(zkSnap)` and `gp.Set(zkGp)` and returns it as a Go error —
+      undoing EVERY tx-level state mutation including the nonce increment and restoring the
+      gas pool. The processing loop sees the error, logs "zk gas limit reached during block
+      processing; truncating", and `break`s WITHOUT appending a receipt, so that transaction
+      and every one after it fall out of the block. If the intrinsic zk-gas charge alone
+      exceeds the budget the error is returned before the snapshot is even taken, under the
+      comment "No state has been mutated yet, so no revert is needed". NONCE PRESERVED, NO
+      RECEIPT, NO GAS CHARGED in both arms — the transaction is resubmittable and is
+      indistinguishable from never having been submitted. THE ANCHOR IS THE EXCEPTION: the
+      truncation is gated on `i > 0`, and a zk-gas failure on the anchor transaction fails
+      the whole block instead. This puts Taiko with MegaETH and Rollkit — erased because
+      nothing was committed — and not with Artela, where the erasure happens after the nonce
+      and fee are already spent. What is unusual is that an ordinary user transaction can be
+      silently truncated out of a block by the zk-gas consumption of the transactions
+  ordered_then_invalid:
+    verdict: erased
+    src: "core/state_processor.go:ErrZkGasLimitExceeded, core/state_processor.go:RevertToSnapshot, miner/taiko_worker.go:commitL2Transactions"
+    note: >-
+      The fate of a transaction that is ordered and then found invalid, established by the
+      same source lines cited for `nonce_on_failure` above — the two are decided in one code
+      path.
+      ORDERED AHEAD of it, with no signal of any kind.
+
 fee_model:
   metering: "gas AND zk gas — two independent, simultaneously-enforced dimensions"
   fee_market: "EIP-4396 (from Shasta), floored at 0.01 gwei and CAPPED at 1 gwei"
   src: "core/vm/taiko_zk_gas.go:ZkGasMeter, core/state_transition.go:TaikoTreasuryAddress"
   extra_components:
-    - name: nonce on failure
-      severity: high
-      src: "core/state_processor.go:ErrZkGasLimitExceeded, core/state_processor.go:RevertToSnapshot, miner/taiko_worker.go:commitL2Transactions"
-      note: >-
-        NONCE ON FAILURE: PRESERVED IN BOTH OF TAIKO'S DROP PATHS, and neither
-        produces a receipt. Worth stating because based sequencing means an L1
-        batch fixes the transaction list before L2 executes it, so the
-        ordered-then-invalid state genuinely can arise here.
-
-        AT BUILD TIME — ordinary geth. `commitL2Transactions` handles
-        `core.ErrNonceTooLow` by logging "Skipping transaction with low nonce"
-        and `txs.Shift()`; any other error `txs.Pop()`s the sender's whole
-        remaining queue "because of `nonce-too-high` clause". Nothing is
-        committed for a skipped transaction, so its nonce is untouched.
-
-        AT DERIVATION — THE ZK-GAS TRUNCATION, which is Taiko's own and has no
-        mainnet analogue. A transaction whose zk-gas cost exceeds the block's
-        remaining 100,000,000 zk-gas budget is not a revert: the interpreter
-        stores `ErrZkGasLimitExceeded` in `result.Err`, and
-        `ApplyTransactionWithEVM` then does `statedb.RevertToSnapshot(zkSnap)`
-        and `gp.Set(zkGp)` and returns it as a Go error — undoing EVERY tx-level
-        state mutation including the nonce increment and restoring the gas pool.
-        The processing loop sees the error, logs "zk gas limit reached during
-        block processing; truncating", and `break`s WITHOUT appending a receipt,
-        so that transaction and every one after it fall out of the block. If the
-        intrinsic zk-gas charge alone exceeds the budget the error is returned
-        before the snapshot is even taken, under the comment "No state has been
-        mutated yet, so no revert is needed". NONCE PRESERVED, NO RECEIPT, NO GAS
-        CHARGED in both arms — the transaction is resubmittable and is
-        indistinguishable from never having been submitted.
-
-        THE ANCHOR IS THE EXCEPTION: the truncation is gated on `i > 0`, and a
-        zk-gas failure on the anchor transaction fails the whole block instead.
-
-        This puts Taiko with MegaETH and Rollkit — erased because nothing was
-        committed — and not with Artela, where the erasure happens after the
-        nonce and fee are already spent. What is unusual is that an ordinary
-        user transaction can be silently truncated out of a block by the zk-gas
-        consumption of the transactions ORDERED AHEAD of it, with no signal of
-        any kind.
     - name: zk gas (second metering dimension)
       severity: high
       src: "core/vm/taiko_zk_gas.go:ZkGasMeter, core/vm/taiko_zk_gas_unzen.go:BlockZkGasLimit, core/vm/taiko_zk_gas_unzen.go:TxIntrinsicZkGas"

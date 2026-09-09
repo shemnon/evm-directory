@@ -852,6 +852,48 @@ opcodes:
     Subnet-evm's opt-in precompiles vary what exists at an address; this varies
     what an opcode costs and whether it runs at all.
 
+tx_lifecycle:
+  nonce_on_failure:
+    verdict: burned
+    severity: high
+    src: "ante/evm/09_increment_sequence.go:IncrementNonce, ante/evm/mono_decorator.go:AnteHandle, x/vm/types/tx_result.go:TxSucessOrExpectedFailure, x/vm/keeper/state_transition.go:ApplyMessageWithConfig, rpc/backend/comet_to_eth.go:EthMsgsFromCometBlock"
+    note: >-
+      NONCE ON FAILURE: BURNED, and on one path burned with NO RECEIPT AT ALL. The nonce
+      lives in the AnteHandler, not in execution: `MonoDecorator.AnteHandle` calls
+      `ConsumeFeesAndEmitEvent` and then `IncrementNonce` (which itself does the
+      nonce-equality check, so `nonce != expected` is an ANTE failure, not an execution
+      failure). Cosmos SDK `runTx` commits the ante handler's writes and then runs the
+      messages in a separate cache, so once the ante chain has passed, the fee deduction and
+      `SetSequence(nonce+1)` are already committed whatever the message does. Three
+      outcomes, which a client cannot tell apart from the receipt alone: (1) ANTE FAILURE —
+      wrong nonce, insufficient balance, gas price below the minimum, bad signature. The
+      ante cache is discarded, so the NONCE IS PRESERVED and no fee is taken. But the
+      transaction also has a non-zero ABCI code, and `TxSucessOrExpectedFailure` returns
+      `res.Code == 0 || TxExceedBlockGasLimit(res)` — so `EthMsgsFromCometBlock` drops it
+      and the transaction is ABSENT from `eth_getBlockByNumber`, with no receipt. The sender
+      is safe but blind. (2) EVM REVERT / out-of-gas inside the EVM — ABCI code 0, `vmError`
+      recorded on the response, receipt with `status: 0`. NONCE BURNED, receipt exists.
+      Normal. (3) POST-ANTE ERROR — `ApplyMessageWithConfig` returns a Go error rather than
+      a response: `failed to commit stateDB`, `ErrGasOverflow` on the refund arithmetic, or
+      any panic converted to an error by the SDK's recovery middleware. The ante writes are
+      already committed, so the FEE IS TAKEN AND THE NONCE IS BURNED — but the ABCI code is
+      non-zero and is not the block-gas-limit sentinel, so the same
+      `TxSucessOrExpectedFailure` gate ERASES the transaction: no receipt, absent from the
+      eth block. The sender sees nothing happened, resubmits at the same nonce, and is
+      permanently behind a gap they cannot observe. Exactly Artela's shape, in the ancestor,
+      and therefore inherited by every Cosmos EVM descendant — Injective has it too.
+      `rpc/backend/tx_info_test.go:TestEthMsgsFromCometBlockSkipStateDBCommitFailure` pins
+      the erasure with a literal `{Code: 4, Log: "failed to commit stateDB"}`. THE ONE
+      ESCAPE HATCH IS A SUBSTRING MATCH. Block-gas-limit exhaustion is whitelisted back in
+      by `strings.Contains(res.Log, "out of gas in location: block gas meter; gasWanted:")`,
+      with the in-source reason "The tx fee is already deducted in ante, so the tx is still
+      counted toward the eth rank space" — an acknowledgement that a fee-taken transaction
+      must stay visible, applied to exactly one error string. What is NOT reachable here
+      that is reachable on Artela: `BlockContext.Random` is `&common.MaxHash` ("need to be
+      different than nil to signal it is after the merge"), so PREVRANDAO does not
+      nil-dereference and ordinary bytecode does not reach outcome (3). The structure is
+      identical; only the trigger is narrower.
+
 fee_model:
   metering: "EVM gas, with Cosmos SDK store gas charged into the same counter at 1:1"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, optional"
@@ -874,54 +916,6 @@ fee_model:
       middle, and EVM gas again on the way out, with no conversion factor
       anywhere. An out-of-gas inside a precompile arrives as a Go panic and is
       converted to vm.ErrOutOfGas by a deferred recover.
-  - name: nonce on failure
-    severity: high
-    src: "ante/evm/09_increment_sequence.go:IncrementNonce, ante/evm/mono_decorator.go:AnteHandle, x/vm/types/tx_result.go:TxSucessOrExpectedFailure, x/vm/keeper/state_transition.go:ApplyMessageWithConfig, rpc/backend/comet_to_eth.go:EthMsgsFromCometBlock"
-    note: >-
-      NONCE ON FAILURE: BURNED, and on one path burned with NO RECEIPT AT ALL.
-      The nonce lives in the AnteHandler, not in execution: `MonoDecorator.AnteHandle`
-      calls `ConsumeFeesAndEmitEvent` and then `IncrementNonce` (which itself does the
-      nonce-equality check, so `nonce != expected` is an ANTE failure, not an execution
-      failure). Cosmos SDK `runTx` commits the ante handler's writes and then runs the
-      messages in a separate cache, so once the ante chain has passed, the fee
-      deduction and `SetSequence(nonce+1)` are already committed whatever the message
-      does.
-
-      Three outcomes, which a client cannot tell apart from the receipt alone:
-
-      (1) ANTE FAILURE — wrong nonce, insufficient balance, gas price below the
-      minimum, bad signature. The ante cache is discarded, so the NONCE IS PRESERVED
-      and no fee is taken. But the transaction also has a non-zero ABCI code, and
-      `TxSucessOrExpectedFailure` returns `res.Code == 0 || TxExceedBlockGasLimit(res)`
-      — so `EthMsgsFromCometBlock` drops it and the transaction is ABSENT from
-      `eth_getBlockByNumber`, with no receipt. The sender is safe but blind.
-
-      (2) EVM REVERT / out-of-gas inside the EVM — ABCI code 0, `vmError` recorded on
-      the response, receipt with `status: 0`. NONCE BURNED, receipt exists. Normal.
-
-      (3) POST-ANTE ERROR — `ApplyMessageWithConfig` returns a Go error rather than a
-      response: `failed to commit stateDB`, `ErrGasOverflow` on the refund arithmetic,
-      or any panic converted to an error by the SDK's recovery middleware. The ante
-      writes are already committed, so the FEE IS TAKEN AND THE NONCE IS BURNED — but
-      the ABCI code is non-zero and is not the block-gas-limit sentinel, so the same
-      `TxSucessOrExpectedFailure` gate ERASES the transaction: no receipt, absent from
-      the eth block. The sender sees nothing happened, resubmits at the same nonce, and
-      is permanently behind a gap they cannot observe. Exactly Artela's shape, in the
-      ancestor, and therefore inherited by every Cosmos EVM descendant — Injective has
-      it too. `rpc/backend/tx_info_test.go:TestEthMsgsFromCometBlockSkipStateDBCommitFailure`
-      pins the erasure with a literal `{Code: 4, Log: "failed to commit stateDB"}`.
-
-      THE ONE ESCAPE HATCH IS A SUBSTRING MATCH. Block-gas-limit exhaustion is
-      whitelisted back in by `strings.Contains(res.Log, "out of gas in location: block
-      gas meter; gasWanted:")`, with the in-source reason "The tx fee is already
-      deducted in ante, so the tx is still counted toward the eth rank space" — an
-      acknowledgement that a fee-taken transaction must stay visible, applied to
-      exactly one error string.
-
-      What is NOT reachable here that is reachable on Artela: `BlockContext.Random` is
-      `&common.MaxHash` ("need to be different than nil to signal it is after the
-      merge"), so PREVRANDAO does not nil-dereference and ordinary bytecode does not
-      reach outcome (3). The structure is identical; only the trigger is narrower.
   - name: base fee is not burned
     severity: high
     src: x/vm/keeper/fees.go:DeductFees

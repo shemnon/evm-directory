@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monad · EVM Directory</title>
-<meta name="description" content="The tree keeps &lt;code&gt;monad_eth_revision&lt;/code&gt; as a drop-in replacement for &lt;code&gt;evmc_revision&lt;/code&gt; and static_asserts the two 1:1 through Osaka, but the EVM itself — interpreter, JIT (&quot;native compilation&quot;), state database (MonadDb), and transaction scheduler — i">
+<meta name="description" content="The tree keeps monad_eth_revision as a drop-in replacement for evmc_revision and static_asserts the two 1:1 through Osaka, but the EVM itself — interpreter, JIT (&quot;native compilation&quot;), state database (MonadDb), and transaction scheduler — is original C++.">
 <link rel="stylesheet" href="../assets/site.css">
 </head><body>
 <header class="top">
@@ -380,6 +380,6 @@ git -C chains/monad/repos/monad grep -n 'delayed_execution_results' \
 tools/verify.py monad   # re-extract from source, diff against chain.yaml</code></pre>
 <p class="src">Source of record: <code>chains/monad/chain.yaml</code> · <code>chains/monad/SUMMARY.md</code></p>
 </main>
-<footer>Generated 2026-09-08</footer>
+<footer>Generated 2026-09-09</footer>
 <script src="../assets/site.js"></script>
 </body></html>

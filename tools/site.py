@@ -82,6 +82,13 @@ def esc(s):
     return html.escape("" if s is None else str(s), quote=True)
 
 
+def strip_tags(s):
+    """The lede reaches layout() already rendered to HTML. The meta description is
+    plain text, so tags come out and entities come back — without the unescape a
+    lede containing `->` ships as `-&amp;gt;`."""
+    return re.sub(r"<[^>]+>", "", str(s or ""))
+
+
 def flat(s):
     """Collapse the YAML block scalars' hard wrapping back into one paragraph."""
     return " ".join(str(s or "").split())
@@ -128,7 +135,7 @@ def layout(path, title, lede, body, wide=False, depth=None, chains=None):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)} · EVM Directory</title>
-<meta name="description" content="{esc(flat(lede))[:300]}">
+<meta name="description" content="{esc(html.unescape(strip_tags(flat(lede))))[:300]}">
 <link rel="stylesheet" href="{r}assets/site.css">
 </head><body>
 <header class="top">
@@ -1372,7 +1379,7 @@ def page_ordering(chains):
          'that chain, not that it behaves like mainnet. Hover a verdict for the finding; '
          'follow it for the cited source.</p>']
     B.append(axis_notes(chains, "ordering"))
-    return layout("axes/ordering.html", "Ordering &amp; execution",
+    return layout("axes/ordering.html", "Ordering & execution",
                   "What happens to a transaction between being ordered and being executed.",
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 

@@ -203,6 +203,90 @@ def note(body, kind="note", label=None):
     return f'<div class="{kind}">{lbl}{body}</div>'
 
 
+def liveness_banner(c):
+    """The first thing on a chain page that is not a running network.
+
+    A reader arrives on a chain page to decide whether to build against it. If the
+    answer is "you cannot, it is gone", that has to come before the deltas they came
+    for, which are now history. Liveness is a chain attribute, not fact provenance,
+    so this is not covered by the chain-page-only rule; the chains index and
+    MATRIX.md carry it too."""
+    ch = c["chain"]
+    st, mb = ch.get("live_state"), ch.get("dead")
+    if not st and not mb: return None
+
+    if mb:
+        e, r = mb.get("how"), mb.get("recourse")
+        aband = e == "abandoned"
+        B = []
+        if aband:
+            B.append("<p><b>This chain went dark.</b> Nobody announced a shutdown, "
+                     "no claims window was published, and no last block was ever "
+                     "recorded — every endpoint that could have named one was "
+                     "already gone before this row existed.</p>")
+            a, b = mb.get("dark_after"), mb.get("dark_before")
+            if a and b:
+                B.append(f"<p>Last observably alive <b>{esc(a)}</b>; first observably "
+                         f"gone <b>{esc(b)}</b>. The ending is bounded by that window, "
+                         f"not by a height — which is the difference between this and "
+                         f"a chain that was switched off.</p>")
+        else:
+            B.append("<p><b>This chain was shut down deliberately.</b> ")
+            if mb.get("last_block") is not None:
+                B.append(f'Last block <code>{esc(mb["last_block"])}</code>'
+                         + (f' at {esc(mb["last_block_at"])}' if mb.get("last_block_at") else "")
+                         + ". ")
+            if mb.get("last_block_with_transactions") is not None:
+                B.append("It stopped accepting transactions earlier, at block "
+                         f'<code>{esc(mb["last_block_with_transactions"])}</code>. ')
+            if mb.get("announced"):
+                B.append(f'Announced {esc(mb["announced"])}.')
+            B.append("</p>")
+
+        RECOURSE = {
+            "claims": "An interface exists to recover assets.",
+            "migration": "Holdings were migrated elsewhere.",
+            "none": "<b>There is no way to recover anything, and nobody left to ask.</b>",
+            "unrecorded": "Whether anything can be recovered is not established.",
+        }
+        if r in RECOURSE:
+            extra = ""
+            if mb.get("user_deadline"): extra = f' Holders have until <b>{esc(mb["user_deadline"])}</b>.'
+            if mb.get("successor"): extra += f' Successor: {esc(mb["successor"])}.'
+            B.append(f'<p>{RECOURSE[r]}{extra}</p>')
+
+        B.append("<p>The facts on this page are <b>final</b> — nothing further will "
+                 "happen on this network, so they can no longer be contradicted — but "
+                 "this is a historical record, not a chain to integrate with. The "
+                 "client pin no longer moves.</p>")
+        if mb.get("note"):
+            B.append(markdown(flat(mb["note"])))
+        if mb.get("dark_evidence"):
+            B.append("<p class=\"legend\">How the window was established: "
+                     + "; ".join(esc(x) for x in mb["dark_evidence"]) + "</p>")
+        if mb.get("src_doc"):
+            B.append(f'<p class="legend">Announcement: '
+                     f'<a href="{esc(mb["src_doc"])}">{esc(mb["src_doc"])}</a></p>')
+        return note("".join(B), "hot",
+                    "dead · abandoned" if aband else "dead · shutdown")
+
+    if st == "unreachable":
+        return note(
+            "<p><b>No endpoint for this chain answers</b>, so whether it is still "
+            "running is <em>unknown</em>. Nothing was observed to stop. Every fact "
+            "here rests on source alone.</p>", "hot", "unreachable")
+    if st == "halted":
+        return note("<p><b>This chain has stopped producing blocks.</b> Its facts are "
+                    "frozen at the last block observed.</p>", "hot", "halted")
+    if st == "prelaunch":
+        return note(
+            "<p><b>This chain has never produced a mainnet block.</b> Its facts rest "
+            "on source and, where a live probe appears, on a <em>testnet</em> — which "
+            "may run a different fork schedule than mainnet will. Read every live "
+            "claim as \u201cthe testnet does this\u201d.</p>", "note", "prelaunch")
+    return None
+
+
 def anchor_id(section, key):
     """Stable per-entry anchor on a chain page, e.g. `precompiles-0x64`."""
     return f"{section.replace('_', '-')}-{re.sub(r'[^0-9a-zA-Z]+', '', str(key)).lower()}"
@@ -540,6 +624,9 @@ def page_chain(chains, slug):
     B = []
     doc = documented(c)
     ln, ch = c["lineage"], c["chain"]
+
+    banner = liveness_banner(c)
+    if banner: B.append(banner)
 
     # --- identity -------------------------------------------------------
     up = ln.get("upstream")
@@ -1515,6 +1602,9 @@ def page_chains_index(chains):
         rows.append([
             f'<a href="{esc(s)}.html">{esc(name(c))}</a>',
             f'<span class="pill">{esc(c["chain"]["role"])}</span>',
+            ((lambda lv: "—" if lv is None else
+              f'<span class="pill">{esc(lv)}</span>' if lv == "live" else
+              f'<b class="s-removed">{esc(lv)}</b>')(model.liveness(c))),
             (f'<a href="{esc(c["lineage"]["upstream"])}.html">'
              f'{esc(short(c["lineage"]["upstream"]))}</a>'
              if c["lineage"].get("upstream") in chains else "—"),
@@ -1524,10 +1614,17 @@ def page_chains_index(chains):
                     if isinstance(e, dict) and str(e.get("op")) not in _base_ops)),
             str(len([x for x in sil if x["slug"] == s]) or ""),
         ])
-    B.append(table(["Chain", "Role", "Upstream", "Baseline", "Precompiles", "Tx types",
-                    "System contracts", "Opcodes", "Divergences"], rows, tid="chainlist"))
+    B.append(table(["Chain", "Role", "Liveness", "Upstream", "Baseline", "Precompiles",
+                    "Tx types", "System contracts", "Opcodes", "Divergences"],
+                   rows, tid="chainlist"))
     B.append('<p class="legend">Counts are the <em>effective</em> set — entries inherited '
-             'from a stack ancestor are included.</p>')
+             'from a stack ancestor are included. Liveness: <code>live</code> runs · '
+             '<code>prelaunch</code> has never produced a mainnet block · '
+             '<code>halted</code> stopped · <code>unreachable</code> answers nowhere · '
+             '<code>dead: shutdown</code> was switched off deliberately and announced · '
+             '<code>dead: abandoned</code> went dark with no announcement and no way out. '
+             'A dead row\u2019s facts are final and still worth citing; it is simply not a '
+             'chain to build against.</p>')
     return layout("chains/index.html", "Chains",
                   "Every row in the dataset, with its effective feature counts.",
                   "\n".join(B), wide=True)

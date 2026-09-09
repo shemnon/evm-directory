@@ -10,7 +10,8 @@ Loading, ordering and address canonicalisation live in `model.py`, shared with
 """
 import argparse, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented,
+from model import (ROOT, CHAINS, ORDER, SHORT, MARK, load, name, documented, liveness,
+                   LIVENESS_BLURB,
                    client, is_stack, order, canon, addr_rows, sortkey,
                    entry_label, eip_status, tx_auth, baseline_opcodes)
 
@@ -42,7 +43,13 @@ def legend():
     return ("\nLegend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, "
             "different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · "
             "◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · "
-            "‼️ pending allocation conflict · ? not recorded\n")
+            "‼️ pending allocation conflict · ? not recorded\n"
+            "\nLiveness: " + LIVENESS_BLURB + ". A dead row's facts are FINAL — the "
+            "network stopped, so nothing can contradict them — but it is a historical "
+            "record, not a chain to integrate with. `shutdown` vs `abandoned` is the "
+            "difference between an operator who switched it off and said so, usually "
+            "leaving a way to get assets out, and a chain that simply stopped "
+            "answering with nobody left to ask.\n")
 
 def gen_precompiles(chains):
     slugs = order(chains)
@@ -163,6 +170,7 @@ def gen_matrix(chains):
         L.append(f"| {label} | " + " | ".join(str(fn(chains[s], s)) for s in slugs) + " |")
     row("Chain ID", lambda c, s: c["chain"].get("chain_id") or "—")
     row("Role", lambda c, s: c["chain"]["role"])
+    row("Liveness", lambda c, s: liveness(c) or "—")
     row("Upstream", lambda c, s: c["lineage"].get("upstream") or "—")
     row("Baseline fork", lambda c, s: c.get("baseline_fork", "—"))
     row("Client", lambda c, s: ("*none public*" if documented(c)

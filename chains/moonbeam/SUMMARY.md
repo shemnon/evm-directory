@@ -8,6 +8,23 @@
 [`Moonsong-Labs/moonkit`](https://github.com/Moonsong-Labs/moonkit) `8fae4417637f8e55ea04b3548809d7f1c22daf64`
 **Live probes:** `https://moonbeam.api.onfinality.io/public` @ block `16790908`
 
+> **The chain is gone, and this write-up caught only half of it.** §1 below correctly
+> established that the EVM was switched off at the pinned block — but the row still
+> said `live: true`, and block production had not yet stopped when it was written.
+> Re-probed 2026-09-09 by `tools/livecheck.py`: the last block is **16796699,
+> 2026-08-10 11:36:12 UTC**, 30.2 days stale and identical on onfinality,
+> `1rpc.io/glmr` and `moonbeam.drpc.org`, with `eth_syncing` false. That is 5,791
+> blocks past the pinned height — the chain produced **123,773 empty blocks over 9.48
+> days** after the transaction cutoff in §1 before stopping for good.
+>
+> The cause is now established too, from Moonbeam's own
+> [announcement](https://moonbeam.network/news/moonbeam-strategic-update-moonbeam-network-relaunches-on-base/)
+> rather than from a probe: the project left Polkadot and migrated GLMR 1:1 to Base as
+> an ERC-20, bridge deadline 2026-07-31. The row is now `live: false`,
+> `live_state: halted` and **`dead: shutdown`** (SCHEMA.md) — facts final, client pin
+> frozen, kept as a record. Every live fact below was read at 16790908 and remains
+> replayable against that state.
+
 Moonbeam is a Polkadot parachain whose EVM is a module inside a WASM state machine.
 `pallet-evm` embeds the `evm` (rust-evm) interpreter, `pallet-ethereum` *synthesises*
 an Ethereum block from the extrinsics that executed, and the JSON-RPC layer serves

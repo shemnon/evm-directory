@@ -6,7 +6,28 @@ chain:
   chain_id: 1101
   role: fork
   live: false
-  live_state: halted    # produced its last block 2026-07-03 and has not advanced since
+  live_state: halted    # last block 2026-07-03; re-confirmed frozen 2026-09-09
+  dead:
+    how: shutdown
+    recourse: claims
+    last_block: 33391890
+    last_block_at: "2026-07-03T15:55:44Z"
+    announced: 2026-07-03
+    src_doc: https://polygon.technology/polygon-zkevm
+    successor: null
+    user_deadline: 2027-12-31
+    note: >-
+      Polygon Labs sunset the Mainnet Beta SEQUENCER on 2026-07-03; the network
+      stopped producing blocks the same day and Agglayer bridge withdrawals
+      stopped with it. A claims interface opened 2026-07-13 and is stated to run
+      until 2027-12-31, after which Polygon Labs stops facilitating recovery.
+
+      The recovery has a limit worth stating plainly, because it is the part that
+      costs people money: only assets held in EOAs can be claimed. Anything inside
+      a contract at sunset — DeFi positions, multisigs, the bridge contracts
+      themselves — is not recoverable through that interface. A chain can be
+      honestly EVM-equivalent and still end this way; nothing in this row's
+      precompile or tx-type deltas predicts it.
   evidence: source
   note: >-
     NOT Polygon PoS. Chain 1101 is a zk-rollup with its own client (cdk-erigon, an
@@ -16,15 +37,21 @@ chain:
     timestamp nor a block number. It shares nothing with chain 137 except a brand.
 
     `live: false` is an observation, not an editorial. At probe time the head was
-    block 33391890 with timestamp 1783094144 (2026-07-03 15:54:44 UTC) — 52 days
+    block 33391890 with timestamp 1783094144 (2026-07-03 15:55:44 UTC) — 52 days
     stale — and it did not move across 24 hours or across two independent public
     endpoints (zkevm-rpc.com and polygon-zkevm.drpc.org). The node reports
     eth_syncing false, so it believes it is at the head. Re-probed independently on
-    2026-08-25: the head is still block 33391890, now 52.9 days stale, so the halt
-    has persisted across a further seven weeks and is not a transient outage.
-    Whether it is a deliberate sunset remains UNRECORDED — that is a statement about
-    intent, which no probe can establish. Every fact below was read at that fixed
-    height, which is also the chain's last block.
+    2026-08-25 (52.9 days stale) and again on 2026-09-09 (68.0 days stale): the head
+    is still block 33391890 on both endpoints, and web3_clientVersion still returns
+    cdk-erigon/v2.61.24. Every fact below was read at that fixed height, which is
+    also the chain's last block.
+
+    THE CAUSE IS NOW ESTABLISHED, AND NOT BY PROBING. This row spent ten weeks
+    correctly recording the halt as observed and its cause as UNRECORDED, because
+    intent is not a thing an RPC can answer. Polygon Labs' own status page says it:
+    the Mainnet Beta sequencer was SUNSET on 2026-07-03, deliberately. See
+    `chain.dead`, where that is a `src_doc:` fact — the one question in this
+    schema for which the weakest evidence kind is the only admissible one.
 
 lineage:
   upstream: ethereum
@@ -780,9 +807,11 @@ gotchas:
     eth_getProof does not produce an Ethereum-verifiable proof. Bridges and light
     clients that verify storage proofs against a Keccak MPT cannot verify anything here.
   - >-
-    THE CHAIN APPEARS TO HAVE STOPPED. The head has been block 33391890, timestamped
-    2026-07-03, for 52 days across two independent endpoints, and 30,593 batches were
-    produced but never sequenced to L1 — so five and a half million blocks sit above the
-    last finalized one with no proof behind them. Whether this is a sunset or an outage
-    is not established here, but any integration should check liveness before assuming
-    the network is running.
+    THE CHAIN IS SHUT DOWN — DELIBERATELY. The head has been block 33391890,
+    timestamped 2026-07-03, across two independent endpoints and three probes
+    (2026-08-24, 2026-08-25, 2026-09-09), and Polygon Labs' status page confirms the
+    Mainnet Beta sequencer was sunset on that date. 30,593 batches were produced but
+    never sequenced to L1, so five and a half million blocks — 17% of the chain's
+    history — sit above the last finalized one with no proof behind them and will
+    never be proved. Asset recovery runs to 2027-12-31 and reaches EOA balances
+    only: anything held inside a contract at sunset is not claimable.

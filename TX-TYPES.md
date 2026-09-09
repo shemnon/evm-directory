@@ -61,6 +61,8 @@ The envelope `0x00`–`0x04` (Legacy, 2930, 1559, 4844, 7702) is shown for every
 
 Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · ? not recorded
 
+Liveness: `live` runs · `prelaunch` has never produced a mainnet block · `halted` stopped · `unreachable` answers nowhere · `dead: shutdown` was switched off deliberately and announced · `dead: abandoned` went dark with no announcement (SCHEMA.md). A dead row's facts are FINAL — the network stopped, so nothing can contradict them — but it is a historical record, not a chain to integrate with. `shutdown` vs `abandoned` is the difference between an operator who switched it off and said so, usually leaving a way to get assets out, and a chain that simply stopped answering with nobody left to ask.
+
 
 ## Transactions with no type byte
 

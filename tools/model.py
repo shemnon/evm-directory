@@ -81,6 +81,36 @@ def is_stack(c):    return c["chain"].get("role") == "stack"
 def is_chain(c):    return c["chain"].get("role") not in ("stack", "template")
 
 
+def dead(c):        return c["chain"].get("dead") or None
+
+
+def liveness(c):
+    """One word for whether this row describes a running network.
+
+    Liveness is an attribute of the CHAIN — like `role` or `baseline_fork` — not
+    provenance of a fact, so unlike `src:` it is allowed in the aggregate surfaces.
+    A reader scanning MATRIX.md for a chain to integrate with must not have to open
+    the chain page to find out that it shut down last quarter.
+
+    `stack` and `template` rows are not networks and get no answer at all."""
+    if not is_chain(c): return None
+    ch, d = c["chain"], c["chain"].get("dead")
+    if ch.get("live"): return "live"
+    if d:
+        # A dead row still says HOW it died. Collapsing the two into one word
+        # would hide the difference the field exists to carry: a shutdown had an
+        # operator and usually a way to get assets out, an abandoned chain has
+        # neither and nobody left to ask.
+        return f"dead: {d.get('how', 'unrecorded')}"
+    return ch.get("live_state") or "not live"
+
+
+LIVENESS_BLURB = ("`live` runs · `prelaunch` has never produced a mainnet block · "
+                  "`halted` stopped · `unreachable` answers nowhere · "
+                  "`dead: shutdown` was switched off deliberately and announced · "
+                  "`dead: abandoned` went dark with no announcement (SCHEMA.md)")
+
+
 def client(c, field, dflt="—"):
     """Documented rows carry no client — there is no public one to pin."""
     return (c.get("client") or {}).get(field, dflt)

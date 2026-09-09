@@ -6,10 +6,18 @@ Client pinned: `circlefin/arc-node` **v0.7.3**, commit
 
 **Mainnet (5042) is not live.** `https://rpc.arc.network` does not resolve; chain
 id 5042 exists in this tag as a constant and a hardfork table and nothing else.
-Circle's announced public-mainnet date is 2026-09-16. Every live fact below comes
-from the **public testnet, 5042002**, probed at block **58728247** (`0x3801f37`,
-`finalized`). The row is `live: false` and every `src_live:` should be read as
-"the testnet does this".
+Circle's announced public-mainnet date is 2026-09-16, and as of the last check —
+**2026-09-09**, seven days short of it — the hostname is still NXDOMAIN. Every live
+fact below comes from the **public testnet, 5042002**, probed at block **58728247**
+(`0x3801f37`, `finalized`). The row is `live: false` / `live_state: prelaunch`, and
+every `src_live:` should be read as "the testnet does this".
+
+When mainnet does appear, flipping `live_state` is not the update this row needs.
+The testnet is running Zero7 and the mainnet table at this tag stops at Zero6 (§8),
+so the live half of the row describes a protocol mainnet will not launch with. It
+has to be re-probed against 5042 at a mainnet height, not relabelled.
+`live_probe.awaiting_endpoint` records the mainnet URL so `tools/livecheck.py`
+reports the day that becomes possible.
 
 Tempo and Arc were briefed as the same problem — *what happens to the EVM when the
 gas asset is a 6-decimal stablecoin*. They answer it in opposite directions, and
@@ -341,8 +349,13 @@ call() { curl -s -X POST $RPC -H 'Content-Type: application/json' \
 
 call eth_chainId '[]'                 # -> 0x4cef52 (5042002)
 call web3_clientVersion '[]'          # -> "arc/v1" — no version detail, cannot match the tag
+
+# mainnet is still not up: NXDOMAIN, not a refused connection or an empty reply
+host rpc.arc.network                  # -> NXDOMAIN  (re-checked 2026-09-09)
 curl -s -m 10 https://rpc.arc.network -X POST -H 'Content-Type: application/json' \
-     -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'   # -> nothing; mainnet is not up
+     -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'; echo "exit=$?"
+#   -> no output, exit=6 (could not resolve host)
+tools/livecheck.py arc                # the same two checks, as a maintenance gate
 
 # THE headline: the ERC-20 view is floor(native / 10^12), exact in none of these
 for a in a693cc18aa09d33dd388013b7a02e5ff863b8760 \

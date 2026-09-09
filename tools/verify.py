@@ -700,6 +700,85 @@ def check_live(raw):
             for m in re.finditer(r"src_live: [\"']?([^\n\"']+)", raw)
             if "@" not in m.group(1)]
 
+LIVE_STATES = {"prelaunch", "halted", "unreachable"}
+DEAD_HOW = {"shutdown", "abandoned", "unrecorded"}
+RECOURSE = {"claims", "migration", "none", "unrecorded"}
+
+def check_liveness(c):
+    """Validate `live_state:` and `dead:` against SCHEMA.md.
+
+    Runs in CI: reads chain.yaml alone, needs neither a clone nor a network. Every
+    rule here corresponds to a mistake that was actually made in this dataset.
+
+    - Moonbeam carried `live: true` while its own SUMMARY.md established that the
+      EVM had been switched off at the probed block. A row cannot say both.
+    - `shutdown` asserts an INTENTION, and no probe returns one. It is the one
+      place in this schema where `src_doc:` is the only admissible evidence.
+    - `abandoned` has no last block by construction — the endpoints that could have
+      named one were gone before anyone looked. It must instead bound the ending
+      with a dark window, or it is a hunch wearing a schema key.
+    - `abandoned` with a claims or migration recourse is self-contradictory: a
+      recovery process is something an operator announces, and an operator who
+      announced one did not stop answering."""
+    ch, out = c["chain"], []
+    st, mb = ch.get("live_state"), ch.get("dead")
+    if st is not None and st not in LIVE_STATES:
+        out.append(f"BAD STATE live_state: {st!r} is not one of "
+                   f"{'/'.join(sorted(LIVE_STATES))}")
+    if st and ch.get("live"):
+        out.append(f"CONTRADICTION  live: true with live_state: {st} — "
+                   f"live_state is only meaningful when live is false")
+    if ch.get("live") is False and not st:
+        out.append("NO STATE  live: false without a live_state — `prelaunch`, "
+                   "`halted` and `unreachable` are three different situations "
+                   "and a reader cannot tell which from `false` alone")
+    if not isinstance(mb, dict):
+        if mb is not None:
+            out.append(f"BAD DEAD  dead: must be a mapping, got {type(mb).__name__}")
+        return out
+    if ch.get("live"):
+        out.append("CONTRADICTION  dead: with live: true")
+    if st == "prelaunch":
+        out.append("CONTRADICTION  dead: with live_state: prelaunch — a chain that "
+                   "never started cannot have ended")
+
+    e, r = mb.get("how"), mb.get("recourse")
+    if e not in DEAD_HOW:
+        out.append(f"BAD HOW  dead.how: {e!r} is not one of "
+                   f"{'/'.join(sorted(DEAD_HOW))}")
+    if r is not None and r not in RECOURSE:
+        out.append(f"BAD RECOURSE  dead.recourse: {r!r} is not one of "
+                   f"{'/'.join(sorted(RECOURSE))}")
+
+    if e == "shutdown":
+        if not mb.get("src_doc"):
+            out.append("UNEVIDENCED  dead.how: shutdown asserts an intention and "
+                       "carries no src_doc: — intent is not probeable, so a document "
+                       "is the only evidence there can be")
+        if not mb.get("announced"):
+            out.append("NO ANNOUNCEMENT  dead.how: shutdown without an announced: "
+                       "date — a shutdown nobody dated was not scheduled")
+        if not isinstance(mb.get("last_block"), int):
+            out.append("NO LAST BLOCK  dead.how: shutdown without an integer "
+                       "last_block: — someone was watching, so the height is knowable")
+    elif e == "abandoned":
+        a, b = mb.get("dark_after"), mb.get("dark_before")
+        if not (a and b):
+            out.append("UNBOUNDED  dead.how: abandoned without dark_after:/dark_before: "
+                       "— it is established by bounding when the chain went dark; "
+                       '"it seems dead" is not an observation')
+        elif hasattr(a, "year") and hasattr(b, "year") and a > b:
+            out.append(f"BAD WINDOW  dark_after: {a} is later than dark_before: {b}")
+        if not mb.get("dark_evidence"):
+            out.append("UNEVIDENCED  dead.how: abandoned with no dark_evidence: — the window "
+                       "has to say what established it")
+        if r in ("claims", "migration"):
+            out.append(f"CONTRADICTION  dead.how: abandoned with recourse: {r} — a "
+                       f"recovery process is announced by an operator, and an "
+                       f"operator who announced one did not stop answering")
+    return out
+
+
 AUTHORIZES = {"protocol", "account_code", "never"}
 KEY_BINDING = {"derived", "declared", "account_code"}
 
@@ -792,7 +871,7 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
-            for b in check_live(f.read_text()) + check_tx_auth(c):
+            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c):
                 print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
@@ -972,7 +1051,7 @@ def main():
         raw = f.read_text()
         bad, nsym, nline, nopath = check_citations(
             raw, None if no_clones else roots(slug, c))
-        bad += check_live(raw) + check_tx_auth(c)
+        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):

@@ -372,13 +372,13 @@ for a non-existent one. Proven on a funded account at the pinned block — `BALA
 `0x10470379026fd4e7`, `EXTCODEHASH` returns zero. Every "is this a contract?" and "does
 this account exist?" check inverts, silently.
 
-## 10. The chain appears to have stopped
+## 10. The chain is shut down
 
 Recorded as an observation with the evidence attached, not as an editorial. At probe time:
 
 ```
 eth_blockNumber            -> 0x1fd8512  (33,391,890)
-that block's timestamp     -> 1783094144  = 2026-07-03 15:54:44 UTC   (52 days stale)
+that block's timestamp     -> 1783094144  = 2026-07-03 15:55:44 UTC   (68 days stale at 2026-09-09)
 eth_syncing                -> false
 finalized block            -> 0x1a67ec0  (27,688,640), timestamp 2025-12-03
 zkevm_batchNumber          -> 0x222f44   (2,240,324)   trusted
@@ -391,9 +391,26 @@ head — two independent endpoints. **30,593 batches were produced and never pos
 and 5,703,250 blocks — 17% of the chain's history — sit above the last finalized block
 with no proof behind them.
 
-`chain.live` is therefore set to `false`, the only row in the dataset with that value.
-Whether this is a permanent sunset or a long outage is **not established here**; the
-observation is pinned and reproducible either way.
+`chain.live` is therefore set to `false`, with `live_state: halted` — the axis that
+separates this row from Arc's `prelaunch`, where `live: false` means no mainnet block has
+ever been produced. Re-probed 2026-08-25 and again 2026-09-09: the head is still 33391890
+on both endpoints, `web3_clientVersion` still returns `cdk-erigon/v2.61.24`, and
+`eth_syncing` is still `false`. Ten weeks, three probes, no movement.
+
+**And the cause is now established — by a document, not by a probe.** For ten weeks this
+row said the halt was observed and its cause `UNRECORDED`, which was the correct thing to
+say: no RPC method returns an intention. Polygon Labs' [status
+page](https://polygon.technology/polygon-zkevm) answers it. The Mainnet Beta sequencer was
+**sunset on 2026-07-03**, deliberately; Agglayer bridge withdrawals stopped the same day; a
+claims interface opened 2026-07-13 and runs to **2027-12-31**, after which Polygon Labs
+stops facilitating recovery.
+
+The limit on that recovery is the part worth repeating: **only EOA balances can be
+claimed.** Assets inside a contract at sunset — DeFi positions, multisigs, the bridge
+contracts themselves — cannot be recovered through the claims interface.
+
+The row is therefore `dead: shutdown` (SCHEMA.md): its facts are final, its client pin stops
+moving, and it is kept as a record rather than maintained as a live comparison.
 
 ## One row, not two: why there is no `role: template` CDK row
 

@@ -150,6 +150,107 @@ tools/clone.sh && tools/verify.py     # ~6 GiB of clones, then the source cross-
 Run that locally before opening a PR that touches a `chain.yaml`, and after any client
 version bump.
 
+## Live evidence: `tools/livecheck.py`
+
+`verify.py` closes the loop on `src:` — it re-reads the pinned clone. `src_live:` had
+no equivalent, and it is the only kind of evidence in the dataset that **rots while
+nobody touches the repo**, because the network keeps running after the probe.
+
+```
+tools/livecheck.py                      # every row with src_live: facts
+tools/livecheck.py arc polygon-zkevm    # just these rows
+tools/livecheck.py --deep               # also diff fork-gated predeploys (needs archive)
+tools/livecheck.py --json               # machine-readable findings
+tools/livecheck.py --max-age 7200       # how old a head may be before it is stale
+```
+
+It hits each row's `live_probe.endpoint` and checks four things:
+
+| check | the failure it catches |
+|---|---|
+| `eth_chainId` matches `live_probe.chain_id` | the endpoint was repointed; every `src_live:` on the row is unciteable |
+| the head is where `live_state` says it should be | a `live: true` chain that halted — or a `halted` row that resumed |
+| `eth_getBlockByNumber(observed_at_block)` still answers | the endpoint pruned the block the row's facts were read at, so nobody can replay them |
+| the pinned block's EIP header markers equal the head's | the chain forked past the height the row was probed at |
+
+The expectation is read off the row, never assumed. A `halted` row inverts the
+staleness test — for Polygon zkEVM a *moving* head is the finding — and it is tested
+by the head's **age**, not its distance from `observed_at_block`, because a halted row
+need not pin its own last block (Moonbeam pinned the finalized head and production ran
+5,791 blocks past it). A `prelaunch` row additionally probes `live_probe.awaiting_endpoint`,
+so the day Arc mainnet answers is reported rather than waited for.
+
+**The fork check is a differential, not an assertion.** No JSON-RPC method returns a
+fork name, so it compares the header markers at the pinned block against the head and
+reports a *change*. The baseline is always the row's own pin, never a hardcoded
+Ethereum ladder — which is what makes it safe across a dataset where Arc carries
+`parentBeaconBlockRoot` with no beacon chain and Polygon zkEVM is Berlin-era in 2026.
+A fixed expectation would fire on both and be wrong about both. The cost is a stated
+blind spot: the markers see Shanghai, Cancun and Prague, and **Osaka adds no header
+field**, so the 15 rows declaring `baseline_fork: osaka` are not confirmed by it.
+`--deep` reads the fork-gated system contracts' code at both heights — which also
+catches a predeploy being upgraded, something no header can show — and needs an archive
+endpoint, reporting `state unavailable` rather than guessing when it does not have one.
+
+### When a chain dies
+
+`livecheck.py` is the trigger for the dead-chain procedure in
+[SCHEMA.md](SCHEMA.md#dead--the-chain-is-over). A `STALE` finding on a
+`live: true` row is a lead, not a conclusion — confirm it on a second endpoint before
+touching the data, because one provider's stalled node is not a halted chain.
+
+The four states a non-running row can be in are kept apart on purpose, and the
+distinction is not bookkeeping:
+
+| state | means | how it closes |
+|---|---|---|
+| `prelaunch` | never produced a mainnet block | it cannot — it has not started |
+| `halted` | stopped, **at an observed height** | `dead.how: shutdown`, on the announcement |
+| `unreachable` | no endpoint answers; nothing was observed to stop | `dead.how: abandoned`, on a dark window |
+
+Closing a row records **how** it ended, because a clean shutdown and a disappearance
+are not the same event:
+
+| how | established by | recourse for holders |
+|---|---|---|
+| `shutdown` | the operator's own announcement (`src_doc:`) plus a last block | usually a claims window or a migration, with a deadline |
+| `abandoned` | a bounded dark window (`dark_after:`/`dark_before:`) and the evidence for it | **none** — there is nobody left to ask |
+
+`abandoned` means the chain stopped answering and nobody announced anything. It is
+**not** a claim that a team decided to walk away — that is an intention, and the same
+rule applies to it as anywhere else here.
+
+Mothballing keeps everything and changes the maintenance contract: facts stay, the
+client pin stops moving, the row is checked only for a restart, and the reader is told
+in MATRIX.md, on the chains index and at the top of the chain page. A dead chain's
+facts are the only ones in the dataset that are permanently final — nothing further
+will happen to contradict them — so they are worth *more* as a record, not less.
+
+What the pattern will not do is let either kind of ending go unbounded. A
+A `shutdown` must carry the `src_doc:` that establishes the intention — no probe
+returns one — plus the date and the last block. An `abandoned` must carry the window
+it went dark in and the evidence for that window; "every indicator says so" is not an
+observation, and `verify.py` rejects it. It also rejects `abandoned` paired with a
+claims or migration recourse, which is self-contradictory: an operator who published a
+recovery process did not stop answering.
+
+Artela is the `abandoned` case. There is no last block and never will be — every published
+endpoint was dead before the row existed, so it holds not one `src_live:`. What could
+be established, from the infrastructure that outlived it, is that the project site
+answered on 2025-09-06 and was failing by 2025-10-04.
+
+### Why this is not a CI gate
+
+It needs the public internet and other people's rate limits. A build that goes red
+because a third party is having an outage is a build nobody reads — the same argument
+that keeps the clones out of CI. Run it by hand, or on a schedule with the exit code
+wired to an alert; it exits 1 on any finding.
+
+Its first full run found that **Moonbeam stopped producing blocks on 2026-08-10**,
+thirty days earlier and within a week of that row being written, on three independent
+endpoints. Polygon zkEVM's halt had been caught the same way seven weeks late, by hand.
+That is the gap this closes.
+
 ## Dependencies
 
 Python 3 with `pyyaml` and `markdown`:

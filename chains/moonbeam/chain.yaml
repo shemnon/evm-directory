@@ -6,9 +6,83 @@ chain:
   chain_id: 1284
   role: independent
   equivalence: behavioural
-  live: true
+  live: false
+  live_state: halted    # last block 16796699, 2026-08-10; found by tools/livecheck.py
+  dead:
+    how: shutdown
+    recourse: migration
+    last_block: 16796699
+    last_block_at: "2026-08-10T11:36:12Z"
+    last_block_with_transactions: 16672926      # 2026-08-01T00:01:24Z
+    announced: 2026-07-03
+    src_doc: https://moonbeam.network/news/moonbeam-strategic-update-moonbeam-network-relaunches-on-base/
+    successor: "GLMR as an ERC-20 on Base (1:1); the Moonbeam name continues as an unrelated protocol there, NOT as this chain"
+    user_deadline: 2026-07-31
+    note: >-
+      NOT AN OUTAGE — a planned exit from Polkadot. Moonbeam announced on
+      2026-07-03 that GLMR would migrate 1:1 to Base as a standard ERC-20 and that
+      the parachain would wind down. The bridge deadline was 2026-07-31 23:59 UTC;
+      the network entered maintenance mode at 2026-08-01 00:00 UTC and began
+      rejecting user transactions; block production continued and then stopped on
+      2026-08-10 11:36:12 UTC.
+
+      TWO DIFFERENT ENDINGS, NINE AND A HALF DAYS APART. §1 of SUMMARY.md
+      already established the first one from source and probe: the EVM was
+      switched off by a Substrate call filter, and the last block carrying any
+      transaction is 16672926 at 2026-08-01T00:01:24Z, 84 seconds after
+      maintenance mode began. What that write-up could not know is the second
+      ending, because it had not happened yet — the chain went on producing
+      123,773 EMPTY blocks (gasUsed 0, zero transactions) for a further 9.48 days
+      and then stopped altogether at 16796699. The row was pinned at 16790908,
+      5,791 blocks and ten hours before the end.
+
+      So a liveness check that only asks "is the head moving" would have called
+      this chain healthy through the whole wind-down, and one that only asks "did
+      it stop" would have missed that it was unusable nine days earlier. Both
+      questions are needed, and the answers are different dates.
+
+      Reported migration take-up by the bridge deadline was about 24.8% of supply
+      (~308M of 1.241B GLMR). That figure is press reporting, not a primary
+      source, and is recorded here as context rather than as a fact of the row.
   evidence: source
   note: >-
+    THE CHAIN IS SHUT DOWN, deliberately. The row already knew the EVM had been
+    switched off — that is §1 of SUMMARY.md, established from the call filter in
+    source and confirmed three ways live — but it still carried `live: true`,
+    which contradicted its own write-up, and it predated the end of block
+    production by ten hours.
+    The head is block 16796699, timestamp 1786361772 (2026-08-10 11:36:12 UTC) —
+    30.2 days stale at the 2026-09-09 re-probe — and it is the SAME head on three
+    independent public endpoints (onfinality, 1rpc.io/glmr and moonbeam.drpc.org).
+    `eth_syncing` is false, so the nodes believe they are at the head. The cause is
+    established from Moonbeam's own announcement, not from the probe: the project
+    left Polkadot and migrated GLMR 1:1 to Base. See `chain.dead`.
+
+    THE PROBED HEIGHT IS INSIDE THE WIND-DOWN. `observed_at_block: 16790908` was
+    taken on 2026-08-10, nine days AFTER the chain stopped accepting user
+    transactions, so every `src_live:` below was read from a network that was
+    already refusing traffic. This does not invalidate them — they are state reads
+    (`eth_call`, `eth_getCode`, `eth_getBalance`) against a frozen state that is
+    now final — but any fact derived from transaction ACTIVITY at that height would
+    be reading empty blocks. The row's one activity-derived figure, the tx-type
+    census, was already taken from "the last window that had traffic" rather
+    than from the pinned block, which is why it survived.
+
+    The pinned height makes the timing legible. `observed_at_block: 16790908` was
+    taken as the FINALIZED head when this row was built, and it is still the
+    finalized head today — so finalization stopped at 2026-08-10 01:00:06 UTC and
+    block production ran on unfinalized for a further 10.6 hours before stopping
+    too. Every `src_live:` below was read at 16790908, which means they are all
+    still replayable and still true of the last state this chain reached; what
+    changed is that nothing further will happen.
+
+    Found by `tools/livecheck.py` on its first full run. The argument for that
+    tool is precisely this row: a careful write-up can establish that a chain has
+    stopped accepting transactions and STILL leave `live: true` in the field the
+    tables read, because nothing re-checked the two against each other or against
+    the network. Polygon zkEVM's halt was caught the same way and by hand, seven
+    weeks late.
+
     A Polkadot parachain whose EVM is a Substrate runtime module. There is no
     Ethereum client here: `pallet-evm` embeds the `evm` (rust-evm) interpreter
     inside a WASM state machine, `pallet-ethereum` SYNTHESISES an Ethereum block

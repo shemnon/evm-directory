@@ -154,13 +154,191 @@ conflates two situations that a reader must not confuse.
 | live_state | meaning |
 |---|---|
 | `prelaunch` | the chain has never produced a mainnet block. Facts rest on source plus, at best, a TESTNET probe — so every `src_live:` on such a row states what the testnet did. Arc. |
-| `halted` | the chain produced blocks and stopped. Its `src_live:` facts are real mainnet observations; they are simply frozen at the last block. Polygon zkEVM. |
+| `halted` | the chain produced blocks and stopped, **at an observed height**. Its `src_live:` facts are real mainnet observations, frozen at the last block. Polygon zkEVM, Moonbeam. |
+| `unreachable` | no endpoint answers, so whether it runs is **unknown**. Not a claim that it stopped — nothing was observed to stop. Artela. |
 
 The distinction is not cosmetic. A `prelaunch` row's live evidence may be
 contradicted by mainnet at launch — Arc's testnet runs a fork the mainnet schedule
 does not contain — while a `halted` row's live evidence can never be contradicted,
 because nothing further will happen. Neither is a claim about intent: a chain may be
 halted because it was sunset or because it broke, and no probe distinguishes those.
+
+Neither value is set once and forgotten. `tools/livecheck.py` re-probes every row
+that carries `src_live:` facts and tests the head against exactly this field — a
+`live: true` row whose head has stopped moving is a finding, and so is a `halted`
+row whose head starts moving again. Moonbeam was found that way, a month after it
+stopped. Two optional `live_probe` keys support the check:
+
+| key | meaning |
+|---|---|
+| `awaiting_endpoint` | for a `prelaunch` row, the URL of the network it is waiting for. The row's `endpoint` is a stand-in testnet, so nothing about the real chain can be probed; this is checked separately and reports the moment it starts answering. Arc. |
+| `awaiting_chain_id` | the chain id that endpoint should answer with, for the same reason `chain_id` exists. |
+
+A `halted` row is **not** required to pin its own last block. Moonbeam's
+`observed_at_block` is the *finalized* head at probe time and production ran 5,791
+blocks past it, so the halt test reads the head's **age**, never its distance from
+the pin.
+
+### `dead:` — the chain is over
+
+Set on `chain:`. A chain that stopped does not stay a maintenance problem forever;
+at some point it becomes a **historical record**, and saying so is what stops it from
+rotting quietly at the bottom of every table.
+
+The key is `dead:` rather than a word about the data — an earlier draft called this
+`mothballed:`, which named what the maintainer did to the row instead of what
+happened to the network. The chain is the subject. Marking it dead is a statement that
+this row is **complete and closed**, not that it is wrong. Its facts were true of a real network and can never be contradicted, because
+nothing further will happen — that is the property `halted` already has and
+`prelaunch` does not. What changes is the maintenance contract:
+
+- **Nothing is deleted.** The row keeps every fact, every citation and its page. A
+  dead chain is the only kind of row whose facts are permanently final, which makes
+  it more citable than a live one, not less.
+- **The client pin stops moving.** No version bumps, no re-extraction against newer
+  tags. The pin names the client the chain died running. A newer release cannot
+  describe a network that no longer executes anything.
+- **It is not re-probed for freshness.** `tools/livecheck.py` still checks it, but
+  only to catch a restart; a frozen head is the expected result and is reported
+  under `dead`, not as work outstanding.
+- **The reader is told, everywhere the row appears.** Liveness is an attribute of
+  the chain, like `role` or `baseline_fork` — not provenance — so unlike `src:` it
+  belongs in the aggregate surfaces too. MATRIX.md carries a `Liveness` row and the
+  chains index a column, both showing `dead: shutdown` or `dead: abandoned` rather
+  than a bare "dead".
+
+#### `dead.how:` — an orderly shutdown and dying in your sleep are not the same event
+
+The primary axis. A chain that was switched off on a published schedule and a chain
+whose infrastructure simply rotted away both end up at `live: false`, and **nothing
+else about them is alike** — not how it was established, not what evidence exists, and
+above all not what a holder can still do about it.
+
+| how | meaning | requires |
+|---|---|---|
+| `shutdown` | announced, scheduled, executed. Somebody switched it off on purpose and said so. | `src_doc:`, `announced:`, `last_block:` |
+| `abandoned` | it stopped answering and **nobody said anything** — endpoints, explorer and client decayed until nothing was left. | `dark_after:`, `dark_before:`, `dark_evidence:` |
+| `unrecorded` | it ended; which of the two is deliberately not established. | — |
+
+**`abandoned` is not a claim that anyone chose to walk away.** It says only that
+production stopped, no announcement was located, and the infrastructure rotted. Who
+decided what, and whether anyone decided anything at all, is unknown and stays
+unknown — Artela's organisation was still pushing code to other repositories months
+after its chain stopped answering, which fits neglect and a quiet pivot equally well.
+Read the word as *the chain was abandoned*, never as *they abandoned it*.
+
+```yaml
+# an orderly shutdown: the operator says so, and there is a way out
+dead:
+  how: shutdown
+  recourse: claims
+  announced: 2026-07-03
+  src_doc: https://polygon.technology/polygon-zkevm
+  last_block: 33391890
+  last_block_at: "2026-07-03T15:55:44Z"
+  user_deadline: 2027-12-31
+  successor: null
+
+# died in its sleep: nobody announced anything, and nobody can name the last block
+dead:
+  how: abandoned
+  recourse: none
+  dark_after: 2025-09-06        # last date it was observably alive
+  dark_before: 2025-10-04       # first date it was observably gone
+  dark_evidence:
+    - "artscan.artela.network HTTP 200 2025-08-28, 521 by 2025-12-21 (Wayback)"
+    - "every published RPC fails to connect, 2026-09-09"
+  last_block: null              # unknown, and now unknowable
+```
+
+**A `shutdown` can only ever rest on a `src_doc:`.** No probe returns an
+intention. `eth_blockNumber` says a chain stopped; it cannot say whether that was
+planned. Intent is exactly what `src_doc:` is for — a statement by the operator about
+what they meant — and this is the one place in the schema where the weakest evidence
+kind is the *only* admissible kind. `verify.py` rejects a `shutdown` with no document,
+because it asserts an intention with nothing behind it.
+
+**An `abandoned` ending is established by decay, not by a block.** There is usually no last
+block to name: by the time anyone notices, the endpoints that could have answered are
+already gone. What can be established is a *window* — the last date the chain was
+observably alive and the first date it was observably gone — from whatever outlived it:
+archived explorer snapshots, the project site, the client repository's last push,
+directory services dropping the chain id. `dark_after:` and `dark_before:` carry that
+window and are required, because "it seems dead" without a bound is not an observation.
+
+`unrecorded` is not a third kind of ending; it is the absence of a finding about which
+of the two happened. Keeping it separate from `abandoned` is the same discipline that
+keeps `unrecorded` out of `none` in `status:` — "we looked and found no announcement"
+and "nobody looked" must not read alike.
+
+#### `recourse:` — the part that costs people money
+
+| recourse | meaning |
+|---|---|
+| `claims` | an interface exists to recover assets. Pair with `user_deadline:`. |
+| `migration` | holdings were moved to another chain or token. Pair with `successor:`. |
+| `none` | there is no way to recover anything. |
+| `unrecorded` | not established. |
+
+This is the field a reader actually needs and the one a liveness probe can never
+produce. It is also the sharpest expression of the `how:` split: a `shutdown` usually
+has a claims window or a migration and a deadline attached to it, while an `abandoned`
+chain has nobody left to ask. `verify.py` therefore rejects `how: abandoned` paired
+with `recourse: claims` or `migration` — a recovery process is something an operator
+announces, and an operator who announced one did not stop answering.
+
+#### `unreachable` is a probe result; `abandoned` is a conclusion
+
+These are different layers and a row carries both. `live_state: unreachable` says what
+happens when you dial the endpoints today: nothing. `dead.how: abandoned` says what
+the maintainer concluded from that plus everything around it. The first is renewable
+and could be reversed by one endpoint coming back; the second closes the row.
+
+An earlier draft of this section held that an `unreachable` row could **never** be
+closed, on the grounds that doing so would assert an ending nobody observed. That was
+too strict, and `abandoned` is what it was missing. The rule it was really
+reaching for is that an ending must be *bounded by evidence* — and there are two
+admissible ways to bound one, not one:
+
+- **a last block**, for a chain someone was watching when it stopped; or
+- **a dark window**, for a chain that was already gone when anyone looked.
+
+Artela has no last block and never will: every published endpoint was dead before this
+row existed, so it holds no `src_live:` at all. It does have a window. The explorer
+answered HTTP 200 on 2025-08-28 and 521 by 2025-12-21; the project site answered on
+2025-09-06 and failed by 2025-10-04; every RPC now refuses to connect; OKX and
+thirdweb have both dropped chain 11820; the client's last release is 2024-09-05 with
+no default-branch push since 2024-11-15, while the organisation went on pushing to
+*different* repositories into 2026. No shutdown was ever announced.
+
+That is a chain that died in its sleep, established from what outlived it, and
+`abandoned` is the word for it. What the row must not do is round it up into an
+orderly shutdown or invent a final height — which is why `last_block:` stays null and
+`how:` is not `shutdown`.
+
+#### The procedure, for the next one
+
+Two rows have died since this dataset began and a third (Harmony) is in a published
+sundown plan, so this is written as a runbook rather than rediscovered each time.
+
+1. `tools/livecheck.py` reports `STALE` on a `live: true` row. That is the trigger;
+   it is not yet a finding.
+2. **Confirm on at least two independent endpoints.** One provider's stalled node is
+   not a halted chain. Check `eth_syncing` too — a node that knows it is behind is a
+   different story from one that believes it is at the head.
+3. **Pin the last block and its timestamp**, and record them. Do not assume the row's
+   `observed_at_block` is the last block; it usually is not. If every endpoint is
+   already gone there will be no last block — that is the `abandoned` path, and a
+   bounded dark window replaces the height.
+4. **Separate "stopped accepting transactions" from "stopped producing blocks."**
+   They are rarely the same moment and the gap is itself a finding — Moonbeam
+   produced 123,773 empty blocks over 9.5 days between the two.
+5. **Look for an announcement.** Found → `how: shutdown` with the URL in `src_doc:`,
+   plus `announced:` and `last_block:`. Looked and found nothing → `how: abandoned`,
+   with the dark window and the evidence for it. Did not look → `unrecorded`.
+6. Set `live: false`, the right `live_state:`, and the `dead:` block. Leave every
+   other fact exactly as it stands, and stop bumping the client pin.
+7. Regenerate. `verify.py --no-clones` will check the row's internal consistency.
 
 ### `evidence:` — the row's overall footing
 

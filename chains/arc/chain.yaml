@@ -6,17 +6,26 @@ chain:
   chain_id: 5042
   role: fork
   live: false
-  live_state: prelaunch    # mainnet has never produced a block; public launch date 2026-09-16
+  live_state: prelaunch    # mainnet has never produced a block; announced launch 2026-09-16
   evidence: source
   chain_id_src: crates/shared/src/chain_ids.rs:MAINNET_CHAIN_ID
   note: >-
     MAINNET IS NOT LIVE AT THIS TAG. `https://rpc.arc.network` does not resolve;
     chain id 5042 exists only as a constant and a hardfork schedule in the
-    client. Circle's public mainnet date is 2026-09-16. Everything below is
-    therefore SOURCE plus a probe of the PUBLIC TESTNET (5042002), and every
-    `src_live:` should be read as "the testnet does this", not "mainnet does
-    this". The two schedules genuinely differ — see `forks` — so that hedge is
-    load-bearing, not boilerplate. `live: false` is set accordingly.
+    client. Circle's announced public mainnet date is 2026-09-16, which has NOT
+    yet arrived — re-checked 2026-09-09, seven days out, and the hostname is
+    still NXDOMAIN at 1.1.1.1 and 8.8.8.8. Everything below is therefore SOURCE
+    plus a probe of the PUBLIC TESTNET (5042002), and every `src_live:` should be
+    read as "the testnet does this", not "mainnet does this". The two schedules
+    genuinely differ — see `forks` — so that hedge is load-bearing, not
+    boilerplate. `live: false` is set accordingly.
+
+    When mainnet does come up, this row does not become correct by editing
+    `live_state`. Every `src_live:` on it was read from a chain running Zero7 on a
+    testnet-only schedule; the mainnet table at this tag stops at Zero6. The whole
+    live half of the row has to be re-probed against 5042 before `live_state:
+    running` can be set, and `live_probe.awaiting_endpoint` exists so
+    `tools/livecheck.py` reports the moment that becomes possible.
 
     Arc keeps a native coin, which is what makes it the interesting contrast to
     the tempo row: USDC IS the native coin, minted and burned through a
@@ -63,6 +72,8 @@ live_probe:
   chain_id: 5042002
   observed_at_block: 58728247      # 0x3801f37, `finalized` at probe time
   observed_at: 2026-08-25
+  awaiting_endpoint: https://rpc.arc.network   # mainnet (5042); NXDOMAIN as of 2026-09-09
+  awaiting_chain_id: 5042
   chain_id_src_live: "eth_chainId @ 58728247 -> 0x4cef52 (5042002); web3_clientVersion -> arc/v1 (no version detail)"
   block_scan_range: 58728247-58728296
   caveat: >-

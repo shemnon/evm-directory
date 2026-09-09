@@ -6,7 +6,38 @@ chain:
   chain_id: 11820
   role: fork
   live: false
-  live_state: halted
+  live_state: unreachable    # no endpoint answers; never observed to stop
+  dead:
+    how: abandoned
+    recourse: none
+    last_block: null            # unknown and now unknowable — see below
+    dark_after: 2025-09-06      # last date the chain was observably alive
+    dark_before: 2025-10-04     # first date it was observably gone
+    dark_evidence:
+      - "artela.network (project site): HTTP 200 at 2025-09-06, request failure by 2025-10-04 — Wayback CDX"
+      - "artscan.artela.network (block explorer): HTTP 200 at 2025-08-28, Cloudflare 521 by 2025-12-21 — Wayback CDX"
+      - "every published RPC (node-euro / node-hk / node-usa / rpc.artela.network) fails to connect, 2026-09-09"
+      - "thirdweb returns `Invalid chain` and OKX's explorer 404s for 11820 — directory services have dropped it"
+      - "client artela-network/artela: last release v0.4.9-rc9 2024-09-05, no default-branch push since 2024-11-15"
+      - "the ORG remained active on other repos (artela-rollkit, artela-cosmos-sdk, both pushed May 2026) — the team moved on, the chain did not follow"
+      - "no shutdown announcement located, searched 2026-08-27 and 2026-09-09"
+    note: >-
+      A QUIET DEATH, NOT A SHUTDOWN. Nobody announced anything, nobody published a
+      claims window, and no last block was ever recorded — by the time this row was
+      built every endpoint that could have answered was already gone, which is why
+      the row holds not one `src_live:`.
+
+      What can be established is a WINDOW, from the infrastructure that outlived the
+      chain: the project site answered on 2025-09-06 and was failing by 2025-10-04.
+      The public presence went dark in September 2025. That is the whole finding, and
+      `last_block: null` is the honest end of it — an `abandoned` ending is bounded by
+      decay, never by a height, because the height is exactly what is missing.
+
+      `recourse: none` is the part that matters to anyone still holding. There is no
+      claims interface, no migration and no counterparty: docs.artela.network stayed
+      up until at least 2026-03-07 as a static site describing a network that had
+      already stopped answering for six months, which is worse than nothing — it
+      reads as an operating chain.
   evidence: source
   chain_id_src: init.sh:CHAINID
   note: >-
@@ -32,11 +63,27 @@ chain:
     11820 (https://node-euro.artela.network/rpc) returns Cloudflare 522, the
     testnet's (11822, https://betanet-rpc1.artela.network) returns 526,
     artela.network returns 404, docs.artela.network 526 and both explorers 521 /
-    connection-refused. NO LIVE PROBE WAS POSSIBLE, so there is not one src_live
-    in this row and every fact rests on source. `live_state: halted` here means
-    UNREACHABLE, not "observed to have stopped at height N" — no last block was
-    seen. The client agrees: the newest release is v0.4.9-rc9 of 2024-09-05 and
-    the default branch has had no push since 2024-11-15.
+    connection-refused. Re-checked 2026-09-09: the mainnet RPC now fails to
+    connect at all, betanet and the docs still return 526, artela.network still
+    404. NO LIVE PROBE WAS POSSIBLE, so there is not one src_live in this row and
+    every fact rests on source. The client agrees: the newest release is
+    v0.4.9-rc9 of 2024-09-05 and the default branch has had no push since
+    2024-11-15.
+
+    `live_state: unreachable`, NOT `halted`. The distinction is load-bearing and
+    this row is why the schema has both words. `halted` names a last block;
+    nothing here was ever observed to stop, so there is no height to name and
+    never will be.
+
+    The two keys sit at different layers and both belong. `live_state:
+    unreachable` is what happens when you dial the endpoints today — nothing.
+    `dead.how: abandoned` is the conclusion drawn from that plus everything
+    around it, bounded by the window in `dead.dark_after`/`dark_before` rather
+    than by a final block. An earlier draft of this row refused to mark it dead
+    at all, on the grounds that closing it would assert an ending nobody
+    observed. That was too strict: an ending can be bounded by decay as well as
+    by a height, and this one is. What the row still must not do is call it a
+    shutdown or invent a last block. See SCHEMA.md.
 
 lineage:
   upstream: cosmos-evm

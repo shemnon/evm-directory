@@ -173,6 +173,8 @@ The mainnet base range `0x01`–`0x11` plus P256VERIFY at `0x0100` is shown for 
 
 Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · ? not recorded
 
+Liveness: `live` runs · `prelaunch` has never produced a mainnet block · `halted` stopped · `unreachable` answers nowhere · `dead: shutdown` was switched off deliberately and announced · `dead: abandoned` went dark with no announcement (SCHEMA.md). A dead row's facts are FINAL — the network stopped, so nothing can contradict them — but it is a historical record, not a chain to integrate with. `shutdown` vs `abandoned` is the difference between an operator who switched it off and said so, usually leaving a way to get assets out, and a chain that simply stopped answering with nobody left to ask.
+
 ## Silent divergences (`severity: high`)
 
 Divergences that produce wrong results with no revert, no error and no signal to the caller — across every section, not just precompiles.

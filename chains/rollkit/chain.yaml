@@ -288,7 +288,11 @@ eips:
     src_live: "eth_call(0x0100, 160 zero bytes) @ 182440651 -> 0x (ambiguous)"
   7702:
     status: inherited
-    note: Prague is active and the interpreter is upstream reth; not separately probed.
+    src: "execution/evm/docker/chain/genesis.json:pragueTime"
+    note: >-
+      Prague is active by chainspec timestamp (pragueTime 0) and the interpreter is
+      upstream reth with no ev-reth change to delegation handling; the chainspec is
+      the evidence, not a probe — no type-0x04 transaction was observed.
 
 non_eip_specs:
   ADR-019:

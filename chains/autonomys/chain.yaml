@@ -288,22 +288,27 @@ eips:
   152:
     status: removed
     note: "BLAKE2F — 0x09 is not in the precompile set; see precompiles"
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
   196:
     status: removed
     severity: high
     note: "BN256ADD / BN256MUL — 0x06 and 0x07 are not in the precompile set"
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
   197:
     status: removed
     severity: high
     note: "BN256PAIRING — 0x08 is not in the precompile set. No Groth16/PLONK verifier can work here."
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
   2537:
     status: removed
     severity: high
     note: "BLS12-381 — 0x0b-0x11 are not in the precompile set"
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
   7951:
     status: removed
     severity: high
     note: "P256VERIFY — 0x0100 is not in the precompile set; joins the five-chain empty-0x0100 class"
+    src: "domains/primitives/evm-precompiles/src/lib.rs:PrecompilesAt"
   161:
     status: modified
     severity: high

@@ -600,8 +600,17 @@ PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
 def provenance(c):
     """Tally how each fact in this row is evidenced. The generated tables merge
     source, docs and live probes without distinction (SCHEMA.md, 'Mixing in the
-    aggregate tables'), so this counter is the only place the ratio is visible."""
-    t = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
+    aggregate tables'), so this counter is the only place the ratio is visible.
+
+    `unrecorded` is counted apart from `none`, and the split is the point. A
+    `status: unrecorded` row carries no evidence BY CONSTRUCTION — SCHEMA.md defines
+    it as "deliberately not established", recorded so the aggregate tables render `?`
+    instead of falling back to `inherited` and silently asserting mainnet equivalence.
+    Folding those into `none` made a deliberate declaration indistinguishable from a
+    missing citation, so the bucket could never be driven down and nobody could tell
+    which part of it was real work. `none` now means only the second thing: a fact
+    that asserts something and does not say how it is known."""
+    t = {"src": 0, "src_live": 0, "src_doc": 0, "unrecorded": 0, "none": 0}
     for sec in PROV_SECTIONS:
         d = c.get(sec) or {}
         if not isinstance(d, dict): continue
@@ -609,7 +618,7 @@ def provenance(c):
             if not isinstance(v, dict): continue
             for k in ("src", "src_live", "src_doc"):
                 if k in v: t[k] += 1; break
-            else: t["none"] += 1
+            else: t["unrecorded" if v.get("status") == "unrecorded" else "none"] += 1
     return t
 
 # An extension ALLOWLIST was the wrong design: every new chain brings a new language,
@@ -750,7 +759,7 @@ def main():
     no_clones = a.no_clones
 
     problems = 0
-    totals = {"src": 0, "src_live": 0, "src_doc": 0, "none": 0}
+    totals = {"src": 0, "src_live": 0, "src_doc": 0, "unrecorded": 0, "none": 0}
     skipped, unextracted = [], []
     if no_clones:
         print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
@@ -983,6 +992,8 @@ def main():
         print(f"evidence mix across {tot} facts:  {mix}")
         print("  the aggregate tables merge these without distinction — by design, and")
         print("  reversible, because provenance is retained per fact in chain.yaml.")
+        print("  `unrecorded` is evidence-free on purpose (SCHEMA.md); `none` is not —")
+        print("  every `none` is a claim with no stated way of knowing it.")
     if skipped:
         print(f"documented rows (not verifiable, not drift): {', '.join(skipped)}")
     if unextracted:

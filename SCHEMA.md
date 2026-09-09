@@ -138,6 +138,14 @@ number that had drifted onto a different constant, a path written relative to th
 directory, and a sibling that was one directory up. A `src_live:` with no `@ <block>`
 is rejected outright.
 
+**`status: unrecorded` is exempt, and the exemption is the whole reason the status
+exists.** Such a row asserts nothing about the chain, so there is nothing to cite; its
+`note:` states what was not established and why. `verify.py`'s tally counts these in
+their own `unrecorded` bucket rather than in `none`, because folding them together made
+a deliberate declaration indistinguishable from a forgotten citation — the bucket could
+never be driven to zero, so nobody could tell what remained in it. A nonzero `none` is
+therefore a defect: a fact that asserts something and does not say how it is known.
+
 ### `live_state:` — why a row is not live
 
 Set on `chain:`, and only meaningful when `live: false`. `live: false` alone

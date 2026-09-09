@@ -72,9 +72,12 @@ eips:
     status: modified
     note: "BLAKE2F exists but at 0x020009, NOT at mainnet's 0x09 — 0x09 holds batchValidateSign"
     src: "actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java:blake2FAddr"
-  7702: {status: removed}
-  4788: {status: removed, note: no beacon chain}
-  2935: {status: removed}
+  7702: {status: removed, note: "no typed-transaction envelope and no authorization list anywhere in the transaction proto — a type-0x04 payload has nowhere to go; see eips.2718 and tx_types",
+         src: "protocol/src/main/protos/core/Tron.proto:Transaction"}
+  4788: {status: removed, note: "no beacon chain, and BlockHeader.raw carries no parentBeaconBlockRoot field for a beacon-roots contract to be fed from",
+         src: "protocol/src/main/protos/core/Tron.proto:BlockHeader"}
+  2935: {status: removed, note: "BLOCKHASH reads the block store directly through Program.getBlockHash; there is no history-storage system contract to read or to write, and Tron has no predeploys at all — see system_contracts",
+         src: "actuator/src/main/java/org/tron/core/vm/OperationActions.java:blockHashAction"}
   7951:
     status: modified
     note: "P256VERIFY present at 0x0100, matching the address used by mainnet, OP Stack and Avalanche"

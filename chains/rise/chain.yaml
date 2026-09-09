@@ -237,12 +237,18 @@ tx_types:
       The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
       (EIP-4844). Derived from the eips map (2930/1559/4844/7702); per-type divergences and
       their evidence are on the rows below.
-  "0x00": {status: inherited}
-  "0x01": {status: inherited}
-  "0x02": {status: inherited}
+  "0x00": {status: inherited, note: "379 of the 382 transactions in the probed block were type 0x00", src: "risechain/crates/primitives/src/rpc.rs:OpReceipt",
+           src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> type-byte census 379x 0x00, 2x 0x02, 1x 0x7e"}
+  "0x01": {status: inherited, note: "accepted; the receipt enum carries an Eip2930 variant. Not observed in the probed block.", src: "risechain/crates/primitives/src/rpc.rs:OpReceipt"}
+  "0x02": {status: inherited, src: "risechain/crates/primitives/src/rpc.rs:OpReceipt",
+           src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> 2 transactions of type 0x02"}
   "0x03":
     status: removed
-    note: "no blob transactions on the L2; inherited from op-stack"
+    src: "risechain/crates/primitives/src/rpc.rs:OpReceipt"
+    note: >-
+      No blob transactions on the L2; inherited from op-stack. The receipt enum is
+      matched exhaustively over Legacy / Eip2930 / Eip1559 / Eip7702 / Deposit /
+      PostExec — there is no Eip4844 variant for a type-0x03 receipt to occupy.
   "0x04":
     status: inherited
     note: >-
@@ -333,6 +339,7 @@ system_contracts:
 system_transactions:
   l1_attributes:
     status: inherited
+    src_live: "eth_getBlockByNumber 20239360 @ 20239360 -> exactly one 0x7e at index 0, from 0xdeaddead...dead0001 to 0x4200..15, nonce 0x134d3ff (= block number - 1); receipt carries depositReceiptVersion 0x1"
     note: >-
       One OP deposit per block at index 0. Recorded here only because of what the shred
       stream does with it: see `gotchas.stale_deposit_shred`. This transaction is the

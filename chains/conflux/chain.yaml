@@ -443,7 +443,11 @@ eips:
     note: "warm COINBASE arrives bundled into CIP-645"
   6110:
     status: removed
-    note: "no beacon chain, no deposit contract"
+    src: "crates/rpc/rpc-eth-types/src/block.rs:Header"
+    note: >-
+      No beacon chain and no deposit contract. EIP-6110 delivers deposits as
+      execution-layer requests, and the eSpace header has no `requestsHash` key for
+      them to be committed to — the same absence recorded under eips.7685.
   7002:
     status: removed
     src_live: "eth_getCode(0x00000961Ef480Eb55e80D19ad83579A64c007002) @ 155333000 -> 0x"
@@ -460,7 +464,11 @@ eips:
     note: "no requestsHash key. Contrast Monad, which emits the field as the zero hash — an absent key is the safer of the two failures"
   7594:
     status: removed
-    note: "no blobs at all"
+    src: "crates/primitives/src/transaction/mod.rs:EIP7702_TYPE, crates/rpc/rpc-eth-types/src/block.rs:Header"
+    note: >-
+      No blobs at all, so there is nothing for PeerDAS to sample. The transaction
+      type enum tops out at EIP7702_TYPE with no type-0x03 constant, and the header
+      carries no blobGasUsed / excessBlobGas keys. See eips.4844.
   1108:
     status: inherited
     fork: "V3.0 (CIP-645)"

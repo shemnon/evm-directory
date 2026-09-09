@@ -236,8 +236,10 @@ eips:
       anyway, but the intent is recorded: SELFDESTRUCT here is neither mainnet's
       pre-Cancun SELFDESTRUCT nor EIP-6780's. See opcodes.modified.
     src: "core/vm/jump_table_zkevm.go:newNapoliInstructionSetZk"
-  2929: {status: inherited, note: "Berlin access lists active; precompile addresses are pre-warmed, which is measurable — see precompiles"}
-  2930: {status: inherited, note: "type 0x01 access-list transactions are the newest type this chain accepts"}
+  2929: {status: inherited, note: "Berlin access lists active; `Prepare` clears the list and pre-warms sender, destination and every address in the active precompile set under `rules.IsBerlin`, which is measurable — see precompiles.0x0a for the 2500-gas cold/warm gap that proves it",
+         src: "core/state/intra_block_state.go:Prepare"}
+  2930: {status: inherited, note: "type 0x01 access-list transactions are the newest type this chain accepts — pool admission rejects 0x02, 0x03 and 0x04; see tx_types",
+         src: "zk/txpool/pool.go:validateTx"}
   2565: {status: modified, note: "MODEXP carries eip2565 pricing but the precompile itself is disabled at the live fork — see 0x05",
          src: "core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry"}
   1052:

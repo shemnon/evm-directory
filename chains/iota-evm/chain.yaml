@@ -156,8 +156,9 @@ eips:
   3651:
     status: inherited
     note: "warm COINBASE, but COINBASE is the zero address here — see opcodes.modified."
-  3855: {status: inherited, note: "PUSH0 active (Shanghai at time 0)."}
-  3860: {status: inherited}
+    src: "packages/vm/core/evm/emulator/emulator.go:getConfig"
+  3855: {status: inherited, note: "PUSH0 active (Shanghai at time 0).", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  3860: {status: inherited, note: "initcode cap active with Shanghai; the ChainConfig sets ShanghaiTime 0 and geth gates EIP-3860 on it.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
   4399:
     status: modified
     severity: high
@@ -207,14 +208,14 @@ eips:
     src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 12793600 -> 0x"
   2537: {status: removed, note: "Prague not scheduled; 0x0b-0x11 hold no precompiles.", src_live: "eth_call 0x0b @ 12793600 -> 0x (empty, address absent)"}
   7702: {status: removed, note: "type 0x04 cannot be decoded (EIP-2718 removed); no delegation designator handling.", src: "packages/evm/jsonrpc/service.go:SendRawTransaction"}
-  7623: {status: removed, note: "Prague not scheduled; calldata floor pricing absent."}
-  7691: {status: removed}
-  7840: {status: removed}
+  7623: {status: removed, note: "Prague not scheduled; calldata floor pricing absent.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  7691: {status: removed, note: "blob throughput increase is Prague; the ChainConfig stops at CancunTime and carries no BlobScheduleConfig.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  7840: {status: removed, note: "no BlobScheduleConfig field is set on the hand-built ChainConfig.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
   7951: {status: removed, note: "P256VERIFY absent. NOTE: a probe of 0x0100 returns empty output, which on this chain means 'no code at that address', NOT EIP-7951 invalid-signature semantics — the two are indistinguishable by output alone, so the claim rests on the pinned ChainConfig stopping at Cancun.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
-  7883: {status: removed}
-  7825: {status: removed}
-  7594: {status: removed}
-  7907: {status: removed}
+  7883: {status: removed, note: "Osaka not scheduled; MODEXP stays at the Cancun eip2565 pricing.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig, core/vm/contracts.go:PrecompiledContractsCancun"}
+  7825: {status: removed, note: "transaction gas-limit cap is Osaka; not scheduled.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  7594: {status: removed, note: "PeerDAS is Osaka and there is no blob path here at all; not scheduled.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  7907: {status: removed, note: "Osaka not scheduled; no code-size metering change.", src: "packages/vm/core/evm/emulator/emulator.go:getConfig"}
   1186:
     status: removed
     severity: high
@@ -361,24 +362,24 @@ precompiles:
       Cancun-level base: 0x01-0x0a present, MODEXP at EIP-2565 pricing with no Osaka
       bounds, no EIP-2537 BLS (Prague not scheduled), no P256VERIFY. Every base
       address is also given an explicit row below with its live probe.
-  "0x0000000000000000000000000000000000000001": {name: ECRECOVER, status: inherited}
+  "0x0000000000000000000000000000000000000001": {name: ECRECOVER, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
   "0x0000000000000000000000000000000000000002": {name: SHA256, status: inherited, src_live: "eth_call @ 12793600 with empty input -> e3b0c442...b855"}
-  "0x0000000000000000000000000000000000000003": {name: RIPEMD160, status: inherited}
+  "0x0000000000000000000000000000000000000003": {name: RIPEMD160, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
   "0x0000000000000000000000000000000000000004": {name: IDENTITY, status: inherited, src_live: "eth_call @ 12793600 with 0xdeadbeef -> 0xdeadbeef"}
-  "0x0000000000000000000000000000000000000005": {name: MODEXP, status: inherited, note: "Cancun (EIP-2565) pricing; no EIP-7883 repricing and no EIP-7823 bounds"}
-  "0x0000000000000000000000000000000000000006": {name: BN256ADD, status: inherited}
-  "0x0000000000000000000000000000000000000007": {name: BN256SCALARMUL, status: inherited}
-  "0x0000000000000000000000000000000000000008": {name: BN256PAIRING, status: inherited}
-  "0x0000000000000000000000000000000000000009": {name: BLAKE2F, status: inherited}
+  "0x0000000000000000000000000000000000000005": {name: MODEXP, status: inherited, note: "Cancun (EIP-2565) pricing; no EIP-7883 repricing and no EIP-7823 bounds", src: "core/vm/contracts.go:PrecompiledContractsCancun"}
+  "0x0000000000000000000000000000000000000006": {name: BN256ADD, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
+  "0x0000000000000000000000000000000000000007": {name: BN256SCALARMUL, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
+  "0x0000000000000000000000000000000000000008": {name: BN256PAIRING, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
+  "0x0000000000000000000000000000000000000009": {name: BLAKE2F, status: inherited, src: "core/vm/contracts.go:PrecompiledContractsCancun"}
   "0x000000000000000000000000000000000000000a": {name: KZG point evaluation, status: inherited, src_live: "eth_call @ 12793600 with 1 byte -> -32000 'invalid input length'"}
   "0x000000000000000000000000000000000000000b": {name: BLS12-381 G1ADD, status: removed, spec: EIP-2537, note: "Prague not scheduled", src_live: "eth_call @ 12793600 -> 0x (address absent)"}
-  "0x000000000000000000000000000000000000000c": {name: BLS12-381 G1MSM, status: removed, spec: EIP-2537}
-  "0x000000000000000000000000000000000000000d": {name: BLS12-381 G2ADD, status: removed, spec: EIP-2537}
-  "0x000000000000000000000000000000000000000e": {name: BLS12-381 G2MSM, status: removed, spec: EIP-2537}
-  "0x000000000000000000000000000000000000000f": {name: BLS12-381 PAIRING, status: removed, spec: EIP-2537}
-  "0x0000000000000000000000000000000000000010": {name: BLS12-381 MAP_FP_TO_G1, status: removed, spec: EIP-2537}
-  "0x0000000000000000000000000000000000000011": {name: BLS12-381 MAP_FP2_TO_G2, status: removed, spec: EIP-2537}
-  "0x0000000000000000000000000000000000000100": {name: P256VERIFY, status: removed, spec: EIP-7951, note: "absent; see eips.7951 for why the empty-output probe is not evidence on its own"}
+  "0x000000000000000000000000000000000000000c": {name: BLS12-381 G1MSM, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x000000000000000000000000000000000000000d": {name: BLS12-381 G2ADD, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x000000000000000000000000000000000000000e": {name: BLS12-381 G2MSM, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x000000000000000000000000000000000000000f": {name: BLS12-381 PAIRING, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x0000000000000000000000000000000000000010": {name: BLS12-381 MAP_FP_TO_G1, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x0000000000000000000000000000000000000011": {name: BLS12-381 MAP_FP2_TO_G2, status: removed, spec: EIP-2537, note: "Prague not scheduled", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
+  "0x0000000000000000000000000000000000000100": {name: P256VERIFY, status: removed, spec: EIP-7951, note: "absent; see eips.7951 for why the empty-output probe is not evidence on its own", src: "core/vm/contracts.go:PrecompiledContractsCancun, packages/vm/core/evm/emulator/emulator.go:getConfig"}
 
 system_contracts:
   "0x1074000000000000000000000000000000000000":

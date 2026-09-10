@@ -42,6 +42,7 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
   └── Arc (v0.7.3, osaka)
   └── Plasma (v1.11.3, prague)
   └── Rootstock (RSK) (VETIVER-9.0.4, petersburg)
+  └── ZK Stack (ZKsync Elastic Network) (core-v31.5.0, osaka)
 
 zkSync Era — no upstream (role: independent)
 
@@ -108,3 +109,4 @@ Autonomys Auto EVM — no upstream (role: independent)
 | Core | `prague` | TWO FORK LADDERS INTERLEAVED. BSC's names and Core's own share one timestamp space and several fire together — Luban, Plato, Bohr, Pascal, Prague and Hermes all activate at 1764057600. There |
 | Cronos | `prague` | NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER in module state, defaulting to every block-numbered fork at 0 and Shanghai/Cancun/Prague at time 0, and gover |
 | Rootstock (RSK) | `petersburg` | ACTIVATION IS BY BLOCK NUMBER, IN TWO FILES, AND ONE OVERRIDES THE OTHER. `reference.conf` maps each `rskipNNN` to a FORK NAME; `config/main.conf` maps each fork name to a mainnet BLOCK HEIG |
+| ZK Stack (ZKsync Elastic Network) | `osaka` | NO FORK NAMES AND NO TIMESTAMPS — numbered protocol versions, activated by an L1 upgrade transaction that swaps the bootloader / default-account / EVM-emulator bytecode hashes. This is one o |

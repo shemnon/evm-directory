@@ -69,6 +69,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Taiko Alethia](chains/taiko/SUMMARY.md) | taiko-geth | `v2.6.0` | osaka |
 | [Polygon zkEVM](chains/polygon-zkevm/SUMMARY.md) *(dead — shutdown 2026-07-03)* | cdk-erigon | `v2.64.2` | berlin |
 | [zkSync Era](chains/zksync-era/SUMMARY.md) | zksync-era | `core-v31.5.0` | osaka |
+| [ZK Stack (ZKsync Elastic Network)](chains/zk-stack/SUMMARY.md) *(template)* | zksync-era *(shared clone)* | `core-v31.5.0` | osaka |
 | [Rollkit / Evolve](chains/rollkit/SUMMARY.md) *(template)* | ev-node (Evolve) + ev-reth | `v1.2.3` | prague |
 | [Cosmos EVM (evmd)](chains/cosmos-evm/SUMMARY.md) *(template)* | cosmos/evm (evmd reference node) | `v0.7.2` | prague |
 | [Injective](chains/injective/SUMMARY.md) | injective-core (injectived) | `v1.20.3` | prague |

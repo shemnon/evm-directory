@@ -1,0 +1,309 @@
+schema_version: 2
+
+chain:
+  name: ZK Stack (ZKsync Elastic Network)
+  slug: zk-stack
+  chain_id: null
+  role: template
+  live: true
+  evidence: source
+  note: >-
+    NOT A CHAIN. The ZK Stack is `matter-labs/zksync-era` plus `era-contracts`,
+    instantiated per deployment as a "ZK Chain" registered in one shared Bridgehub on
+    Ethereum L1. This row exists to record two things the `zksync-era` row cannot:
+    that the descendants demonstrably run the SAME code, and what a deployment is
+    nevertheless free to change.
+
+    THE FRAMEWORK CLAIM IS VERIFIED, NOT ASSUMED. CANDIDATES.md warns that three of
+    the eight proposed framework rows turned out not to be frameworks — the code was
+    forked per chain (Frontier, Moonbeam) or the family had split across incompatible
+    stacks (Polygon CDK). The test applied here was to ask each network what code it
+    is running. `zks_getProtocolVersion` on ZKsync Era, Abstract, Sophon and Lens
+    returns BYTE-IDENTICAL bootloader, default-account and EVM-emulator bytecode
+    hashes at the same protocol version 30, and `zks_getBridgehubContract` returns the
+    same L1 address on all four. That is a stronger shared-code claim than any other
+    framework row in this dataset can make: OP Stack descendants share a client but
+    run different builds of it, while these four are executing the same bytecode.
+
+    WHY `template` AND NOT `stack`. SCHEMA.md separates the two on whether a
+    descendant can be described by pointing at the ancestor. Here it cannot: the base
+    token, the fee parameters and the settlement/DA mode are per-deployment, and two
+    of the four sampled chains do not price gas in ETH at all. See `deployments`.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: >-
+    not a fork — EraVM is an independent VM; the ZK Stack instantiates it per
+    deployment
+  sibling: zksync-era
+  note: >-
+    THE EVM FACTS ARE NOT RESTATED HERE. ZKsync Era is the reference deployment of
+    this template and its `chains/zksync-era/` row holds the full EraVM delta — the
+    tombstoned kernel address space, the 0x8000-0x8012 system contracts, tx type
+    0x71, the EVM emulator, the modexp operand cap, CREATE derivation. Every fact
+    there applies to a ZK Chain at protocol version 30 because it is the same
+    bytecode, and duplicating it would violate the delta convention this dataset is
+    built on. This row carries only what VARIES across deployments, plus the evidence
+    that the rest does not.
+  sync_point: >-
+    The four sampled chains are in lockstep TODAY and were not at launch. At L1 batch
+    1 the base system-contract hashes differ across all four — Era
+    `0x0100038581be3d0e…`, Abstract and Sophon `0x010008e742608b21…`, Lens
+    `0x010008e15394cd83…`. They converged onto protocol version 30 afterwards.
+    "Shares the pinned code" is therefore a claim with a DATE on it, in the same way
+    Scroll's prover restrictions needed one.
+
+client:
+  name: zksync-era
+  repo: https://github.com/matter-labs/zksync-era
+  version: core-v31.5.0
+  commit: fa3a9b9453f09fc9d060396ae44937dbcff44c7d
+  language: rust
+  shared_with: zksync-era
+  note: >-
+    Deliberately the SAME pin as the `zksync-era` row, sharing its clones — that is
+    the assertion this row makes. Evidence lives in `chains/zksync-era/repos/`
+    (zksync-era, era-contracts, zksync-protocol); this row has no clone of its own.
+
+live_probe:
+  endpoint: https://mainnet.era.zksync.io
+  chain_id: 324
+  observed_at_block: 71907999
+  note: >-
+    A TEMPLATE ROW WITH FOUR ENDPOINTS. `endpoint` names the reference deployment so
+    the freshness check has something to probe; every `src_live:` below states which
+    network it came from and at what height. Heads at probe time: Era 71907999,
+    Abstract 83125910, Sophon 29664665, Lens 6248281.
+
+consensus:
+  engine: >-
+    per-deployment single sequencer, validity (zk) proofs verified on Ethereum L1
+    directly or through the ZKsync Gateway
+  block_time: sub-second L2 blocks, batched into L1 batches
+  finality: L1 finality after proof verification
+
+baseline_fork: osaka
+
+forks:
+  src_live: "zks_getProtocolVersion @ 71907999 (Era), 83125910 (Abstract), 29664665 (Sophon), 6248281 (Lens) -> minorVersion 30 on all four"
+  note: >-
+    NO FORK NAMES AND NO TIMESTAMPS — numbered protocol versions, activated by an L1
+    upgrade transaction that swaps the bootloader / default-account / EVM-emulator
+    bytecode hashes. This is one of the thirteen incompatible activation mechanisms
+    the dataset tracks, and on this row it doubles as the framework test: two chains
+    at the same protocol version with the same three hashes are running the same
+    code, and nothing else has to be trusted.
+  timeline:
+  - {name: "protocol version 30", mainnet_equivalent: null,
+     note: "bootloader 0x01000911c4db4fe6…, default_aa 0x010005f73e7c299e…, evm_emulator 0x01000d8bae37b82f… — identical on Era, Abstract, Sophon and Lens"}
+
+deployments:
+  note: >-
+    WHAT A ZK CHAIN MAY CHANGE. Four mainnets were probed; all four share the code and
+    disagree on the configuration below. This is the `template` test in SCHEMA.md's
+    sense — no descendant is fully described by pointing at this row.
+  members:
+  - name: ZKsync Era
+    chain_id: 324
+    row: zksync-era
+    base_token: ETH
+    src_live: "zks_getBaseTokenL1Address @ 71907999 -> 0x…0001 (ETH); zks_L1ChainId -> 0x1"
+  - name: Abstract
+    chain_id: 2741
+    base_token: ETH
+    note: >-
+      Identical to Era on every probed axis except one fee parameter:
+      `max_pubdata_per_batch` is 700,000 against Era's 500,000. The closest thing to a
+      pure instantiation in this dataset.
+    src_live: "zks_getProtocolVersion + zks_getFeeParams @ 83125910"
+  - name: Sophon
+    chain_id: 50104
+    base_token: SOPH
+    note: >-
+      GAS IS NOT ETH. `zks_getBaseTokenL1Address` returns
+      0x6b7774cb12ed7573a7586e7d0e62a2a563ddd3f0 — an ERC-20 on Ethereum — so
+      `msg.value`, `balance` and the fee are denominated in SOPH, and the fee
+      parameters carry a conversion ratio of 4,000,000/7 rather than 1/1. Contracts
+      that hard-code 18-decimal ETH semantics for the native asset are wrong here and
+      right on Era, from the same bytecode.
+    src_live: "zks_getBaseTokenL1Address @ 29664665 -> 0x6b7774cb…; zks_getFeeParams -> conversion_ratio 4000000/7"
+  - name: Lens
+    chain_id: 232
+    base_token: GHO
+    note: >-
+      Base token 0x1ff1dc3cb9eedbc6eb2d99c03b30a05ca625fb5a, conversion ratio 75/1,
+      and `minimal_l2_gas_price` 36,948,438 against the 45,250,000 the other three
+      share — so identical bytecode charges a different price per unit of compute.
+    src_live: "zks_getBaseTokenL1Address @ 6248281 -> 0x1ff1dc3c…; zks_getFeeParams -> minimal_l2_gas_price 36948438"
+
+eips:
+  note: >-
+    Not restated. The EIP map for a ZK Chain at protocol version 30 is the
+    `zksync-era` row's, because it is the same bytecode — see lineage.note. What
+    varies per deployment is in `deployments` and `fee_model`, not in the EIP set.
+
+non_eip_specs:
+  - {id: ZKsync protocol versions, name: numbered protocol upgrades, adoption: adopted,
+     note: "activation swaps bootloader / default-account / EVM-emulator bytecode hashes via an L1 upgrade transaction; no fork name, no timestamp",
+     src_live: "zks_getProtocolVersion @ 71907999 -> minorVersion 30"}
+  - {id: Bridgehub, name: shared L1 registry and asset router for every ZK Chain, adoption: adopted,
+     note: "0x303a465b659cbb0ab36ee643ea362c509eeb5213 on Ethereum, identical across all four deployments — the artifact that makes this a framework rather than a family of forks",
+     src_live: "zks_getBridgehubContract @ 71907999 / 83125910 / 29664665 / 6248281 -> 0x303a465b… on all four"}
+  - {id: Custom base token, name: per-deployment gas token, adoption: optional,
+     note: "an L1 ERC-20 may replace ETH as the native asset; Sophon and Lens do, Era and Abstract do not",
+     src_live: "zks_getBaseTokenL1Address @ the four heads above"}
+
+tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02"
+    src: "derived from the zksync-era row's eips map (2930 / 1559 / 4844 / 7702)"
+    note: >-
+      Declared so the aggregate grids render a verified cell rather than a blank. The
+      value is the reference deployment's and is shared by construction — same
+      bootloader, same accepted envelope. Per-deployment variation on this axis was
+      looked for and not found.
+  "0x71":
+    name: EIP-712 transaction (native account abstraction)
+    status: added
+    availability: optional
+    activation_condition: >-
+      present on every ZK Chain at protocol version 30; listed as optional because a
+      deployment's paymaster and custom-signature policy is its own
+    note: >-
+      Restated from `zksync-era` only to record that it is a framework-wide type, not
+      an Era-specific one — the fields and semantics are on that row. It is the type
+      byte the whole Elastic Network consumes, so it is `0x71` on all four chains at
+      once.
+    src: "core/lib/types/src/lib.rs:EIP_712_TX_TYPE"
+
+tx_authorization:
+  key_binding: account_code
+  signers_per_tx: 1
+  note: >-
+    Framework-wide, and it is the axis where "same bytecode" bites hardest: the
+    default account's `validateTransaction` is one of the three hashes that is
+    identical across all four networks, so every ZK Chain has native account
+    abstraction with the same validator, and `customSignature` means the protocol
+    itself has no fixed idea of what a valid signature is. A deployment cannot change
+    this without leaving the framework — which is exactly why it belongs here and not
+    in `deployments`.
+  schemes:
+    secp256k1:
+      status: modified
+      authorizes: account_code
+      precompile: "0x01"
+      note: >-
+        The DefaultAccount contract checks a secp256k1 signature, but it is contract
+        code doing it, not the protocol. Detail and evidence on the `zksync-era` row.
+      src: "system-contracts/contracts/DefaultAccount.sol"
+
+precompiles:
+  base_map:
+    status: inherited
+    present: "0x01-0x02, 0x04-0x08"
+    p256verify: true
+    src: system-contracts/contracts/precompiles/
+    note: >-
+      Declared so this row renders a verified base set rather than a blank, and
+      identical to the `zksync-era` row's by construction: the precompiles are
+      deployed Yul contracts in `era-contracts`, and their bytecode is part of what
+      the protocol-version hashes commit to. The tombstoned kernel address space
+      (0x03, 0x09, 0x0a-0x11 and everything else below 2^16 with no code) is stated
+      on that row with its evidence and is not restated here.
+  "0x8010":
+    name: KECCAK256
+    status: added
+    note: >-
+      Restated from `zksync-era` for one reason only: it is part of the bytecode the
+      protocol-version hashes commit to, so it is present on EVERY ZK Chain at
+      version 30 rather than being a per-deployment choice. Semantics, masking
+      behaviour and the category argument are on that row.
+    src: "system-contracts/contracts/precompiles/Keccak256.yul"
+  "0x8012":
+    name: CodeOracle
+    status: added
+    note: "framework-wide for the same reason as 0x8010; semantics on the `zksync-era` row."
+    src: "system-contracts/contracts/precompiles/CodeOracle.yul"
+  note: >-
+    NO PER-DEPLOYMENT PRECOMPILE VARIATION WAS FOUND. Unlike subnet-evm and
+    cosmos-evm, where the whole point of the template row is that precompiles are
+    opt-in per deployment, a ZK Chain does not get to choose: the set is fixed by the
+    protocol version's system-contract hashes. That is the strongest form of the
+    framework claim and the reason this row's precompile section is nearly empty.
+
+system_contracts:
+  note: >-
+    The 0x8000-0x8012 kernel range is part of the protocol version and therefore
+    identical across deployments; it is enumerated on the `zksync-era` row. The one
+    address that is NOT shared is the L1 diamond proxy, which is per chain —
+    0x32400084c286cf3e17e7b677ea9583e60a000324 (Era),
+    0x2edc71e9991a962c7fe172212d1aa9e50480fbb9 (Abstract),
+    0x05ede6ad1f39b7a16c949d5c33a0658c9c7241e3 (Sophon),
+    0xc29d04a93f893700015138e3e334eb828dac3cef (Lens) — and it lives on L1, not in
+    this address space.
+  src_live: "zks_getMainContract @ the four heads listed in live_probe"
+
+opcodes:
+  added: []
+  removed: []
+  modified: []
+  note: >-
+    EraVM's instruction set and the EVM emulator's deltas are on the `zksync-era`
+    row. They are framework-wide at a given protocol version, and no deployment can
+    vary them.
+
+tx_lifecycle:
+  preconfirmation:
+    verdict: unreachable
+    note: >-
+      Per-deployment sequencing, framework-wide semantics; stated on the
+      `zksync-era` row.
+    src: "core/lib/types/src/lib.rs"
+
+fee_model:
+  metering: "ergs (EraVM), with a second independent price per byte of pubdata"
+  fee_market: per-deployment
+  note: >-
+    THE ONE AXIS WHERE THE TEMPLATE REALLY IS A TEMPLATE. `zks_getFeeParams` returns
+    a per-chain V2 config, and the four sampled deployments disagree on four of its
+    fields: `minimal_l2_gas_price` (36,948,438 on Lens against 45,250,000 elsewhere),
+    `max_pubdata_per_batch` (500,000 / 700,000 / 1,000,000), the
+    compute-versus-pubdata overhead split (Era 0/1, Sophon 0.99/0.01, Lens
+    0.001/0.001), and the base-token conversion ratio (1/1, 4,000,000/7, 75/1). The
+    same bytecode therefore charges different gas for the same call on different ZK
+    Chains, and on two of them charges it in something other than ETH.
+  extra_components:
+  - {name: pubdata, note: "gasPerPubdata is committed by the sender in the 0x71 envelope; the per-batch budget is per deployment"}
+  - {name: base-token conversion, note: "when the gas token is not ETH, an L1-gas-to-base-token ratio is part of the fee params"}
+  src_live: "zks_getFeeParams @ 71907999 / 83125910 / 29664665 / 6248281"
+
+header_fields: {added: [], removed: [], modified: [],
+  note: "framework-wide; stated on the zksync-era row."}
+
+gotchas:
+  - >-
+    THE DESCENDANTS REALLY DO SHARE THE CODE — AND THAT WAS MEASURED, NOT ASSUMED.
+    Identical bootloader, default-account and EVM-emulator bytecode hashes at
+    protocol version 30 on Era, Abstract, Sophon and Lens, plus one shared L1
+    Bridgehub. This is the framework row in this dataset with the least room for the
+    Polygon-CDK failure mode.
+  - >-
+    THEY DID NOT ALWAYS SHARE IT. At L1 batch 1 the four chains had three different
+    base-system-contract hash sets. A ZK Chain can lag a protocol version, so the
+    claim needs a date.
+  - >-
+    "RUNS THE ZK STACK" DOES NOT TELL YOU WHAT GAS COSTS OR WHAT IT IS PAID IN.
+    Sophon prices gas in SOPH and Lens in GHO, both with their own conversion ratios,
+    and Lens's minimum L2 gas price differs from the other three. Contract code that
+    assumes an 18-decimal ETH native asset is wrong on half the sampled network.
+  - >-
+    ABSTRACT, SOPHON AND LENS GET NO ROW OF THEIR OWN, and that is the finding. Every
+    EVM-visible fact about them is the `zksync-era` row's; everything that differs is
+    a fee parameter or a base token, recorded here. Promote one only if it ships a
+    protocol version the others do not have.
+  - >-
+    THE PER-CHAIN L1 CONTRACT IS NOT THE PER-CHAIN EVM. Each deployment has its own
+    diamond proxy on Ethereum and its own chain id; neither implies any divergence in
+    execution.

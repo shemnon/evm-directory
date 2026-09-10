@@ -47,6 +47,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -98,6 +99,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -149,6 +151,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -200,6 +203,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -251,6 +255,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -302,6 +307,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -353,6 +359,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -404,6 +411,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -455,6 +463,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -649,6 +658,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d"
    }
   },
@@ -833,6 +843,14 @@
     "findings.yaml": "0e9a38f827ab0587"
    }
   },
+  "chains/zk-stack.html": {
+   "inputs": {
+    "chains/zk-stack/SUMMARY.md": "eb1ca4568b100fb2",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
+    "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
+    "findings.yaml": "0e9a38f827ab0587"
+   }
+  },
   "chains/zksync-era.html": {
    "inputs": {
     "chains/zksync-era/SUMMARY.md": "b7f2a0b2b27a3346",
@@ -887,6 +905,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d",
     "findings.yaml": "0e9a38f827ab0587"
    }
@@ -938,6 +957,7 @@
     "chains/tempo/chain.yaml": "4fec7997cb1cbac2",
     "chains/tron/chain.yaml": "c2f2494989ba0204",
     "chains/worldchain/chain.yaml": "b1441affcfb46b3f",
+    "chains/zk-stack/chain.yaml": "bcb8cdd22aadb384",
     "chains/zksync-era/chain.yaml": "3f6dbd42ebb7b32d"
    }
   }

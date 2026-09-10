@@ -119,19 +119,36 @@ eips:
     src: "consensus/satoshi/satoshi.go:671-688, core/txpool/validation.go:81-82"
     src_live: "eth_getBlockByNumber latest @ 38560250 -> blobGasUsed 0x0, excessBlobGas 0x0"
   4399:
-    status: modified
+    status: removed
     severity: high
     note: >-
-      PREVRANDAO IS UNREACHABLE, AND 0x44 RETURNS 1 OR 2. `NewEVMBlockContext` sets
-      `Random = &header.MixDigest` only when `header.Difficulty.Sign() == 0`.
-      Satoshi, like Parlia, writes a difficulty of 1 or 2, so `Random` stays nil,
-      `chainRules.IsMerge` is false, and the jump table binds 0x44 to `opDifficulty`.
-      Solidity's `block.prevrandao` therefore reads the Satoshi difficulty — a
-      one-bit value — with no revert and no signal. Verified live: difficulty 0x2.
-      The same construction exists in bnb-chain/bsc at the same line, which that row
-      does not currently record.
-    src: "core/evm.go:75-77, core/vm/evm.go:143, core/vm/jump_table.go:103"
-    src_live: "eth_getBlockByNumber latest @ 38560250 -> difficulty 0x2, mixHash 0x00…00"
+      PREVRANDAO IS DELIBERATELY REVERTED, AND 0x44 RETURNS 1 OR 2. The mechanism
+      is NOT the one the BSC row describes, and the difference is worth stating
+      because both chains land on the same observable.
+
+      `NewEVMBlockContext` does set `Random = &header.MixDigest` only when
+      `header.Difficulty.Sign() == 0`, and Satoshi writes 1 or 2, so `Random` is
+      nil. But Core's `Rules()` leaves `IsShanghai`/`IsCancun`/`IsPrague`
+      ungated by `isMerge`, so the PRAGUE instruction set is still selected — and
+      Core keeps upstream's derivation, in which `newShanghaiInstructionSet`
+      builds on `newMergeInstructionSet` and therefore carries `opRandom` at 0x44.
+      Executing that would dereference a nil `Random`.
+
+      What prevents it is an explicit override. `newInstructionSet` — whose own
+      comment says it "centralizes the instruction set selection and
+      Satoshi-specific modifications" — copies the selected table when
+      `rules.IsSatoshi` and applies
+      `newSatoshiRevertDifficultyInstructionSet`, which rebinds 0x44 to
+      `opDifficulty`, under the comment "reverts the PREVRANDAO opcode to
+      DIFFICULTY opcode, as Satoshi doesn't implement the PREVRANDAO opcode".
+
+      So Solidity's `block.prevrandao` reads the Satoshi difficulty — a one-bit
+      value — with no revert and no signal. BSC reaches the identical observable
+      by never letting `opRandom` into the derivation chain at all; see
+      chains/bnb/. Same answer, different mechanism, and only the live probe
+      shows they agree.
+    src: "core/evm.go:75-77, core/vm/evm.go:143, core/vm/jump_table.go:91-133, core/vm/jump_table.go:135-146, params/config.go:1571-1578"
+    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02 (the difficulty); eth_getBlockByNumber @ 38580453 -> difficulty 0x2, mixHash 0x00…00, so milliTimestamp is exactly timestamp*1000"
   2935: {status: inherited, note: "the history-storage contract's code is INSTALLED BY THE CLIENT at the Prague transition rather than being in genesis",
          src: "core/systemcontracts/upgrade.go:771-775"}
   1559: {status: inherited, note: "EIP-1559 base fee present; see fee_model for where the priority fee actually goes",
@@ -319,12 +336,15 @@ opcodes:
   removed: []
   modified:
   - op: "0x44"
-    name: PREVRANDAO
+    name: DIFFICULTY
     severity: high
     note: >-
-      Binds to `opDifficulty`, not `opRandom`, because Satoshi writes a nonzero
-      difficulty — see eips.4399. Returns 1 or 2.
-    src: "core/vm/jump_table.go:103, core/evm.go:75-77"
+      Rebound from `opRandom` to `opDifficulty` by
+      `newSatoshiRevertDifficultyInstructionSet`, applied to a COPY of whichever
+      table the rules select whenever `rules.IsSatoshi`. Returns 1 or 2. See
+      eips.4399 — and note that BSC gets there without ever binding `opRandom`.
+    src: "core/vm/jump_table.go:124-129, core/vm/jump_table.go:135-146"
+    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02"
   pending: []
   tombstoned: []
 

@@ -6,9 +6,16 @@ each one is a place the two renderers could silently disagree.
 
 ## Ordering and naming
 
-`ORDER` is the display order: baseline first, then the geth-line forks, then the OP
-Stack node ahead of its descendants, then the independents. New rows go next to their
-family, not at the end. `SHORT` gives every slug a column-width name.
+`ORDER` is the display order, and it is **computed**, not written out: rows are banded
+by how close a chain sits to Ethereum's orbit — mainnet, Arbitrum, the OP Stack and the
+networks built on it, the remaining Ethereum L2s, then the chains that only share the
+EVM — and inside each band they are alphabetical by display name, with a framework row
+keeping its own networks immediately below it (OP Mainnet pinned first among the OP
+Stack's, as the network the stack is read through).
+
+A new row is classified, never positioned: give it a `SHORT` name, and a `BAND` entry
+if it leads a band or a `FAMILY` entry if it belongs under a framework. `SHORT` is the
+row universe — a chain directory missing from it lands past the end of every band.
 
 Both are used by the Markdown tables and the site. Forking them is a defect.
 

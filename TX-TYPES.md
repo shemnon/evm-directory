@@ -6,58 +6,58 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 
 The envelope `0x00`–`0x04` (Legacy, 2930, 1559, 4844, 7702) is shown for every chain, from an `envelope` each row declares (`=` accepted in mainnet shape, `➖` not accepted). Rows above `0x04` list only the chains that define a byte there.
 
-| Address | Ethereum | BNB | Polygon | Avax C | Avax subnet | Kaia | Sei | Gnosis | Sonic | Bera | Flare | Arbitrum | OP Stack | OP Mainnet | Base | World | opBNB | Celo | Mantle | MegaETH | RISE | Linea | Scroll | Taiko | zkEVM | zkSync | Rollkit | Cosmos EVM | Injective | Artela | Moonbeam | Tron | Monad | Hyperliquid | Hedera | Conflux | Taraxa | Auto EVM | IOTA EVM | Tempo | Arc | Plasma | Blast | Core | Cronos | Rootstock (RSK) | ZK Stack (ZKsync Elastic Network) |
+| Address | Ethereum | Arbitrum | OP Stack | OP Mainnet | Base | Blast | Celo | Mantle | MegaETH | opBNB | RISE | World | Linea | Rollkit | Scroll | Taiko | ZK Stack | zkSync | zkEVM | Arc | Auto EVM | Avax C | Avax subnet | Bera | BNB | Core | Conflux | Cosmos EVM | Artela | Cronos | Injective | Flare | Gnosis | Hedera | Hyperliquid | IOTA EVM | Kaia | Monad | Moonbeam | Plasma | Polygon | Rootstock | Sei | Sonic | Taraxa | Tempo | Tron |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `0x00` LegacyTx / Legacy / Legacy (EIP-155) / LegacyTx (12-field celo variant) / LegacyTx (EIP-155 protected only) / LegacyTx (overloaded as the MegaETH system transaction) / TxTypeLegacyTransaction / legacy | = | = | = | = | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ⚠️ | = | ⚠️ | ⚠️ | = | = | = | = | = | ⚠️ | = |
-| `0x01` AccessListTx / EIP-2930 access list / EIP-2930 | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ➖ | = | = | ⚠️ | = | ➖ | = | ➖ | ⚠️ | unrecorded | = | = | = | = | ➖ | = |
-| `0x02` DynamicFeeTx / EIP-1559 / EIP-1559 dynamic fee / DynamicFeeTransaction / DynamicFeeTx (and, at index 0 only, the anchor transaction) | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ➖ | ⚠️ | ➖ | ⚠️ | = | = | = | = | = | ➖ | = |
-| `0x03` BlobTx / EIP-4844 blob / BlobTransaction | = | = | ➖ | ➖ | ➖ | = | ⊘ | = | ⚠️ | = | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | unrecorded | ⚠️ | ➖ | ➖ | ➖ | unrecorded | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | = | unrecorded | ➖ | ➖ |
-| `0x04` SetCodeTx / EIP-7702 set code / EIP-7702 set-code / SetCodeTransaction | = | = | = | ➖ | ➖ | = | = | = | = | ➖ | ➖ | = | = | = | = | = | ➖ | ➖ | ➖ | = | = | = | ⚠️ | = | ➖ | ➖ | = | = | ⚠️ | ➖ | = | ➖ | = | unrecorded | ➖ | ⚠️ | ➖ | = | ➖ | ⚠️ | = | = | ➖ | = | = | ➖ | ➖ |
-| `0x08` TxTypeValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x09` TxTypeFeeDelegatedValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x0a` TxTypeFeeDelegatedValueTransferWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x10` TxTypeValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x11` TxTypeFeeDelegatedValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x12` TxTypeFeeDelegatedValueTransferMemoWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x18` TxTypeAccountCreation |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x1d` WorldChainTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ◌ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x20` TxTypeAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x21` TxTypeFeeDelegatedAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x22` TxTypeFeeDelegatedAccountUpdateWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x28` TxTypeSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x29` TxTypeFeeDelegatedSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x2a` TxTypeFeeDelegatedSmartContractDeployWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x30` TxTypeSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x31` TxTypeFeeDelegatedSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x32` TxTypeFeeDelegatedSmartContractExecutionWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x38` TxTypeCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x39` TxTypeFeeDelegatedCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x3a` TxTypeFeeDelegatedCancelWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x40` TxTypeBatch |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x48` TxTypeChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x49` TxTypeFeeDelegatedChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x4a` TxTypeFeeDelegatedChainDataAnchoringWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x64` ArbitrumDepositTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x65` ArbitrumUnsignedTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x66` ArbitrumContractTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x68` ArbitrumRetryTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x69` ArbitrumSubmitRetryableTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x6a` ArbitrumInternalTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x71` EIP-712 transaction (native account abstraction) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |
-| `0x76` EvNodeTransaction (batch calls + fee payer) / TempoTransaction (TT) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |
-| `0x78` ArbitrumLegacyTx / EthereumTxTypeEnvelope |  |  |  |  |  | ➕ |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x79` Eip8130Tx |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7d` PostExecTx |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded |  |  |  |  |
-| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  |  |  |  |  |  |  |  | ➕ |  |  | ➕ | ➕ | ➕ | ➕ | ➕ | ➕ | ⚠️ | ➕ | = |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |
-| `0x7f` StateSyncTx |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0xff` L1 priority operation (L1->L2) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7801` TxTypeEthereumAccessList |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7802` TxTypeEthereumDynamicFee |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7803` TxTypeEthereumBlob |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7804` TxTypeEthereumSetCode |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x00` LegacyTx / Legacy / Legacy (EIP-155) / LegacyTx (12-field celo variant) / LegacyTx (EIP-155 protected only) / LegacyTx (overloaded as the MegaETH system transaction) / TxTypeLegacyTransaction / legacy | = | = | = | = | = | = | ⚠️ | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ⚠️ | ⚠️ | = | ⚠️ | = | = | ⚠️ | = | = | ⚠️ | ⚠️ | ➖ |
+| `0x01` AccessListTx / EIP-2930 access list / EIP-2930 | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | unrecorded | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ➖ | = | = | = | = | = | ➖ | = | = | ➖ | ⚠️ | ➖ |
+| `0x02` DynamicFeeTx / EIP-1559 / EIP-1559 dynamic fee / DynamicFeeTransaction / DynamicFeeTx (and, at index 0 only, the anchor transaction) | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | = | ➖ | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ➖ | = | = | ⚠️ | = | = | ➖ | = | = | ➖ | ⚠️ | ➖ |
+| `0x03` BlobTx / EIP-4844 blob / BlobTransaction | = | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | = | = | = | ➖ | ➖ | ⚠️ | unrecorded | unrecorded | ➖ | = | ➖ | unrecorded | ➖ | = | ➖ | ➖ | ➖ | ➖ | ➖ | ⊘ | ⚠️ | ➖ | ➖ | ➖ |
+| `0x04` SetCodeTx / EIP-7702 set code / EIP-7702 set-code / SetCodeTransaction | = | = | = | = | = | ➖ | ➖ | ➖ | = | ➖ | = | = | = | = | ⚠️ | = | ➖ | ➖ | ➖ | = | = | ➖ | ➖ | ➖ | = | = | ⚠️ | = | ➖ | = | ⚠️ | ➖ | = | ➖ | unrecorded | ➖ | = | = | = | = | = | ➖ | = | = | ➖ | ⚠️ | ➖ |
+| `0x08` TxTypeValueTransfer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x09` TxTypeFeeDelegatedValueTransfer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x0a` TxTypeFeeDelegatedValueTransferWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x10` TxTypeValueTransferMemo |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x11` TxTypeFeeDelegatedValueTransferMemo |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x12` TxTypeFeeDelegatedValueTransferMemoWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x18` TxTypeAccountCreation |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |
+| `0x1d` WorldChainTx |  |  |  |  |  |  |  |  |  |  |  | ◌ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x20` TxTypeAccountUpdate |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x21` TxTypeFeeDelegatedAccountUpdate |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x22` TxTypeFeeDelegatedAccountUpdateWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x28` TxTypeSmartContractDeploy |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x29` TxTypeFeeDelegatedSmartContractDeploy |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x2a` TxTypeFeeDelegatedSmartContractDeployWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x30` TxTypeSmartContractExecution |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x31` TxTypeFeeDelegatedSmartContractExecution |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x32` TxTypeFeeDelegatedSmartContractExecutionWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x38` TxTypeCancel |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x39` TxTypeFeeDelegatedCancel |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x3a` TxTypeFeeDelegatedCancelWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x40` TxTypeBatch |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |
+| `0x48` TxTypeChainDataAnchoring |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x49` TxTypeFeeDelegatedChainDataAnchoring |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x4a` TxTypeFeeDelegatedChainDataAnchoringWithRatio |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x64` ArbitrumDepositTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x65` ArbitrumUnsignedTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x66` ArbitrumContractTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x68` ArbitrumRetryTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x69` ArbitrumSubmitRetryableTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x6a` ArbitrumInternalTx |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x71` EIP-712 transaction (native account abstraction) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x76` EvNodeTransaction (batch calls + fee payer) / TempoTransaction (TT) |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |
+| `0x78` ArbitrumLegacyTx / EthereumTxTypeEnvelope |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
+| `0x79` Eip8130Tx |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7d` PostExecTx |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  | ➕ | ➕ | ➕ | ➕ | ➕ | ⚠️ | ➕ | ➕ | = | ➕ |  |  | ➕ |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7f` StateSyncTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |
+| `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0xff` L1 priority operation (L1->L2) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7801` TxTypeEthereumAccessList |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |
+| `0x7802` TxTypeEthereumDynamicFee |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |
+| `0x7803` TxTypeEthereumBlob |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |
+| `0x7804` TxTypeEthereumSetCode |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |
 
 Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · ? not recorded
 
@@ -68,25 +68,8 @@ Liveness: `live` runs · `prelaunch` has never produced a mainnet block · `halt
 
 Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. An indexer enumerating transactions through the EVM envelope misses these.
 
-**Avalanche C-Chain** — Atomic transactions move value between the C-Chain and Avalanche's X/P chains. They are UTXO-based, serialised with Avalanche's own codec (not RLP), and registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.
-  - `` UnsignedImportTx
-  - `` UnsignedExportTx
-
-**Kaia** — None. Unlike Tron, Avalanche or Sei, every Kaia transaction carries a leading type number and is RLP-encoded. The divergence is in the SHAPE of the type space, not in transactions escaping it.
-
-**Sei** — Two distinct populations with no EIP-2718 type byte. (1) Sei's own EVM-module Cosmos messages, which change EVM-visible state without ever being an Ethereum transaction. (2) A synthetic receipt kind emitted for ordinary Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a third population, not enumerated here — it is standard Cosmos SDK and its EVM-visible effects are reachable through the 0x1001-0x100c precompiles.
-  - `evm/MsgEVMTransaction` MsgEVMTransaction
-  - `evm/MsgEVMTransaction (AssociateTx)` AssociateTx
-  - `evm/MsgAssociateContractAddress` MsgAssociateContractAddress
-  - `evm/MsgRegisterPointer` MsgRegisterPointer
-  - `evm/MsgSend` MsgSend
-  - `evm/MsgClaim` MsgClaim
-  - `evm/MsgClaimSpecific` MsgClaimSpecific
-  - `0xffffffff` shell EVM receipt (ShellEVMTxType)
-
-**Flare** — Inherited from coreth unchanged. Atomic import/export transactions move value between Flare's C-Chain and its P/X chains. They are UTXO-based, serialised with Avalanche's codec rather than RLP, registered in a separate codec namespace, and carry no EIP-2718 type byte — so they cannot appear in tx_types and are invisible to any indexer that enumerates a block through the EVM envelope.
-  - `` UnsignedImportTx
-  - `` UnsignedExportTx
+**Rollkit / Evolve (ev-node + ev-reth)**
+  - `forced_inclusion_blob` raw Celestia blob in the forced-inclusion namespace
 
 **Taiko Alethia** — NONE — and the negative is worth recording, because the anchor is the closest thing in this dataset to a case that belongs here and does not. SCHEMA.md's `non_evm_transactions` is for protocol transactions with NO EIP-2718 type byte at all (Avalanche's UTXO atomic txs, Tron's protobuf contracts). Taiko's anchor has a type byte — mainnet's 0x02 — and is decoded by an unmodified EIP-2718 decoder into an unmodified DynamicFeeTx. It is recorded in tx_types (as a positional modification of 0x02) and in system_transactions (as the protocol-driven state change it is), and deliberately NOT here.
 
@@ -94,8 +77,19 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `changeL2Block` changeL2Block block-boundary record
   - `injected-batch` injected batch (batch 1)
 
-**Rollkit / Evolve (ev-node + ev-reth)**
-  - `forced_inclusion_blob` raw Celestia blob in the forced-inclusion namespace
+**Autonomys Auto EVM**
+  - `xdm_inbound` Cross-Domain Message (XDM) inbound relay
+  - `domain_sudo` domain sudo call injected by the consensus chain
+  - `evm_tracker_inherent` set_contract_creation_allowed_by inherent
+
+**Avalanche C-Chain** — Atomic transactions move value between the C-Chain and Avalanche's X/P chains. They are UTXO-based, serialised with Avalanche's own codec (not RLP), and registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.
+  - `` UnsignedImportTx
+  - `` UnsignedExportTx
+
+**Conflux eSpace**
+  - `core_space_legacy` Conflux Core Space transaction (CIP-155 legacy)
+  - `core_space_typed` Conflux Core Space typed transaction (CIP-2930 / CIP-1559)
+  - `cross_space_call` CrossSpaceCall (Core -> eSpace value and calls)
 
 **Cosmos EVM (evmd)** — THE INVERSION. SCHEMA.md defines this section as "protocol transactions with no EIP-2718 type byte at all" — Avalanche's UTXO atomic transactions, Tron's 43 protobuf contract types. Cosmos EVM turns it inside out: here it is an EIP-2718 transaction that is itself WRAPPED in something with no type byte. A user signs an ordinary RLP 0x02 transaction; a node wraps it in `MsgEthereumTx`, which is wrapped in a Cosmos SDK `TxBody`, which is what CometBFT hashes and orders. Anything reading blocks at the consensus layer sees protobuf; the Ethereum view is reconstructed by the rpc/ package. HOW THIS DIFFERS FROM TRON, which is the existing protobuf precedent. Tron's transactions ARE protobuf all the way down — there is no RLP envelope anywhere and no Ethereum transaction to recover. Sei is closer but still different: it re-encodes the Ethereum transaction's FIELDS as protobuf TxData inside MsgEVMTransaction, so the RLP bytes do not survive. Cosmos EVM v0.7 keeps the raw envelope verbatim: `MsgEthereumTx.raw` is `bytes` with gogoproto customtype EthereumTx, whose Unmarshal is literally geth's Transaction.UnmarshalBinary. So the EIP-2718 envelope IS present, byte-exact, one protobuf field down — and the proto file's `reserved 1, 2, 3, 4` records that the older field-by-field encoding was removed to get there. The transaction hash Ethereum tooling knows is the keccak of those inner bytes; CometBFT's transaction hash is the sha256 of the outer protobuf, and the response type says so in a comment. A consequence worth stating plainly: the outer Cosmos transaction has its own fee amount, gas limit and signer list, all of which are set from the inner Ethereum transaction by BuildTx and none of which are signed by the Ethereum signature. Authorization comes entirely from the inner envelope — see tx_authorization.
   - `cosmos.evm.vm.v1.MsgEthereumTx` MsgEthereumTx
@@ -107,13 +101,6 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `ICS-20 packet (IBC)` inbound IBC transfer
   - `cosmos-sdk module messages` bank / staking / gov / distribution / slashing / authz / feegrant
 
-**Injective** — The MsgEthereumTx wrapping problem is the framework's and is stated there. Injective's own delta is the WIRE FORMAT — its MsgEthereumTx still carries the deprecated protobuf `data` Any alongside `raw`, four fields the framework has already reserved — plus a much larger surrounding message set, of which the exchange messages are the ones that matter because they move EVM-visible balances. Only Injective-specific entries are listed; the SDK's own bank/staking/gov set is inherited from the framework row.
-  - `injective.evm.v1.MsgEthereumTx` MsgEthereumTx (dual-encoding variant)
-  - `injective.exchange.v2.MsgCreateSpotLimitOrder` exchange order messages (spot, derivative, binary options)
-  - `injective.erc20.v1beta1.MsgCreateTokenPair` MsgCreateTokenPair
-  - `injective.peggy.v1` Peggy (Ethereum bridge) claims and batches
-  - `injective.oracle.v1beta1` oracle price feed messages
-
 **Artela** — THE SAME INVERSION THE ANCESTOR DESCRIBES, ONE GENERATION EARLIER AND ONE STEP WORSE. A user signs an RLP transaction; the node wraps it in MsgEthereumTx, which is wrapped in a Cosmos SDK TxBody, which is what CometBFT hashes and orders. But where cosmos/evm v0.7 keeps the EIP-2718 envelope byte-exact in a `raw` field, Artela's MsgEthereumTx carries the transaction TAKEN APART into a protobuf `Any` of LegacyTx / AccessListTx / DynamicFeeTx. The RLP bytes do not survive, which is why a type 0x03 transaction can be silently rebuilt as a legacy one (see tx_types."0x03"). The Ethereum transaction hash is carried alongside as a STRING field rather than being recomputable from the stored data.
   - `artela.evm.v1.MsgEthereumTx` MsgEthereumTx
   - `artela.evm.v1.MsgUpdateParams` MsgUpdateParams (x/evm)
@@ -121,20 +108,18 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `cosmos-sdk module messages` bank / staking / gov / distribution / slashing / authz / feegrant / IBC transfer
   - `artela.types.v1.ExtensionOptionsWeb3Tx` EIP-712-signed Cosmos transaction
 
-**Moonbeam** — Every EVM state transition on this chain arrives inside a Substrate extrinsic — the Ethereum envelope is the guest here, not the host. Moonbeam shows BOTH shapes the dataset has met: an EIP-2718 payload surviving byte-exact inside another encoding (the cosmos-evm shape) and a native non-Ethereum call that produces EVM execution (the Tron shape). It also closes the obvious third path: `pallet_evm::Call::call`, the textbook "Substrate extrinsic that calls the EVM pallet", is unreachable by anyone because the runtime call filter has `RuntimeCall::EVM(_) => false` unconditionally, with a comment citing re-entrancy.
-  - `Ethereum::transact` self-contained extrinsic wrapping a byte-exact EIP-2718 payload
-  - `EthereumXcm::transact` SCALE EthereumXcmTransaction (V1/V2/V3) — no type byte, no signature, no sender nonce
-  - `EthereumXcm::transact_through_proxy` the same, executed as a LOCAL account that granted the XCM origin an Any proxy
-  - `EthereumXcm::force_transact_as` the same, executed as ANY address, Root only, with an optional forced CREATE address
+**Cronos** — THE SAME INVERSION AS cosmos-evm, unmodified: every Ethereum transaction reaches consensus wrapped in a Cosmos SDK transaction, and ordinary Cosmos messages — IBC transfers, bank sends, governance — move balances that the EVM can read without ever appearing in an Ethereum block. The `cosmos-evm` row states this axis in full; Cronos adds `x/cronos`'s CRC-20 conversion messages to the set, which mint and burn ERC-20 balances from a Cosmos message.
 
-**Tron** — 43 protobuf ContractType values (0-59, sparse). Listed here are the two that reach the EVM plus representative examples of the rest.
-  - `30` CreateSmartContract
-  - `31` TriggerSmartContract
-  - `1` TransferContract
-  - `4` VoteWitnessContract
-  - `51` ShieldedTransferContract
-  - `54` FreezeBalanceV2Contract
-  - `57` DelegateResourceContract
+**Injective** — The MsgEthereumTx wrapping problem is the framework's and is stated there. Injective's own delta is the WIRE FORMAT — its MsgEthereumTx still carries the deprecated protobuf `data` Any alongside `raw`, four fields the framework has already reserved — plus a much larger surrounding message set, of which the exchange messages are the ones that matter because they move EVM-visible balances. Only Injective-specific entries are listed; the SDK's own bank/staking/gov set is inherited from the framework row.
+  - `injective.evm.v1.MsgEthereumTx` MsgEthereumTx (dual-encoding variant)
+  - `injective.exchange.v2.MsgCreateSpotLimitOrder` exchange order messages (spot, derivative, binary options)
+  - `injective.erc20.v1beta1.MsgCreateTokenPair` MsgCreateTokenPair
+  - `injective.peggy.v1` Peggy (Ethereum bridge) claims and batches
+  - `injective.oracle.v1beta1` oracle price feed messages
+
+**Flare** — Inherited from coreth unchanged. Atomic import/export transactions move value between Flare's C-Chain and its P/X chains. They are UTXO-based, serialised with Avalanche's codec rather than RLP, registered in a separate codec namespace, and carry no EIP-2718 type byte — so they cannot appear in tx_types and are invisible to any indexer that enumerates a block through the EVM envelope.
+  - `` UnsignedImportTx
+  - `` UnsignedExportTx
 
 **Hedera** — THE MAJORITY OF THIS CHAIN. HAPI's `TransactionBody` carries a `oneof data` with 59 protobuf message types in field slots 7-72 (sparse). Exactly ONE of them, `EthereumTransactionBody ethereumTransaction = 50`, contains an EIP-2718 envelope, and two more (`contractCall = 7`, `contractCreateInstance = 8`) reach the EVM without one. The other 56 have no type byte, no signature scheme the EVM can check, and no representation in `eth_getBlockByNumber` — yet they move HBAR, mint and transfer fungible and non-fungible tokens, and change the keys that control accounts holding EVM balances. Listed below are the ones that move value or touch EVM-visible state, plus representative examples of the rest. Live confirmation of the gap: record file 99380446 contains 7 transactions and `eth_getBlockByNumber` reports 1.
   - `50` EthereumTransaction
@@ -159,27 +144,42 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `65` StateSignatureTransaction
   - `72` CrsPublication
 
-**Conflux eSpace**
-  - `core_space_legacy` Conflux Core Space transaction (CIP-155 legacy)
-  - `core_space_typed` Conflux Core Space typed transaction (CIP-2930 / CIP-1559)
-  - `cross_space_call` CrossSpaceCall (Core -> eSpace value and calls)
-
-**Taraxa**
-  - `dag_block` DAG block
-  - `pillar_block` Pillar block
-
-**Autonomys Auto EVM**
-  - `xdm_inbound` Cross-Domain Message (XDM) inbound relay
-  - `domain_sudo` domain sudo call injected by the consensus chain
-  - `evm_tracker_inherent` set_contract_creation_allowed_by inherent
-
 **IOTA EVM**
   - `` ISC on-ledger request
   - `` ISC off-ledger request (non-EVM)
   - `` ISC anchor transaction (state commitment)
 
+**Kaia** — None. Unlike Tron, Avalanche or Sei, every Kaia transaction carries a leading type number and is RLP-encoded. The divergence is in the SHAPE of the type space, not in transactions escaping it.
+
+**Moonbeam** — Every EVM state transition on this chain arrives inside a Substrate extrinsic — the Ethereum envelope is the guest here, not the host. Moonbeam shows BOTH shapes the dataset has met: an EIP-2718 payload surviving byte-exact inside another encoding (the cosmos-evm shape) and a native non-Ethereum call that produces EVM execution (the Tron shape). It also closes the obvious third path: `pallet_evm::Call::call`, the textbook "Substrate extrinsic that calls the EVM pallet", is unreachable by anyone because the runtime call filter has `RuntimeCall::EVM(_) => false` unconditionally, with a comment citing re-entrancy.
+  - `Ethereum::transact` self-contained extrinsic wrapping a byte-exact EIP-2718 payload
+  - `EthereumXcm::transact` SCALE EthereumXcmTransaction (V1/V2/V3) — no type byte, no signature, no sender nonce
+  - `EthereumXcm::transact_through_proxy` the same, executed as a LOCAL account that granted the XCM origin an Any proxy
+  - `EthereumXcm::force_transact_as` the same, executed as ANY address, Root only, with an optional forced CREATE address
+
+**Sei** — Two distinct populations with no EIP-2718 type byte. (1) Sei's own EVM-module Cosmos messages, which change EVM-visible state without ever being an Ethereum transaction. (2) A synthetic receipt kind emitted for ordinary Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a third population, not enumerated here — it is standard Cosmos SDK and its EVM-visible effects are reachable through the 0x1001-0x100c precompiles.
+  - `evm/MsgEVMTransaction` MsgEVMTransaction
+  - `evm/MsgEVMTransaction (AssociateTx)` AssociateTx
+  - `evm/MsgAssociateContractAddress` MsgAssociateContractAddress
+  - `evm/MsgRegisterPointer` MsgRegisterPointer
+  - `evm/MsgSend` MsgSend
+  - `evm/MsgClaim` MsgClaim
+  - `evm/MsgClaimSpecific` MsgClaimSpecific
+  - `0xffffffff` shell EVM receipt (ShellEVMTxType)
+
+**Taraxa**
+  - `dag_block` DAG block
+  - `pillar_block` Pillar block
+
 **Tempo** — One protocol record with no EIP-2718 type byte: the validator-scoped bundle that implements Tempo's payment-priority lane. It never appears in `eth_getBlockByNumber`, so the lane is invisible to an envelope-based indexer.
   - `subblock` SubBlock (payment-priority lane)
 
-**Cronos** — THE SAME INVERSION AS cosmos-evm, unmodified: every Ethereum transaction reaches consensus wrapped in a Cosmos SDK transaction, and ordinary Cosmos messages — IBC transfers, bank sends, governance — move balances that the EVM can read without ever appearing in an Ethereum block. The `cosmos-evm` row states this axis in full; Cronos adds `x/cronos`'s CRC-20 conversion messages to the set, which mint and burn ERC-20 balances from a Cosmos message.
+**Tron** — 43 protobuf ContractType values (0-59, sparse). Listed here are the two that reach the EVM plus representative examples of the rest.
+  - `30` CreateSmartContract
+  - `31` TriggerSmartContract
+  - `1` TransferContract
+  - `4` VoteWitnessContract
+  - `51` ShieldedTransferContract
+  - `54` FreezeBalanceV2Contract
+  - `57` DelegateResourceContract
 

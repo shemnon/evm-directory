@@ -871,6 +871,15 @@ p2p:
       keeps geth's `const`, bera-reth passes reth's configurable default through. Worth
       stating explicitly because the consensus client deliberately opts OUT of transaction
       handling; see `transports`.
+  fragmentation:
+    verdict: app-chunking
+    tier: transport
+    src: "go.mod:cometbft"
+    note: >-
+      CometBFT's MConnection packet splitting still applies — but to CONSENSUS traffic only,
+      since this row disables the mempool that would otherwise carry transactions over it.
+      The pin is a pseudo-version (`v1.0.1-0.20241220100824-07c737de00ff`), i.e. a commit
+      between releases rather than a tagged one, so the row tracks an unreleased CometBFT.
   transports:
     verdict: "devp2p + CometBFT"
     src: "consensus/cometbft/service/configs.go:cfg.Mempool.Type"

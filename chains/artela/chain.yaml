@@ -998,15 +998,32 @@ tx_lifecycle:
 
 p2p:
   max_tx_bytes:
-    status: unrecorded
-    verdict: unrecorded
+    verdict: 1048576
+    tier: policy
+    src: "go.mod:cometbft"
     note: >-
-      NOT ESTABLISHED FROM THIS CLONE. The chain is a Cosmos SDK application, so admission
-      is CometBFT's `mempool.max_tx_bytes` — but CometBFT and the SDK are Go-module
-      dependencies here rather than vendored source, so the effective default cannot be
-      pinned to a commit the way `cosmos-evm` pins it. The structure is the same two-gate
-      arrangement recorded on that row (CometBFT CheckTx above, EVM txpool below); only the
-      number is unverified, and a per-network `config.toml` can change it regardless.
+      CometBFT's 1 MiB `mempool.max_tx_bytes`, reached by dependency rather than by any
+      constant in this tree: the pin is `v0.37.2` and a search of the clone finds NO override
+      of the mempool sizing anywhere. What the citation evidences is exactly that — which
+      CometBFT this row runs, and that it is unmodified here; the value is that version's
+      `DefaultConfig`, shown in vendored form on the `sei` row. The oldest CometBFT in the dataset. Its vendored cosmos-sdk also exposes the ABCI++ `PrepareProposal.MaxTxBytes` budget, which bounds a PROPOSAL's total bytes and is a different quantity from per-transaction admission.
+  fragmentation:
+    verdict: app-chunking
+    tier: transport
+    src: "go.mod:cometbft"
+    note: >-
+      MConnection packet splitting with an EOF flag, as read out on the `sei` row. Stable
+      across every CometBFT line in this dataset.
+  transports:
+    verdict: "devp2p + CometBFT"
+    src: "go.mod:cometbft"
+    note: >-
+      Two stacks in series: CometBFT p2p admits and broadcasts transactions above, the
+      geth-derived EVM txpool applies its own limits below.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
+      - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
 fee_model:
   metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"

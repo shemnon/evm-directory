@@ -861,6 +861,31 @@ tx_lifecycle:
       path.
       a committed block, its nonce is spent, and the RPC hides it.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "bera-geth/core/txpool/legacypool/legacypool.go:txMaxSize, bera-reth/src/pool/mod.rs:with_max_tx_input_bytes"
+    note: >-
+      Both of this chain's execution clients land on 128 KiB by different routes — bera-geth
+      keeps geth's `const`, bera-reth passes reth's configurable default through. Worth
+      stating explicitly because the consensus client deliberately opts OUT of transaction
+      handling; see `transports`.
+  transports:
+    verdict: "devp2p + CometBFT"
+    src: "consensus/cometbft/service/configs.go:cfg.Mempool.Type"
+    severity: high
+    note: >-
+      THE COMETBFT MEMPOOL IS SWITCHED OFF. BeaconKit sets `cfg.Mempool.Type = "nop"` with
+      `MaxTxBytes = 0`, `Size = 0`, `Broadcast = false` — so unlike every other CometBFT
+      row in this dataset, user transactions never enter the consensus mempool and never
+      gossip over CometBFT's p2p. They live entirely in the execution client's devp2p pool,
+      and CometBFT carries only consensus. A reader who assumes the usual Cosmos
+      `max_tx_bytes` of 1 MiB applies here would be reading a limit that is not merely
+      different but disabled.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
+      - {layer: consensus, protocol: CometBFT p2p, purpose: consensus only — mempool disabled}
 fee_model:
   metering: gas
   fee_market: "EIP-1559 with a per-fork base-fee floor and a 6x slower change denominator"

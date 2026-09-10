@@ -644,6 +644,92 @@ ad-hoc `consensus.*` keys for the same question under **different names**
 (`ordered_then_invalid` on one, `ordered_but_invalid` on the other). That divergence is
 what the axis exists to prevent.
 
+## The p2p axis (`p2p:`)
+
+"How big can a transaction be?" has no single answer, and the ways it is wrong are
+instructive. Mainnet's famous 128 KiB is **not a rule** — it is one client's DoS policy
+that the others copied so the mempool would not fragment. A 300 KiB transaction is
+perfectly valid in a block; it simply cannot reach one through the public mempool. Until
+Fusaka there was no consensus size limit at all.
+
+So every size on this axis carries a **`tier:`**, and the tier is part of the fact:
+
+| tier | who rejects | consequence of exceeding |
+|---|---|---|
+| `consensus` | every validating node | the **block** is invalid |
+| `policy` | the local mempool | the transaction does not propagate; a block containing it is still valid |
+| `transport` | the wire | the peer connection errors; the message never forms |
+
+Without `tier:` the axis would publish "131072" next to "8388608" as though they were the
+same kind of claim, and the gap between them — valid but unroutable, where private
+orderflow lives — would vanish from the dataset.
+
+```yaml
+p2p:
+  max_tx_bytes:
+    verdict: 131072                 # raw bytes; the grid formats them
+    tier: policy
+    scope: non_blob                 # optional: which txs the number governs
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      ...
+  max_block_bytes: {verdict: 8388608, tier: consensus, src: "..."}
+  fragmentation:
+    verdict: none                   # none | muxer-only | app-chunking | erasure-coded
+  transports:
+    verdict: "devp2p + libp2p"      # the scalar the grid renders
+    stack:                          # the detail the chain page renders
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
+      - {layer: consensus, protocol: libp2p, purpose: block + blob gossip}
+```
+
+Keys: `max_tx_bytes`, `max_blob_tx_bytes`, `max_block_bytes`, `max_message_bytes`,
+`fragmentation`, `transports`. `verdict:` is what the grid renders; `note:` is the prose
+the chain page renders. Sizes are **raw byte integers**, never "128KB" — a string cannot
+be compared, and the two clients that write it differently would read as divergent when
+they agree.
+
+### `fragmentation:` is an enum because a boolean loses the answer
+
+Four transports in this dataset answer "can a message exceed one packet" differently, and
+three of the four would collapse to "no" under a boolean:
+
+- `none` — RLPx. Multi-frame chunking was cut from the spec; the frame cap is hard.
+- `muxer-only` — libp2p. The stream muxer frames the bytes, but the application message
+  is atomic, so the payload cap is equally hard for a different reason.
+- `app-chunking` — CometBFT, which really does split messages into fixed-size packets.
+- `erasure-coded` — Monad's RaptorCast, which chunks to an MTU *and* Raptor10-encodes with
+  a redundancy factor, so a receiver reconstructs from a subset of chunks. Not a bigger
+  pipe: a different delivery guarantee.
+
+### Same number, different cause
+
+`max_tx_bytes` is the axis's trap. Mainnet's 128 KiB is propagation DoS policy. Arbitrum's
+default 95,000 is **L1 data-availability economics** — 95% of the batch-poster limit, with
+5 KB left for headers — and is *smaller* than mainnet's. Polygon zkEVM-class chains derive
+theirs from prover constraints. The number is comparable across rows; the reason is not, so
+`note:` states the reason and is not optional on this key.
+
+### Why consensus limits are restated here rather than only in `eips:`
+
+`max_block_bytes` (EIP-7934) and the per-transaction gas cap (EIP-7825) are consensus facts
+with a home in `eips:`. They are **restated** here, tagged `tier: consensus`, because a
+reader asking "how big can this get" should get one table rather than three. The duplication
+is deliberate; `eips:` remains the authority on activation, and this axis on magnitude.
+
+EIP-7825 also implies a byte cap nobody writes down. With a per-tx limit of 16,777,216 gas
+and EIP-7623's floor of 10 gas per token (4 tokens per non-zero byte), the largest
+transaction mainnet can contain is roughly **1.6 MB of zero bytes, or ~419 KB of non-zero
+bytes** — over twelve times what the mempool will carry. EIP-8037 moves intrinsic gas inside
+the cap at Amsterdam, so the figure is fork-dependent.
+
+### Not tracked here
+
+Post-quantum readiness. Transport handshake KEX and peer-identity signatures are p2p
+questions, but consensus and transaction signatures are not, and splitting one PQC story
+across two axes would serve neither. It belongs to the cryptography axis; this note exists
+so the next person does not add `pqc_*` keys here by default.
+
 ## Opcodes
 
 `opcodes:` holds `added` / `removed` / `modified` / `pending` / `tombstoned` lists of
@@ -702,6 +788,8 @@ system_transactions:
 opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed op:;
               # plus baseline_set on the ethereum row. See "Opcodes" above.
 tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
+p2p:          # wire-level limits and transports, keyed by question; every size
+              # carries a tier: consensus | policy | transport
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators

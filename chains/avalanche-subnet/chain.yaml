@@ -243,6 +243,35 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged from geth, and that is the only thing about this row's p2p that is.
+  max_message_bytes:
+    verdict: 2031616
+    tier: transport
+    src: "plugin/evm/message/codec.go:maxMessageSize"
+    note: >-
+      A FIFTH OF MAINNET'S. `2*units.MiB - 64*units.KiB` = 2,031,616 bytes, and the comment
+      states the derivation: the 64 KiB is subtracted "to leave room for encoding overhead
+      from AvalancheGo", so the VM's codec sits deliberately under the host's network cap.
+      Mainnet's 10 MiB `eth` message limit has no counterpart here because there is no
+      `eth` protocol to carry it.
+  transports:
+    verdict: "AvalancheGo p2p"
+    src: "plugin/evm/message/codec.go:maxMessageSize"
+    note: >-
+      NOT DEVP2P. The clone has no `eth/protocols` directory at all: the EVM runs as a VM
+      plugin inside AvalancheGo, which speaks its own TLS/protobuf transport, and the VM
+      reaches peers through AppRequest/AppGossip rather than an RLPx subprotocol.
+      Transaction gossip is also a different MODEL, not just a different wire — it is
+      bloom-filter pull gossip (`plugin/evm/eth_gossiper.go`), where a peer advertises what it holds and others
+      pull the gap, in place of mainnet's push-and-announce.
+    stack:
+      - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}
 fee_model:
   metering: gas
   fee_market: ACP-176 style dynamic fee, plus optional runtime reconfiguration

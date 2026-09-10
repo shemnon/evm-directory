@@ -638,6 +638,17 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "blockchain/tx_pool.go:MaxTxDataSize"
+    note: >-
+      SAME NUMBER, DIFFERENT MEASUREMENT. Kaia renames the constant `MaxTxDataSize` and
+      keeps `4 * txSlotSize`, but the check reads
+      `tx.SizeWithoutBlobTxSidecar() > MaxTxDataSize` — the sidecar is excluded from the
+      measurement, where geth's legacy pool never sees a blob tx at all and its blob pool
+      counts the sidecar in full. Identical constant, non-identical predicate.
 fee_model:
   metering: "gas AND computation cost (two independent meters, both enforced)"
   fee_market: "KIP-71 bounded dynamic base fee from Magma; a FIXED governance price before it"

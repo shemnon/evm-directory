@@ -506,6 +506,26 @@ opcodes:
       log the precompile paths emit. See gotchas.
     src: crates/evm/src/handler.rs:check_blocklist
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "crates/execution-txpool/src/pool.rs:with_max_tx_input_bytes"
+    note: >-
+      reth's default, passed through unchanged via
+      `with_max_tx_input_bytes(ctx.config().txpool.max_tx_input_bytes)`. The row's txpool
+      crate exists to REMOVE transaction types (it rejects EIP-4844), not to resize them,
+      so the blob-measurement divergence recorded on `plasma` is unreachable here.
+  transports:
+    verdict: "devp2p + Malachite"
+    src: "crates/execution-txpool/src/pool.rs:with_max_tx_input_bytes"
+    note: >-
+      reth execution over devp2p, with consensus supplied by Malachite (a Rust BFT engine)
+      rather than a beacon chain, so the consensus half of the stack shares nothing with
+      mainnet's libp2p gossipsub.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
+      - {layer: consensus, protocol: Malachite, purpose: BFT consensus messages}
 fee_model:
   metering: gas, denominated in 18-decimal units of the native USDC coin
   fee_market: EIP-1559 formula over an EMA-smoothed gas figure, fixed-point params, contract-governed bounds

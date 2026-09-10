@@ -387,6 +387,37 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "op-geth/core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Inherited from geth unchanged. Stated rather than left absent because the sequencer
+      is the only party that orders, which invites the assumption that pool policy is
+      irrelevant — it still governs whether a transaction reaches the sequencer by gossip.
+  max_message_bytes:
+    verdict: 10485760
+    tier: transport
+    src: "optimism/op-node/p2p/gossip.go:maxGossipSize"
+    note: >-
+      10 MiB on the libp2p side, bounding both the gossipsub RPC container and each
+      decompressed message, and reused as the `io.LimitReader` bound on the alt-sync
+      request/response path. It coincides with op-geth's devp2p `maxMessageSize`, which is
+      a coincidence of two stacks picking the same round number, not one limit.
+  transports:
+    verdict: "devp2p + libp2p"
+    src: "optimism/op-node/p2p/gossip.go:maxGossipSize"
+    note: >-
+      THE SAME TWO STACKS AS MAINNET, CARRYING DIFFERENT CARGO. op-geth speaks devp2p for
+      transactions; op-node speaks libp2p gossipsub to propagate *unsafe* blocks from the
+      sequencer ahead of L1 derivation. Mainnet's libp2p layer carries a consensus
+      protocol among validators — here it distributes one party's output, so the topic is
+      a publication channel rather than a vote.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx gossip}
+      - {layer: consensus, protocol: libp2p, purpose: unsafe block gossip from sequencer}
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 on L2 base fee

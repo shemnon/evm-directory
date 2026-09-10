@@ -379,6 +379,72 @@ tx_lifecycle:
       Preserved, always: an invalid transaction is never included, so nothing spends the
       nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    scope: non_blob
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      MAINNET BASELINE, AND IT IS NOT A CONSENSUS RULE. 128 KiB = 4 x the 32 KiB
+      `txSlotSize`, a DoS bound chosen so pool admission stays O(maxslots); the comment at
+      the constant gives the reason as propagation cost, not validity. Every other EL
+      copied the number to keep the mempool from fragmenting, so it reads like a spec and
+      is not one. A larger transaction is perfectly valid in a block and simply cannot get
+      there through public gossip — see `max_block_bytes` for the ceiling that does bind.
+  max_blob_tx_bytes:
+    verdict: 1048576
+    tier: policy
+    scope: blob
+    src: "core/txpool/blobpool/blobpool.go:txMaxSize"
+    note: >-
+      A SECOND, DIFFERENT LIMIT IN THE SAME CLIENT. The blob pool caps a transaction at
+      1 MiB *including its blobs* — eight times the legacy pool's cap — because blob
+      transactions are pulled rather than pushed and the payload sits on disk. The trap is
+      that this byte cap is what actually enforces the per-transaction blob COUNT:
+      `maxBlobsPerTx` is `params.BlobTxMaxBlobs` (6), and the constant's own comment warns
+      "if you increase this, validation will fail on txMaxSize". Two limits, one binding
+      the other, in opposite units.
+  max_block_bytes:
+    verdict: 8388608
+    tier: consensus
+    src: "params/protocol_params.go:MaxBlockSize"
+    note: >-
+      EIP-7934, live at Osaka: the first size limit on this axis that a validating node
+      enforces. 8 MiB is already net of the spec's 2 MiB safety margin against a 10 MiB
+      total, so the constant is the effective cap on the RLP-encoded block, checked in
+      `core/block_validator.go` and gated on `IsOsaka`. Before Fusaka there was no
+      consensus size limit at all.
+  max_message_bytes:
+    verdict: 10485760
+    tier: transport
+    src: "eth/protocols/eth/protocol.go:maxMessageSize"
+    note: >-
+      10 MiB per `eth` protocol message, the same in `snap`. The hard wire ceiling above it
+      is the RLPx frame's 24-bit length field (`p2p/rlpx/buffer.go:maxUint24`, 16,777,215
+      bytes). Note that neither bound is what shapes behaviour in practice: `snap` assembles
+      responses against a 2 MiB `softResponseLimit` and stops there.
+  fragmentation:
+    verdict: none
+    tier: transport
+    src: "p2p/rlpx/buffer.go:maxUint24"
+    note: >-
+      RLPx has no application-level chunking — multi-frame messages were cut from the spec
+      and geth never carried them — so the frame cap is hard rather than a unit of
+      delivery. A message that does not fit is not split; the connection errors.
+  transports:
+    verdict: "devp2p + libp2p"
+    src: "eth/protocols/eth/protocol.go:maxMessageSize"
+    note: >-
+      TWO STACKS, NOT ONE, and conflating them is the usual error. Execution peers speak
+      devp2p/RLPx (`eth/69`, `snap/1`) and carry transactions; consensus peers speak libp2p
+      gossipsub and carry beacon blocks and blob sidecars, under its own 10 MiB
+      `MAX_PAYLOAD_SIZE`. A transaction never touches libp2p and a blob sidecar never
+      touches RLPx.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
+      - {layer: consensus, protocol: libp2p, purpose: beacon block + blob sidecar gossip}
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (base fee burned + priority tip)

@@ -312,6 +312,24 @@ opcodes:
     here, Tron's OPCODE placement is collision-free. Its precompile placement is not.
     Staking, voting and reward withdrawal are reachable as single opcodes.
 
+p2p:
+  max_tx_bytes:
+    verdict: 512000
+    tier: consensus
+    src: "common/src/main/java/org/tron/core/Constant.java:TRANSACTION_MAX_BYTE_SIZE"
+    note: >-
+      FOUR TIMES MAINNET'S, AND ENFORCED A TIER HIGHER. `TRANSACTION_MAX_BYTE_SIZE =
+      500 * 1_024` is checked in `Manager.java` while processing a transaction into a
+      block, so an oversized transaction makes the block invalid rather than merely
+      failing to propagate — the opposite of mainnet, where the larger figure is the
+      consensus one and the smaller is mempool policy. Account-creation transactions are
+      capped separately and far lower, at 10,000 bytes.
+  transports:
+    verdict: "java-tron p2p"
+    src: "common/src/main/java/org/tron/core/Constant.java:TRANSACTION_MAX_BYTE_SIZE"
+    note: >-
+      Neither devp2p nor libp2p: java-tron carries its own protobuf-message p2p with its
+      own handshake, so none of the RLPx framing or `eth` subprotocol limits apply.
 fee_model:
   metering: energy + bandwidth (dual resource), NOT gas
   fee_market: none

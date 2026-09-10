@@ -493,6 +493,30 @@ tx_lifecycle:
       of Conflux, IOTA EVM, Artela and Rollkit, where null is permanent.
       other mechanism entirely.
 
+p2p:
+  max_tx_bytes:
+    verdict: 6144
+    tier: consensus
+    src: "hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/HederaConfig.java:transactionMaxBytes"
+    severity: high
+    note: >-
+      THE SMALLEST IN THE DATASET, BY A WIDE MARGIN — 6 KiB, about one twenty-first of
+      mainnet's 128 KiB, and the source comments it "6KB limit for user txs". It is a
+      network property enforced at ingest, not a relay preference, so there is no
+      equivalent of mainnet's private-orderflow escape: an oversized transaction is refused
+      outright with `TRANSACTION_OVERSIZE`. Callers needing more must chunk at the
+      application layer, which is why large-file operations on this chain are an explicit
+      append protocol rather than one big transaction.
+  max_message_bytes:
+    verdict: 33554432
+    tier: consensus
+    src: "hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/HederaConfig.java:maxTransactionBytesPerEvent"
+    note: >-
+      32 MiB per EVENT, the unit gossiped between nodes, against 6 KiB per user
+      transaction — a ratio of over 5,000. Node-internal transactions get their own 32 MiB
+      cap (`nodeTransaction.maxBytes`, sized to carry uncompressed proofs). Three limits in
+      one chain, each governing a different kind of payload, which is why a single
+      "max transaction size" for Hedera is always wrong without saying whose transaction.
 fee_model:
   severity: high
   note: >-

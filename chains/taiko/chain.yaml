@@ -543,6 +543,13 @@ tx_lifecycle:
       path.
       ORDERED AHEAD of it, with no signal of any kind.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged from geth. Notable only because Taiko's proposer path accepts transaction lists via L1 rather than the pool, so this limit governs the gossip route and not every route into a block.
 fee_model:
   metering: "gas AND zk gas — two independent, simultaneously-enforced dimensions"
   fee_market: "EIP-4396 (from Shasta), floored at 0.01 gwei and CAPPED at 1 gwei"

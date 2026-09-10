@@ -642,6 +642,26 @@ opcodes:
       if `value != 0`, before execution begins.
     src: crates/revm/src/handler.rs:ValueTransferNotAllowedInAATx
 
+p2p:
+  max_message_bytes:
+    verdict: 8388608
+    tier: transport
+    src: "crates/consensus/src/args.rs:DEFAULT_MAX_MESSAGE_SIZE_BYTES"
+    note: >-
+      THE CONSENSUS TRANSPORT IS SIZED TO THE BLOCK LIMIT, EXPLICITLY.
+      `DEFAULT_MAX_MESSAGE_SIZE_BYTES = reth_consensus_common::validation::MAX_RLP_BLOCK_SIZE`
+      — the p2p cap is not an independently chosen round number but a direct reference to
+      EIP-7934's 8 MiB, so raising the block limit raises the wire limit in lockstep. Every
+      other row on this axis picked the two independently and left a gap between them.
+  transports:
+    verdict: "devp2p + Simplex"
+    src: "crates/consensus/src/args.rs:DEFAULT_MAX_MESSAGE_SIZE_BYTES"
+    note: >-
+      reth execution over devp2p; consensus is Simplex, with ed25519 p2p identities
+      configured by signing-key file rather than the secp256k1 node keys devp2p uses.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
+      - {layer: consensus, protocol: Simplex, purpose: consensus messages (ed25519 identities)}
 fee_model:
   metering: gas, priced in attodollars, settled in a 6-decimal TIP-20 token
   fee_market: EIP-1559 formula, fixed 10M target, elasticity 1, hard-clamped

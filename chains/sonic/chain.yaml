@@ -688,6 +688,13 @@ tx_lifecycle:
       one. The `InsufficientBalanceIsNotAnError` precheck does NOT interact: it removes
       `msg.Value` from the balance test and leaves the nonce test untouched.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged from geth at 4 x 32 KiB. Stated rather than left absent because Sonic replaces consensus, state storage (Carmen) and the EVM interpreter (Tosca) wholesale, which invites the assumption that the txpool was rewritten too; it was not.
 fee_model:
   metering: gas
   fee_market: "time-based exponential on gas-per-second; floor from on-chain MinBaseFee"

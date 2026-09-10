@@ -576,6 +576,17 @@ tx_lifecycle:
       account nonce is untouched. L1 messages are sequenced by queue index rather than by
       account nonce, so a skipped message does not disturb the sender's nonce either.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/tx_pool.go:txMaxSize"
+    note: >-
+      128 KiB, but from the PRE-4844 geth layout: l2geth forked before the txpool was split
+      into `legacypool`/`blobpool`, so the constant still lives in `core/tx_pool.go` and
+      there is no second blob cap beneath it — the clone has no `core/txpool/` package at
+      all. The absence of `max_blob_tx_bytes` on this row is a fact about the fork point,
+      not a gap in the research.
 fee_model:
   metering: gas
   fee_market: "EIP-1559 on L2, with baseFeeOverhead/baseFeeScalar read from a predeploy's storage"

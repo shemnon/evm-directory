@@ -894,6 +894,38 @@ tx_lifecycle:
       nil-dereference and ordinary bytecode does not reach outcome (3). The structure is
       identical; only the trigger is narrower.
 
+p2p:
+  max_tx_bytes:
+    verdict: 1048576
+    tier: policy
+    src: "server/server_app_options.go:cmtMempoolMaxTxBytesKey"
+    note: >-
+      8x MAINNET'S, AND OPERATOR-SET. CometBFT admits transactions up to `mempool.max_tx_bytes`,
+      defaulting to 1 MiB — the source falls back to `cmtcfg.DefaultMempoolConfig().MaxTxBytes`
+      when the key is absent, noting "Comet's effective admission limit is 1 MiB". Nothing here
+      derives from geth's slot arithmetic even though the execution layer is geth-derived: the
+      admission decision happens in CheckTx, above the EVM.
+  max_block_bytes:
+    verdict: unrecorded
+    status: unrecorded
+    note: >-
+      NOT ESTABLISHED. CometBFT's block size is governed by consensus params
+      (`block.max_bytes`) that are set per-network in genesis and can be changed by
+      governance, so there is no single value in the client source to cite. It is a
+      deployment property, and recording a default here would assert something about
+      Cronos, Injective and Artela that the code does not say.
+  transports:
+    verdict: "devp2p + CometBFT"
+    src: "server/server_app_options.go:ValidateReapBounds"
+    note: >-
+      TWO ADMISSION GATES IN SERIES, AND THEY CAN CONTRADICT. A transaction must pass
+      CometBFT's `max_tx_bytes` AND the EVM txpool beneath it. `ValidateReapBounds` exists
+      because the CometBFT-side pair can be set inconsistently: a transaction admitted by
+      CheckTx that exceeds `reap_max_bytes` "would wedge the head of the reap list", so the
+      node refuses to start rather than accept a config where admission outruns reaping.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
+      - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
 fee_model:
   metering: "EVM gas, with Cosmos SDK store gas charged into the same counter at 1:1"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, optional"

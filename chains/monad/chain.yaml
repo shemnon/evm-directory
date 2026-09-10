@@ -553,6 +553,30 @@ tx_lifecycle:
       path.
       `Possible`-resolution included, to agree on which blocks are coherent.
 
+p2p:
+  fragmentation:
+    verdict: erasure-coded
+    tier: transport
+    src: "monad-bft/monad-raptorcast/src/config.rs:raptor10_redundancy"
+    note: >-
+      THE ONE ROW WHERE FRAGMENTATION IS A DELIVERY STRATEGY RATHER THAN A LIMIT. RaptorCast
+      splits a proposal to an MTU-sized unit and Raptor10-encodes the chunks with a
+      redundancy factor — 2.5x when sending to validators, 2x to full nodes — so a receiver
+      reconstructs the message from any sufficient subset rather than needing every piece.
+      Mainnet's RLPx has no chunking at all and libp2p's muxer frames without making the
+      message recoverable, so a boolean "supports fragmentation" would put all three in the
+      same bucket and lose exactly what differs.
+  transports:
+    verdict: "RaptorCast"
+    src: "monad-bft/monad-raptorcast/src/config.rs:mtu"
+    note: >-
+      Neither devp2p nor libp2p. MonadBFT consensus messages ride a purpose-built UDP
+      transport whose MTU is a configured parameter, which is why the size questions on
+      this axis take a different shape here: the bound that matters is the MTU times the
+      chunk count, not a single message cap.
+    stack:
+      - {layer: consensus, protocol: RaptorCast, purpose: erasure-coded block + vote propagation}
+
 fee_model:
   metering: gas
   fee_market: "Monad TFM — adaptive exponential base fee, 80% target, damped by trend/moment"

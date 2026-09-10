@@ -31,6 +31,7 @@ AXES = [
     ("fees-envelope",    "Fees & envelope",    "Metering and fee markets per chain, and header fields that differ from mainnet."),
     ("lineage",          "Lineage",            "Code ancestry and fork ancestry, tracked separately."),
     ("ordering",         "Ordering & execution", "What happens to a transaction between being ordered and being executed."),
+    ("p2p",              "P2P & limits",       "How big a transaction, block or message may be, who enforces each bound, and which transports carry them."),
 ]
 AXIS_TITLE = {k: t for k, t, _ in AXES}
 
@@ -55,11 +56,53 @@ LIFECYCLE = [
 LIFECYCLE_TITLE = {k: t for k, t, _ in LIFECYCLE}
 
 
-def lifecycle(chains, slug):
-    """A chain's effective lifecycle answers. A row whose `lineage.upstream` names a
-    stack node inherits that node's answers key by key, and overrides the ones it
-    states itself — the same override-by-key rule the address sections use. Returns
-    {key: (entry, origin_slug)}; origin != slug means inherited."""
+# The p2p axis. Order is deliberate: the two numbers people conflate first, then the
+# ceilings that actually bind, then how the bytes move.
+P2P = [
+    ("max_tx_bytes",      "Max transaction",
+     "The largest transaction the network will carry — usually mempool policy, not a rule."),
+    ("max_blob_tx_bytes", "Max blob transaction",
+     "Blob-carrying transactions are capped separately, and the cap includes the blobs."),
+    ("max_block_bytes",   "Max block",
+     "The encoded block ceiling. Consensus-enforced only where EIP-7934 is live."),
+    ("max_message_bytes", "Max p2p message",
+     "The largest single protocol message the transport will move."),
+    ("fragmentation",     "Fragmentation",
+     "Whether a message too large for one unit is split, and whether the pieces are recoverable."),
+    ("transports",        "Transports",
+     "Which p2p protocols the chain actually speaks, and at which layer."),
+]
+P2P_TITLE = {k: t for k, t, _ in P2P}
+
+# `tier` is the axis's load-bearing field: it says WHO rejects an oversized item, which
+# is the difference between "invalid" and "merely unroutable". See SCHEMA.md.
+TIER_TITLE = {
+    "consensus": "consensus — every validating node rejects; the block is invalid",
+    "policy":    "policy — the local mempool refuses it; a block containing it is still valid",
+    "transport": "transport — the wire cannot carry it; the connection errors",
+}
+
+
+def fmt_bytes(n):
+    """Exact binary sizes read as KiB/MiB; anything else keeps its digits. A limit of
+    95,000 is not 92.8 KiB in any useful sense — it was chosen in decimal, against an
+    L1 batch budget, and rounding it hides where it came from."""
+    if not isinstance(n, int) or isinstance(n, bool):
+        return str(n)
+    for unit, sz in (("MiB", 1 << 20), ("KiB", 1 << 10)):
+        if n >= sz and n % sz == 0:
+            return f"{n // sz} {unit}"
+    return f"{n:,} B"
+
+
+def lifecycle(chains, slug, section="tx_lifecycle"):
+    """A chain's effective answers for a keyed-question section. A row whose
+    `lineage.upstream` names a stack node inherits that node's answers key by key, and
+    overrides the ones it states itself — the same override-by-key rule the address
+    sections use. Returns {key: (entry, origin_slug)}; origin != slug means inherited.
+
+    `section` selects the axis: `tx_lifecycle` (ordering) or `p2p` (wire limits). Both
+    have the same shape, so they share the walk rather than duplicating it."""
     out = {}
     chain = [slug]
     seen = {slug}
@@ -68,7 +111,7 @@ def lifecycle(chains, slug):
         chain.append(up); seen.add(up)
         up = chains[up]["lineage"].get("upstream")
     for s in reversed(chain):                       # ancestor first, descendant wins
-        for k, v in (chains[s].get("tx_lifecycle") or {}).items():
+        for k, v in (chains[s].get(section) or {}).items():
             if isinstance(v, dict):
                 out[k] = (v, s)
     return out
@@ -823,6 +866,37 @@ def page_chain(chains, slug):
                         for k, _, _ in LIFECYCLE if (do := tl.get(k)) for d, o in [do]
                         if isinstance(d, dict) and d.get("verdict")]))
 
+    # --- p2p & wire limits -----------------------------------------------
+    pp = lifecycle(chains, slug, "p2p")
+    if pp:
+        B.append(h2(f'P2P &amp; limits <span class="pill">{len(pp)}</span>', "p2p"))
+        prows = []
+        for k, _, _ in P2P:
+            do = pp.get(k)
+            if not do: continue
+            d, o = do
+            if not (isinstance(d, dict) and d.get("verdict") is not None): continue
+            tier = d.get("tier")
+            val = (f'<span class="pill">{esc(fmt_bytes(d["verdict"]))}</span>'
+                   + ("" if o == slug else
+                      f' <span class="s-inherited" title="inherited">from '
+                      f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>'))
+            enf = (f'<span title="{esc(TIER_TITLE.get(tier, tier))}"><code>{esc(tier)}</code>'
+                   f'</span>' if tier else '<span class="s-inherited">—</span>')
+            body = markdown(flat(d.get("note")))
+            # `transports.stack` is the one entry with structure worth showing: which
+            # protocol sits at which layer. The grid can only carry the scalar verdict.
+            st = d.get("stack")
+            if isinstance(st, list) and st:
+                body += "<ul>" + "".join(
+                    f'<li><code>{esc(e.get("protocol"))}</code> at the '
+                    f'{esc(e.get("layer"))} layer — {esc(e.get("purpose"))}</li>'
+                    for e in st if isinstance(e, dict)) + "</ul>"
+            prows.append([esc(P2P_TITLE.get(k, k)), val, enf,
+                          f'<div class="wrap">{body}{provenance(d, on_chain=True)}</div>'])
+        if prows:
+            B.append(table(["Limit", "Value", "Enforced by", "Why"], prows))
+
     # --- fee model & header fields ---------------------------------------
     fm = c.get("fee_model") or {}
     if fm:
@@ -1471,6 +1545,56 @@ def page_ordering(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
+def page_p2p(chains):
+    """The axis exists because "max transaction size" reads like one number and is not
+    one. Mainnet's 128 KiB is a client DoS policy every other EL copied; the first
+    consensus size limit arrived only with EIP-7934. So the grid renders the tier beside
+    every size, and a row whose sizes differ from mainnet's is often answering a
+    different question rather than the same one differently — Arbitrum's smaller cap is
+    an L1 batch budget, not a gossip bound."""
+    slugs = order(chains)
+    rows, attrs = [], []
+    for key, label, blurb in P2P:
+        cells, plain = [], []
+        for s in slugs:
+            d, origin = lifecycle(chains, s, "p2p").get(key, (None, s))
+            v = d.get("verdict") if isinstance(d, dict) else None
+            plain.append("—" if v is None else str(v))
+            if v is None:
+                cells.append('<span class="s-inherited" title="not established">—</span>')
+                continue
+            tier = d.get("tier")
+            mark = "" if origin == s else \
+                f' <span class="s-inherited" title="inherited from {esc(origin)}">=</span>'
+            tag = (f'<span class="s-inherited" title="{esc(TIER_TITLE.get(tier, tier))}">'
+                   f'{esc(tier)}</span>' if tier else "")
+            cells.append(cell_link(s, "p2p", key,
+                         f'<span class="pill" title="{esc(flat(d.get("note")))[:400]}">'
+                         f'{esc(fmt_bytes(v))}</span>{mark}' + (f' {tag}' if tag else "")))
+        if any(x != "—" for x in plain):
+            rows.append([f'<span title="{esc(blurb)}">{esc(label)}</span>'] + cells)
+            attrs.append(uniform_attr(plain))
+    B = [h2(f'Wire limits <span class="pill">{len(rows)} questions</span>', "limits"),
+         filter_box("p2p-grid", uniform=True),
+         table(["Question"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
+                               for s in slugs],
+               rows, tid="p2p-grid", pin=True, row_attrs=attrs,
+               col_chains=[None] + slugs),
+         '<p class="legend">Every size carries the tier that enforces it. '
+         '<code>consensus</code> means a block breaking it is invalid; <code>policy</code> '
+         'means only the mempool objects, so an oversized transaction is still perfectly '
+         'valid in a block and merely cannot get there by gossip; <code>transport</code> '
+         'means the wire will not move it. Mainnet\'s 128 KiB is <code>policy</code> — it '
+         'is not a rule, and the gap between it and the ~1.6 MB that EIP-7825 and EIP-7623 '
+         'jointly permit is the space private orderflow occupies. A <code>—</code> means '
+         'the question is not established for that chain, not that it matches mainnet.</p>']
+    B.append(axis_notes(chains, "p2p"))
+    return layout("axes/p2p.html", "P2P & limits",
+                  "How big a transaction, block or message may be, who enforces each "
+                  "bound, and which transports carry them.",
+                  "\n".join(x for x in B if x), wide=True, chains=chains)
+
+
 def page_lineage(chains):
     """Two independent ancestries. A chain's code can descend from one project while
     its consensus rules track a different fork line, and conflating them makes both
@@ -1691,7 +1815,7 @@ def registry(chains):
         Page("silent-divergences.html", all_yaml, page_silent),
     ]
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
-               "ordering": page_ordering,
+               "ordering": page_ordering, "p2p": page_p2p,
                "cryptography": page_cryptography, "opcodes": page_opcodes,
                "system-contracts": page_system_contracts, "fees-envelope": page_fees,
                "lineage": page_lineage}

@@ -524,6 +524,25 @@ opcodes:
     section can carry. The emulator IS live on Era mainnet: zks_getProtocolVersion
     reports a non-zero evm_emulator base-system-contract hash.
 
+p2p:
+  max_tx_bytes:
+    verdict: 1000000
+    tier: policy
+    src: "core/lib/config/src/configs/api.rs:max_tx_size"
+    note: >-
+      THE LIMIT IS AN API SETTING, BECAUSE THERE IS NO MEMPOOL TO GOSSIP INTO. Transactions
+      arrive at the sequencer over JSON-RPC and `max_tx_size` (1,000,000 bytes, decimal)
+      is checked by `check_encoded_size` during request parsing. A round decimal million,
+      not a binary megabyte — nothing here inherits geth's slot arithmetic.
+  max_message_bytes:
+    verdict: 16777216
+    tier: consensus
+    src: "core/lib/constants/src/crypto.rs:MAX_ENCODED_TX_SIZE"
+    note: >-
+      `MAX_ENCODED_TX_SIZE = 1 << 24` is the bootloader's hard ceiling — a circuit
+      constraint rather than a network one, which is the causal origin no other row on this
+      axis shares. It coincidentally equals EIP-7825's per-transaction GAS cap, in
+      completely unrelated units.
 fee_model:
   metering: "ergs (EraVM) plus a separate pubdata budget; EVM gas is simulated on top for emulated contracts"
   fee_market: "L1-derived gas price plus an independently quoted pubdata price"

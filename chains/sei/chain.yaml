@@ -766,6 +766,26 @@ tx_lifecycle:
       stashes inside `FinalizeBlock` and publishes at Commit. No receipt or block ever
       changes after it is returned.
 
+p2p:
+  max_tx_bytes:
+    verdict: 1048576
+    tier: policy
+    src: "sei-tendermint/config/config.go:MaxTxBytes"
+    note: >-
+      CometBFT's 1 MiB admission cap, from Sei's own vendored Tendermint fork
+      (`sei-tendermint`) rather than an upstream dependency — the config surface is
+      unchanged, so the default carries over. Sits above the geth-derived EVM txpool, which
+      applies its own 128 KiB independently.
+  fragmentation:
+    verdict: app-chunking
+    tier: transport
+    src: "sei-tendermint/config/config.go:MaxTxBytes"
+    note: >-
+      THE CATEGORY MAINNET CANNOT REACH. Tendermint's p2p multiplexes each connection and
+      splits messages into fixed-size packets that the receiver reassembles, so a message
+      larger than one packet is a normal occurrence rather than an error — the comment at
+      `MaxTxBytes` notes the network-transmitted size is what the setting governs. RLPx has
+      no such mechanism, which is why mainnet's `fragmentation` reads `none`.
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting
   fee_market: >-

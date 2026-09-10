@@ -244,6 +244,30 @@ opcodes:
     behavior matches Ethereum mainnet."
   src_doc: https://docs.plasma.org/docs/plasma-chain/architecture/system-overview
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "crates/transaction-pool/src/validate/constants.rs:DEFAULT_MAX_TX_INPUT_BYTES"
+    note: >-
+      reth's `DEFAULT_MAX_TX_INPUT_BYTES = 4 * TX_SLOT_BYTE_SIZE`, with a doc comment that
+      paraphrases geth's almost word for word — the number and its justification were
+      ported deliberately. Unlike geth's `const`, it is a validator field
+      (`max_tx_input_bytes`) an operator can override.
+  max_blob_tx_bytes:
+    verdict: 131072
+    tier: policy
+    scope: blob
+    src: "crates/transaction-pool/src/validate/eth.rs:max_tx_input_bytes"
+    severity: high
+    note: >-
+      RETH AND GETH MEASURE BLOB TRANSACTIONS DIFFERENTLY, AND THE GAP IS 8x. For a blob
+      transaction reth checks `transaction.input().len()` — the CALLDATA only — against the
+      same 128 KiB, while the non-blob branch a few lines below checks
+      `transaction.encoded_length()`. Geth instead routes blob transactions to a separate
+      pool with a 1 MiB cap that INCLUDES the sidecar. So the two clients bound different
+      quantities by different limits: reth ignores blob payload size entirely here, and
+      geth's cap is dominated by it.
 fee_model:
   metering: gas
   fee_market: EIP-1559, unmodified, base fee pinned at the 7-wei floor

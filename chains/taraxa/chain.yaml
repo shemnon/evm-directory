@@ -798,6 +798,17 @@ tx_lifecycle:
       path.
       `eth_getTransactionCount` is a next-nonce oracle here and nothing else.
 
+p2p:
+  max_message_bytes:
+    verdict: 500000
+    tier: transport
+    src: "libraries/common/include/common/constants.hpp:kMaxTransactionsSizeInPacket"
+    note: >-
+      A PER-PACKET BUDGET RATHER THAN A PER-MESSAGE CAP. Transaction gossip is batched, and
+      a packet is bounded twice — `kMaxTransactionsSizeInPacket` at 500,000 bytes and
+      `kMaxTransactionsInPacket` at 500 transactions, whichever binds first. Mainnet has no
+      equivalent pairing: its `eth` message cap is a single ceiling with no count limit
+      beside it.
 fee_model:
   metering: single gas dimension, Constantinople schedule with EIP-1884's three prices
   fee_market: >-

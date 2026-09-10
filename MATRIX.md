@@ -116,6 +116,8 @@ Entries named `unsigned` are excluded above: a protocol-constructed transaction 
 
 ### [BNB Smart Chain](chains/bnb/SUMMARY.md)
 
+- `block.prevrandao` RETURNS 1 OR 2. BSC never took the merge rung: 0x44 is still DIFFICULTY in every instruction set it can select, and Parlia's difficulty is one bit. Contracts using it for entropy are drawing from a two-element set, with no revert and no signal. See eips.4399.
+- `mixHash` IS A TIMESTAMP, NOT RANDOMNESS. From Lorentz it carries the millisecond fraction of the block time and consensus validates that it does. Read `milliTimestamp` if that is what you want; do not read `mixHash` as an entropy source.
 - BSC shipped Prague SEVEN WEEKS BEFORE Ethereum mainnet (2025-03-20 vs 2025-05-07) and Osaka nearly five months AFTER (2026-04-28 vs 2025-12-03). "Behind mainnet" is not a stable property of a chain — it flips fork to fork.
 - BSC took Prague's EVM half (BLS12-381, EIP-7702, EIP-2935) and dropped its beacon half (4788, 6110, 7002, 7251) via an explicit IsInBSC() early return. A fork-name-only survey would record "Prague" and be wrong about four EIPs.
 - Custom precompiles at 0x64-0x69 leave only 0x12-0x63 of headroom before mainnet grows into them. This is the placement risk flagged from the Ethereum baseline, realised.

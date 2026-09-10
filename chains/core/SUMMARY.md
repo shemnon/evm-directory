@@ -99,22 +99,44 @@ revert used a snapshot taken **after** the nonce increment had been journalled, 
 fee-market failure rolled the nonce back too. `st.evm.InitialSnapshot()` now preserves
 it. A consensus-visible nonce bug, live for five weeks.
 
-## 4. `block.prevrandao` returns 1 or 2
+## 4. `block.prevrandao` returns 1 or 2 — by an explicit override
+
+Corrected after the fact: the first version of this row said `Random` stays nil,
+`IsMerge` is false, "and the jump table binds `0x44` to `opDifficulty`". The
+conclusion is right and the route is not, which matters because BSC reaches the same
+answer a different way.
+
+`NewEVMBlockContext` does set `Random = &header.MixDigest` only when
+`header.Difficulty.Sign() == 0`, and Satoshi writes 1 or 2, so `Random` is nil. But
+Core's `Rules()` leaves `IsShanghai`/`IsCancun`/`IsPrague` **ungated** by `isMerge`,
+so the Prague instruction set is still selected — and Core keeps upstream's
+derivation, in which `newShanghaiInstructionSet` builds on `newMergeInstructionSet`
+and therefore carries `opRandom` at `0x44`. Running that would dereference a nil
+`Random`.
+
+What prevents it is a deliberate override:
 
 ```go
-if header.Difficulty.Sign() == 0 { random = &header.MixDigest }
-…
-chainRules: chainConfig.Rules(blockCtx.BlockNumber, blockCtx.Random != nil, blockCtx.Time)
+// newInstructionSet returns the instruction set for the given rules, applying any necessary modifications.
+// This function centralizes the instruction set selection and Satoshi-specific modifications.
+	if rules.IsSatoshi {
+		copied := copyJumpTable(instructionSet)
+		return newSatoshiRevertDifficultyInstructionSet(*copied)
+	}
+
+// newSatoshiRevertDifficultyInstructionSet reverts the PREVRANDAO opcode to DIFFICULTY opcode,
+// as Satoshi doesn't implement the PREVRANDAO opcode.
 ```
 
-Satoshi, like Parlia, writes a difficulty of 1 or 2. `Random` therefore stays nil,
-`IsMerge` is false, and the jump table binds `0x44` to `opDifficulty`. Verified live:
-`difficulty: 0x2`.
+Verified live at block 38580453: `eth_call 0x445f5260205ff3` returns `0x…02`, and the
+header carries `difficulty: 0x2`, `mixHash: 0x00…00`.
 
 Any contract using `block.prevrandao` as an entropy source on Core is reading a
-one-bit value, with no revert and no signal. The identical construction exists at the
-same line in `bnb-chain/bsc`, and BSC's row does not currently record it — see
-"Follow-ups" below.
+one-bit value, with no revert and no signal. **BSC lands on the identical observable
+without ever binding `opRandom`** — its `newShanghaiInstructionSet` is built from
+`newLondonInstructionSet`, so the merge rung is bypassed in the derivation chain and
+`mergeInstructionSet` is unreachable dead code. Same answer, two mechanisms, and only
+a live probe shows they agree. See `chains/bnb/`.
 
 ## 5. `mixHash` has been repurposed to carry milliseconds
 
@@ -184,13 +206,19 @@ Cancun, and the pool admits type `0x03` — but there is no consensus layer to h
 sidecars, and whether a blob transaction has ever been included is recorded as not
 established rather than guessed.
 
-## Follow-ups this row raises for other rows
+## Follow-ups this row raised for other rows — now closed
 
-- **BSC (`chains/bnb/`) has the same `block.prevrandao` construction** and no
-  `eips.4399` entry. Verified live here (difficulty `0x2`, mixHash `0x352`) but not
-  changed on that row, because it is outside this pass's scope.
-- BSC's `mixHash` is already carrying sub-second timestamps, which its
-  `header_fields` section does not mention.
+Both were carried out on `chains/bnb/`, and reading BSC's source is what exposed the
+error corrected in §4 above:
+
+- BSC now has an `eips.4399` entry. Its route is not Core's: `isMerge` is `false` with
+  an in-source comment saying `// always false in BSC`, the modern forks are re-enabled
+  through `(isMerge || c.IsInBSC())`, and the Shanghai set is derived from **London**
+  rather than from **merge**, so `opRandom` never enters a selectable table.
+- BSC now has a `header_fields.modified` entry for `mixHash`. It is not merely unused:
+  from Lorentz, `Prepare` stores the millisecond fraction of the block time in it, and
+  `verifyHeader` **rejects** any header where `MilliTimestamp()/1000 != Time`. It is a
+  consensus-validated timestamp fraction in `[0, 999]` — 600 at the block probed.
 
 ---
 
@@ -232,10 +260,12 @@ grep -n 'case rules.IsMerge' -A4 $C/core/vm/jump_table.go
 curl -s -X POST $R -H 'content-type: application/json' \
   -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBlockByNumber\",\"params\":[\"$B\",false]}" \
   | python3 -c 'import sys,json;b=json.load(sys.stdin)["result"];print({k:b[k] for k in ("difficulty","mixHash","milliTimestamp","timestamp")})'
-# the same construction on BSC, where mixHash is already in use:
+grep -n 'newSatoshiRevertDifficultyInstructionSet' -A10 $C/core/vm/jump_table.go
+curl -s -X POST $R -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"data":"0x445f5260205ff3"},"latest"]}'   # 0x..02
+# BSC reaches the same answer another way — see chains/bnb/SUMMARY.md
 curl -s -X POST https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["latest",false]}' \
-  | python3 -c 'import sys,json;b=json.load(sys.stdin)["result"];print({k:b[k] for k in ("difficulty","mixHash")})'
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"data":"0x445f5260205ff3"},"latest"]}'   # 0x..02
 
 # F5: milliTimestamp lives in mixHash
 sed -n '160,175p' $C/core/types/block.go

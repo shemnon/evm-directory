@@ -131,6 +131,65 @@ sender equals `header.Coinbase`, the effective gas price is zero, and the destin
 a system contract. BSC and Monad sit on this side of the line; OP Stack's `0x7e`
 deposits, which carry no signature at all, sit on the other.
 
+## `block.prevrandao` returns 1 or 2, and `mixHash` is a clock
+
+The most mainnet-faithful EVM in this dataset does not have PREVRANDAO. `0x44` pushes
+the Parlia difficulty — 1 out of turn, 2 in turn. Verified live at block 121088698:
+`eth_call 0x445f5260205ff3` returns `0x…02`, while the same call on Ethereum mainnet
+returns 32 bytes of randomness.
+
+Three edits interact, and no one of them is the whole answer:
+
+1. `NewEVMBlockContext` sets `Random = &header.MixDigest` only when
+   `header.Difficulty.Sign() == 0`. Parlia never writes zero, so `Random` stays nil,
+   and `Rules()` computes `isMerge = isMerge && c.IsLondon(num)` under a comment that
+   says outright **`// always false in BSC`**.
+2. Upstream gates `IsShanghai`/`IsCancun`/`IsPrague`/`IsOsaka` on `isMerge`, so that
+   alone would switch off every fork after London. BSC re-enables them with
+   `(isMerge || c.IsInBSC())`, where `IsInBSC()` is just `c.Parlia != nil`. PUSH0,
+   MCOPY and transient storage all work; only `IsMerge` itself stays false.
+3. And `newShanghaiInstructionSet` is built from `newLondonInstructionSet()`, where
+   upstream geth builds it from `newMergeInstructionSet()`. The merge rung is bypassed
+   in the **derivation chain**, so `opRandom` never enters a table BSC can select.
+   `mergeInstructionSet` exists in the binary and is unreachable.
+
+Step 3 is the one that actually decides it, and it is invisible from the fork list.
+
+**Core reaches the identical observable by a third route.** It keeps upstream's
+merge-based derivation — so its Prague table *does* carry `opRandom` — and then
+explicitly rebinds `0x44` back to `opDifficulty` for Satoshi, in a function whose
+comment reads *"reverts the PREVRANDAO opcode to DIFFICULTY opcode, as Satoshi doesn't
+implement the PREVRANDAO opcode"*. Two chains, one answer, two mechanisms; only the
+live probe shows they agree. See `chains/core/SUMMARY.md` §4.
+
+### `mixHash` is not unused — it is validated
+
+From Lorentz, `Prepare` calls `header.SetMilliseconds(blockTime % 1000)`, which stores
+that value in `MixDigest`. It is checked in both directions:
+
+```go
+// before Lorentz
+if header.MixDigest != (common.Hash{}) { return errInvalidMixDigest }
+// after
+if header.MilliTimestamp()/1000 != header.Time {
+    return fmt.Errorf("invalid MixDigest, have %#x, expected the last two bytes to represent milliseconds", header.MixDigest)
+}
+```
+
+So `mixHash` is a consensus-validated timestamp fraction in `[0, 999]`. At block
+121088698 it was `0x258` = 600, with `timestamp` 1789051672 and `milliTimestamp`
+1789051672600.
+
+The RPC's `milliTimestamp` key is the honest reading of the field. What is not honest
+is `mixHash` itself: a tool that reads it expecting post-merge randomness gets a small
+integer that tracks block production. Third meaning for a repurposed header field in
+this dataset, after OP Stack's `blobGasUsed` (DA footprint) and Avalanche's (pinned to
+zero, and rejected if not).
+
+This row previously carried no `src_live:` facts at all; it now has a `live_probe:`
+block, because both of these are cheap to state from source and impossible to believe
+from source alone.
+
 ## Re-verify
 
 ```
@@ -141,4 +200,31 @@ sed -n '1910,1935p' params/config.go                 # IsInBSC system contract s
 sed -n '1,25p' core/systemcontracts/const.go         # 17 system contracts
 sed -n '1111,1130p' core/systemcontracts/upgrade.go  # statedb.SetCode at forks
 sed -n '139,150p' core/vm/contracts_lightclient.go   # deprecated => error
+```
+
+```bash
+B=chains/bnb/repos/bsc
+
+# PREVRANDAO: three edits, and the third is the one that decides it
+grep -n -A3 'Difficulty.Sign() == 0' $B/core/evm.go
+grep -n 'always false in BSC' $B/params/config.go
+grep -n 'IsInBSC()) && c.Is' $B/params/config.go
+grep -n -A3 '^func newShanghaiInstructionSet' $B/core/vm/jump_table.go                          # newLondonInstructionSet()
+grep -n -A3 '^func newShanghaiInstructionSet' chains/ethereum/repos/go-ethereum/core/vm/jump_table.go  # newMergeInstructionSet()
+curl -s -X POST https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"data":"0x445f5260205ff3"},"latest"]}'   # 0x..02
+curl -s -X POST https://ethereum-rpc.publicnode.com -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"data":"0x445f5260205ff3"},"latest"]}'   # 32 bytes of randomness
+
+# mixHash carries milliseconds, and consensus checks it
+sed -n '1176,1181p' $B/consensus/parlia/parlia.go
+sed -n '626,635p' $B/consensus/parlia/parlia.go
+sed -n '161,173p' $B/core/types/block.go
+curl -s -X POST https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["latest",false]}' \
+  | python3 -c 'import sys,json;b=json.load(sys.stdin)["result"];print({k:b[k] for k in ("difficulty","mixHash","timestamp","milliTimestamp")})'
+
+# row check
+tools/.venv/bin/python tools/verify.py bnb
+tools/.venv/bin/python tools/livecheck.py bnb
 ```

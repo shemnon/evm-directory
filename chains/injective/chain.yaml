@@ -799,15 +799,32 @@ tx_lifecycle:
 
 p2p:
   max_tx_bytes:
-    status: unrecorded
-    verdict: unrecorded
+    verdict: 1048576
+    tier: policy
+    src: "go.mod:cometbft"
     note: >-
-      NOT ESTABLISHED FROM THIS CLONE. The chain is a Cosmos SDK application, so admission
-      is CometBFT's `mempool.max_tx_bytes` — but CometBFT and the SDK are Go-module
-      dependencies here rather than vendored source, so the effective default cannot be
-      pinned to a commit the way `cosmos-evm` pins it. The structure is the same two-gate
-      arrangement recorded on that row (CometBFT CheckTx above, EVM txpool below); only the
-      number is unverified, and a per-network `config.toml` can change it regardless.
+      CometBFT's 1 MiB `mempool.max_tx_bytes`, reached by dependency rather than by any
+      constant in this tree: the pin is `v1.0.1` and a search of the clone finds NO override
+      of the mempool sizing anywhere. What the citation evidences is exactly that — which
+      CometBFT this row runs, and that it is unmodified here; the value is that version's
+      `DefaultConfig`, shown in vendored form on the `sei` row. This row is on the CometBFT 1.x line while its siblings are on 0.37, 0.38 and 0.39 — the widest version spread of any codebase family in this dataset.
+  fragmentation:
+    verdict: app-chunking
+    tier: transport
+    src: "go.mod:cometbft"
+    note: >-
+      MConnection packet splitting with an EOF flag, as read out on the `sei` row. Stable
+      across every CometBFT line in this dataset.
+  transports:
+    verdict: "devp2p + CometBFT"
+    src: "go.mod:cometbft"
+    note: >-
+      Two stacks in series: CometBFT p2p admits and broadcasts transactions above, the
+      geth-derived EVM txpool applies its own limits below.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
+      - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
 fee_model:
   metering: EVM gas, converted to Cosmos gas for block accounting
   fee_market: "none in consensus; an optional node-local mempool floor (Osmosis Mempool1559), disabled by default"

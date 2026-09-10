@@ -770,22 +770,53 @@ p2p:
   max_tx_bytes:
     verdict: 1048576
     tier: policy
-    src: "sei-tendermint/config/config.go:MaxTxBytes"
+    src: "sei-tendermint/internal/mempool/mempool.go:MaxTxBytes"
     note: >-
-      CometBFT's 1 MiB admission cap, from Sei's own vendored Tendermint fork
-      (`sei-tendermint`) rather than an upstream dependency — the config surface is
-      unchanged, so the default carries over. Sits above the geth-derived EVM txpool, which
-      applies its own 128 KiB independently.
+      CometBFT's 1 MiB admission cap, from Sei's own hard fork of Tendermint rather than a
+      module dependency — `DefaultConfig()` sets `MaxTxBytes: 1024 * 1024` and `CheckTx`
+      rejects a larger transaction with `ErrTxTooLarge`. The total pool is bounded
+      separately and far higher, at `MaxTxsBytes: 1024 * 1024 * 1024` (1 GiB). Sits ABOVE
+      the geth-derived EVM txpool, which applies its own 128 KiB independently — a
+      transaction between 128 KiB and 1 MiB passes the consensus gate and is then refused
+      by the execution one.
   fragmentation:
     verdict: app-chunking
     tier: transport
-    src: "sei-tendermint/config/config.go:MaxTxBytes"
+    src: "sei-tendermint/internal/p2p/conn/oldmux.go:popMsg"
     note: >-
-      THE CATEGORY MAINNET CANNOT REACH. Tendermint's p2p multiplexes each connection and
-      splits messages into fixed-size packets that the receiver reassembles, so a message
-      larger than one packet is a normal occurrence rather than an error — the comment at
-      `MaxTxBytes` notes the network-transmitted size is what the setting governs. RLPx has
-      no such mechanism, which is why mainnet's `fragmentation` reads `none`.
+      THE CATEGORY MAINNET CANNOT REACH, AND HERE IS THE MECHANISM. `popMsg` takes the head
+      of a channel's send queue and, if it does not fit in one packet, emits
+      `Eof = false` with the first `maxPayload` bytes and leaves the remainder queued;
+      when the tail fits it emits `Eof = true`. The receiver reassembles on the EOF flag.
+      RLPx has no equivalent — its multi-frame chunking was cut from the spec — which is
+      why mainnet reads `none`.
+  max_message_bytes:
+    verdict: 1000000
+    tier: transport
+    src: "sei-tendermint/config/config.go:MaxPacketMsgPayloadSize"
+    severity: high
+    note: >-
+      TWO DEFAULTS FOR THE SAME KNOB, DISAGREEING BY A FACTOR OF 714, AND ONE CLAIMS TO
+      MIRROR THE OTHER. `DefaultP2PConfig` in `config/config.go` sets
+      `MaxPacketMsgPayloadSize: 1000000`, while `DefaultMConnConfig()` in
+      `internal/p2p/conn/oldmux.go` sets `1400` with the trailing comment
+      "mirrors MaxPacketMsgPayloadSize from config/config.go". It does not mirror it. Which
+      value binds depends on whether the connection was built from the parsed config or
+      from the package default, so the packet size on a Sei link is not determinable from
+      either constant alone. Recorded as the config value because that is what an operator
+      running from `config.toml` gets.
+  transports:
+    verdict: "devp2p + CometBFT (fork)"
+    src: "sei-tendermint/internal/p2p/conn/oldmux.go:NewMConnection"
+    note: >-
+      Sei is the only row here that VENDORS its consensus p2p rather than importing it:
+      `sei-tendermint` is a hard fork carried in-tree, which is why this row can cite the
+      multiplexer directly and its Cosmos siblings can only cite a version pin. The
+      execution half is geth-derived and speaks devp2p as usual.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
+      - {layer: consensus, protocol: CometBFT p2p (sei fork), purpose: tx broadcast + consensus}
+
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting
   fee_market: >-

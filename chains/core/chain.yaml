@@ -1,0 +1,428 @@
+schema_version: 2
+
+chain:
+  name: Core
+  slug: core
+  chain_id: 1116
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    A BSC FORK WITH A BITCOIN CONSENSUS LAYER AND A FEE MARKET IN A CONTRACT. Core's
+    client is a go-ethereum fork that periodically merges from bnb-chain/bsc — its
+    own CHANGELOG records "Merged versions up to v1.4.10 from Binance smart chain" —
+    with Parlia renamed Satoshi and extended by Satoshi Plus (delegated hash power
+    and BTC staking). Two things here are not BSC's. Its two custom precompiles sit
+    at 0x64 and 0x65, which BSC also uses, for different functions. And since Theseus
+    (2025-06-25) the client reads a Solidity contract's raw storage after every
+    successful contract call and redistributes the transaction's gas to addresses
+    that registered for the event signatures it emitted — charging the sender extra
+    gas that the EVM never saw.
+
+lineage:
+  upstream: bnb
+  ancestry: [ethereum, bnb]
+  fork_of: bnb-chain/bsc (itself a go-ethereum fork)
+  sync_point: >-
+    A PERIODIC MERGE, NOT A REBASE, AND THE FORK NAMES PROVE IT. `CoreChainConfig`
+    schedules BSC's Kepler, Luban, Plato, Bohr, Pascal and Hertz alongside Core's own
+    Zeus, Hera, Poseidon, Athena, Theseus, TheseusFix and Hermes, and go.mod still
+    depends on `bnb-chain/fastssz` and replaces cometbft with
+    `bnb-chain/greenfield-cometbft`. The merge point is BSC v1.4.10 plus later
+    cherry-picks; the pinned BSC row is v1.7.8 and carries Osaka, which Core does
+    not. Core therefore has BSC's Prague and none of its Osaka, and none of BSC's
+    0x66-0x69 precompiles.
+
+client:
+  name: core-chain (geth fork)
+  repo: https://github.com/coredao-org/core-chain
+  version: v1.0.26
+  commit: 06a3e0a9804f8d11f289e2b64ba211c17f18228a
+  language: go
+
+live_probe:
+  endpoint: https://rpc.coredao.org
+  chain_id: 1116
+  observed_at_block: 38560250
+  note: >-
+    `web3_clientVersion` returns
+    `Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12`. `06a3e0a9` is this
+    commit: mainnet runs exactly the pinned tag, with no gap.
+
+consensus:
+  engine: >-
+    Satoshi (Parlia-derived PoSA) plus Satoshi Plus — Bitcoin miners delegate hash
+    power and BTC holders stake to elect the validator set
+  block_time: 3s
+  finality: fast finality via BLS vote attestations, as on BSC
+
+baseline_fork: prague
+
+forks:
+  src: params/config.go:155-195
+  note: >-
+    TWO FORK LADDERS INTERLEAVED. BSC's names and Core's own share one timestamp
+    space and several fire together — Luban, Plato, Bohr, Pascal, Prague and Hermes
+    all activate at 1764057600. There is no Osaka time anywhere in `CoreChainConfig`.
+  timeline:
+  - {name: hashpower,    activation_time: null, mainnet_equivalent: null, note: "block 0; gates the 0x64 Bitcoin precompile"}
+  - {name: zeus,         activation_time: null, mainnet_equivalent: null, note: "block 8020000"}
+  - {name: hera,         activation_time: null, mainnet_equivalent: null, note: "block 12195500"}
+  - {name: poseidon,     activation_time: null, mainnet_equivalent: null, note: "block 13232049"}
+  - {name: "berlin + london + hertz", activation_time: null, mainnet_equivalent: london, note: "block 19537200"}
+  - {name: "shanghai + kepler + demeter", activation_time: 1731999600, mainnet_equivalent: shanghai}
+  - {name: athena,       activation_time: 1738544400, mainnet_equivalent: null}
+  - {name: "cancun + theseus", activation_time: 1750838400, mainnet_equivalent: cancun,
+     note: "Theseus introduced the fee market — see fee_model"}
+  - {name: theseusFix,   activation_time: 1753948800, mainnet_equivalent: null,
+     note: "fixed the fee market's revert snapshot, which had been rolling back the nonce increment"}
+  - {name: "prague + luban + plato + bohr + pascal + hermes", activation_time: 1764057600, mainnet_equivalent: prague}
+  - {name: coreRewardFix, activation_time: 1788440400, mainnet_equivalent: null,
+     note: "2026-09-03; closed an EIP-7702 interaction with the block-reward path — see eips.7702"}
+  - {name: osaka,        activation_time: null, status: pending, note: "no OsakaTime in CoreChainConfig"}
+
+eips:
+  7951:
+    status: removed
+    note: >-
+      NO P256VERIFY. The precompile ladder tops out at
+      `PrecompiledContractsPrague`; there is no Osaka map and no 0x0100 entry, so the
+      address is an empty account that succeeds with no output — the failure mode
+      EIP-7951 cannot be distinguished from an invalid signature.
+    src: "core/vm/contracts.go:136-157, core/vm/contracts.go:263-293"
+    src_live: "eth_call 0x0100 @ 38560250 -> 0x"
+  2537: {status: inherited, note: "BLS12-381 at 0x0b-0x11 via Prague/Pascal, at mainnet addresses and prices",
+         src: "core/vm/contracts.go:PrecompiledContractsPrague"}
+  7702:
+    status: modified
+    severity: high
+    note: >-
+      ACCEPTED, AND IT REACHED INTO THE BLOCK REWARD. Set-code transactions are
+      admitted from Prague (`core/txpool/validation.go:84`). The Satoshi block-reward
+      path treats `msg.sender == block.coinbase` as an implicit authorization for the
+      system reward call, so a coinbase account carrying a delegation designator
+      could re-enter that path from an ORDINARY transaction. `CoreRewardFix`
+      (2026-09-03, six days before this row was written) rejects a block outright if
+      `ParseDelegation(state.GetCode(header.Coinbase))` succeeds, and the same fork
+      added `verifyNonSystemZeroGasTxs`, which rejects a block containing any
+      zero-effective-gas-price transaction that is not addressed to a system
+      contract. Both are consensus rules that did not exist a week earlier.
+    src: "consensus/satoshi/satoshi.go:1490-1498, consensus/satoshi/satoshi.go:368-385"
+  4844:
+    status: modified
+    note: >-
+      Structurally present, empirically unused. The header carries `blobGasUsed` and
+      `excessBlobGas` and `VerifyEIP4844Header` runs from Cancun, and the txpool
+      admits type 0x03 from Cancun — but there is no consensus layer to hold blob
+      sidecars, and both header fields were zero in every block sampled. Whether a
+      blob transaction has ever been included is not established.
+    src: "consensus/satoshi/satoshi.go:671-688, core/txpool/validation.go:81-82"
+    src_live: "eth_getBlockByNumber latest @ 38560250 -> blobGasUsed 0x0, excessBlobGas 0x0"
+  4399:
+    status: modified
+    severity: high
+    note: >-
+      PREVRANDAO IS UNREACHABLE, AND 0x44 RETURNS 1 OR 2. `NewEVMBlockContext` sets
+      `Random = &header.MixDigest` only when `header.Difficulty.Sign() == 0`.
+      Satoshi, like Parlia, writes a difficulty of 1 or 2, so `Random` stays nil,
+      `chainRules.IsMerge` is false, and the jump table binds 0x44 to `opDifficulty`.
+      Solidity's `block.prevrandao` therefore reads the Satoshi difficulty — a
+      one-bit value — with no revert and no signal. Verified live: difficulty 0x2.
+      The same construction exists in bnb-chain/bsc at the same line, which that row
+      does not currently record.
+    src: "core/evm.go:75-77, core/vm/evm.go:143, core/vm/jump_table.go:103"
+    src_live: "eth_getBlockByNumber latest @ 38560250 -> difficulty 0x2, mixHash 0x00…00"
+  2935: {status: inherited, note: "the history-storage contract's code is INSTALLED BY THE CLIENT at the Prague transition rather than being in genesis",
+         src: "core/systemcontracts/upgrade.go:771-775"}
+  1559: {status: inherited, note: "EIP-1559 base fee present; see fee_model for where the priority fee actually goes",
+         src: "consensus/satoshi/satoshi.go:666-668"}
+  3651: {status: inherited, src: "core/vm/contracts.go:PrecompiledContractsPrague"}
+
+non_eip_specs:
+  - {id: Satoshi Plus, name: delegated Bitcoin hash power + BTC staking for validator election, adoption: adopted,
+     src: "core/systemcontracts/const.go:HashAgentContract"}
+  - {id: "Core fee market (Rev+)", name: contract-registered gas revenue sharing by event signature, adoption: adopted, fork: theseus,
+     src: "eth/feemarket/feemarket.go:NewFeeMarket"}
+  - {id: BEP-derived, name: BSC consensus precompiles and fork names, adoption: adopted,
+     src: "params/config.go:155-195"}
+
+tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x04"
+    src: "core/txpool/validation.go:76-85"
+    note: >-
+      The full mainnet Prague envelope is admitted by the pool: 0x01 from Berlin,
+      0x02 from London, 0x03 from Cancun and 0x04 from Prague. 0x03 is listed as
+      present because the client accepts it; see eips.4844 for why that is a weaker
+      claim than it looks. Sampled live: 44 transactions across 30 blocks, types 0x00
+      and 0x02 only.
+  note: >-
+    NO CUSTOM TYPE BYTE. Core adds nothing to the envelope; the whole delta is in
+    precompile placement, the fee market and the reward path.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Unchanged from BSC and from mainnet: one secp256k1 signature, sender derived from
+    the key. EIP-7702 delegation is accepted, and the one place it interacts with
+    consensus — a delegated coinbase — is now rejected outright; see eips.7702.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      src: "core/vm/contracts.go:PrecompiledContractsPrague"
+    bls:
+      status: added
+      authorizes: never
+      precompile: "0x65"
+      note: >-
+        The verifier is at 0x65, NOT at 0x66 where BSC puts the identically named
+        precompile. Contracts, not senders: a BLS key cannot authorize a transaction
+        here. Used by the fast-finality vote path.
+      src: "core/vm/contracts.go:170-172, core/vm/contracts.go:1207-1231"
+
+precompiles:
+  # verified: core/vm/contracts.go:PrecompiledContractsPrague plus the two Satoshi
+  # maps, which ActivePrecompiles appends when rules.IsSatoshi
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: false
+    src: core/vm/contracts.go:PrecompiledContractsPrague
+    note: >-
+      The full Prague base range at mainnet addresses and mainnet prices, including
+      EIP-2537 BLS at 0x0b-0x11 and KZG at 0x0a. No P256VERIFY — the ladder has no
+      Osaka rung, so 0x0100 is an empty account.
+  "0x64":
+    name: btcValidateV2
+    status: added
+    fork: hashpower
+    severity: high
+    note: >-
+      BITCOIN LIGHT-CLIENT VALIDATION AT AN ADDRESS FOUR OTHER CHAINS ALSO USE.
+      Deserializes a `BtcLightMirrorV2`, checks the Merkle root against the coinbase
+      transaction, and returns (candidate address, reward address, block hash) — the
+      hash-power delegation proof. 20,000 gas plus 100 per word.
+
+      0x64 is now a FIVE-WAY collision across unrelated lineages: BSC's
+      tmHeaderValidate (tombstoned at Pasteur), Arbitrum's ArbSys, Cronos's Bank
+      precompile, Core's Bitcoin validator — and it is live on at least three of
+      them simultaneously. A tool holding one address-keyed precompile map is wrong
+      on four chains at this single address.
+    src: "core/vm/contracts.go:165-167, core/vm/contracts_lightclient.go:18-63, params/protocol_params.go:148-149"
+    src_live: "eth_getCode 0x64 @ 38560250 -> 0x (a precompile, not a predeploy)"
+  "0x65":
+    name: blsSignatureVerify
+    status: added
+    fork: prague
+    severity: high
+    note: >-
+      THE SAME PRECOMPILE AS BSC'S, AT A DIFFERENT ADDRESS — AND AT ANOTHER OF BSC'S
+      ADDRESSES. Input is `msg(32) || signature(96) || pubkey[](48 each)`; 1,000 gas
+      base plus 3,500 per key. Byte-for-byte BSC's `blsSignatureVerify`, which BSC
+      installs at 0x66. Two consequences, both silent:
+
+      A contract ported from BSC that calls 0x66 for BLS verification reaches an
+      EMPTY ACCOUNT on Core: the call SUCCEEDS and returns no data, which an
+      unchecked caller reads as "verification produced nothing" rather than "there is
+      no verifier here". Verified live: `eth_call` to 0x66 returns `0x`, while the
+      same call to 0x65 reverts.
+
+      In the other direction, 0x65 on BSC is `iavlMerkleProofValidate`. Code written
+      for BSC that calls 0x65 expecting an IAVL proof check gets a BLS signature
+      verification on Core.
+    src: "core/vm/contracts.go:170-172, core/vm/contracts.go:1207-1231, params/protocol_params.go:158-159"
+    src_live: "eth_call 0x65 @ 38560250 -> execution reverted; eth_call 0x66 @ 38560250 -> 0x (empty account, succeeds)"
+  note: >-
+    Two added addresses, both inside the 0x64-0x69 block that BSC opened and that
+    mainnet is growing toward. Core is the fourth chain in this dataset to place
+    customs there and the second to place a DIFFERENT function at an address a
+    sibling chain already uses.
+
+system_contracts:
+  "0x0000000000000000000000000000000000001000": {name: ValidatorContract, status: added,
+     note: "same address and same NAME as BSC's and Polygon's, with different code — now a three-way collision", src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001001": {name: SlashContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001002": {name: SystemRewardContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001003": {name: LightClientContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001004": {name: RelayerHubContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001005": {name: CandidateHubContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001006": {name: GovHubContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001007": {name: PledgeCandidateContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001008": {name: BurnContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001009": {name: FoundationContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001010": {name: StakeHubContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001011":
+    name: CoreAgentContract
+    status: added
+    note: >-
+      CORE staking. Collides with Sei's P256VERIFY, which sits at 0x…1011 and is
+      ABI-dispatched as `verify(bytes)` — two chains, one address, one a staking
+      module and the other a signature verifier.
+    src: core/systemcontracts/const.go
+  "0x0000000000000000000000000000000000001012": {name: HashAgentContract, status: added,
+     note: "Bitcoin hash-power delegation accounting", src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001013": {name: BTCAgentContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001014": {name: BTCStakeContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001015": {name: BTCLSTStakeContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000001016":
+    name: FeeMarketContract
+    status: added
+    severity: high
+    note: >-
+      A SOLIDITY CONTRACT WHOSE STORAGE LAYOUT IS PART OF CONSENSUS. The client does
+      not CALL this contract — `eth/feemarket/feemarket.go` walks its raw storage
+      slots directly, with the packing documented in a comment block that begins
+      "This implementation reads the storage layout of the Fee Market
+      Configuration.sol contract as deployed on-chain" and warns that "any change to
+      slot packing/order is a breaking change". A Solidity upgrade that reorders one
+      field changes the state transition. See fee_model.
+    src: "eth/feemarket/feemarket.go:18-52, core/systemcontracts/const.go"
+    src_live: "eth_getCode 0x…1016 @ 38560250 -> 0x6080… (non-empty)"
+  "0x0000000000000000000000000000000000001017": {name: ChannelContract, status: added, src: core/systemcontracts/const.go}
+  "0x0000000000000000000000000000000000010001": {name: BTCLSTTokenContract, status: added,
+     note: "outside the 0x1000-0x1017 block", src: core/systemcontracts/const.go}
+  mutable_bytecode:
+    status: modified
+    severity: high
+    note: >-
+      SYSTEM CONTRACT CODE IS REPLACED BY THE CLIENT AT A FORK, NOT BY A TRANSACTION.
+      `TryUpdateBuildInSystemContract` calls `statedb.SetCode` for the contracts a
+      fork revises — the `CoreRewardFix` upgrade ships a new `ValidatorContract`
+      bytecode as an embedded file. The bytecode at these addresses is therefore a
+      function of the client version, and a code hash captured before a fork does not
+      match the code that runs after it, with no on-chain transaction to point at.
+      Hermes additionally moved the upgrade from the START of the block to the END,
+      so the same fork changes WHEN within a block the swap is observable.
+    src: "core/systemcontracts/upgrade.go:765-781, core/systemcontracts/corerewardfix/types.go"
+
+system_transactions:
+  - name: Satoshi system calls
+    note: >-
+      Parlia's pattern: the validator's own transactions to the system contracts at
+      the end of each block, zero gas price, sender equal to the coinbase. Since
+      CoreRewardFix a zero-effective-gas-price transaction addressed to anything
+      OTHER than a system contract makes the block invalid.
+    src: "consensus/satoshi/satoshi.go:344-361, consensus/satoshi/satoshi.go:368-385"
+  - name: fee market distribution
+    note: >-
+      After every successful contract call, the client credits ETH to zero or more
+      registered reward addresses based on the transaction's LOGS. No log of its own,
+      no receipt entry, no trace frame. See fee_model.
+    src: "core/state_transition.go:533-660"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0x44"
+    name: PREVRANDAO
+    severity: high
+    note: >-
+      Binds to `opDifficulty`, not `opRandom`, because Satoshi writes a nonzero
+      difficulty — see eips.4399. Returns 1 or 2.
+    src: "core/vm/jump_table.go:103, core/evm.go:75-77"
+  pending: []
+  tombstoned: []
+
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: charged
+    severity: high
+    note: >-
+      A NEW WAY FOR A SUCCESSFUL TRANSACTION TO FAIL. The fee-market pass runs AFTER
+      the EVM has returned successfully. If the sender's remaining gas cannot cover
+      the config storage reads plus `FeeMarketDistributeGas` (2,300) plus the reward
+      gas for each matching event, the client sets `ErrFeeMarketOutOfGas` and reverts
+      to a snapshot taken before execution. The transaction's own code completed;
+      there is no REVERT in its trace and no failing opcode to point at. Which events
+      are chargeable is governance state in another contract, so the same calldata
+      against the same contract can succeed today and run out of gas tomorrow with no
+      change to either.
+    src: "core/state_transition.go:568-580, core/state_transition.go:614-624, params/protocol_params.go:44"
+  nonce_on_failure:
+    verdict: burned
+    note: >-
+      And this was WRONG UNTIL TheseusFix. Before 2025-07-31 the fee-market revert
+      used a snapshot taken after the nonce increment was already journalled, so a
+      fee-market failure rolled the nonce back too; `st.evm.InitialSnapshot()` now
+      preserves it. A consensus-visible nonce bug, live for five weeks.
+    src: "core/state_transition.go:538-544"
+
+fee_model:
+  metering: gas
+  fee_market: "EIP-1559 base fee, plus a contract-registered revenue share (Rev+)"
+  severity: high
+  note: >-
+    GAS IS CHARGED FOR EMITTING A LOG, AND THE PRICE IS SET BY A THIRD PARTY. After
+    every successful contract call the client reads the transaction's logs, looks up
+    each emitting address in the Fee Market contract's raw storage, and for each log
+    whose `topics[0]` matches a registered event signature deducts
+    `event.Gas * reward.RewardPercentage / 10000` gas from the sender — plus 2,300
+    per reward — and credits the equivalent wei to the reward address at the
+    transaction's effective tip.
+
+    Four consequences. The extra gas is deducted from `st.gasRemaining` AFTER
+    execution, so the GAS opcode inside the transaction never sees it and an
+    in-contract gas budget cannot account for it. The deducted gas is then returned
+    to the BLOCK gas pool (`st.gp.AddGas(distributedGas)`), so a block can contain
+    more transaction gas than its own limit would suggest. Logs emitted by
+    precompiles are skipped by an explicit `ActivePrecompiles` membership test. And
+    the registration lives in governance state, so the cost of calling a contract is
+    not a property of that contract.
+  extra_components:
+  - {name: Rev+ revenue share, note: "per-event gas, charged to the sender, paid to addresses registered in the Fee Market contract"}
+  src: "core/state_transition.go:533-660, eth/feemarket/feemarket.go:42-52, params/protocol_params.go:44"
+
+header_fields:
+  added:
+  - name: milliTimestamp
+    note: >-
+      NOT A NEW FIELD — A REPURPOSED ONE. `Header.SetMilliseconds` stores the
+      sub-second part of the block time IN `MixDigest`, and `MilliTimestamp()`
+      returns `Time*1000 + mixHash`. The RPC exposes it as `milliTimestamp`. It is
+      dormant on mainnet today (mixHash was zero in every block sampled, so
+      milliTimestamp is exactly `timestamp * 1000`), but the field is already
+      consensus-visible and the same construction is already ACTIVE on BSC, where
+      mixHash carried 0x352 at the block sampled. Wherever it is used, `block.mixHash`
+      becomes a number in [0, 999].
+    src: "core/types/block.go:161-173, internal/ethapi/api.go:1440"
+    src_live: "eth_getBlockByNumber latest @ 38560250 -> mixHash 0x00…00, milliTimestamp 0x1a0882b24e0 = timestamp*1000"
+  removed: []
+  modified: []
+
+gotchas:
+  - >-
+    0x64 AND 0x65 ARE OCCUPIED, AND NOT BY WHAT A BSC DEVELOPER EXPECTS. Core's
+    Bitcoin validator is at 0x64 (BSC: Tendermint header validation) and its BLS
+    verifier is at 0x65 (BSC: IAVL proof validation; BSC's BLS verifier is at 0x66).
+    Calling 0x66 on Core hits an empty account and SUCCEEDS with empty output.
+  - >-
+    EMITTING AN EVENT CAN COST GAS THE EVM NEVER CHARGED. The fee market deducts gas
+    after execution based on the transaction's logs and on governance state in
+    another contract. It can fail a transaction whose code succeeded, with no REVERT
+    in the trace, and the amount is not knowable from the contract's own bytecode.
+  - >-
+    `block.prevrandao` RETURNS 1 OR 2. Satoshi's nonzero difficulty keeps the EVM out
+    of merge rules, so 0x44 is still DIFFICULTY. Anything using it for entropy is
+    reading a one-bit value.
+  - >-
+    A SOLIDITY STORAGE LAYOUT IS A CONSENSUS INTERFACE. The client parses the Fee
+    Market contract's packed slots directly; the source says a reordering is "a
+    breaking change". Auditing that contract means auditing its slot assignment.
+  - >-
+    SYSTEM CONTRACT BYTECODE CHANGES AT FORKS WITH NO TRANSACTION. Code hashes taken
+    before a fork will not match after it, and there is nothing on chain to explain
+    why.
+  - >-
+    NO P256VERIFY, AND THE ADDRESS ANSWERS ANYWAY. 0x0100 is an empty account: a
+    P-256 verification returns empty output, which EIP-7951 also uses to signal an
+    invalid signature. Every P-256 check on Core reports "invalid" forever.
+  - >-
+    TWO CONSENSUS RULES ARE SIX DAYS OLD. CoreRewardFix (2026-09-03) rejects a block
+    whose coinbase carries an EIP-7702 delegation, and rejects zero-gas-price
+    transactions not addressed to system contracts. Any analysis of Core's reward
+    path from before that date describes a different chain.

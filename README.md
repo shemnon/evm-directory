@@ -40,6 +40,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 |---|---|---|---|
 | [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.5` | osaka (baseline) |
 | [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.7.8` | osaka |
+| [Core](chains/core/SUMMARY.md) | core-chain (BSC fork) | `v1.0.26` | prague |
 | [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.0` | prague |
 | [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | cancun |
 | [Avalanche subnet-evm (L1s / Subnets)](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | cancun |

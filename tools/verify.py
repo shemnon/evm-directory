@@ -834,8 +834,18 @@ def main():
                     help="skip every check that needs a pinned clone (source "
                          "extraction, base map, envelope, citation resolution) and "
                          "run only the checks that read chain.yaml alone")
+    ap.add_argument("slugs", nargs="*", metavar="SLUG",
+                    help="check only these rows (default: every row). Useful while "
+                         "writing one; the evidence tally and the NO EXTRACTOR list "
+                         "then describe only what was run, not the dataset")
     a = ap.parse_args()
     no_clones = a.no_clones
+    only = set(a.slugs)
+    known = {f.parent.name for f in (ROOT / "chains").glob("*/chain.yaml")}
+    unknown = only - known
+    if unknown:
+        print(f"no such row: {', '.join(sorted(unknown))}")
+        return 2
 
     problems = 0
     totals = {"src": 0, "src_live": 0, "src_doc": 0, "unrecorded": 0, "none": 0}
@@ -846,6 +856,7 @@ def main():
               "  tx-authorization vocabulary, citation shape, evidence tally.")
     for f in sorted((ROOT / "chains").glob("*/chain.yaml")):
         slug = f.parent.name
+        if only and slug not in only: continue
         c = yaml.safe_load(f.read_text())
         cl = c.get("client") or {}
         documented = c["chain"].get("evidence") == "documented"
@@ -1078,6 +1089,9 @@ def main():
     if unextracted:
         print(f"! NO EXTRACTOR, precompiles unchecked: {', '.join(unextracted)}")
         print("  these rows' precompile lists are taken on trust — write an extractor")
+    if only:
+        print(f"! PARTIAL RUN: only {', '.join(sorted(only))}. The tally above is "
+              f"not the dataset's.")
     if no_clones:
         print("! --no-clones: NOTHING here was checked against source. The pinned "
               "clones are\n  the only thing that can catch drift; run "

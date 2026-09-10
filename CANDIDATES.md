@@ -105,13 +105,35 @@ has full source and no reachable network; Artela the same; RISE has a *released 
 a deployment repo while the execution client is closed. "Is there a public client" and "is the
 state transition auditable" are different questions, and three of seven rows separate them.
 
+## Tier 1c — the state-and-placement pass
+
+Four chains plus one framework row, taken out of Tier 2 and Tier 3 together because
+they answer one question: **what does a chain change when it does not change the
+envelope?** None of the five adds a transaction type. Three of them are, by an
+envelope diff, mainnet-equivalent.
+
+| Chain | Row | What it turned out to be |
+|---|---|---|
+| **Blast** | [`blast`](chains/blast/SUMMARY.md) | The prediction — "rebasing yield changes balances with no transaction" — is right and **understates it**. Blast deletes `Balance` from the consensus account: `StateAccount` is `{Nonce, Flags, Fixed, Shares, Remainder, Root, CodeHash}`, seven RLP items, and balance is *derived* from a share price held in one predeploy's storage slot. `eth_getProof` returns no `balance` field at all. Two accounts absent from block 40051137 gained wei across it with no log, no receipt and **no write to their account leaves**. Also the third state of `0x0100`: not P256VERIFY, not empty — occupied by a state-mutating precompile. |
+| **Rootstock** | [`rootstock`](chains/rootstock/SUMMARY.md) | Opcode drift confirmed (four tombstoned bytes, three of them switched **off** by RSKIP191 after four years live), but the bigger finding is the gas schedule: Cancun-era opcodes on a Constantinople-era gas set — no EIP-2929, no EIP-2200, no EIP-3529, SELFDESTRUCT still refunding 24,000. No EIP-2718 envelope at all. And a **maximum** gas price enforced at block validation, 100× the block's minimum. |
+| **Core** | [`core`](chains/core/SUMMARY.md) | A BSC fork whose own CHANGELOG names the merge point. Its BLS verifier sits at **`0x65`**, one of BSC's *other* precompile addresses, so a BSC contract calling `0x66` reaches an empty account and succeeds. Since Theseus the client reads a Solidity contract's raw storage after every successful call and charges the sender extra gas per matching **event signature** — able to fail a transaction whose code succeeded, with no `REVERT` in the trace. `block.prevrandao` returns 1 or 2. |
+| **Cronos** | [`cronos`](chains/cronos/SUMMARY.md) | **Refutes this file's own framework table.** Not a `cosmos/evm` chain: it runs `evmos/ethermint` through its own fork, with `x/evm` rather than `x/vm` and a different go-ethereum fork. And its three famous precompiles at `0x64`–`0x66` are **defined and not registered** — `app/app.go` hands the EVM keeper an empty `CustomContractFn` slice, and all three addresses are empty accounts. A grep-based survey reports three; the chain has zero. |
+| **ZK Stack** **FW** | [`zk-stack`](chains/zk-stack/SUMMARY.md) | Framework row **warranted, and verified rather than assumed**: `zks_getProtocolVersion` returns byte-identical bootloader / default-account / EVM-emulator hashes at version 30 on Era, Abstract, Sophon and Lens, and all four report the same L1 Bridgehub. `template`, not `stack`, because the base token is per deployment — Sophon prices gas in SOPH and Lens in GHO — as are four fee parameters. They did **not** always match: at L1 batch 1 the four had three different hash sets, so the claim carries a date. |
+
+### What this pass says about the selection criteria
+
+Criterion 2 ranks by **expected divergence**, and this pass shows the ranking is only
+as good as the axis it is measured on. Blast, Core and Cronos all have a mainnet
+envelope and a mainnet-shaped precompile base map; an address-and-type-byte survey
+scores all three near zero. The divergence is in the account representation, in
+post-execution gas accounting, and in *which* address a shared precompile was put at.
+Two of the five rows are findings about a **negative** — an unregistered precompile
+set and an unpinned framework claim — which no divergence metric predicts.
+
 ## Tier 2 — clears the $100M floor; divergence likely real but narrower
 
 `Ronin` (`ronin-chain/ronin` — Consortium DPoS, gas sponsorship, heavy gaming mindshare) ·
-`Core` (`coredao-org/core-chain` — Satoshi Plus, BTC staking) ·
-`Cronos` (Cosmos EVM derivative) ·
-`Blast` (`blast-io/blast` — native rebasing yield changes balances with no transaction, a genuine state-transition delta) ·
-`Fraxtal` · `Metis` · `Kava` · `Rootstock` (`rsksmart/rskj` — merge-mined, forked the EVM early enough that opcode-level drift is likely) ·
+`Fraxtal` · `Metis` · `Kava` ·
 `IoTeX` · `XDC` · `Chiliz` · `Story` (`piplabs/story` — IP-registry precompiles) ·
 `ZetaChain` · `Somnia` · `0G` · `Etherlink` · `Botanix`.
 
@@ -121,7 +143,10 @@ OP Stack derivatives with no state-transition delta: **Unichain** (Flashblocks i
 *building*, like World Chain), **Ink**, **Zora**, **Mode**, **Soneium**, **Lisk**,
 **Katana**, **Codex**. Cover them as a membership list under `op-stack`, and only
 promote one if it ships a custom predeploy, precompile, or tx type. ZK Stack chains
-(**Abstract**, **Sophon**, **Lens**) likewise belong under the zkSync row.
+(**Abstract**, **Sophon**, **Lens**) likewise belong under the ZK Stack row — now
+[`zk-stack`](chains/zk-stack/SUMMARY.md), where the shared-code claim is *measured*:
+identical system-contract bytecode hashes at protocol version 30. Promote one only if
+`zks_getProtocolVersion` shows it on a version the others do not have.
 
 Not EVM, out of scope regardless of cap: Solana, Sui, Aptos, Starknet, Fuel, Canton, TON.
 
@@ -155,16 +180,26 @@ running chain.
 |---|---|---|
 | OP Stack | ✅ `op-stack` | Base, opBNB, World Chain, Unichain, Ink, Zora, Mode, Soneium, Lisk, Celo¹, Mantle¹, MegaETH¹ |
 | Avalanche subnet-evm | ✅ `avalanche-subnet` | all L1s/subnets |
-| Cosmos EVM (`evmd`) | ✅ `cosmos-evm` (`role: template`) | Cronos, XRPL EVM, ZetaChain, Injective¹ |
+| Cosmos EVM (`evmd`) | ✅ `cosmos-evm` (`role: template`) | XRPL EVM, ZetaChain, Injective¹ — **not Cronos** (see below) |
 | Arbitrum Nitro / Orbit | 🔄 in progress | Nova, ApeChain, Orbit chains |
-| ZK Stack | ❌ proposed | Abstract, Sophon, Lens, Cronos zkEVM |
+| ZK Stack | ✅ `zk-stack` (`role: template`) | Abstract, Sophon, Lens — **verified**: identical bootloader / default-account / EVM-emulator bytecode hashes at protocol version 30 on all four networks, and one shared L1 Bridgehub. The strongest shared-code evidence of any framework row here. |
+| Ethermint (pre-donation) | ⛔ **not warranted** | — [`cronos`](chains/cronos/SUMMARY.md) forked `evmos/ethermint` before it became `cosmos/evm` and has carried its own copy since: `x/evm` not `x/vm`, its own go-ethereum fork, precompiles at `0x64`-`0x66` instead of `0x0800`, and no `AcceptedTxType` allowlist. Listing it under `cosmos-evm` asserted an inheritance that `grep cosmos/evm go.mod` refutes in one line. One row per surviving fork; there is no shared artifact to pin. |
 | Frontier (Substrate) | ⛔ **not warranted** | — Moonbeam forks every Frontier crate and shares the fork with nobody, so a template row would pin code no chain runs. Recorded as `role: independent` instead. Astar/Moonriver would each need their own read. **Amended:** [`autonomys`](chains/autonomys/SUMMARY.md) consumes `polkadot-evm/frontier` upstream and unmodified (it patches *polkadot-sdk* beneath it instead), so the "everyone forks it" premise is false in general — but a Frontier row still would not absorb Autonomys, whose divergences are all in its own code. |
 | Polygon CDK | ⛔ **not warranted yet** | — "CDK" is no longer one EVM: `cdk-erigon` and `cdk-op-reth` put descendants on different stacks. A template row would assert Polygon zkEVM's disabled MODEXP and Berlin baseline for X Layer and Immutable from zero evidence. [`polygon-zkevm`](chains/polygon-zkevm/SUMMARY.md) names the single probe that would settle it. |
 | Rollkit / Evolve | ✅ `rollkit` (`role: template`) | Eden (chain 714) — the only confirmed instance. Passes on shared code, nearly fails on descendants: a fourth outcome, *shared binary, no ecosystem*. |
 | BeaconKit | ⛔ **not warranted** | — Berachain's EL fork (`bera-reth`) carries the divergence; BeaconKit is pinned as its companion. |
 
 ¹ diverges from its framework enough to need its own row anyway — which is
-exactly the thing worth measuring. Three of the eight proposed framework rows turned
+exactly the thing worth measuring. Four of the nine proposed framework rows turned
 out **not to be frameworks in practice**: the code was forked per-chain, or the family
 had already split across incompatible stacks. Prefer a framework row, but verify that
 descendants actually share the pinned code before writing one.
+
+**How to verify it.** The ZK Stack row is the template for the test, because the check
+is one RPC call per descendant and it compares *bytecode*, not documentation:
+`zks_getProtocolVersion` returns the hashes of the three contracts that define the
+state transition, and four independent networks returning the same three hashes is not
+something a per-chain fork can fake. The equivalent question for a Cosmos chain —
+"does `go.mod` actually require the framework?" — is equally cheap and was never asked
+of Cronos, which is why this file asserted a relationship for a year that a one-line
+grep refutes. Ask for the artifact, not for the family resemblance.

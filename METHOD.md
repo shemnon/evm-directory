@@ -25,13 +25,22 @@ to a zero the schema can hold.
 
 Arbitrum's Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate
 and omits a second virtual machine. Base's precompiles are not enumerable. opBNB has two
-parents. Each is recorded explicitly rather than reduced to a zero the schema can hold.
+parents. Blast's accounts have no balance field. Each is recorded explicitly rather than
+reduced to a zero the schema can hold.
+
+The fourth is the first that is about **state** rather than about execution, and it is
+the one worth watching: an axis the schema does not model can still be caught by an
+extractor or a live probe as long as it is *addressed* — a precompile, a type byte, a
+header field. Blast's is not addressed at all. It was found by reading a struct
+definition, and confirmed only because `eth_getProof` happens to expose the account's
+shape over JSON-RPC.
 
 | Chain | What the schema cannot hold |
 |---|---|
 | [Arbitrum](chains/arbitrum/) | Stylus runs WebAssembly alongside the EVM, so "no custom opcodes" is accurate and omits a second virtual machine. |
 | [Base](chains/base/) | Base's precompiles are resolved by predicate and are not enumerable, so no address-keyed column can hold them. |
 | [opBNB](chains/opbnb/) | opBNB has two parents — the OP Stack and BSC — and the lineage axis models one ancestry per kind. |
+| [Blast](chains/blast/) | The consensus **account** is not Ethereum's. `types.StateAccount` is `{Nonce, Flags, Fixed, Shares, Remainder, Root, CodeHash}` — seven RLP items with no `Balance` — and a balance is computed from a share price held in one predeploy's storage. The schema has axes for opcodes, precompiles, transactions, headers and fees, and none for the state representation those all operate on, so the fact is carried in `gotchas` and in an `eips.1186` entry about `eth_getProof` rather than in a section of its own. |
 
 ## Four of fifteen candidate clients were at the wrong address
 

@@ -82,6 +82,17 @@ table.pin th:first-child, table.pin td:first-child {
 table.pin thead th:first-child { z-index: 3; }
 table.pin tbody tr:hover td:first-child { background: var(--accent-bg); }
 table.pin td:not(:first-child) { text-align: center; font-size: 14px; }
+/* Flipped grids carry values, not glyphs: centring prose makes ragged columns that
+   are hard to compare down. Left-align and let the pinned chain column stay narrow. */
+table.flip td:not(:first-child) { text-align: left; }
+table.flip th:not(:first-child) { text-align: left; }
+/* In a symbol grid the cell link is display:block so the whole cell is a click target.
+   Here the cell carries a value AND its enforcement tier, so a block link pushes the
+   tier onto a second line and doubles every row's height. */
+table.flip td .cl { display: inline-block; }
+/* The tier is a qualifier on the value beside it, not a status mark — it gets its own
+   class rather than borrowing .s-inherited, which means "inherited from a stack row". */
+.tier { color: var(--dim); font-size: 11px; margin-left: .3rem; }
 td.n, th.n { font-family: var(--mono); font-size: 12px; }
 td.wrap, .wrap { white-space: normal; min-width: 20rem; overflow-wrap: anywhere; }
 table.kv td:first-child { color: var(--dim); width: 12rem; white-space: nowrap; }

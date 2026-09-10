@@ -6,58 +6,58 @@ EIP-2718 type bytes only. Legal range is `0x00`–`0x7f`; `0x80`+ collides with 
 
 The envelope `0x00`–`0x04` (Legacy, 2930, 1559, 4844, 7702) is shown for every chain, from an `envelope` each row declares (`=` accepted in mainnet shape, `➖` not accepted). Rows above `0x04` list only the chains that define a byte there.
 
-| Address | Ethereum | BNB | Polygon | Avax C | Avax subnet | Kaia | Sei | Gnosis | Sonic | Bera | Flare | Arbitrum | OP Stack | OP Mainnet | Base | World | opBNB | Celo | Mantle | MegaETH | RISE | Linea | Scroll | Taiko | zkEVM | zkSync | Rollkit | Cosmos EVM | Injective | Artela | Moonbeam | Tron | Monad | Hyperliquid | Hedera | Conflux | Taraxa | Auto EVM | IOTA EVM | Tempo | Arc | Plasma | Blast |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `0x00` LegacyTx / Legacy / Legacy (EIP-155) / LegacyTx (12-field celo variant) / LegacyTx (EIP-155 protected only) / LegacyTx (overloaded as the MegaETH system transaction) / TxTypeLegacyTransaction / legacy | = | = | = | = | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ⚠️ | = | ⚠️ | ⚠️ | = | = | = |
-| `0x01` AccessListTx / EIP-2930 access list / EIP-2930 | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ➖ | = | = | ⚠️ | = | ➖ | = | ➖ | ⚠️ | unrecorded | = | = |
-| `0x02` DynamicFeeTx / EIP-1559 / EIP-1559 dynamic fee / DynamicFeeTransaction / DynamicFeeTx (and, at index 0 only, the anchor transaction) | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ➖ | ⚠️ | ➖ | ⚠️ | = | = | = |
-| `0x03` BlobTx / EIP-4844 blob / BlobTransaction | = | = | ➖ | ➖ | ➖ | = | ⊘ | = | ⚠️ | = | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | unrecorded | ⚠️ | ➖ | ➖ | ➖ | unrecorded | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ |
-| `0x04` SetCodeTx / EIP-7702 set code / EIP-7702 set-code / SetCodeTransaction | = | = | = | ➖ | ➖ | = | = | = | = | ➖ | ➖ | = | = | = | = | = | ➖ | ➖ | ➖ | = | = | = | ⚠️ | = | ➖ | ➖ | = | = | ⚠️ | ➖ | = | ➖ | = | unrecorded | ➖ | ⚠️ | ➖ | = | ➖ | ⚠️ | = | = | ➖ |
-| `0x08` TxTypeValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x09` TxTypeFeeDelegatedValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x0a` TxTypeFeeDelegatedValueTransferWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x10` TxTypeValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x11` TxTypeFeeDelegatedValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x12` TxTypeFeeDelegatedValueTransferMemoWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x18` TxTypeAccountCreation |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x1d` WorldChainTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ◌ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x20` TxTypeAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x21` TxTypeFeeDelegatedAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x22` TxTypeFeeDelegatedAccountUpdateWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x28` TxTypeSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x29` TxTypeFeeDelegatedSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x2a` TxTypeFeeDelegatedSmartContractDeployWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x30` TxTypeSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x31` TxTypeFeeDelegatedSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x32` TxTypeFeeDelegatedSmartContractExecutionWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x38` TxTypeCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x39` TxTypeFeeDelegatedCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x3a` TxTypeFeeDelegatedCancelWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x40` TxTypeBatch |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x48` TxTypeChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x49` TxTypeFeeDelegatedChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x4a` TxTypeFeeDelegatedChainDataAnchoringWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x64` ArbitrumDepositTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x65` ArbitrumUnsignedTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x66` ArbitrumContractTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x68` ArbitrumRetryTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x69` ArbitrumSubmitRetryableTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x6a` ArbitrumInternalTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x71` EIP-712 transaction (native account abstraction) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x76` EvNodeTransaction (batch calls + fee payer) / TempoTransaction (TT) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |
-| `0x78` ArbitrumLegacyTx / EthereumTxTypeEnvelope |  |  |  |  |  | ➕ |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x79` Eip8130Tx |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7d` PostExecTx |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded |
-| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  |  |  |  |  |  |  |  | ➕ |  |  | ➕ | ➕ | ➕ | ➕ | ➕ | ➕ | ⚠️ | ➕ | = |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |
-| `0x7f` StateSyncTx |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0xff` L1 priority operation (L1->L2) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7801` TxTypeEthereumAccessList |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7802` TxTypeEthereumDynamicFee |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7803` TxTypeEthereumBlob |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `0x7804` TxTypeEthereumSetCode |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| Address | Ethereum | BNB | Polygon | Avax C | Avax subnet | Kaia | Sei | Gnosis | Sonic | Bera | Flare | Arbitrum | OP Stack | OP Mainnet | Base | World | opBNB | Celo | Mantle | MegaETH | RISE | Linea | Scroll | Taiko | zkEVM | zkSync | Rollkit | Cosmos EVM | Injective | Artela | Moonbeam | Tron | Monad | Hyperliquid | Hedera | Conflux | Taraxa | Auto EVM | IOTA EVM | Tempo | Arc | Plasma | Blast | Rootstock (RSK) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `0x00` LegacyTx / Legacy / Legacy (EIP-155) / LegacyTx (12-field celo variant) / LegacyTx (EIP-155 protected only) / LegacyTx (overloaded as the MegaETH system transaction) / TxTypeLegacyTransaction / legacy | = | = | = | = | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | = | ⚠️ | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ⚠️ | = | ⚠️ | ⚠️ | = | = | = | ⚠️ |
+| `0x01` AccessListTx / EIP-2930 access list / EIP-2930 | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ➖ | = | = | ⚠️ | = | ➖ | = | ➖ | ⚠️ | unrecorded | = | = | ➖ |
+| `0x02` DynamicFeeTx / EIP-1559 / EIP-1559 dynamic fee / DynamicFeeTransaction / DynamicFeeTx (and, at index 0 only, the anchor transaction) | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | = | ⚠️ | ➖ | = | = | = | = | = | ⚠️ | ➖ | = | = | ⚠️ | = | ➖ | ⚠️ | ➖ | ⚠️ | = | = | = | ➖ |
+| `0x03` BlobTx / EIP-4844 blob / BlobTransaction | = | = | ➖ | ➖ | ➖ | = | ⊘ | = | ⚠️ | = | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | unrecorded | ⚠️ | ➖ | ➖ | ➖ | unrecorded | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ |
+| `0x04` SetCodeTx / EIP-7702 set code / EIP-7702 set-code / SetCodeTransaction | = | = | = | ➖ | ➖ | = | = | = | = | ➖ | ➖ | = | = | = | = | = | ➖ | ➖ | ➖ | = | = | = | ⚠️ | = | ➖ | ➖ | = | = | ⚠️ | ➖ | = | ➖ | = | unrecorded | ➖ | ⚠️ | ➖ | = | ➖ | ⚠️ | = | = | ➖ | ➖ |
+| `0x08` TxTypeValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x09` TxTypeFeeDelegatedValueTransfer |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x0a` TxTypeFeeDelegatedValueTransferWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x10` TxTypeValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x11` TxTypeFeeDelegatedValueTransferMemo |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x12` TxTypeFeeDelegatedValueTransferMemoWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x18` TxTypeAccountCreation |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x1d` WorldChainTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ◌ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x20` TxTypeAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x21` TxTypeFeeDelegatedAccountUpdate |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x22` TxTypeFeeDelegatedAccountUpdateWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x28` TxTypeSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x29` TxTypeFeeDelegatedSmartContractDeploy |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x2a` TxTypeFeeDelegatedSmartContractDeployWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x30` TxTypeSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x31` TxTypeFeeDelegatedSmartContractExecution |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x32` TxTypeFeeDelegatedSmartContractExecutionWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x38` TxTypeCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x39` TxTypeFeeDelegatedCancel |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x3a` TxTypeFeeDelegatedCancelWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x40` TxTypeBatch |  |  |  |  |  | ⊘ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x48` TxTypeChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x49` TxTypeFeeDelegatedChainDataAnchoring |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x4a` TxTypeFeeDelegatedChainDataAnchoringWithRatio |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x64` ArbitrumDepositTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x65` ArbitrumUnsignedTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x66` ArbitrumContractTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x68` ArbitrumRetryTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x69` ArbitrumSubmitRetryableTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x6a` ArbitrumInternalTx |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x71` EIP-712 transaction (native account abstraction) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x76` EvNodeTransaction (batch calls + fee payer) / TempoTransaction (TT) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |
+| `0x78` ArbitrumLegacyTx / EthereumTxTypeEnvelope |  |  |  |  |  | ➕ |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x79` Eip8130Tx |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7d` PostExecTx |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | unrecorded |  |
+| `0x7e` DepositTx / DepositTx (Mantle variant) / L1MessageTx / PoLTx (BRIP-0004 Proof-of-Liquidity distribution) |  |  |  |  |  |  |  |  |  | ➕ |  |  | ➕ | ➕ | ➕ | ➕ | ➕ | ➕ | ⚠️ | ➕ | = |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |
+| `0x7f` StateSyncTx |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0xfe` ProtocolUpgradeTx |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0xff` L1 priority operation (L1->L2) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7801` TxTypeEthereumAccessList |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7802` TxTypeEthereumDynamicFee |  |  |  |  |  | = |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7803` TxTypeEthereumBlob |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x7804` TxTypeEthereumSetCode |  |  |  |  |  | ⚠️ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
 Legend: ➕ added · ➖ removed / never adopted · ⚠️ modified (same address, different semantics) · ⊘ tombstoned (present but always reverts) · = inherited · ◌ pending · ◐ opt-in per deployment · ⏳ tombstoning scheduled · ‼️ pending allocation conflict · ? not recorded
 

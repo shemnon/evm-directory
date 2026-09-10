@@ -46,6 +46,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Kaia](chains/kaia/SUMMARY.md) | kaia | `v2.2.2` | osaka |
 | [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.6.1` | prague |
 | [Gnosis Chain](chains/gnosis/SUMMARY.md) | Nethermind | `1.39.3` | osaka |
+| [Rootstock (RSK)](chains/rootstock/SUMMARY.md) | rskj | `VETIVER-9.0.4` | petersburg |
 | [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.1` | prague |
 | [Berachain](chains/berachain/SUMMARY.md) | bera-reth | `v1.4.4` | osaka |
 | [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.14.0` | cancun |

@@ -1,0 +1,649 @@
+schema_version: 2
+
+chain:
+  name: Rootstock (RSK)
+  slug: rootstock
+  chain_id: 30
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    THE OLDEST EVM FORK STILL RUNNING, AND ITS GAS SCHEDULE PROVES IT. Rootstock
+    forked the EVM in 2018 and has since re-adopted mainnet features one RSKIP at a
+    time, in an order mainnet never used. The result is a chain with Cancun-era
+    opcodes (PUSH0, MCOPY, TLOAD/TSTORE) sitting on a Constantinople-era gas
+    schedule: no EIP-1884 repricing, no EIP-2200 net metering, no EIP-2929 warm/cold
+    accounting, no EIP-3529 refund reduction, and a 24,000-gas SELFDESTRUCT refund
+    that mainnet deleted in 2021. It also has no EIP-2718 envelope at all — every
+    transaction on this chain is a legacy transaction.
+
+lineage:
+  upstream: ethereum
+  ancestry: [ethereum]
+  fork_of: >-
+    ethereumj (the abandoned Java client), forked 2016-2018 and maintained
+    independently since
+  sync_point: >-
+    NOT A REBASE — A REIMPLEMENTATION THAT DRIFTED. There is no upstream to sync
+    against: ethereumj was archived in 2019 and rskj has carried the tree alone for
+    seven years. Mainnet features arrive as RSKIPs with their own numbers and their
+    own activation heights, and the mapping is not one-to-one: `ConsensusRule.java`
+    annotates only five of its 80-odd rules with the EIP they came from (RSKIP400 →
+    EIP-2028, RSKIP412 → EIP-3198, RSKIP445 → EIP-5656, RSKIP446 → EIP-1153,
+    RSKIP544 → EIP-3541). Everything else has to be established by reading the code.
+
+client:
+  name: rskj
+  repo: https://github.com/rsksmart/rskj
+  version: VETIVER-9.0.4
+  commit: 731b9d8aaa3d266f9fb90687a53c6e507db08ae6
+  language: java
+  note: >-
+    Tag names are plant names, not versions: the ladder is ORCHID → WASABI → PAPYRUS
+    → IRIS → HOP → FINGERROOT → ARROWHEAD → LOVELL → REED → VETIVER, and `sort -V`
+    over the tag list gets the order wrong. VETIVER-9.0.4 is the newest GitHub
+    release (2026-08-06).
+
+live_probe:
+  endpoint: https://public-node.rsk.co
+  chain_id: 30
+  observed_at_block: 9225919
+  note: >-
+    `web3_clientVersion` returns `RskJ/9.0.3/Linux/Java17/VETIVER-c19cf12` — mainnet
+    runs 9.0.3 while 9.0.4 is the newest release, so the pin is one patch AHEAD of
+    the network. Both are VETIVER; no consensus rule differs between them on this
+    row's facts, and the fork ladder below is read from the pinned tree.
+
+consensus:
+  engine: >-
+    merge-mined Proof of Work (Bitcoin miners commit to RSK block hashes in their
+    coinbase) plus the PowPeg federation for the two-way BTC peg
+  block_time: ~30s
+  finality: probabilistic, following Bitcoin's hash power
+
+baseline_fork: petersburg
+
+forks:
+  src: "rskj-core/src/main/resources/config/main.conf, rskj-core/src/main/resources/reference.conf"
+  note: >-
+    ACTIVATION IS BY BLOCK NUMBER, IN TWO FILES, AND ONE OVERRIDES THE OTHER.
+    `reference.conf` maps each `rskipNNN` to a FORK NAME; `config/main.conf` maps
+    each fork name to a mainnet BLOCK HEIGHT and may additionally pin an individual
+    rule to a height of its own (it currently does exactly that for rskip536). A
+    height of `-1` means never: `reed810` is -1 on mainnet, so RSKIP144 (parallel
+    transaction execution), RSKIP351, RSKIP502, RSKIP529 and RSKIP536's reference
+    binding are all inactive there, and only main.conf's explicit
+    `rskip536 = 8804200` brings that one rule in. Reading either file alone gives the
+    wrong answer.
+  timeline:
+  - {name: bahamas,       activation_time: null, mainnet_equivalent: null, note: "block 3397"}
+  - {name: orchid,        activation_time: null, mainnet_equivalent: null, note: "block 729000"}
+  - {name: wasabi100,     activation_time: null, mainnet_equivalent: null, note: "block 1591000; RSKIP106/119 precompiles"}
+  - {name: papyrus200,    activation_time: null, mainnet_equivalent: null, note: "block 2392700; RSKIP137 = bn256, RSKIP151 = SELFBALANCE"}
+  - {name: iris300,       activation_time: null, mainnet_equivalent: null, note: "block 3614800; RSKIP153 = BLAKE2F, RSKIP191 REMOVED DUPN/SWAPN/TXINDEX"}
+  - {name: hop400,        activation_time: null, mainnet_equivalent: null, note: "block 4598500"}
+  - {name: fingerroot500, activation_time: null, mainnet_equivalent: null, note: "block 5468000"}
+  - {name: arrowhead600,  activation_time: null, mainnet_equivalent: null, note: "block 6223700; RSKIP398 = PUSH0, RSKIP400 = EIP-2028, RSKIP412 = BASEFEE, RSKIP203 = ENVIRONMENT precompile"}
+  - {name: lovell700,     activation_time: null, mainnet_equivalent: null, note: "block 7338024; RSKIP445 = MCOPY, RSKIP446 = TLOAD/TSTORE"}
+  - {name: reed800,       activation_time: null, mainnet_equivalent: null, note: "block 8052200; RSKIP516 = secp256k1 precompiles AND precompile input truncation"}
+  - {name: reed810,       activation_time: null, status: skipped,
+     note: "height -1 on mainnet — RSKIP144 parallel execution, RSKIP351 header compression, RSKIP502, RSKIP529 are all shipped in the client and NOT active"}
+  - {name: vetiver900,    activation_time: null, mainnet_equivalent: null, note: "block 8804200; RSKIP544 = EIP-3541, RSKIP552 = BLAKE2F data handling"}
+  - {name: tbd1000,       activation_time: null, status: pending, note: "height -1; RSKIP559 parked here"}
+
+eips:
+  2718:
+    status: removed
+    severity: high
+    note: >-
+      NO TYPED-TRANSACTION ENVELOPE AT ALL. `org.ethereum.core.Transaction` decodes
+      exactly nine RLP items — nonce, gasPrice, gasLimit, receiveAddress, value,
+      data, v, r, s — with no type-byte branch anywhere in the class. There is no
+      0x01, no 0x02, no 0x03 and no 0x04 on this chain, and no way to add one
+      without changing the transaction class. Confirmed live: 126 transactions
+      across 30 consecutive blocks at head, every one of them type `0x0`.
+    src: "rskj-core/src/main/java/org/ethereum/core/Transaction.java:114-155"
+    src_live: "eth_getBlockByNumber 30 blocks ending @ 9225923 -> 126 txs, types {0x0: 126}"
+  1559:
+    status: removed
+    severity: high
+    note: >-
+      NO BASE FEE, AND NOTHING IS BURNED. The header has no `baseFeePerGas`; it has
+      `minimumGasPrice`, a miner-voted floor that moves by a bounded percentage per
+      block, and `paidFees`, the total actually collected. Fees go to the miner and
+      to REMASC, never to the zero address. `eth_getBlockByNumber` returns no
+      `baseFeePerGas` key at all, so any transaction builder that reads it to
+      compute `maxFeePerGas` gets `undefined`.
+    src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:127, rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"
+    src_live: "eth_getBlockByNumber @ 9225919 -> keys include minimumGasPrice 0x1699280 and paidFees 0x9bdd8a44f86; no baseFeePerGas"
+  3198:
+    status: modified
+    severity: high
+    note: >-
+      BASEFEE (0x48) EXISTS AND RETURNS SOMETHING ELSE. `doBASEFEE` pushes
+      `program.getMinimumGasPrice()` — the miner-voted floor from the header, not an
+      EIP-1559 base fee, because there is no EIP-1559 here. Solidity's `block.basefee`
+      compiles to 0x48 and therefore reads a number with different dynamics, no
+      burn semantics, and no relationship to congestion. It does not revert and
+      gives no signal that it is answering a different question.
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doBASEFEE"
+  4399:
+    status: removed
+    severity: high
+    note: >-
+      NO PREVRANDAO. Rootstock never merged, so 0x44 is still DIFFICULTY and
+      `doDIFFICULTY` pushes the real merge-mining difficulty — a large, slowly
+      moving, publicly known Bitcoin-derived number. `block.prevrandao` in Solidity
+      compiles to 0x44, so any contract using it as an entropy source on Rootstock
+      reads the mining difficulty, with no revert and no way for the caller to tell.
+      The RPC compounds it: `mixHash` and `nonce` appear in the block JSON as
+      all-zero even though NEITHER IS A CONSENSUS FIELD in this header — the RLP
+      encoding in `BlockHeader.getEncoded` has no such items.
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doDIFFICULTY, rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"
+    src_live: "eth_getBlockByNumber @ 9225919 -> difficulty 0x157d44759dd5edf5da5, mixHash 0x00…00, nonce 0x00…00"
+  2929:
+    status: removed
+    severity: high
+    note: >-
+      NO WARM/COLD ACCOUNTING ANYWHERE. There is no access list, no
+      `AddressInAccessList`, no cold-slot surcharge; `GasCost.java` holds flat
+      constants and the opcodes use them directly. SLOAD is 200 (mainnet: 2,100 cold
+      / 100 warm), BALANCE 400 (2,600 / 100), EXTCODEHASH 400, EXTCODESIZE and
+      EXTCODECOPY 700, CALL 700. First touch and hundredth cost the same. Gas
+      estimates calibrated on mainnet are wrong in both directions, and a contract
+      that budgets a fixed stipend for a repeated-SLOAD loop behaves differently here
+      than anywhere else in this dataset except Taraxa.
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:SLOAD"
+  1884:
+    status: removed
+    divergence: gas
+    note: >-
+      THE ISTANBUL REPRICING WAS NEVER TAKEN, THOUGH ITS OPCODE WAS. SELFBALANCE
+      (0x47) is live via RSKIP151, but SLOAD is still 200, BALANCE 400 and
+      EXTCODEHASH 400 — the pre-Istanbul numbers. Rootstock took one of EIP-1884's
+      two halves, the mirror image of Taraxa, which took the repricing and calls it
+      "the only Istanbul EIP taken whole".
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:BALANCE"
+  2200:
+    status: removed
+    severity: high
+    note: >-
+      NO NET GAS METERING. `doSSTORE` is the original three-branch schedule: null →
+      non-zero costs 20,000, non-zero → zero costs 5,000 and refunds 15,000,
+      everything else costs 5,000. There is no dirty-slot tracking, no
+      `SSTORE_SENTRY` guard and no EIP-1283 either — so, unlike Taraxa, a 2,300-gas
+      stipend cannot write storage here, because the CHEAPEST SSTORE is 5,000. The
+      "transfer() cannot change state" premise survives on Rootstock, and it
+      survives for the opposite reason from mainnet's.
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doSSTORE"
+  3529:
+    status: removed
+    severity: high
+    note: >-
+      SELFDESTRUCT STILL REFUNDS 24,000 GAS, AND THE REFUND CAP IS STILL gasUsed/2.
+      `refundGas` accumulates `deleteAccounts.size() * GasCost.SUICIDE_REFUND` and
+      then caps the total at `result.getGasUsed() / 2` — the pre-London quotient, not
+      /5. `REFUND_SSTORE` is 15,000, not 4,800. Gas-token contracts (GST2, CHI) work
+      on Rootstock, and the storage-clearing refund is more than three times
+      mainnet's.
+    src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java:refundGas, rskj-core/src/main/java/org/ethereum/vm/GasCost.java:SUICIDE_REFUND"
+  6780:
+    status: removed
+    note: >-
+      `doSUICIDE` calls `program.suicide(address)` unconditionally — no
+      same-transaction-creation test. SELFDESTRUCT still deletes the account, its
+      code and its storage from any transaction, and still pays the refund above.
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doSUICIDE"
+  2565:
+    status: removed
+    divergence: gas
+    note: >-
+      MODEXP IS AT EIP-198 PRICES. `BigIntegerModexp.getGasForData` uses
+      `GQUAD_DIVISOR = 20`; EIP-2565 lowered that to 3 and changed the multiplication
+      complexity function. Identical results, up to ~6.7x mainnet's gas for the same
+      call — the opposite direction from Rootstock's state-access opcodes, which are
+      cheaper.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:GQUAD_DIVISOR"
+  2028:
+    status: inherited
+    note: >-
+      A non-zero calldata byte costs 16 gas, via RSKIP400 — but only since
+      arrowhead600 (block 6,223,700, 2024). Mainnet shipped this at Istanbul in 2019;
+      Rootstock charged 68 for five more years.
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:TX_NO_ZERO_DATA_EIP2028, rskj-core/src/main/java/org/ethereum/config/blockchain/upgrades/ConsensusRule.java:RSKIP400"
+  3541:
+    status: inherited
+    note: >-
+      ARRIVED FIVE YEARS LATE. RSKIP544 rejects contract code beginning with 0xEF,
+      and it activates at vetiver900 — block 8,804,200, in 2026. Mainnet has enforced
+      this since London (2021). Contracts whose runtime code starts with 0xEF WERE
+      deployable on Rootstock and, for anything deployed before that height, still
+      exist on chain.
+    src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java:541, rskj-core/src/main/java/org/ethereum/vm/program/Program.java:712"
+  3855: {status: inherited, note: "PUSH0 at 0x5f via RSKIP398 (arrowhead600, block 6223700)",
+         src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:2063-2068"}
+  1153: {status: inherited, note: "TLOAD/TSTORE at 0x5c/0x5d via RSKIP446 (lovell700), both priced at a flat 100",
+         src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:2040-2051, rskj-core/src/main/java/org/ethereum/vm/GasCost.java:TLOAD"}
+  5656: {status: inherited, note: "MCOPY at 0x5e via RSKIP445 (lovell700)",
+         src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:2106-2111"}
+  1344: {status: inherited, note: "CHAINID at 0x46 returns 30", src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java:273"}
+  1108: {status: inherited, note: "bn256 at Istanbul prices — ADD 150, MUL 6,000, PAIRING 45,000 + 34,000/pair",
+         src: "rskj-core/src/main/java/co/rsk/pcc/altBN128/BN128Pairing.java:58-59"}
+  152: {status: inherited, note: "BLAKE2F at 0x09 via RSKIP153 (iris300); see the 0x09 entry for the input-truncation divergence",
+        src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:242-244"}
+  170: {status: inherited, note: "MAX_CONTRACT_SIZE is 0x6000 = 24,576",
+        src: "rskj-core/src/main/java/org/ethereum/config/Constants.java:54"}
+  3860: {status: inherited, note: "MAX_INITCODE_SIZE = 2 * MAX_CONTRACT_SIZE = 49,152",
+         src: "rskj-core/src/main/java/org/ethereum/config/Constants.java:55"}
+  2930: {status: removed, note: "no access-list transaction type — see 2718", src: "rskj-core/src/main/java/org/ethereum/core/Transaction.java:114-155"}
+  4844: {status: removed, note: "no blobs, no BLOBHASH (0x49), no BLOBBASEFEE (0x4a), no blob header fields",
+         src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java, rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  7702: {status: removed, note: "no EIP-2718 envelope, so no 0x04 and no delegation designator", src: "rskj-core/src/main/java/org/ethereum/core/Transaction.java:114-155"}
+  2537: {status: removed, note: "no BLS12-381 at 0x0b-0x11; the precompile table stops at 0x09",
+         src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:getContractForAddress"}
+  7951: {status: removed, note: "no P256VERIFY at 0x0100; RSKIP516 added secp256K1 add/mul instead, at Rootstock's own addresses",
+         src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:getContractForAddress",
+         src_live: "eth_call 0x0100 @ 9225919 -> 0x (empty account, succeeds)"}
+  4895: {status: removed, note: "no beacon chain, no withdrawals, no withdrawalsRoot", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  4788: {status: removed, note: "no beacon chain, no parentBeaconBlockRoot", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  2935: {status: removed, note: "no history-storage contract; BLOCKHASH's window is the plain 256-block one",
+         src: "rskj-core/src/main/java/org/ethereum/vm/VM.java"}
+  3651: {status: removed, note: "no warm-coinbase rule, because there is no access set", src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:CALL"}
+  7623: {status: removed, note: "no calldata gas floor", src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:TRANSACTION"}
+
+non_eip_specs:
+  - {id: RSKIP-191, name: removal of DUPN/SWAPN/TXINDEX, adoption: adopted, fork: iris300,
+     src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:1967-1972"}
+  - {id: RSKIP-203, name: ENVIRONMENT precompile (call-stack depth), adoption: adopted, fork: arrowhead600,
+     src: "rskj-core/src/main/java/org/ethereum/config/blockchain/upgrades/ConsensusRule.java:RSKIP203"}
+  - {id: RSKIP-252, name: transaction gas price cap, adoption: adopted, fork: fingerroot500,
+     src: "rskj-core/src/main/java/co/rsk/validators/BlockTxsMaxGasPriceRule.java:44-58"}
+  - {id: RSKIP-516, name: secp256k1 add/mul precompiles and precompile input truncation, adoption: adopted, fork: reed800,
+     src: "rskj-core/src/main/java/org/ethereum/vm/program/Program.java:1583-1598"}
+  - {id: RSKIP-144, name: parallel transaction execution, adoption: proposed,
+     note: "implemented, header field reserved, and bound to reed810 which is height -1 on mainnet",
+     src: "rskj-core/src/main/java/org/ethereum/config/blockchain/upgrades/ConsensusRule.java:RSKIP144"}
+  - {id: RSKIP-544, name: reject contract code starting with 0xEF, adoption: adopted, fork: vetiver900,
+     src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java:541"}
+
+tx_types:
+  envelope:
+    status: modified
+    present: "0x00"
+    src: "rskj-core/src/main/java/org/ethereum/core/Transaction.java:114-155"
+    note: >-
+      LEGACY ONLY. Mainnet's 0x01, 0x02, 0x03 and 0x04 do not exist here — not
+      rejected at a policy layer, ABSENT from the transaction class. `present` is
+      "0x00" rather than "" (Tron's value) because Rootstock does use Ethereum's
+      legacy RLP encoding and EIP-155 replay protection; what it lacks is the
+      EIP-2718 wrapper.
+  "0x00":
+    name: LegacyTx
+    status: modified
+    note: >-
+      One legacy shape, two producers. Ordinary transactions are signed secp256k1
+      exactly as on mainnet. The REMASC transaction appended to every block wears the
+      same encoding, is UNSIGNED, and its sender — the zero address — is encoded as
+      a single zero byte rather than the empty string, a pre-mainnet bug preserved in
+      consensus and documented as such in the client. See system_transactions.
+    src: "rskj-core/src/main/java/co/rsk/remasc/RemascTransaction.java:57-73"
+  note: >-
+    Rootstock consumes no type byte and collides with nobody — the only chain in this
+    dataset whose envelope is narrower than mainnet's rather than wider.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    Ordinary transactions are mainnet's model exactly: one secp256k1 signature, EIP-155
+    chain id 30 folded into `v`, sender derived from the key. The delta is at the
+    other end — one transaction per block authorizes itself by being the REMASC
+    transaction, with no signature at all and a sender that is not a key hash.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: >-
+        ECRECOVER at 0x01 with mainnet semantics and mainnet's 3,000 gas — but see
+        the 0x01 entry: since RSKIP516 its input is TRUNCATED to 128 bytes rather
+        than passed through.
+      src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:ECRECOVER_ADDR_STR"
+    unsigned_remasc:
+      status: added
+      authorizes: protocol
+      precompile: none
+      note: >-
+        `authorizes: protocol` with `precompile: none` — the pairing SCHEMA.md flags.
+        The REMASC transaction is accepted by consensus with no signature; no
+        precompile on this chain can verify what authorized it, because nothing did.
+        It is the same shape as OP Stack's unsigned 0x7e deposit, reached without an
+        EIP-2718 envelope to carry it.
+      src: "rskj-core/src/main/java/co/rsk/remasc/RemascTransaction.java:54-73"
+
+precompiles:
+  # verified: PrecompiledContracts.java:getContractForAddress, gated by the mainnet
+  # activation heights in config/main.conf
+  base_map:
+    status: inherited
+    present: "0x01-0x09"
+    p256verify: false
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:getContractForAddress"
+    note: >-
+      0x01-0x09 present, and that is where the mainnet range stops: no KZG point
+      evaluation at 0x0a (no EIP-4844), no BLS12-381 at 0x0b-0x11 (no EIP-2537), no
+      P256VERIFY at 0x0100. Calling any of those hits an empty account and SUCCEEDS
+      with no output.
+    src_live: "eth_call 0x0a @ 9225919 -> 0x; eth_call 0x0100 @ 9225919 -> 0x"
+  "0x01":
+    name: ECRECOVER
+    status: modified
+    severity: high
+    note: >-
+      INPUT IS TRUNCATED, NOT PASSED. Since RSKIP516 (reed800, block 8,052,200)
+      `Program.getInputLength` clamps the calldata handed to a precompile to that
+      precompile's `getMaxInput()` — 128 bytes for ECRECOVER — and logs the
+      truncation at debug level. Mainnet passes the whole input. For ECRECOVER the
+      RESULT is unchanged, since mainnet already ignores everything past byte 128;
+      it is recorded because the mechanism is shared with 0x09, where the result is
+      NOT unchanged.
+    src: "rskj-core/src/main/java/org/ethereum/vm/program/Program.java:1583-1598, rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:439"
+  "0x05":
+    name: MODEXP
+    status: modified
+    divergence: gas
+    note: "EIP-198 pricing (GQUAD_DIVISOR = 20); EIP-2565's divisor of 3 was never adopted. See eips.2565."
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:GQUAD_DIVISOR"
+  "0x06":
+    name: BN256_ADD
+    status: modified
+    severity: high
+    note: >-
+      Input truncated to 128 bytes since RSKIP516. Same gas as mainnet (150), same
+      result for well-formed input — but a caller that passes a longer buffer gets
+      the first 128 bytes used instead of an error, and no signal that the rest was
+      dropped.
+    src: "rskj-core/src/main/java/co/rsk/pcc/altBN128/BN128Addition.java:57-60, rskj-core/src/main/java/org/ethereum/vm/program/Program.java:1589"
+  "0x07":
+    name: BN256_MUL
+    status: modified
+    severity: high
+    note: "input truncated to 96 bytes since RSKIP516; gas is Istanbul's 6,000."
+    src: "rskj-core/src/main/java/co/rsk/pcc/altBN128/BN128Multiplication.java:57-60, rskj-core/src/main/java/org/ethereum/vm/program/Program.java:1589"
+  "0x09":
+    name: BLAKE2F
+    status: modified
+    severity: high
+    note: >-
+      THE TRUNCATION THAT CHANGES THE ANSWER. Mainnet's BLAKE2F REVERTS unless the
+      input is exactly 213 bytes. Rootstock declares `getMaxInput() = 213` and
+      `Program.getInputLength` silently clips anything longer, so a 300-byte call
+      that reverts on mainnet SUCCEEDS here and returns a hash. Same address, same
+      name, opposite outcome, no error either way.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:647-652, rskj-core/src/main/java/org/ethereum/vm/program/Program.java:1589"
+  "0x0000000000000000000000000000000001000006":
+    name: Bridge
+    status: added
+    severity: high
+    note: >-
+      THE TWO-WAY BTC PEG, AS A PRECOMPILE. Registers Bitcoin headers, validates SPV
+      proofs, mints and burns RBTC, and holds the PowPeg federation's state. It is
+      the largest precompile in this dataset by far and it moves native value: a
+      peg-in credits RBTC to an address with no EVM-level transfer. It also cannot
+      be recognised by code inspection — `eth_getCode` returns `0x`, exactly as for a
+      nonexistent account.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:BRIDGE_ADDR_STR"
+    src_live: "eth_getCode 0x0000000000000000000000000000000001000006 @ 9225919 -> 0x"
+  "0x0000000000000000000000000000000001000008":
+    name: REMASC
+    status: added
+    note: >-
+      Reward Manager. Holds the fee pool and pays miners on a delay, including the
+      merge-mining share. Called by the unsigned REMASC transaction at the end of
+      every block, and callable from the EVM to read reward state.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:REMASC_ADDR_STR"
+  "0x0000000000000000000000000000000001000009":
+    name: HDWalletUtils
+    status: added
+    fork: wasabi100
+    note: >-
+      Bitcoin extended-public-key derivation (BIP-32) exposed to the EVM: parses an
+      `xpub`, derives child keys, converts to Bitcoin addresses. Gated on RSKIP106.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:HD_WALLET_UTILS_ADDR_STR"
+  "0x0000000000000000000000000000000001000010":
+    name: BlockHeaderContract
+    status: added
+    fork: wasabi100
+    note: >-
+      Reads fields of PAST RSK block headers that the EVM has no opcode for —
+      coinbase, minimum gas price, gas limit, uncle count, and the merge-mining
+      fields. Gated on RSKIP119; RSKIP536 (vetiver900) added further methods.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:BLOCK_HEADER_ADDR_STR"
+  "0x0000000000000000000000000000000001000011":
+    name: Environment
+    status: added
+    fork: arrowhead600
+    note: "exposes the current call-stack depth to contracts (RSKIP203) — a quantity the EVM deliberately does not expose."
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:ENVIRONMENT_ADDR_STR"
+  "0x0000000000000000000000000000000001000016":
+    name: Secp256k1Addition
+    status: added
+    fork: reed800
+    note: >-
+      Point addition on secp256k1 — the curve Ethereum signs with but has never
+      exposed arithmetic for. 150 gas, input truncated to 128 bytes. Mainnet has
+      bn256 and BLS12-381 arithmetic and no secp256k1 arithmetic; Rootstock is the
+      inverse.
+    src: "rskj-core/src/main/java/co/rsk/pcc/secp256k1/Secp256k1Addition.java:27, rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:SECP256K1_ADD_ADDR_STR"
+  "0x0000000000000000000000000000000001000017":
+    name: Secp256k1Multiplication
+    status: added
+    fork: reed800
+    note: "scalar multiplication on secp256k1, 3,000 gas, input truncated to 96 bytes."
+    src: "rskj-core/src/main/java/co/rsk/pcc/secp256k1/Secp256k1Multiplication.java:27, rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:SECP256K1_MUL_ADDR_STR"
+  note: >-
+    PLACEMENT DISCIPLINE, AND THE ADDRESSES READ AS DECIMAL. Rootstock's seven custom
+    precompiles sit at 0x01000006 through 0x01000017 — far above anything mainnet has
+    allocated or is likely to, and far above the 0x64-0x69 range BSC, Core, Cronos,
+    opBNB and Arbitrum are contending over. Note that the constants are written so
+    they LOOK decimal (`…01000016`, `…01000017`) while being hex: the addresses
+    between 0x01000011 and 0x01000016 are unused, and 0x01000012-0x01000015 are not
+    what a reader skimming the list would guess.
+
+system_contracts:
+  note: >-
+    None. Rootstock has no predeploys with bytecode: everything a mainnet chain would
+    put in a genesis-alloc contract — the bridge, the reward manager, the header
+    reader — is a precompile with no code. `eth_getCode` on any of them returns `0x`.
+
+system_transactions:
+  - name: REMASC
+    note: >-
+      An unsigned transaction appended to the end of every block, calling the REMASC
+      precompile to settle miner rewards. It appears in `eth_getBlockByNumber` as an
+      ordinary type-0x0 transaction with no signature, and its sender is the zero
+      address encoded as a single zero byte — `RemascTransaction` overrides
+      `getBytes()` to return `new byte[]{0}` and the class comment states plainly
+      that this is "a bug in the implementation before mainnet release". It is also
+      exempt from the gas-price cap below.
+    src: "rskj-core/src/main/java/co/rsk/remasc/RemascTransaction.java:54-79"
+  - name: Bitcoin header registration
+    note: >-
+      Merge-mining headers reach state through ordinary calls to the Bridge
+      precompile rather than through a protocol hook, so this is NOT a system
+      transaction in the EIP-4788 sense. Recorded here to say so explicitly.
+    src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:BRIDGE_ADDR_STR"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0x48"
+    name: BASEFEE
+    severity: high
+    note: "returns the miner-voted minimumGasPrice, not an EIP-1559 base fee — see eips.3198."
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doBASEFEE"
+  - op: "0x44"
+    name: DIFFICULTY
+    severity: high
+    note: >-
+      Still DIFFICULTY, never became PREVRANDAO: returns the merge-mining difficulty.
+      Solidity's `block.prevrandao` reads it — see eips.4399.
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doDIFFICULTY"
+  - op: "0x54"
+    name: SLOAD
+    note: "flat 200 gas, no warm/cold distinction — see eips.2929."
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:SLOAD"
+  - op: "0x55"
+    name: SSTORE
+    note: "pre-EIP-2200 three-branch schedule, 20,000 / 5,000 / 5,000 with a 15,000 refund — see eips.2200."
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doSSTORE"
+  - op: "0x31"
+    name: BALANCE
+    note: "flat 400 gas (mainnet: 2,600 cold / 100 warm)."
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:BALANCE"
+  - op: "0x3f"
+    name: EXTCODEHASH
+    note: "flat 400 gas (mainnet: 2,600 cold / 100 warm)."
+    src: "rskj-core/src/main/java/org/ethereum/vm/GasCost.java:EXT_CODE_HASH"
+  - op: "0xff"
+    name: SELFDESTRUCT
+    severity: high
+    note: "still deletes the account and still refunds 24,000 gas — see eips.3529 and eips.6780."
+    src: "rskj-core/src/main/java/org/ethereum/vm/VM.java:doSUICIDE"
+  pending: []
+  tombstoned:
+  - op: "0xa8"
+    name: DUPN
+    note: >-
+      A ROOTSTOCK OPCODE THAT WAS LIVE AND WAS TURNED OFF. `DUPN(0xa8, 2, 2,
+      VERY_LOW_TIER)` is still in the enum and `doDUPN` is still implemented, but
+      since RSKIP191 (iris300, block 3,614,800) the dispatch throws
+      `invalidOpCode` when the rule is ACTIVE — the gate is inverted relative to
+      every other opcode in the file. Contracts deployed before that height that
+      contain 0xa8 still exist and now halt on it. Mainnet has never allocated 0xa8.
+    src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java:630, rskj-core/src/main/java/org/ethereum/vm/VM.java:2137-2142"
+  - {op: "0xa9", name: SWAPN, note: "same story as DUPN — implemented, live until iris300, disabled by RSKIP191",
+     src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java:635, rskj-core/src/main/java/org/ethereum/vm/VM.java:2014-2019"}
+  - {op: "0xaa", name: TXINDEX, note: "pushed the transaction's index within its block; disabled by RSKIP191",
+     src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java:640, rskj-core/src/main/java/org/ethereum/vm/VM.java:1967-1972"}
+  - op: "0xfc"
+    name: HEADER
+    note: >-
+      DEFINED SO THAT IT CAN NEVER BE VALID. `HEADER(0xfc, 0, 0, ZERO_TIER, 256)` —
+      the fifth argument is a script version, and the comment says "setting
+      version==256 assures it's never considered valid (because scriptVersion range
+      is 0..255)". The dispatch case falls through to the default, which raises. A
+      reserved byte, held open for a feature that never shipped.
+    src: "rskj-core/src/main/java/org/ethereum/vm/OpCode.java:681, rskj-core/src/main/java/org/ethereum/vm/VM.java:2148-2152"
+  note: >-
+    Rootstock is the clearest `tombstoned` case in the dataset: four opcode bytes
+    that are defined, implemented, and unreachable — three of them because a fork
+    switched them OFF. It is also the only chain here where the delta runs backwards
+    against its own history rather than against mainnet's.
+
+tx_lifecycle:
+  ordered_then_invalid:
+    verdict: unreachable
+    note: >-
+      Ordering and execution are not separated: `TransactionExecutor` validates
+      nonce, balance and gas price before executing, in the same pass, exactly as
+      mainnet does. RSKIP144 would change this — it splits a block's transactions
+      into independently executable sublists with the edges committed in the header —
+      but it is bound to `reed810`, which is height -1 on mainnet. Confirmed live:
+      `rskPteEdges` is null in every block sampled.
+    src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java, rskj-core/src/main/java/org/ethereum/config/blockchain/upgrades/ConsensusRule.java:RSKIP144"
+    src_live: "eth_getBlockByNumber @ 9225919 -> rskPteEdges: null"
+  nonce_on_failure:
+    verdict: burned
+    note: "a failed transaction still consumes its nonce and its gas, as on mainnet."
+    src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java"
+
+fee_model:
+  metering: gas
+  fee_market: >-
+    miner-voted `minimumGasPrice` in the header, bounded per block; no base fee, no
+    burn
+  severity: high
+  note: >-
+    THERE IS A MAXIMUM GAS PRICE, AND IT IS A CONSENSUS RULE. Since RSKIP252
+    (fingerroot500) a block containing a transaction whose gas price exceeds
+    **100x the block's minimumGasPrice** is INVALID — `BlockTxsMaxGasPriceRule`
+    rejects the whole block — and the mempool refuses anything over **80x**
+    (`TxGasPriceCap.FOR_TRANSACTION`). No other chain in this dataset caps what a
+    user may bid. The practical consequences: priority-fee auctions have a ceiling,
+    a transaction cannot be rescued from a congested mempool by overpaying, and a
+    wallet's "aggressive" fee preset built for mainnet can produce a transaction that
+    no honest miner is able to include. The REMASC transaction is exempt by an
+    explicit `instanceof` test.
+  extra_components:
+  - {name: REMASC delay, note: "fees accumulate in the REMASC precompile and are paid to miners over a delay window, not at the block that earned them"}
+  src: "rskj-core/src/main/java/co/rsk/validators/TxGasPriceCap.java:32-55, rskj-core/src/main/java/co/rsk/validators/BlockTxsMaxGasPriceRule.java:44-58"
+
+header_fields:
+  added:
+  - {name: minimumGasPrice, note: "miner-voted gas price floor; also what BASEFEE returns", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:127"}
+  - {name: paidFees, note: "total fees collected in this block", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:105"}
+  - {name: uncleCount, note: "a count, alongside the uncles hash", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:383-384"}
+  - {name: bitcoinMergedMiningHeader, note: "the Bitcoin block header that merge-mined this block", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:112"}
+  - {name: bitcoinMergedMiningMerkleProof, src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:388-395"}
+  - {name: bitcoinMergedMiningCoinbaseTransaction, src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:388-395"}
+  - {name: ummRoot, note: "Unified Merged Mining root; optional, present since papyrus200", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:120"}
+  - {name: rskPteEdges, note: "RSKIP144 parallel-execution sublist boundaries; reserved and NULL on mainnet, because reed810 is height -1",
+     src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:addTxExecutionSublistsEdgesIfAny",
+     src_live: "eth_getBlockByNumber @ 9225919 -> rskPteEdges: null"}
+  removed:
+  - name: mixHash
+    severity: high
+    note: >-
+      NOT A CONSENSUS FIELD, BUT THE RPC PRINTS ONE. `BlockHeader.getEncoded` has no
+      mixHash item; `eth_getBlockByNumber` nevertheless returns
+      `mixHash: 0x00…00`. A tool that re-derives a block hash from the JSON, or that
+      reads mixHash for randomness, gets a fabricated zero that no header ever
+      committed to.
+    src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"
+    src_live: "eth_getBlockByNumber @ 9225919 -> mixHash 0x00…00"
+  - {name: nonce, note: "likewise absent from the header RLP and fabricated as 0x0000000000000000 in the JSON",
+     src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: baseFeePerGas, note: "no EIP-1559 — see eips.1559", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: withdrawalsRoot, note: "no beacon chain", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: blobGasUsed, note: "no EIP-4844", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: excessBlobGas, note: "no EIP-4844", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: parentBeaconBlockRoot, note: "no EIP-4788", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  - {name: requestsHash, note: "no EIP-7685", src: "rskj-core/src/main/java/org/ethereum/core/BlockHeader.java:372-377"}
+  modified: []
+
+gotchas:
+  - >-
+    CANCUN OPCODES ON A CONSTANTINOPLE GAS SCHEDULE. PUSH0, MCOPY, TLOAD and TSTORE
+    all work; SLOAD costs 200, BALANCE 400, SELFDESTRUCT refunds 24,000 and the
+    refund cap is gasUsed/2. Nothing about the opcode set tells you the gas set, and
+    every gas-based security argument written for mainnet has to be rechecked here.
+  - >-
+    THERE IS NO EIP-2718 ENVELOPE. Not "type 2 is rejected" — the transaction class
+    decodes nine RLP items and has no type branch. Any library that signs an
+    EIP-1559 transaction produces something Rootstock cannot parse.
+  - >-
+    A MAXIMUM GAS PRICE, ENFORCED AT BLOCK VALIDATION. 100x the block's
+    minimumGasPrice, or the block is invalid. Wallet fee presets built for mainnet
+    congestion can exceed it.
+  - >-
+    `block.prevrandao` RETURNS THE MINING DIFFICULTY, and `mixHash` in the block JSON
+    is a fabricated zero that is not in the header at all.
+  - >-
+    PRECOMPILE INPUT IS TRUNCATED, NOT REJECTED. Since RSKIP516 a call to 0x01, 0x06,
+    0x07, 0x09, 0x01000016 or 0x01000017 with too much calldata has the excess
+    silently dropped. On 0x09 that turns a mainnet revert into a success.
+  - >-
+    FOUR OPCODE BYTES ARE TOMBSTONED, THREE OF THEM BY A FORK THAT TURNED THEM OFF.
+    0xa8 DUPN, 0xa9 SWAPN and 0xaa TXINDEX were live until block 3,614,800; 0xfc
+    HEADER was defined never to be valid. Old contracts containing them still exist.
+  - >-
+    THE BTC PEG IS A PRECOMPILE THAT MOVES NATIVE VALUE. `eth_getCode` on
+    0x…01000006 returns `0x`, indistinguishable from an empty account, and a peg-in
+    credits RBTC with no EVM transfer to observe.
+  - >-
+    EVERY BLOCK ENDS WITH AN UNSIGNED TRANSACTION whose sender is the zero address
+    encoded as a single zero byte — a pre-launch bug that is now consensus. An
+    indexer that assumes every type-0x0 transaction has a recoverable signature will
+    fail on one transaction per block, forever.

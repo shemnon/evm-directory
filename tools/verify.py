@@ -581,6 +581,60 @@ def ex_blast():
     return a
 
 
+# --- java / rskj -----------------------------------------------------------
+def rsk_heights(p):
+    """fork name -> mainnet activation height, and rule -> height overrides, from
+    config/main.conf. -1 means never."""
+    cfg = (p / "rskj-core/src/main/resources/config/main.conf").read_text(errors="replace")
+    heights = {k: int(v) for k, v in re.findall(
+        r"(\w+)\s*=\s*(-?\d+)", block(cfg, "hardforkActivationHeights = {", "\n    }"))}
+    over = {k.lower(): int(v) for k, v in re.findall(
+        r"(\w+)\s*=\s*(-?\d+)", block(cfg, "consensusRules = {", "\n    }"))}
+    if not heights: raise ExtractError("rootstock: no hardforkActivationHeights in main.conf")
+    return heights, over
+
+
+def ex_rootstock():
+    """Java, and the live set is a function of TWO config files rather than of a map
+    literal. `getContractForAddress` answers unconditionally for GENESIS_ADDRESSES
+    and conditionally for CONSENSUS_ENABLED_ADDRESSES, each gated on a ConsensusRule;
+    reference.conf maps a rule to a FORK NAME, config/main.conf maps a fork name to a
+    mainnet BLOCK HEIGHT, and main.conf may additionally pin one rule to a height of
+    its own. A height of -1 means never, which is how RSKIP144 (parallel execution)
+    stays out of this set despite being fully implemented in the tree."""
+    p = repo("rootstock")
+    if p is None: raise ExtractError("rootstock: no clone")
+    src = (p / "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java"
+           ).read_text(errors="replace")
+    addr = {f"{m.group(1)}_ADDR": int(m.group(2), 16) for m in re.finditer(
+        r'public static final String (\w+)_ADDR_STR = "([0-9a-fA-F]{40})"', src)}
+    if not addr: raise ExtractError("rootstock: no *_ADDR_STR constants")
+
+    genesis = [n for n in re.findall(r"(\w+_ADDR)\b",
+                                     block(src, "GENESIS_ADDRESSES", "));"))]
+    if not genesis: raise ExtractError("rootstock: GENESIS_ADDRESSES did not parse")
+    gated = re.findall(r"SimpleEntry<>\((\w+_ADDR),\s*ConsensusRule\.(RSKIP\d+)\)",
+                       block(src, "CONSENSUS_ENABLED_ADDRESSES", "\n    );"))
+    if not gated: raise ExtractError("rootstock: CONSENSUS_ENABLED_ADDRESSES did not parse")
+
+    ref = (p / "rskj-core/src/main/resources/reference.conf").read_text(errors="replace")
+    rule_fork = {k.lower(): v for k, v in re.findall(
+        r"(\w+)\s*=\s*([A-Za-z]\w*)", block(ref, "consensusRules = {", "\n        }"))}
+    heights, over = rsk_heights(p)
+
+    def live(rule):
+        r = rule.lower()
+        h = over.get(r)
+        if h is None:
+            h = heights.get(rule_fork.get(r, ""))
+        return h is not None and h >= 0
+
+    out = {addr[n] for n in genesis if n in addr}
+    out |= {addr[n] for n, rule in gated if n in addr and live(rule)}
+    if not out: raise ExtractError("rootstock: resolved to no live precompiles")
+    return out
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -589,7 +643,8 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "mantle": ex_mantle, "celo": ex_celo, "scroll": ex_scroll, "sei": ex_sei,
            "berachain": ex_berachain, "linea": ex_linea, "hedera": ex_hedera,
            "monad": ex_monad, "zksync-era": ex_zksync_era, "gnosis": ex_gnosis,
-           "blast": ex_blast}
+           "blast": ex_blast,
+           "rootstock": ex_rootstock}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -603,6 +658,8 @@ TXTYPE_DIRS = {
     "avalanche-c": None, "avalanche-subnet": None, "tron": None, "worldchain": None,
     "optimism": None, "base": None,
     "blast": "blast-geth/core/types",
+    # rootstock is Java and has no EIP-2718 envelope at all.
+    "rootstock": None,
 }
 def ex_txtypes(slug, chain=None):
     d = TXTYPE_DIRS.get(slug)

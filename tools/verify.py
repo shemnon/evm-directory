@@ -635,6 +635,23 @@ def ex_rootstock():
     return out
 
 
+# --- geth forks that append a consensus-engine set to the fork ladder -------
+def ex_core():
+    """BSC fork. ActivePrecompiles selects PrecompiledContractsPrague (the newest
+    rung CoreChainConfig reaches — there is no Osaka time) and then APPENDS the two
+    Satoshi maps when rules.IsSatoshi, which holds on every Core network because
+    CoreChainConfig sets a Satoshi block. The live set is the union of the three."""
+    s = text("core", "core/vm/contracts.go")
+    if not s: raise ExtractError("core: core/vm/contracts.go not found")
+    a = go_addrs(block(s, "var PrecompiledContractsPrague = "))
+    if not a: raise ExtractError("core: no PrecompiledContractsPrague literal")
+    for n in ("PrecompiledContractsSatoshiHashPower", "PrecompiledContractsSatoshiPrague"):
+        b = block(s, f"var {n} = ")
+        if not b: raise ExtractError(f"core: no {n} literal")
+        a |= go_addrs(b)
+    return a
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -644,7 +661,8 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "berachain": ex_berachain, "linea": ex_linea, "hedera": ex_hedera,
            "monad": ex_monad, "zksync-era": ex_zksync_era, "gnosis": ex_gnosis,
            "blast": ex_blast,
-           "rootstock": ex_rootstock}
+           "rootstock": ex_rootstock,
+           "core": ex_core}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -660,6 +678,7 @@ TXTYPE_DIRS = {
     "blast": "blast-geth/core/types",
     # rootstock is Java and has no EIP-2718 envelope at all.
     "rootstock": None,
+    "core": "core/types",
 }
 def ex_txtypes(slug, chain=None):
     d = TXTYPE_DIRS.get(slug)

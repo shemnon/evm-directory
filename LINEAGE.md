@@ -39,6 +39,7 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
   └── Tempo (v1.13.1, osaka)
   └── Arc (v0.7.3, osaka)
   └── Plasma (v1.11.3, prague)
+  └── Rootstock (RSK) (VETIVER-9.0.4, petersburg)
 
 zkSync Era — no upstream (role: independent)
 
@@ -102,3 +103,4 @@ Autonomys Auto EVM — no upstream (role: independent)
 | Arc | `osaka` | TWO SCHEDULES THAT DO NOT MATCH, and the mismatch is the finding. Mainnet (5042) gets Zero3, Zero4, Osaka, Zero5, Zero6 all at genesis and STOPS — Zero7 and Zero8 are absent from `ARC_MAINNE |
 | Plasma | `prague` | A one-entry timeline. Everything is at genesis; no Plasma-named upgrade exists in the chain config, which is itself the finding — this chain has no fork history to diverge in. |
 | Blast | `cancun` | The EL ladder stops at Ecotone. `config/rollup.json` names exactly regolith / canyon / delta / ecotone / taiga and nothing after it; `taiga` is an OP fork with NO execution-layer effect (it  |
+| Rootstock (RSK) | `petersburg` | ACTIVATION IS BY BLOCK NUMBER, IN TWO FILES, AND ONE OVERRIDES THE OTHER. `reference.conf` maps each `rskipNNN` to a FORK NAME; `config/main.conf` maps each fork name to a mainnet BLOCK HEIG |

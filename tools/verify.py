@@ -679,6 +679,14 @@ def ex_cronos():
     return set()
 
 
+def ex_zk_stack():
+    """The template row shares the zksync-era clone by declaration
+    (client.shared_with), so it shares its extraction too. Running the same
+    extractor is the point: if the two ever disagreed, the row's claim that Era is
+    this template's reference deployment would be false."""
+    return ex_zksync_era()
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -690,7 +698,8 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "blast": ex_blast,
            "rootstock": ex_rootstock,
            "core": ex_core,
-           "cronos": ex_cronos}
+           "cronos": ex_cronos,
+           "zk-stack": ex_zk_stack}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -709,6 +718,8 @@ TXTYPE_DIRS = {
     "core": "core/types",
     # cronos keeps its transaction types in an unvendored go-ethereum fork.
     "cronos": None,
+    # zk-stack has no EIP-2718 envelope of its own; EraVM defines the types.
+    "zk-stack": None,
 }
 def ex_txtypes(slug, chain=None):
     d = TXTYPE_DIRS.get(slug)

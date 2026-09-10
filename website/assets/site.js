@@ -91,13 +91,29 @@
       }
       return seen !== null;
     }
+    // Flipped grids (chains as rows) have no td[data-chain] to compare across, so
+    // "every chain agrees" has no meaning there. The useful question becomes whether a
+    // chain says anything different from mainnet at all — compare each row against the
+    // baseline row, skipping the chain-name column.
+    var baseRow = target.querySelector("tbody tr[data-baseline]");
+    var flipped = !!target.className.match(/\bflip\b/);
+    function matchesBaseline(r) {
+      if (!baseRow || r === baseRow) return false;
+      var a = r.querySelectorAll("td"), b = baseRow.querySelectorAll("td");
+      if (a.length !== b.length) return false;
+      for (var i = 1; i < a.length; i++) {
+        if (a[i].textContent.trim() !== b[i].textContent.trim()) return false;
+      }
+      return true;
+    }
     function run() {
       var q = box && box.value ? box.value.trim().toLowerCase() : "";
       var hideUniform = chk && chk.checked;
       var n = 0;
       rows.forEach(function (r) {
+        var dull = flipped ? matchesBaseline(r) : isUniform(r);
         var hit = (!q || r.textContent.toLowerCase().indexOf(q) !== -1) &&
-                  !(hideUniform && isUniform(r));
+                  !(hideUniform && dull);
         r.hidden = !hit;
         if (hit) n++;
       });

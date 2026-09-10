@@ -207,20 +207,27 @@ def h3(text, anchor=None):
     return f'<h3 id="{esc(a)}">{text}<a class="anchor" href="#{esc(a)}">#</a></h3>'
 
 
-def table(headers, rows, cls="", tid=None, pin=False, row_attrs=None, col_chains=None):
+def table(headers, rows, cls="", tid=None, pin=False, row_attrs=None, col_chains=None,
+          row_chains=None):
     """rows: list of lists of already-escaped HTML cells.
 
     col_chains, if given, is a list of slugs (or None) parallel to `headers`, tagging
-    each column with the chain it belongs to so the header picker can hide it."""
+    each column with the chain it belongs to so the header picker can hide it.
+
+    row_chains is the same idea for the flipped orientation — chains as ROWS — where the
+    picker has to hide a `<tr>` instead of a column. `.col-off` is `display: none`, which
+    works on either, so one CSS rule and one JS pass serve both."""
     c = " ".join(x for x in [cls, "pin" if pin else ""] if x)
     cc = col_chains or [None] * len(headers)
     th = "".join(f'<th{f" data-chain=\"{esc(s)}\"" if s else ""}>{x}</th>'
                  for x, s in zip(headers, cc))
     ra = row_attrs or [""] * len(rows)
+    rc = row_chains or [None] * len(rows)
     tb = "".join(
-        f"<tr{a}>" + "".join(f'<td{f" data-chain=\"{esc(s)}\"" if s else ""}>{x}</td>'
-                             for x, s in zip(r, cc)) + "</tr>"
-        for r, a in zip(rows, ra))
+        f"<tr{a}{f' data-chain=\"{esc(rs)}\"' if rs else ''}>"
+        + "".join(f'<td{f" data-chain=\"{esc(s)}\"" if s else ""}>{x}</td>'
+                  for x, s in zip(r, cc)) + "</tr>"
+        for r, a, rs in zip(rows, ra, rc))
     i = f' id="{esc(tid)}"' if tid else ""
     return (f'<div class="scroll"><table class="{c}"{i}>'
             f"<thead><tr>{th}</tr></thead><tbody>{tb}</tbody></table></div>")
@@ -233,8 +240,12 @@ def kv(pairs):
 
 
 def filter_box(tid, label="filter", uniform=False):
+    """`uniform` may be True for the default wording, or a string for the flipped grids,
+    where "every chain agrees" is a property of a COLUMN and the useful question becomes
+    whether a chain differs from mainnet at all."""
+    txt = uniform if isinstance(uniform, str) else "hide rows where every chain agrees"
     u = (f'<label class="chk"><input type="checkbox" data-uniform-for="{tid}"> '
-         f'hide rows where every chain agrees</label>') if uniform else ""
+         f'{esc(txt)}</label>') if uniform else ""
     return (f'<div class="filter"><label for="f-{tid}">{esc(label)}</label>'
             f'<input id="f-{tid}" type="search" data-filter="{tid}" '
             f'placeholder="filter rows…" autocomplete="off">'
@@ -385,6 +396,32 @@ def uniform_attr(cells):
     return ' data-uniform="1"' if len(set(cells)) <= 1 else ""
 
 
+def chain_grid(chains, slugs, cols, cell_fn, tid):
+    """Chains as ROWS, metrics as COLUMNS.
+
+    This is the orientation for any grid whose cells carry VALUES — a size, a verdict, a
+    fee market — rather than single-character marks. A symbol grid reads fine with 47
+    columns because each cell is one glyph and the eye scans a row of them; a value grid
+    does not, because every column has to be wide enough for its widest string and the
+    table runs off the screen. Flipped, the widths are bounded by the number of metrics,
+    the chain names sit in the pinned first column where the chains index already puts
+    them, and the free-text filter starts matching chain names, which is what a reader
+    typing in that box usually wants.
+
+    Symbol grids (header fields, opcodes, the address sections) deliberately keep the
+    other orientation. `cell_fn(slug, key)` returns the finished HTML for one cell."""
+    head = ["Chain"] + [f'<span title="{esc(b)}">{esc(l)}</span>' for _, l, b in cols]
+    rows, attrs = [], []
+    for s in slugs:
+        rows.append([f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>']
+                    + [cell_fn(s, k) for k, _, _ in cols])
+        # The baseline row is what "matches mainnet" is measured against, so the JS needs
+        # to find it without knowing the slug.
+        attrs.append(' data-baseline="1"' if s == "ethereum" else "")
+    return table(head, rows, cls="flip", tid=tid, pin=True,
+                 row_attrs=attrs, row_chains=slugs)
+
+
 # --------------------------------------------------------------------------
 # markdown
 # --------------------------------------------------------------------------
@@ -398,6 +435,25 @@ def inline_md(text):
     if h.startswith("<p>") and h.endswith("</p>") and h.count("<p>") == 1:
         h = h[3:-4]
     return h
+
+
+def fee_components(raw):
+    """`fee_model.extra_components` is a LIST, of plain strings or {name, note, severity}
+    entries — but both the axis grid and the chain page passed it through str(), so every
+    chain that had one rendered a Python repr: braces, quotes and all. Returns
+    (short, full): names for the grid cell, names with their notes for the chain page."""
+    if not isinstance(raw, list):
+        return flat(raw), flat(raw)
+    names, full = [], []
+    for x in raw:
+        if isinstance(x, dict):
+            n = str(x.get("name", "?"))
+            names.append(n)
+            full.append(f"{n} — {flat(x['note'])}" if x.get("note") else n)
+        else:
+            names.append(flat(x))
+            full.append(flat(x))
+    return ", ".join(names), "; ".join(full)
 
 
 def teaser(text, limit=240):
@@ -904,7 +960,8 @@ def page_chain(chains, slug):
         B.append(kv([("Metering", f'<code>{esc(fm.get("metering", "—"))}</code>'),
                      ("Fee market", esc(fm.get("fee_market"))),
                      ("Blob fee market", esc(fm.get("blob_fee_market", None))),
-                     ("Extra components", esc(fm.get("extra_components", None))),
+                     ("Extra components", esc(fee_components(fm["extra_components"])[1])
+                      if fm.get("extra_components") else None),
                      ("Gas limit", esc(fm.get("gas_limit", None))),
                      ("Note", markdown(flat(fm.get("note"))) if fm.get("note") else None)]))
         B.append(provenance(fm, on_chain=True))
@@ -1442,28 +1499,36 @@ def page_opcodes(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
-def page_fees(chains):
-    slugs = order(chains)
-    # Compact: one row per property, chains as columns. The prose belongs on the
-    # chain page, where there is room for it.
-    props = [("Metering", "metering"), ("Fee market", "fee_market"),
-             ("Blob fee market", "blob_fee_market"), ("Extra components", "extra_components")]
-    rows, attrs = [], []
-    for label, key in props:
-        cells, plain = [], []
-        for s in slugs:
-            v = teaser((chains[s].get("fee_model") or {}).get(key), 40) or "—"
-            plain.append(v)
-            cells.append(f'<a class="cl" href="../chains/{esc(s)}.html#fee-model" '
-                         f'title="{esc(flat((chains[s].get("fee_model") or {}).get(key)))}">'
-                         f'{esc(v)}</a>')
-        rows.append([esc(label)] + cells)
-        attrs.append(uniform_attr(plain))
-    grid = table(["Property"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
-                                 for s in slugs],
-                 rows, tid="fees-grid", pin=True, row_attrs=attrs, col_chains=[None] + slugs)
+FEE_PROPS = [
+    ("metering",         "Metering",         "What the chain counts: gas, or something else."),
+    ("fee_market",       "Fee market",       "How the price per unit is set."),
+    ("blob_fee_market",  "Blob fee market",  "The independent market for blob data, where one exists."),
+    ("extra_components", "Extra components", "Charges beyond the base fee and priority tip."),
+]
 
-    # header fields, grouped by field name
+
+def page_fees(chains):
+    """Two grids in two orientations, deliberately. The fee properties carry VALUES, so
+    chains are rows; the header fields carry single-character MARKS, so chains stay
+    columns. The rule is the cell content, not the page."""
+    slugs = order(chains)
+
+    def cell(s, key):
+        raw = (chains[s].get("fee_model") or {}).get(key)
+        if key == "extra_components":
+            short_, full = fee_components(raw)
+            return ('<span class="s-inherited">—</span>' if not short_ else
+                    f'<a class="cl" href="../chains/{esc(s)}.html#fee-model" '
+                    f'title="{esc(full)}">{esc(teaser(short_, 40))}</a>')
+        v = teaser(raw, 40) or "—"
+        if v == "—":
+            return '<span class="s-inherited">—</span>'
+        return (f'<a class="cl" href="../chains/{esc(s)}.html#fee-model" '
+                f'title="{esc(flat(raw))}">{esc(v)}</a>')
+
+    grid = chain_grid(chains, slugs, FEE_PROPS, cell, "fees-grid")
+
+    # header fields, grouped by field name — marks, so the orientation stays put
     per = {}
     for s in slugs:
         hf = chains[s].get("header_fields") or {}
@@ -1488,8 +1553,8 @@ def page_fees(chains):
         hrows.append([f'<code>{esc(f)}</code>'] + cells)
         hattrs.append(uniform_attr(plain))
 
-    B = [h2(f'Fees & envelope <span class="pill">{len(props)} properties</span>', "fees"),
-         filter_box("fees-grid", uniform=True), grid,
+    B = [h2(f'Fees & envelope <span class="pill">{len(FEE_PROPS)} properties</span>', "fees"),
+         filter_box("fees-grid", uniform="hide chains that match mainnet exactly"), grid,
          '<p class="legend">Values are truncated; hover for the full text, or follow a cell '
          'to that chain\'s fee model.</p>']
     B.append(h2(f'Header fields <span class="pill">{len(per)} fields</span>', "header-fields"))
@@ -1497,6 +1562,9 @@ def page_fees(chains):
     B.append(table(["Field"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
                                 for s in slugs],
                    hrows, tid="hdr", pin=True, row_attrs=hattrs, col_chains=[None] + slugs))
+    B.append('<p class="legend">This second grid keeps chains as <em>columns</em>: its cells '
+             'are single marks, which stay scannable across many columns where a column of '
+             'prose would not. Orientation follows the cell content, not the page.</p>')
     B.append(LEGEND)
     B.append(axis_notes(chains, "fees-envelope"))
     return layout("axes/fees-envelope.html", "Fees & envelope",
@@ -1510,32 +1578,28 @@ def page_ordering(chains):
     ordering, so a transaction that is ordered and then invalid is not a state it can
     reach. Every row is a chain that separated the two and had to invent an answer."""
     slugs = order(chains)
-    rows, attrs = [], []
-    for key, label, blurb in LIFECYCLE:
-        cells, plain = [], []
-        for s in slugs:
-            d, origin = lifecycle(chains, s).get(key, (None, s))
-            v = d.get("verdict") if isinstance(d, dict) else None
-            plain.append(v or "—")
-            if v:
-                mark = "" if origin == s else f' <span class="s-inherited" title="inherited from {esc(origin)}">=</span>'
-                cells.append(cell_link(s, "tx-lifecycle", key,
-                             f'<span class="pill" title="{esc(flat(d.get("answer") or d.get("note")))[:400]}">'
-                             f'{esc(v)}</span>{mark}'))
-            else:
-                cells.append('<span class="s-inherited" title="not established">—</span>')
-        if any(p != "—" for p in plain):
-            rows.append([f'<span title="{esc(blurb)}">{esc(label)}</span>'] + cells)
-            attrs.append(uniform_attr(plain))
-    B = [h2(f'Lifecycle <span class="pill">{len(rows)} questions</span>', "lifecycle"),
-         filter_box("lifecycle-grid", uniform=True),
-         table(["Question"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
-                               for s in slugs],
-               rows, tid="lifecycle-grid", pin=True, row_attrs=attrs,
-               col_chains=[None] + slugs),
+    data = {s: lifecycle(chains, s) for s in slugs}
+    cols = [c for c in LIFECYCLE
+            if any((d or {}).get("verdict") for s in slugs
+                   for d, _ in [data[s].get(c[0], (None, s))])]
+
+    def cell(s, key):
+        # See page_p2p: no inheritance mark when chains are rows.
+        d, _ = data[s].get(key, (None, s))
+        v = d.get("verdict") if isinstance(d, dict) else None
+        if not v:
+            return '<span class="s-inherited" title="not established">—</span>'
+        return cell_link(s, "tx-lifecycle", key,
+                         f'<span class="pill" title="'
+                         f'{esc(flat(d.get("answer") or d.get("note")))[:400]}">'
+                         f'{esc(v)}</span>')
+
+    B = [h2(f'Lifecycle <span class="pill">{len(cols)} questions</span>', "lifecycle"),
+         filter_box("lifecycle-grid", uniform="hide chains that match mainnet exactly"),
+         chain_grid(chains, slugs, cols, cell, "lifecycle-grid"),
          '<p class="legend">Mainnet reaches none of these states: nonce, balance and gas '
          'price are checked <em>before</em> a transaction can be ordered, so the '
-         '<code>ethereum</code> column is the baseline and reads <code>unreachable</code> / '
+         '<code>ethereum</code> row is the baseline and reads <code>unreachable</code> / '
          '<code>preserved</code>. A <code>—</code> means the question is not established for '
          'that chain, not that it behaves like mainnet. Hover a verdict for the finding; '
          'follow it for the cited source.</p>']
@@ -1553,33 +1617,29 @@ def page_p2p(chains):
     different question rather than the same one differently — Arbitrum's smaller cap is
     an L1 batch budget, not a gossip bound."""
     slugs = order(chains)
-    rows, attrs = [], []
-    for key, label, blurb in P2P:
-        cells, plain = [], []
-        for s in slugs:
-            d, origin = lifecycle(chains, s, "p2p").get(key, (None, s))
-            v = d.get("verdict") if isinstance(d, dict) else None
-            plain.append("—" if v is None else str(v))
-            if v is None:
-                cells.append('<span class="s-inherited" title="not established">—</span>')
-                continue
-            tier = d.get("tier")
-            mark = "" if origin == s else \
-                f' <span class="s-inherited" title="inherited from {esc(origin)}">=</span>'
-            tag = (f'<span class="s-inherited" title="{esc(TIER_TITLE.get(tier, tier))}">'
-                   f'{esc(tier)}</span>' if tier else "")
-            cells.append(cell_link(s, "p2p", key,
+    data = {s: lifecycle(chains, s, "p2p") for s in slugs}
+    cols = [c for c in P2P
+            if any((d or {}).get("verdict") is not None
+                   for s in slugs for d, _ in [data[s].get(c[0], (None, s))])]
+
+    def cell(s, key):
+        # No inheritance mark in this orientation. With chains as rows a `=` sits inside
+        # every cell of nine op-stack descendants, which reads as a value rather than a
+        # provenance note; the chain page states where an entry came from.
+        d, _ = data[s].get(key, (None, s))
+        v = d.get("verdict") if isinstance(d, dict) else None
+        if v is None:
+            return '<span class="s-inherited" title="not established">—</span>'
+        tier = d.get("tier")
+        tag = (f'<span class="tier" title="{esc(TIER_TITLE.get(tier, tier))}">'
+               f'{esc(tier)}</span>') if tier else ""
+        return cell_link(s, "p2p", key,
                          f'<span class="pill" title="{esc(flat(d.get("note")))[:400]}">'
-                         f'{esc(fmt_bytes(v))}</span>{mark}' + (f' {tag}' if tag else "")))
-        if any(x != "—" for x in plain):
-            rows.append([f'<span title="{esc(blurb)}">{esc(label)}</span>'] + cells)
-            attrs.append(uniform_attr(plain))
-    B = [h2(f'Wire limits <span class="pill">{len(rows)} questions</span>', "limits"),
-         filter_box("p2p-grid", uniform=True),
-         table(["Question"] + [f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>'
-                               for s in slugs],
-               rows, tid="p2p-grid", pin=True, row_attrs=attrs,
-               col_chains=[None] + slugs),
+                         f'{esc(fmt_bytes(v))}</span>') + tag
+
+    B = [h2(f'Wire limits <span class="pill">{len(cols)} questions</span>', "limits"),
+         filter_box("p2p-grid", uniform="hide chains that match mainnet exactly"),
+         chain_grid(chains, slugs, cols, cell, "p2p-grid"),
          '<p class="legend">Every size carries the tier that enforces it. '
          '<code>consensus</code> means a block breaking it is invalid; <code>policy</code> '
          'means only the mempool objects, so an oversized transaction is still perfectly '
@@ -1587,7 +1647,8 @@ def page_p2p(chains):
          'means the wire will not move it. Mainnet\'s 128 KiB is <code>policy</code> — it '
          'is not a rule, and the gap between it and the ~1.6 MB that EIP-7825 and EIP-7623 '
          'jointly permit is the space private orderflow occupies. A <code>—</code> means '
-         'the question is not established for that chain, not that it matches mainnet.</p>']
+         'the question is not established for that chain, not that it matches mainnet. '
+         'Hover a value for the finding; follow it for the cited source.</p>']
     B.append(axis_notes(chains, "p2p"))
     return layout("axes/p2p.html", "P2P & limits",
                   "How big a transaction, block or message may be, who enforces each "

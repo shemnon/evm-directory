@@ -251,6 +251,36 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged from geth.
+  max_message_bytes:
+    verdict: 16777216
+    tier: transport
+    src: "eth/protocols/wit/protocol.go:maxMessageSize"
+    note: >-
+      LARGER THAN MAINNET'S, BECAUSE OF A PROTOCOL MAINNET DOES NOT HAVE. bor keeps `eth`
+      and `snap` at 10 MiB but adds a third devp2p subprotocol, `wit`, for block witnesses,
+      and raises its cap to 16 MiB — right at the RLPx frame ceiling, since a witness is
+      the one payload that can approach it. The effective per-message limit therefore
+      depends on which subprotocol is speaking, which no single number captures.
+  transports:
+    verdict: "devp2p (+ wit) + Tendermint"
+    src: "eth/protocols/wit/protocol.go:maxMessageSize"
+    note: >-
+      TWO UNRELATED P2P STACKS IN ONE CHAIN. bor speaks devp2p (`eth`, `snap`, `wit`) for
+      execution, while Heimdall — the validator/checkpoint layer — is a Tendermint
+      application with its own packet-multiplexed p2p. They share no transport, no peer
+      set and no size limits, so "Polygon's max message size" is two answers depending on
+      which half is meant.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip (eth, snap)}
+      - {layer: execution, protocol: devp2p, purpose: block witnesses (wit)}
+      - {layer: consensus, protocol: Tendermint p2p, purpose: Heimdall checkpoints}
 fee_model:
   metering: gas
   fee_market: EIP-1559 (London at block 23850000), with a configurable burn contract

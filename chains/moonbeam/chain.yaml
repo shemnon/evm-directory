@@ -923,6 +923,27 @@ opcodes:
      note: "always zero; there is no PREVRANDAO source. Randomness is a precompile (0x0809), not an opcode.",
      src_live: "eth_call CREATE @ 16790908 with 4460005260206000f3 -> 0x0"}
 
+p2p:
+  max_block_bytes:
+    verdict: 5242880
+    tier: consensus
+    src: "runtime/moonbeam/src/lib.rs:BlockLength"
+    note: >-
+      A SUBSTRATE RUNTIME PARAMETER, WITH A TWIST NO EVM ROW HAS. The runtime declares
+      `BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO)` — 5 MiB
+      total, but only the normal-dispatch fraction of it is available to ordinary
+      extrinsics, the remainder being reserved for operational ones. So the usable ceiling
+      for user transactions is a ratio of the stated constant, not the constant, which is
+      unlike every gas-metered row here.
+  transports:
+    verdict: "libp2p"
+    src: "runtime/moonbeam/src/lib.rs:BlockLength"
+    note: >-
+      Substrate/Polkadot networking is libp2p throughout, and the EVM is a Frontier pallet
+      inside that runtime rather than a peer on an execution network. No devp2p, no `eth`
+      subprotocol, and no transaction pool with geth's slot arithmetic.
+    stack:
+      - {layer: consensus, protocol: libp2p, purpose: Substrate block + extrinsic gossip}
 fee_model:
   metering: "gas, projected from three Substrate meters"
   fee_market: "Substrate transaction-payment slow-adjusting multiplier, presented as an EIP-1559 baseFeePerGas"

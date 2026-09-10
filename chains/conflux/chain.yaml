@@ -956,6 +956,16 @@ tx_lifecycle:
       path.
       is the "charged a partial/penalty fee" outcome, and it is reachable on mainnet.
 
+p2p:
+  max_tx_bytes:
+    verdict: 307200
+    tier: consensus
+    src: "crates/execution/executor/src/spec.rs:max_transaction_size"
+    note: >-
+      300 KiB, set as a field on the executor's chain SPEC rather than as a pool tuning
+      knob — it sits beside the other protocol parameters the executor is versioned by, so
+      it is a rule of the chain rather than a relay preference. Roughly 2.4x mainnet's
+      mempool figure.
 fee_model:
   metering: gas
   fee_market: "CIP-1559 with two independent per-space base fees, per-DAG-block updates driven by packed gas LIMITS, a 20 gwei eSpace floor, and a DAO-adjustable burn share"

@@ -559,6 +559,18 @@ tx_lifecycle:
     note: "a failed transaction still consumes its nonce and its gas, as on mainnet."
     src: "rskj-core/src/main/java/org/ethereum/core/TransactionExecutor.java"
 
+p2p:
+  max_tx_bytes:
+    status: unrecorded
+    verdict: unrecorded
+    note: >-
+      NOT ESTABLISHED. rskj carries no per-transaction byte cap that a search of the
+      networking and pool packages could surface — the size-related constants in the tree
+      belong to the Bitcoin peg (`ReleaseTransactionBuilder`, whose
+      `EXCEED_MAX_TRANSACTION_SIZE` bounds a BTC release transaction, not an RSK one).
+      Absence of a found limit is not proof of no limit, so this is recorded as
+      unestablished rather than as `unbounded` — the claim Besu's row makes only because
+      its pool configuration could be enumerated in full.
 fee_model:
   metering: gas
   fee_market: >-

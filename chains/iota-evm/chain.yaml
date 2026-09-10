@@ -568,6 +568,13 @@ tx_lifecycle:
       path.
       revert.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "go-ethereum/core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged in the embedded go-ethereum. The EVM runs as a chain inside Wasp, so this pool bounds what the embedded client accepts; the surrounding IOTA node has its own unrelated transport.
 fee_model:
   metering: >-
     TWO METERS, and the receipt reports the larger. The EVM meters normally; then

@@ -631,6 +631,17 @@ opcodes:
     instructions. Same problem, two opposite answers.
   src_live: "eth_call init code <opcode> 60005260206000f3 @ 43436288 -> OpcodeNotFound for all 24 unallocated opcodes probed; PUSH0/MCOPY/TLOAD/TSTORE/BLOBHASH/BLOBBASEFEE/CHAINID/NUMBER/TIMESTAMP/GASLIMIT/BASEFEE/SELFBALANCE all execute"
 
+p2p:
+  max_tx_bytes:
+    status: unrecorded
+    verdict: unrecorded
+    note: >-
+      NOT ESTABLISHED, AND NOT ESTABLISHABLE THE USUAL WAY. This row is `documented`
+      evidence only — there is no public client to clone, so every other row's method
+      (read the constant, cite the symbol) is unavailable. HyperBFT's transport and its
+      message limits are not published in a form this axis can cite, and a live probe
+      cannot reveal a rejection threshold without sending oversized transactions to a
+      production network.
 fee_model:
   metering: gas
   fee_market: EIP-1559 with a hard base-fee floor and burned priority fees

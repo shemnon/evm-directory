@@ -996,6 +996,17 @@ tx_lifecycle:
       path.
       the only row where the gap is invisible AND ordinary bytecode opens it.
 
+p2p:
+  max_tx_bytes:
+    status: unrecorded
+    verdict: unrecorded
+    note: >-
+      NOT ESTABLISHED FROM THIS CLONE. The chain is a Cosmos SDK application, so admission
+      is CometBFT's `mempool.max_tx_bytes` — but CometBFT and the SDK are Go-module
+      dependencies here rather than vendored source, so the effective default cannot be
+      pinned to a commit the way `cosmos-evm` pins it. The structure is the same two-gate
+      arrangement recorded on that row (CometBFT CheckTx above, EVM txpool below); only the
+      number is unverified, and a per-network `config.toml` can change it regardless.
 fee_model:
   metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"

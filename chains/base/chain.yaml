@@ -256,6 +256,18 @@ opcodes:
   removed: []
   modified: []
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "base/crates/execution/node/src/node.rs:with_max_tx_input_bytes"
+    note: >-
+      A DIFFERENT CLIENT REACHING THE INHERITED NUMBER. Base runs a reth-based node rather
+      than op-geth, so its pool limit comes from reth's `DEFAULT_MAX_TX_INPUT_BYTES` wired
+      through `with_max_tx_input_bytes(ctx.config().txpool.max_tx_input_bytes)` — a
+      configurable pass-through, where the op-geth value inherited from `op-stack` is a
+      compile-time constant. Same 128 KiB, different enforcement and different override
+      story, and reth's blob-transaction measurement differs from geth's — see `plasma`.
 fee_model:
   metering: gas
   note: >-

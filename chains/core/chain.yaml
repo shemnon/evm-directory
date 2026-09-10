@@ -372,6 +372,17 @@ tx_lifecycle:
       preserves it. A consensus-visible nonce bug, live for five weeks.
     src: "core/state_transition.go:538-544"
 
+p2p:
+  max_message_bytes:
+    verdict: 10485760
+    tier: transport
+    src: "params/protocol_params.go:MaxMessageSize"
+    note: >-
+      10 MiB as upstream, but promoted out of the protocol package into `params` as an
+      exported `MaxMessageSize`, so the `eth` handler reads `var maxMessageSize =
+      params.MaxMessageSize` rather than defining its own. A refactor rather than a
+      divergence — recorded because the symbol moved, and a citation to the geth location
+      would no longer resolve here.
 fee_model:
   metering: gas
   fee_market: "EIP-1559 base fee, plus a contract-registered revenue share (Rev+)"

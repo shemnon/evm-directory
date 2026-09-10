@@ -321,6 +321,43 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 95000
+    tier: policy
+    src: "execution/gethexec/sequencer.go:MaxTxDataSize"
+    note: >-
+      SMALLER THAN MAINNET'S, AND FOR AN UNRELATED REASON. The sequencer's default
+      `max-tx-data-size` is 95,000 bytes — under three quarters of mainnet's 128 KiB — and
+      the comment at the constant gives the derivation: "95% of the default batch poster
+      limit, leaving 5KB for headers and such". The bound is L1 data-availability
+      economics, not gossip DoS: a transaction that cannot fit in a batch can never be
+      posted, so it is refused at ingress. It is operator-configurable and is overridden
+      for L3 chains, so it is a deployment property rather than a chain constant.
+  max_message_bytes:
+    verdict: 212144
+    tier: consensus
+    src: "arbos/arbostypes/incomingmessage.go:MaxL2MessageSize"
+    note: >-
+      The hard ceiling behind the configurable one. `MaxL2MessageSize` is 256 KiB, and
+      `ValidateMaxTxDataSize` refuses any configured `max-tx-data-size` above
+      `MaxL2MessageSize - 50000` = 212,144 bytes, reserving 50 KB for the 8-byte length
+      prefix each of up to 1,523 transactions adds. This is enforced in ArbOS, which parses
+      the batch, so unlike mainnet's mempool policy it genuinely cannot be routed around.
+  transports:
+    verdict: "sequencer feed"
+    src_doc: https://docs.arbitrum.io/run-arbitrum-node/sequencer/run-feed-relay
+    note: >-
+      THE QUESTION BARELY APPLIES. There is no transaction gossip: nodes forward
+      transactions to the centralized sequencer over RPC, and receive ordered results back
+      over a websocket "sequencer feed" that relays fan out. No mempool means no mempool
+      propagation limit, which is why `max_tx_bytes` here is an ingress policy rather than
+      a gossip bound. Settlement to L1 rides Ethereum's devp2p as ordinary batch-poster
+      transactions.
+    stack:
+      - {layer: execution, protocol: websocket, purpose: sequencer feed (ordered output)}
+      - {layer: settlement, protocol: devp2p, purpose: batch posting to L1}
+
 fee_model:
   metering: gas (plus Stylus "ink" for WASM execution)
   fee_market: ArbOS speed-limit-based L2 pricing

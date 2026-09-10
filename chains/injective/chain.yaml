@@ -797,6 +797,17 @@ tx_lifecycle:
       is unobservable. Injective also closes Artela's ordinary-bytecode trigger:
       `BlockContext.Random` is `&zero`, not nil, so PREVRANDAO does not nil-dereference.
 
+p2p:
+  max_tx_bytes:
+    status: unrecorded
+    verdict: unrecorded
+    note: >-
+      NOT ESTABLISHED FROM THIS CLONE. The chain is a Cosmos SDK application, so admission
+      is CometBFT's `mempool.max_tx_bytes` — but CometBFT and the SDK are Go-module
+      dependencies here rather than vendored source, so the effective default cannot be
+      pinned to a commit the way `cosmos-evm` pins it. The structure is the same two-gate
+      arrangement recorded on that row (CometBFT CheckTx above, EVM txpool below); only the
+      number is unverified, and a per-network `config.toml` can change it regardless.
 fee_model:
   metering: EVM gas, converted to Cosmos gas for block accounting
   fee_market: "none in consensus; an optional node-local mempool floor (Osmosis Mempool1559), disabled by default"

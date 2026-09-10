@@ -576,6 +576,29 @@ tx_lifecycle:
       path.
       between the sequencer's ordering and the EVM's block is recorded nowhere.
 
+p2p:
+  max_message_bytes:
+    verdict: 5242880
+    tier: transport
+    src: "pkg/blobsize/blobsize.go:DefaultMaxBlobSize"
+    note: >-
+      THE ONLY WIRE LIMIT IN THIS DATASET THAT IS A LINK-TIME VARIABLE. `DefaultMaxBlobSize`
+      is a `var`, not a `const` — overridable by ldflags at build time, with a 5 MiB
+      fallback when unset — and `pkg/p2p/client.go` passes it straight into
+      `pubsub.WithMaxMessageSize`. The p2p cap is therefore DERIVED from the
+      data-availability layer's blob size rather than chosen for the network: the changelog
+      records the two being brought into line to stop "fullnode desync on large blocks".
+      A deployment that raises its DA blob size and rebuilds silently changes its p2p
+      limit too.
+  transports:
+    verdict: "libp2p"
+    src: "pkg/p2p/client.go:NewFloodSub"
+    note: >-
+      libp2p pubsub, and specifically FloodSub rather than the gossipsub mainnet's consensus
+      layer uses — every message goes to every peer, with no mesh construction, which is
+      why the message-size cap does more work here than a mesh protocol's would.
+    stack:
+      - {layer: consensus, protocol: libp2p, purpose: FloodSub block + header gossip}
 fee_model:
   metering: standard EVM gas (upstream reth interpreter)
   fee_market: >-

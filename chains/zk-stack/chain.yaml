@@ -262,6 +262,24 @@ tx_lifecycle:
       `zksync-era` row.
     src: "core/lib/types/src/lib.rs"
 
+p2p:
+  max_tx_bytes:
+    verdict: 1000000
+    tier: policy
+    src: "core/lib/config/src/configs/api.rs:max_tx_size"
+    note: >-
+      The stack's default, from the same zksync-era source the `zksync-era` row cites:
+      transactions arrive by JSON-RPC and are size-checked during request parsing, because
+      a ZK Stack chain has no transaction gossip to bound. Individual deployments may set
+      their own value — this is the template's default, not a network fact.
+  max_message_bytes:
+    verdict: 16777216
+    tier: consensus
+    src: "core/lib/constants/src/crypto.rs:MAX_ENCODED_TX_SIZE"
+    note: >-
+      `1 << 24`, the bootloader's encoded-transaction ceiling — a circuit constraint shared
+      by every chain built on this stack, and the one limit here a deployment cannot
+      configure away.
 fee_model:
   metering: "ergs (EraVM), with a second independent price per byte of pubdata"
   fee_market: per-deployment

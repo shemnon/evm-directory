@@ -735,7 +735,7 @@ def ex_txtypes(slug, chain=None):
     return out
 
 PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
-                 "non_evm_transactions", "system_transactions"]
+                 "non_evm_transactions", "system_transactions", "p2p"]
 
 def provenance(c):
     """Tally how each fact in this row is evidenced. The generated tables merge

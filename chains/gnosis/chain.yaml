@@ -636,6 +636,25 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "src/Nethermind/Nethermind.TxPool/TxPoolConfig.cs:MaxTxSize"
+    note: >-
+      THE SAME LIMITS AS GETH, BUT AS CONFIGURATION RATHER THAN CONSTANTS. Nethermind
+      writes `MaxTxSize = 128.KiB` as a nullable settable property on `TxPoolConfig`, so an
+      operator can raise or remove it without a rebuild; `SizeTxFilter` treats a null as
+      `long.MaxValue`, i.e. no limit at all. Geth's equivalent is a compile-time `const`.
+      The number agrees; how firmly it is held does not.
+  max_blob_tx_bytes:
+    verdict: 1048576
+    tier: policy
+    src: "src/Nethermind/Nethermind.TxPool/TxPoolConfig.cs:MaxBlobTxSize"
+    note: >-
+      1 MiB, matching geth's blob pool, and selected by the same filter:
+      `tx.SupportsBlobs ? _configuredMaxBlobTxSize : _configuredMaxTxSize`. One filter with
+      a branch, where geth uses two separate pools.
 fee_model:
   metering: gas
   fee_market: "EIP-1559, mainnet parameters, base fee COLLECTED not burned"

@@ -658,6 +658,25 @@ opcodes:
     at forkID 10 — a forkID that never ran, so in practice it lifted when forkID 11
     assigned it a block.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "zk/txpool/pool.go:txMaxSize"
+    note: >-
+      The same 128 KiB, reached by a different codebase — cdk-erigon descends from Erigon,
+      not go-ethereum, and defines its own `txMaxSize = 4 * txSlotSize` in its own txpool.
+      Convergence on the number despite no shared code is the clearest evidence that this
+      limit is an interoperability convention rather than anyone's design decision.
+  max_blob_tx_bytes:
+    verdict: 800000
+    tier: policy
+    src: "zk/txpool/pool.go:blobTxMaxSize"
+    note: >-
+      DIVERGES FROM GETH: 800,000 bytes against geth's 1 MiB, with the comment "Should be
+      enough for a transaction with 6 blobs" — sized to the same 6-blob target that geth
+      reaches via `BlobTxMaxBlobs`, but expressed as a round decimal rather than a binary
+      one. Two clients aiming at the same blob count land on caps 248,576 bytes apart.
 fee_model:
   metering: "gas AND eight zk counters"
   fee_market: "none — no EIP-1559, no base fee, no base-fee header field"

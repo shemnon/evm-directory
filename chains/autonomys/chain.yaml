@@ -763,6 +763,25 @@ tx_lifecycle:
       path.
       here.
 
+p2p:
+  max_block_bytes:
+    verdict: 5242880
+    tier: consensus
+    src: "crates/subspace-runtime-primitives/src/lib.rs:MAX_BLOCK_LENGTH"
+    note: >-
+      A SUBSTRATE RUNTIME LIMIT, NOT AN EVM ONE. `MAX_BLOCK_LENGTH = 5 * 1024 * 1024` bounds
+      the consensus chain's block encoding; the EVM here is a Frontier domain runtime
+      hosted inside it, so the ceiling that binds is the host chain's, arrived at with no
+      reference to EIP-7934. The same constant is asserted a second time in the archiver
+      (`subspace-data-retrieval`), with a test that the two agree.
+  transports:
+    verdict: "libp2p"
+    src: "crates/subspace-runtime-primitives/src/lib.rs:MAX_BLOCK_LENGTH"
+    note: >-
+      Substrate networking is libp2p end to end — no devp2p anywhere in the stack — so
+      neither RLPx framing nor the `eth` subprotocol caps apply at any layer.
+    stack:
+      - {layer: consensus, protocol: libp2p, purpose: Substrate block + tx gossip}
 fee_model:
   metering: "gas, converted to Substrate Weight at a fixed 25,000 ps/gas"
   fee_market: "Substrate SlowAdjustingFeeUpdate over domain-block WEIGHT fullness, plus a consensus-chain storage fee — not EIP-1559"

@@ -336,6 +336,27 @@ tx_lifecycle:
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
 
+p2p:
+  max_tx_bytes:
+    verdict: 131072
+    tier: policy
+    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    note: >-
+      Unchanged from geth at 4 x 32 KiB, stated rather than left absent because BSC's much
+      larger block gas limit invites the assumption that it also carries larger
+      transactions. It does not.
+  transports:
+    verdict: "devp2p (+ bsc/1)"
+    src: "eth/protocols/bsc/protocol.go:ProtocolName"
+    note: >-
+      A THIRD DEVP2P PROTOCOL ALONGSIDE `eth` AND `snap`. BSC registers its own `bsc`
+      protocol on the same RLPx transport to carry fast-finality vote messages, under the
+      same 10 MiB `maxMessageSize`. It is a peer-to-peer capability negotiated at
+      handshake, so a peer that does not speak it still syncs — it just never sees votes.
+    stack:
+      - {layer: execution, protocol: devp2p, purpose: tx + block gossip (eth, snap)}
+      - {layer: consensus, protocol: devp2p, purpose: fast-finality votes (bsc/1)}
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (London active at block 31302048)

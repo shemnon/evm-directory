@@ -26,7 +26,10 @@ MAINNET_STD = set(range(0x01, 0x12)) | {0x100}   # 0x01-0x11 plus P256VERIFY
 
 # Chains whose BASE precompiles come from a dependency rather than this repo:
 # coreth/subnet-evm consume ava-labs/libevm, so 0x01-0x11 are not in the tree.
-EXTERNAL_BASE = {"avalanche-c", "avalanche-subnet"}
+# cronos joins them for a different reason: its EVM is `evmos/ethermint`
+# replaced onto crypto-org-chain's fork, and go-ethereum itself is replaced
+# onto crypto-org-chain/go-ethereum, so 0x01-0x11 are in neither of its clones.
+EXTERNAL_BASE = {"avalanche-c", "avalanche-subnet", "cronos"}
 
 def repo(slug, chain=None):
     """The clone holding this row's evidence. Rows may carry companion repos, and
@@ -652,6 +655,30 @@ def ex_core():
     return a
 
 
+# --- cosmos: the assertion is that nothing is registered -------------------
+def ex_cronos():
+    """The three Cronos precompiles are DEFINED and NOT REGISTERED: app/app.go hands
+    the EVM keeper an empty `[]evmkeeper.CustomContractFn{}`, and that slice is the
+    only registration path in the tree. So the live custom set is empty and the base
+    set comes from an unvendored go-ethereum fork (hence EXTERNAL_BASE).
+
+    Returning the empty set is exactly the case the ExtractError docstring warns
+    about — so the assertion is enforced instead of implied: if the slice ever stops
+    being empty, or the call site disappears, this raises rather than reporting
+    `precompiles ok (0 in source)`."""
+    r = repo("cronos")
+    if r is None: raise ExtractError("cronos: no clone")
+    app = (r / "app/app.go").read_text(errors="replace")
+    m = re.search(r"\[\]evmkeeper\.CustomContractFn\{([^}]*)\}", app)
+    if m is None:
+        raise ExtractError("cronos: no []evmkeeper.CustomContractFn{...} in app/app.go — "
+                           "the registration site this row rests on has moved")
+    if m.group(1).strip():
+        raise ExtractError("cronos: CustomContractFn slice is no longer empty: "
+                           + " ".join(m.group(1).split())[:90])
+    return set()
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -662,7 +689,8 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "monad": ex_monad, "zksync-era": ex_zksync_era, "gnosis": ex_gnosis,
            "blast": ex_blast,
            "rootstock": ex_rootstock,
-           "core": ex_core}
+           "core": ex_core,
+           "cronos": ex_cronos}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -679,6 +707,8 @@ TXTYPE_DIRS = {
     # rootstock is Java and has no EIP-2718 envelope at all.
     "rootstock": None,
     "core": "core/types",
+    # cronos keeps its transaction types in an unvendored go-ethereum fork.
+    "cronos": None,
 }
 def ex_txtypes(slug, chain=None):
     d = TXTYPE_DIRS.get(slug)

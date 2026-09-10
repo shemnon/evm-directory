@@ -72,6 +72,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Rollkit / Evolve](chains/rollkit/SUMMARY.md) *(template)* | ev-node (Evolve) + ev-reth | `v1.2.3` | prague |
 | [Cosmos EVM (evmd)](chains/cosmos-evm/SUMMARY.md) *(template)* | cosmos/evm (evmd reference node) | `v0.7.2` | prague |
 | [Injective](chains/injective/SUMMARY.md) | injective-core (injectived) | `v1.20.3` | prague |
+| [Cronos](chains/cronos/SUMMARY.md) | cronos (cronosd) + ethermint | `v1.7.8` | prague |
 | [Artela](chains/artela/SUMMARY.md) *(dead — abandoned, went dark Sept 2025)* | artela (artelad) | `v0.4.9-rc9` | cancun |
 | [Moonbeam](chains/moonbeam/SUMMARY.md) *(dead — shutdown 2026-08-10)* | moonbeam (runtime) | `runtime-4401` | osaka |
 | [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | cancun |

@@ -11,43 +11,71 @@ import pathlib, yaml
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHAINS = ROOT / "chains"
 
-# Display order: baseline first, then geth-line forks, then the OP Stack node ahead
-# of its descendants, the rollups by proof system, the framework rows ahead of their
-# descendants, then the independents and the stablecoin-gas chains. The original
-# twelve keep their relative order; later rows are inserted next to their family
-# rather than appended, so a column's neighbours are the rows it should be read
-# against.
-ORDER = ["ethereum",
-         "bnb", "polygon", "avalanche-c", "avalanche-subnet", "kaia", "sei",
-         "gnosis", "sonic", "berachain", "flare",
-         "arbitrum",
-         "op-stack", "optimism", "base", "worldchain", "opbnb", "celo", "mantle",
-         "megaeth", "rise",
-         "linea", "scroll", "taiko", "polygon-zkevm", "zksync-era",
-         "rollkit",
-         "cosmos-evm", "injective", "artela", "moonbeam",
-         "tron", "monad", "hyperliquid", "hedera", "conflux", "taraxa",
-         "autonomys",
-         "iota-evm",
-         "tempo", "arc", "plasma"]
+# Display order: distance from Ethereum's orbit, by category — not by fork lineage.
+# Mainnet first, then Arbitrum, then the OP Stack row with the networks built on it,
+# then the remaining Ethereum L2s, then the chains that only share the EVM. Inside
+# every band rows are alphabetical by display name, and a framework row keeps its
+# networks immediately below it, so a column's neighbours are the rows it should be
+# read against.
+#
+# Two things here are curated, because neither is a field in the dataset: which band a
+# chain sits in (whether a chain is an Ethereum L2 is an editorial call, not a YAML
+# key), and which framework row owns it (`lineage.upstream` says who a row forked, and
+# a fork of op-geth is not the same claim as a network built on the OP Stack). The
+# order itself is computed from those two, so adding a chain is a one-line edit and
+# never a hand-resorted list.
+MAINNET, ARBITRUM, OP_STACK, L2, L1 = range(5)
 
-SHORT = {"ethereum": "Ethereum", "bnb": "BNB", "polygon": "Polygon",
-         "avalanche-c": "Avax C", "avalanche-subnet": "Avax subnet", "kaia": "Kaia",
-         "sei": "Sei", "gnosis": "Gnosis", "sonic": "Sonic", "berachain": "Bera",
-         "flare": "Flare", "arbitrum": "Arbitrum",
-         "op-stack": "OP Stack", "optimism": "OP Mainnet", "base": "Base",
-         "worldchain": "World", "opbnb": "opBNB", "celo": "Celo", "mantle": "Mantle",
-         "megaeth": "MegaETH", "rise": "RISE",
-         "linea": "Linea", "scroll": "Scroll", "taiko": "Taiko",
-         "polygon-zkevm": "zkEVM", "zksync-era": "zkSync",
-         "rollkit": "Rollkit",
-         "cosmos-evm": "Cosmos EVM", "injective": "Injective", "artela": "Artela",
-         "moonbeam": "Moonbeam",
-         "tron": "Tron", "monad": "Monad", "hyperliquid": "Hyperliquid",
-         "hedera": "Hedera", "conflux": "Conflux", "taraxa": "Taraxa",
-         "autonomys": "Auto EVM",
-         "iota-evm": "IOTA EVM",
-         "tempo": "Tempo", "arc": "Arc", "plasma": "Plasma"}
+# Band, for the rows that lead one. Family members inherit their head's band.
+BAND = {"ethereum": MAINNET,
+        "arbitrum": ARBITRUM,
+        "op-stack": OP_STACK,
+        "linea": L2, "polygon-zkevm": L2, "rollkit": L2, "scroll": L2, "taiko": L2,
+        "zk-stack": L2}
+
+# slug -> the framework row it belongs under. zkSync Era declares no upstream — it IS
+# the reference ZK Stack network rather than a fork of one — so the link is stated here.
+FAMILY = {"base": "op-stack", "blast": "op-stack", "celo": "op-stack",
+          "mantle": "op-stack", "megaeth": "op-stack", "opbnb": "op-stack",
+          "optimism": "op-stack", "rise": "op-stack", "worldchain": "op-stack",
+          "zksync-era": "zk-stack",
+          "artela": "cosmos-evm", "cronos": "cosmos-evm", "injective": "cosmos-evm",
+          "core": "bnb"}
+
+# The one network a framework is read through, pinned directly under its framework row
+# ahead of the alphabetical rest. OP Mainnet is what "OP Stack" means to a reader.
+FLAGSHIP = {"op-stack": "optimism"}
+
+# A column-width name for every row. This mapping is also the row universe: a chain
+# directory missing from it is a chain missing from `ORDER`, which used to mean five
+# rows quietly appended past the end of every band.
+SHORT = {"arbitrum": "Arbitrum", "arc": "Arc", "artela": "Artela",
+         "autonomys": "Auto EVM", "avalanche-c": "Avax C",
+         "avalanche-subnet": "Avax subnet", "base": "Base", "berachain": "Bera",
+         "blast": "Blast", "bnb": "BNB", "celo": "Celo", "conflux": "Conflux",
+         "core": "Core", "cosmos-evm": "Cosmos EVM", "cronos": "Cronos",
+         "ethereum": "Ethereum", "flare": "Flare", "gnosis": "Gnosis",
+         "hedera": "Hedera", "hyperliquid": "Hyperliquid", "injective": "Injective",
+         "iota-evm": "IOTA EVM", "kaia": "Kaia", "linea": "Linea", "mantle": "Mantle",
+         "megaeth": "MegaETH", "monad": "Monad", "moonbeam": "Moonbeam",
+         "op-stack": "OP Stack", "opbnb": "opBNB", "optimism": "OP Mainnet",
+         "plasma": "Plasma", "polygon": "Polygon", "polygon-zkevm": "zkEVM",
+         "rise": "RISE", "rollkit": "Rollkit", "rootstock": "Rootstock",
+         "scroll": "Scroll", "sei": "Sei", "sonic": "Sonic", "taiko": "Taiko",
+         "taraxa": "Taraxa", "tempo": "Tempo", "tron": "Tron",
+         "worldchain": "World", "zk-stack": "ZK Stack", "zksync-era": "zkSync"}
+
+
+def _rank(s):
+    """Sort key: band, then family, then the family's own head-flagship-rest order."""
+    head = FAMILY.get(s, s)
+    inner = 0 if s == head else 1 if s == FLAGSHIP.get(head) else 2
+    return (BAND.get(head, L1), SHORT.get(head, head).lower(),
+            inner, SHORT.get(s, s).lower())
+
+
+ORDER = sorted(SHORT, key=_rank)
+
 
 MARK = {"added": "➕", "removed": "➖", "modified": "⚠️",
         "inherited": "=", "pending": "◌", "tombstoned": "⊘"}
@@ -117,6 +145,8 @@ def client(c, field, dflt="—"):
 
 
 def order(chains):
+    """Display order, restricted to the rows given. A slug nobody classified still
+    renders — at the end, where its absence from `SHORT` is visible."""
     return [s for s in ORDER if s in chains] + [s for s in chains if s not in ORDER]
 
 

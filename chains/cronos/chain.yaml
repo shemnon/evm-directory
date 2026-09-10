@@ -1,0 +1,331 @@
+schema_version: 2
+
+chain:
+  name: Cronos
+  slug: cronos
+  chain_id: 25
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    THE FRAMEWORK ROW DOES NOT ABSORB IT, AND THE PRECOMPILES IT IS FAMOUS FOR ARE
+    NOT TURNED ON. CANDIDATES.md listed Cronos under `cosmos-evm` as a chain the
+    framework row covers. It does not: `grep cosmos/evm go.mod go.sum` returns
+    nothing. Cronos runs `evmos/ethermint`, replaced onto its own fork
+    `crypto-org-chain/ethermint`, and go-ethereum itself replaced onto
+    `crypto-org-chain/go-ethereum` — the pre-donation Ethermint lineage that
+    cosmos/evm succeeded, forked per-chain, exactly the outcome CANDIDATES.md warns
+    about for proposed frameworks.
+
+    And the row's headline turns out to be a negative. Cronos defines three custom
+    precompiles — Bank at 0x64, Relayer at 0x65, ICA at 0x66 — and registers NONE of
+    them: `app/app.go` passes an EMPTY `[]evmkeeper.CustomContractFn{}` to the EVM
+    keeper. All three addresses are empty accounts on mainnet. A survey that greps
+    for precompile address constants reports three; the chain has zero.
+
+lineage:
+  upstream: cosmos-evm
+  ancestry: [ethereum, cosmos-evm]
+  fork_of: evmos/ethermint (via crypto-org-chain/ethermint), NOT cosmos/evm
+  sync_point: >-
+    A SIBLING, NOT A DESCENDANT, AND THE MODULE NAMES SHOW IT. cosmos/evm's EVM
+    module is `x/vm`; Cronos imports `github.com/evmos/ethermint/x/evm` and
+    `.../x/feemarket`. Both trees descend from Evmos's Ethermint, but Cronos forked
+    before the donation to the Cosmos SDK org and has carried its own copy since.
+
+    Four differences that are measurable rather than nominal:
+
+    (1) THERE IS NO ACCEPTED-TX-TYPE ALLOWLIST. cosmos-evm's row cites
+    `ante/evm/mono_decorator.go:AcceptedTxType`, which ORs in 0x00/0x01/0x02/0x04 and
+    lets geth's txpool validator reject anything else. `grep -r AcceptedTxType`
+    across this ethermint fork returns nothing, and `EthereumTx.Validate` checks only
+    gas limit and fee-field bit lengths. What happens to a type-0x03 transaction end
+    to end is therefore not established — see tx_types."0x03".
+
+    (2) DIFFERENT PRECOMPILE ADDRESSES, AND THEY ARE OFF. cosmos/evm puts its module
+    precompiles at 0x0400 and 0x0800-0x0807. Cronos's are at 0x64, 0x65 and 0x66 —
+    inside the contested BSC/Arbitrum/Core block — and are not registered.
+
+    (3) DIFFERENT go-ethereum. cosmos/evm replaces geth with
+    `cosmos/go-ethereum v1.17.2-cosmos-0`; Cronos replaces it with
+    `crypto-org-chain/go-ethereum v1.10.20-0.20250815065500-a4fbafcae0dd`, whose
+    go.mod comment reads `// release/v1.15`.
+
+    (4) Its own modules: `x/cronos` (CRC-20 <-> IBC token mapping, the `evm/<addr>`
+    denom namespace) and `x/e2ee`, neither of which exists upstream.
+
+client:
+  name: cronos (cronosd)
+  repo: https://github.com/crypto-org-chain/cronos
+  version: v1.7.8
+  commit: 1f072c05accfa8e17d2308fd965547158a15f473
+  language: go
+  note: >-
+    v1.7.9 exists but is marked pre-release on GitHub; v1.7.8 is the newest stable
+    tag. The EVM is NOT in this repo — the interpreter, the ante chain, the JSON-RPC
+    shim and `x/evm` all live in the ethermint companion below, pinned at the exact
+    pseudo-version commit this tag's go.mod names. Citations are written relative to
+    whichever clone holds the file.
+  companion_repos:
+  - {name: ethermint, repo: "https://github.com/crypto-org-chain/ethermint",
+     commit: 2593e6edcfff02679cac491c69d0166436b7501d,
+     provides: "x/evm, x/feemarket, the ante chain and the EVM keeper (go.mod replace target)"}
+
+live_probe:
+  endpoint: https://evm.cronos.org
+  chain_id: 25
+  observed_at_block: 92902237
+  note: >-
+    `web3_clientVersion` returns `Version dev ()` with an empty commit — the version
+    stamp is not populated in the build mainnet runs, so the pin cannot be confirmed
+    against the network from the RPC. Fork level was established by capability probe
+    instead (see forks).
+
+consensus:
+  engine: CometBFT (Tendermint) BFT, Cosmos SDK v0.53 via crypto-org-chain's fork
+  block_time: ~5.6s
+  finality: instant (single-block BFT finality)
+
+baseline_fork: prague
+
+forks:
+  src: "ethermint/x/evm/types/chain_config.go:EthereumConfig, ethermint/x/evm/types/chain_config.go:DefaultChainConfig"
+  note: >-
+    NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER
+    in module state, defaulting to every block-numbered fork at 0 and
+    Shanghai/Cancun/Prague at time 0, and governance can change it without a client
+    release. `EthereumConfig` builds a geth `params.ChainConfig` with no OsakaTime
+    field at all, so Osaka is unreachable regardless of the parameter.
+
+    Level established by live capability probe rather than by a schedule: KZG at 0x0a
+    and BLS12-381 at 0x0b both answer `invalid input length` (present), the EIP-2935
+    history contract has code, MCOPY works, and CLZ (0x1e, Osaka) reports
+    `invalid opcode`.
+  timeline:
+  - {name: "genesis config", activation_time: 0, mainnet_equivalent: prague,
+     note: "DefaultChainConfig sets Shanghai/Cancun/Prague to time 0; the live value is a governance parameter"}
+  - {name: osaka, activation_time: null, status: pending,
+     note: "EthereumConfig has no OsakaTime field — not schedulable, not just unscheduled"}
+
+eips:
+  2537: {status: inherited, note: "BLS12-381 present at mainnet addresses",
+         src_live: "eth_call 0x0b @ 92902237 -> 'invalid input length' (a live precompile)"}
+  4844:
+    status: modified
+    severity: high
+    note: >-
+      KZG POINT EVALUATION IS LIVE AND THERE ARE NO BLOBS. 0x0a answers, because the
+      precompile set comes from the geth dependency at Cancun level — but the block
+      has no `blobGasUsed`, no `excessBlobGas` and no blob market, and there is no
+      transaction-type allowlist to refuse type 0x03. The precompile and the
+      transaction type have come apart.
+    src_live: "eth_call 0x0a @ 92902237 -> 'invalid input length'; eth_getBlockByNumber latest -> no blobGasUsed key"
+  7951: {status: removed, note: "no Osaka is reachable; 0x0100 is an empty account",
+         src: "ethermint/x/evm/types/chain_config.go:EthereumConfig",
+         src_live: "eth_call 0x0100 @ 92902237 -> 0x"}
+  2935: {status: inherited, note: "the history-storage contract has code",
+         src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 92902237 -> 0x3373ff… (non-empty)"}
+  5656: {status: inherited, src_live: "eth_call 0x60ff5f5260015f60015e60205ff3 @ 92902237 -> 0x..ff"}
+  7702: {status: inherited, note: "`set_code_tx.go` exists in this fork and returns SetCodeTxType",
+         src: "ethermint/x/evm/types/set_code_tx.go:70"}
+  4399:
+    status: unrecorded
+    note: >-
+      Not established. The block JSON carries `mixHash` and `difficulty`, and
+      ethermint fabricates an Ethereum-shaped header over a CometBFT block, so
+      whether 0x44 binds to `opRandom` or `opDifficulty` depends on which of the two
+      the fabricated header sets to zero. Recorded rather than omitted so the grid
+      does not fall back to asserting mainnet equivalence.
+  1559: {status: inherited, note: "x/feemarket, an EIP-1559 base fee held in module params; MinGasPrice defaults to 0 and NoBaseFee to false. Where the base fee GOES was not established.",
+         src: "ethermint/x/feemarket/types/params.go:30-46"}
+
+non_eip_specs:
+  - {id: "CRC-20 conversion", name: "x/cronos token mapping between ERC-20 contracts and IBC/native denoms",
+     adoption: adopted, src: "x/cronos/keeper/keeper.go"}
+  - {id: "evm/<address> denom namespace", name: "per-contract Cosmos bank denominations",
+     adoption: draft,
+     note: "defined by the unregistered Bank precompile; no contract can reach it today",
+     src: "x/cronos/keeper/precompiles/bank.go:22-28"}
+
+tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02, 0x04"
+    src: "ethermint/x/evm/types/tx_data.go:67-84, ethermint/x/evm/types/eth.go:74-102"
+    note: >-
+      Legacy, access-list, dynamic-fee and set-code transactions all have TxData
+      implementations in this fork. 0x03 is left out of `present` because no blob
+      market exists — but, unlike cosmos-evm, nothing REFUSES it either; see the
+      0x03 entry. Sampled live: 2 transactions across 30 blocks (a very quiet chain),
+      types 0x00 and 0x02.
+  "0x03":
+    name: BlobTx
+    status: unrecorded
+    note: >-
+      DELIBERATELY NOT ESTABLISHED, AND THE GAP IS THE POINT. cosmos-evm refuses 0x03
+      at a named allowlist (`AcceptedTxType`); this fork has no such list, and
+      `EthereumTx.Validate` checks only gas and fee bounds. The legacy converter
+      `NewTxDataFromTx` would fall through a blob transaction to `newLegacyTx`, but
+      that function is not on the live path — the accepted path carries the raw geth
+      transaction through `AsTransaction()`. Establishing what actually happens
+      end-to-end would require submitting a blob transaction to mainnet, which this
+      row does not do. `unrecorded` rather than `removed`, because "we found no
+      rejection" and "the chain rejects it" are different claims.
+    src: "ethermint/x/evm/types/eth.go:74-102, ethermint/x/evm/types/tx_data.go:67-84"
+  note: >-
+    No Cronos-specific type byte. As on every Cosmos-EVM row, the thing CometBFT
+    orders is a protobuf `MsgEthereumTx`, not an EIP-2718 envelope — see
+    non_evm_transactions.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    secp256k1 with Ethereum's derivation, wrapped in a Cosmos message. The
+    Cosmos-EVM shape — the `MsgEthereumTx` wrapper, the dual address space, the
+    ante chain — is stated on the `cosmos-evm` row and is not restated here; what IS
+    Cronos-specific is that the deprecated protobuf fields are now hard-rejected:
+    `ValidateBasic` fails a message carrying `DeprecatedFrom`, `DeprecatedHash`,
+    `Size_` or `Data`, so only the `Raw` + `From` shape is accepted.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: "ECRECOVER comes from the crypto-org-chain/go-ethereum dependency, outside both clones."
+      src: "ethermint/x/evm/types/msg.go:159-186"
+
+non_evm_transactions:
+  note: >-
+    THE SAME INVERSION AS cosmos-evm, unmodified: every Ethereum transaction reaches
+    consensus wrapped in a Cosmos SDK transaction, and ordinary Cosmos messages —
+    IBC transfers, bank sends, governance — move balances that the EVM can read
+    without ever appearing in an Ethereum block. The `cosmos-evm` row states this
+    axis in full; Cronos adds `x/cronos`'s CRC-20 conversion messages to the set,
+    which mint and burn ERC-20 balances from a Cosmos message.
+  src: "x/cronos/keeper/keeper.go, ethermint/x/evm/types/msg.go"
+
+precompiles:
+  # verified: app/app.go:649 — the CustomContractFn slice handed to the EVM keeper is
+  # EMPTY, so the base set from the go-ethereum dependency is the whole live set.
+  base_map:
+    status: inherited
+    present: "0x01-0x11"
+    p256verify: false
+    src: >-
+      resolved through the crypto-org-chain/go-ethereum dependency (go.mod replace),
+      not vendored in either clone; registration site is
+      ethermint/x/evm/keeper/simulate.go:130 (vm.DefaultPrecompiles)
+    note: >-
+      Prague-level base range, confirmed live rather than from source because the
+      implementations are in an unvendored dependency: 0x0a and 0x0b both answer
+      `invalid input length`, which an empty account cannot do. No P256VERIFY —
+      Osaka is not even expressible in this fork's ChainConfig.
+    src_live: "eth_call 0x0a and 0x0b @ 92902237 -> 'invalid input length'; eth_call 0x0100 -> 0x"
+  "0x0000000000000000000000000000000000000064":
+    name: Bank (defined, not registered)
+    status: removed
+    severity: high
+    note: >-
+      DEFINED IN THE TREE, ABSENT FROM THE CHAIN. `NewBankContract` returns a
+      precompile at `common.BytesToAddress([]byte{100})` implementing
+      `mint(address,uint256)`, `burn`, `transfer` and `balanceOf` over Cosmos bank
+      denominations in the `evm/<caller>` namespace — a precompile that would let any
+      contract mint unbounded supply of its own namespaced Cosmos denom, 200,000 gas
+      flat. It is not wired up: `app/app.go` passes `[]evmkeeper.CustomContractFn{}`,
+      the only occurrence of that type in the repository. Live, 0x64 is an empty
+      account.
+
+      Recorded as `removed` rather than omitted because the constant is what a
+      grep-based survey finds, and because 0x64 is the most contested address in this
+      dataset — BSC, Arbitrum and Core all use it, and Cronos is the chain that is
+      usually listed as a fourth and is not.
+    src: "x/cronos/keeper/precompiles/bank.go:32, x/cronos/keeper/precompiles/bank.go:99-140, app/app.go:649"
+    src_live: "eth_getCode 0x64 @ 92902237 -> 0x; eth_call 0x64 with a 4-byte selector -> 0x (empty account, succeeds)"
+  "0x0000000000000000000000000000000000000065":
+    name: Relayer (defined, not registered)
+    status: removed
+    note: "IBC relayer precompile at `BytesToAddress([]byte{101})`; same empty registration slice."
+    src: "x/cronos/keeper/precompiles/relayer.go:26, app/app.go:649"
+    src_live: "eth_getCode 0x65 @ 92902237 -> 0x"
+  "0x0000000000000000000000000000000000000066":
+    name: ICA (defined, not registered)
+    status: removed
+    note: "interchain-accounts precompile at `BytesToAddress([]byte{102})`; same empty registration slice."
+    src: "x/cronos/keeper/precompiles/ica.go:36, app/app.go:649"
+    src_live: "eth_getCode 0x66 @ 92902237 -> 0x"
+  note: >-
+    ZERO ADDED ADDRESSES, from a chain whose documentation and whose source both
+    describe three. The finding is the gap between them, and it is only visible by
+    following the registration site rather than the constant.
+
+system_contracts:
+  "0x4e59b44847b379578588920ca78fbf26c0b4956c": {name: Create2 deployer, status: added,
+     note: "installed as a preinstall by the EVM module, not deployed by a transaction", src: "ethermint/x/evm/types/preinstall.go:13-18"}
+  "0xcA11bde05977b3631167028862bE2a173976CA11": {name: Multicall3, status: added,
+     src: "ethermint/x/evm/types/preinstall.go:19-23",
+     src_live: "eth_getCode @ 92902237 -> 0x6080… (non-empty)"}
+  "0x000000000022D473030F116dDEE9F6B43aC78BA3": {name: Permit2, status: added, src: "ethermint/x/evm/types/preinstall.go:25-27"}
+  "0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7": {name: Safe singleton factory, status: added, src: "ethermint/x/evm/types/preinstall.go:30-32"}
+  note: >-
+    The same four preinstalls cosmos-evm carries, with the same addresses and the
+    same bytecode, in a fork that shares no module path with it — convergent
+    porting, not shared code.
+
+opcodes: {added: [], removed: [], modified: [], note: "the interpreter is the unvendored crypto-org-chain/go-ethereum; no opcode delta was established in either clone."}
+
+tx_lifecycle:
+  ordering:
+    verdict: unreachable
+    note: >-
+      CometBFT orders protobuf transactions and the block is executed in the same
+      pass; the Cosmos-EVM lifecycle is stated on the `cosmos-evm` row.
+    src: "ethermint/x/evm/keeper/msg_server.go"
+
+fee_model:
+  metering: gas
+  fee_market: "x/feemarket — an EIP-1559 base fee held in governance-settable module parameters"
+  note: >-
+    `DefaultMinGasPrice` is 0 and `DefaultNoBaseFee` is false, and both — along with
+    the base fee itself and the change denominator — are `ParamSetPair`s, so the fee
+    market is governance state rather than client constants. Where the base fee goes
+    was not established in either clone.
+  src: "ethermint/x/feemarket/types/params.go:30-63"
+
+header_fields:
+  added: []
+  removed:
+  - {name: withdrawalsRoot, note: "no beacon chain; the Ethereum header is fabricated over a CometBFT block",
+     src_live: "eth_getBlockByNumber latest @ 92902237 -> no withdrawalsRoot key"}
+  - {name: blobGasUsed, note: "no blob market", src_live: "eth_getBlockByNumber latest @ 92902237 -> no blobGasUsed key"}
+  - {name: excessBlobGas, note: "no blob market", src_live: "eth_getBlockByNumber latest @ 92902237 -> no excessBlobGas key"}
+  - {name: parentBeaconBlockRoot, note: "no beacon chain", src_live: "eth_getBlockByNumber latest @ 92902237 -> no parentBeaconBlockRoot key"}
+  - {name: requestsHash, note: "Prague EVM without Prague's header", src_live: "eth_getBlockByNumber latest @ 92902237 -> no requestsHash key"}
+  modified: []
+  note: >-
+    A PRAGUE EVM UNDER A PRE-CANCUN HEADER. BLS12-381 and the EIP-2935 history
+    contract are live, and the block has none of Cancun's or Prague's header fields —
+    because the header is synthesized from a CometBFT block rather than produced by
+    an Ethereum consensus layer.
+
+gotchas:
+  - >-
+    CRONOS IS NOT A cosmos/evm CHAIN. It runs the older evmos/ethermint tree through
+    its own fork, with different module paths, a different go-ethereum fork, and none
+    of cosmos/evm's 0x0800 precompile block. The framework row does not describe it.
+  - >-
+    ITS THREE CUSTOM PRECOMPILES ARE NOT ENABLED. Bank (0x64), Relayer (0x65) and ICA
+    (0x66) are implemented and unregistered — `app/app.go` hands the EVM keeper an
+    empty `CustomContractFn` slice. All three addresses are empty accounts, which
+    means calls to them SUCCEED and return nothing.
+  - >-
+    THERE IS NO TRANSACTION-TYPE ALLOWLIST. cosmos-evm names one; this fork has none,
+    and validation checks only gas and fee-field bounds. What a blob transaction does
+    end to end is recorded as `unrecorded`, not guessed.
+  - >-
+    THE HEADER IS CANCUN-LESS AND THE EVM IS PRAGUE. Anything that infers fork level
+    from header fields will place this chain years behind where its EVM actually is.
+  - >-
+    THE FORK SCHEDULE IS A GOVERNANCE PARAMETER. `ChainConfig` lives in module state,
+    so "which fork is Cronos on" is answerable only by probing the running chain —
+    which is how the level in this row was established.

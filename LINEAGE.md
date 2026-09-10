@@ -34,6 +34,7 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
   └── Cosmos EVM (evmd) (v0.7.2, prague)
     └── Injective (v1.20.3, prague)
     └── Artela (v0.4.9-rc9, cancun)
+    └── Cronos (v1.7.8, prague)
   └── Hedera (v0.76.1, cancun)
   └── Taraxa (v1.14.1, constantinople)
   └── IOTA EVM (v2.0.3, cancun)
@@ -105,4 +106,5 @@ Autonomys Auto EVM — no upstream (role: independent)
 | Plasma | `prague` | A one-entry timeline. Everything is at genesis; no Plasma-named upgrade exists in the chain config, which is itself the finding — this chain has no fork history to diverge in. |
 | Blast | `cancun` | The EL ladder stops at Ecotone. `config/rollup.json` names exactly regolith / canyon / delta / ecotone / taiga and nothing after it; `taiga` is an OP fork with NO execution-layer effect (it  |
 | Core | `prague` | TWO FORK LADDERS INTERLEAVED. BSC's names and Core's own share one timestamp space and several fire together — Luban, Plato, Bohr, Pascal, Prague and Hermes all activate at 1764057600. There |
+| Cronos | `prague` | NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER in module state, defaulting to every block-numbered fork at 0 and Shanghai/Cancun/Prague at time 0, and gover |
 | Rootstock (RSK) | `petersburg` | ACTIVATION IS BY BLOCK NUMBER, IN TWO FILES, AND ONE OVERRIDES THE OTHER. `reference.conf` maps each `rskipNNN` to a FORK NAME; `config/main.conf` maps each fork name to a mainnet BLOCK HEIG |

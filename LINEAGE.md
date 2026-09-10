@@ -24,6 +24,7 @@ ethereum (baseline — go-ethereum v1.17.5, Osaka)
     └── Mantle (v1.6.1, osaka)
     └── MegaETH (v1.7.0, prague)
     └── RISE (v0.6.0, prague)
+    └── Blast (v1.8.0, cancun)
   └── Linea (releases/linea-besu-package/v2.1.1, osaka)
   └── Scroll (scroll-v5.10.2, shanghai)
   └── Taiko Alethia (v2.6.0, osaka)
@@ -100,3 +101,4 @@ Autonomys Auto EVM — no upstream (role: independent)
 | Tempo | `osaka` | Tempo's fork axis is entirely its own — T0..T11, activation timestamps hardcoded per chain id in `crates/hardfork/src/constants.rs` (mainnet 4217, moderato 42431) rather than read from a gen |
 | Arc | `osaka` | TWO SCHEDULES THAT DO NOT MATCH, and the mismatch is the finding. Mainnet (5042) gets Zero3, Zero4, Osaka, Zero5, Zero6 all at genesis and STOPS — Zero7 and Zero8 are absent from `ARC_MAINNE |
 | Plasma | `prague` | A one-entry timeline. Everything is at genesis; no Plasma-named upgrade exists in the chain config, which is itself the finding — this chain has no fork history to diverge in. |
+| Blast | `cancun` | The EL ladder stops at Ecotone. `config/rollup.json` names exactly regolith / canyon / delta / ecotone / taiga and nothing after it; `taiga` is an OP fork with NO execution-layer effect (it  |

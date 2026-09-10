@@ -92,9 +92,18 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy `0x64`–`0x69` — *exactly*
 the six addresses BSC uses for its cross-chain and consensus precompiles. Two of the
 largest EVM chains, no shared code, six identical addresses, unrelated functions.
-opBNB makes `0x66` and `0x67` three-way. Polygon and BSC both put a contract called
-`ValidatorContract` at `0x…1000`, with different code. Any tool holding one global
+opBNB makes `0x66` and `0x67` three-way. **`0x64` is now declared by five unrelated
+chains** — BSC, Arbitrum, opBNB, Core (Bitcoin header validation) and Cronos (a Bank
+precompile) — and live on three of them at once. Polygon, BSC and Core all put a
+contract called `ValidatorContract` at `0x…1000`, with different code; Core's staking
+module and Sei's P256VERIFY share `0x…1011`. Any tool holding one global
 address-keyed map is wrong on some major chain.
+
+**And the same name can move.** Core carries BSC's `blsSignatureVerify` — the same
+implementation, the same input layout — at `0x65` instead of BSC's `0x66`, which is
+where BSC puts `iavlMerkleProofValidate`. Code ported from BSC that calls `0x66` on
+Core reaches an *empty account*: the call succeeds and returns nothing, which reads as
+"verification produced no result" rather than "there is no verifier here".
 
 **Two allocation frontiers are closing on each other.** Mainnet assigns transaction
 type bytes upward from `0x04`. Chains assign downward from the `0x7f` ceiling:
@@ -150,8 +159,13 @@ declare it, eleven carry P256VERIFY there, arriving through five unrelated forks
 diverge from mainnet's semantics or gas. Presence proves nothing about lineage or fork
 level.
 
-**Two chains break it, and the second one harder.** On Hyperliquid `0x0100` is simply
-empty. On **Sei it is empty even though the chain has P256VERIFY** — at `0x1011`,
+**Three chains break it, and each in a different way.** On Hyperliquid `0x0100` is
+simply empty. On **Blast the address is occupied by something else entirely** — a
+live, ABI-dispatched, *state-mutating* precompile that configures native yield, gated
+on being called by a predeploy, charging 100,000 gas before reverting on anything it
+does not recognise. Neither "call it and check for output" nor "read `eth_getCode`"
+tells that apart from the other two cases. On **Sei it is empty even though the chain
+has P256VERIFY** — at `0x1011`,
 ABI-dispatched as `verify(bytes)`, where the raw 160-byte call reverts. Sei's geth fork
 stops at Prague and installs custom precompiles only where the built-in map is empty, so
 it structurally cannot occupy a mainnet address.

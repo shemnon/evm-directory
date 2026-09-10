@@ -59,6 +59,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB Chain fork) | `v0.5.10` | cancun |
 | [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | prague |
 | [Mantle](chains/mantle/SUMMARY.md) | op-geth (Mantle fork) | `v1.6.1` | osaka |
+| [Blast](chains/blast/SUMMARY.md) | blast (blast-geth + blast-optimism) | `v1.8.0` | cancun |
 | [MegaETH](chains/megaeth/SUMMARY.md) | mega-evm (MegaEVM) | `v1.7.0` | prague |
 | [RISE](chains/rise/SUMMARY.md) | rise-node (config only; execution client closed) | `v0.6.0` | prague |
 | [Linea](chains/linea/SUMMARY.md) | lineth-monorepo (Linea Besu package + plugins + tracer) | `releases/linea-besu-package/v2.1.1` | osaka |

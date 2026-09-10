@@ -560,6 +560,27 @@ def ex_gnosis():
     if not active: raise ExtractError("gnosis: BuildPrecompilesCache resolved to nothing")
     return active & runnable
 
+# --- op-geth forks that never advanced the precompile ladder ---------------
+def ex_blast():
+    """op-geth fork, and the map that matters is the OLD one. blast-geth carries a
+    modern params/config.go (Prague, Osaka, BPO) over a geth-1.13 core/vm/contracts.go
+    whose ActivePrecompiles has no Prague or Osaka case, so
+    PrecompiledContractsCancun IS the live set. The 0x0100 entry in it is Blast's own
+    state-writing `blast` precompile, not P256VERIFY.
+
+    Raises if a Prague/Osaka rung ever appears, because at that moment the Cancun map
+    stops being the answer and every base-map claim on the row goes stale."""
+    s = text("blast", "blast-geth/core/vm/contracts.go")
+    if not s: raise ExtractError("blast: blast-geth/core/vm/contracts.go not found")
+    body = block(s, "func ActivePrecompiles(rules params.Rules)")
+    if "rules.IsPrague" in body or "rules.IsOsaka" in body:
+        raise ExtractError("blast: ActivePrecompiles gained a Prague/Osaka rung — "
+                           "PrecompiledContractsCancun is no longer the live set")
+    a = go_addrs(block(s, "var PrecompiledContractsCancun = "))
+    if not a: raise ExtractError("blast: no PrecompiledContractsCancun literal")
+    return a
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -567,7 +588,8 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "base": ex_base,
            "mantle": ex_mantle, "celo": ex_celo, "scroll": ex_scroll, "sei": ex_sei,
            "berachain": ex_berachain, "linea": ex_linea, "hedera": ex_hedera,
-           "monad": ex_monad, "zksync-era": ex_zksync_era, "gnosis": ex_gnosis}
+           "monad": ex_monad, "zksync-era": ex_zksync_era, "gnosis": ex_gnosis,
+           "blast": ex_blast}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -580,6 +602,7 @@ TXTYPE_DIRS = {
     "arbitrum": "go-ethereum/core/types",
     "avalanche-c": None, "avalanche-subnet": None, "tron": None, "worldchain": None,
     "optimism": None, "base": None,
+    "blast": "blast-geth/core/types",
 }
 def ex_txtypes(slug, chain=None):
     d = TXTYPE_DIRS.get(slug)

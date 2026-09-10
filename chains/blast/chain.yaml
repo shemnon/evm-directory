@@ -1,0 +1,446 @@
+schema_version: 2
+
+chain:
+  name: Blast
+  slug: blast
+  chain_id: 81457
+  role: fork
+  live: true
+  evidence: source
+  note: >-
+    AN OP STACK CHAIN THAT CHANGED THE ACCOUNT. Blast's headline feature — native
+    rebasing yield on ordinary ETH balances — is not a contract, not a predeploy and
+    not a system transaction. It is a change to the consensus representation of an
+    ACCOUNT: `types.StateAccount` has no `Balance` field. In its place sit four
+    fields (`Flags`, `Fixed`, `Shares`, `Remainder`), and an account's balance is
+    COMPUTED as `sharePrice * Shares + Remainder`, where `sharePrice` is a single
+    storage slot in one predeploy. Raise that slot and every yield-bearing balance on
+    the chain changes at once — with no transaction touching those accounts, no log,
+    no receipt, and no write to their state-trie leaves.
+
+lineage:
+  upstream: op-stack
+  ancestry: [ethereum, op-stack]
+  fork_of: op-geth
+  sync_point: >-
+    STALE, LIKE opBNB, AND FOR THE SAME REASON. The clone is modern op-geth by
+    scaffolding — `params/config.go` carries PragueTime, OsakaTime and the whole BPO
+    ladder, and even a Blast-specific `BPO2BlastTime` — but `core/vm/contracts.go` is
+    still the geth-1.13 file: the precompile ladder ends at
+    `PrecompiledContractsCancun`, `ActivePrecompiles` has no Prague or Osaka case,
+    and `PrecompiledContractsBLS` is the ABANDONED EIP-2537 draft layout at
+    0x0a-0x12, unreferenced by any active map. `params/version.go` still declares
+    upstream geth 1.13.4.
+
+    Against the network that is the right answer, not a bug: Blast mainnet is at
+    Ecotone plus its own `taiga`, so it has NONE of OP Stack's Fjord, Granite,
+    Holocene, Isthmus or Jovian changes — no RIP-7212 P256VERIFY, none of the four
+    precompile input caps, no EIP-2537, no EIP-7702. The op-stack row this one
+    descends from pins a Jovian/Karst client, so almost every OP Stack precompile
+    delta recorded there does NOT apply here and is overridden below.
+
+client:
+  name: blast (blast-geth + blast-optimism monorepo)
+  repo: https://github.com/blast-io/blast
+  version: v1.8.0
+  commit: b82105486bfe33c8b12986e7cd42388fbab7d1d2
+  language: go
+  note: >-
+    One repo, two trees. `blast-geth/` is the execution client and holds every fact
+    in this row that is about state or the EVM; `blast-optimism/` is the rollup node
+    and the `packages/contracts-bedrock/src/L2/` predeploys, including `Shares.sol`,
+    whose storage slots the CLIENT reads and writes directly. `config/genesis.json`
+    and `config/rollup.json` are the mainnet launch configuration, pinned in-tree.
+
+live_probe:
+  endpoint: https://rpc.blast.io
+  chain_id: 81457
+  observed_at_block: 40090462
+  note: >-
+    `web3_clientVersion` returns `Geth/v0.1.0-unstable/linux-amd64/go1.24.11` — the
+    OPVersion string from `blast-geth/params/version.go`, which is what this repo
+    builds. The version string carries no commit, so the pin cannot be confirmed
+    against the network the way Sonic's or Core's can; it confirms only that mainnet
+    runs a blast-geth build.
+
+consensus:
+  engine: OP Stack (single sequencer), settles to Ethereum L1
+  block_time: 2s
+  finality: L1 finality after batch submission
+
+baseline_fork: cancun
+
+forks:
+  src: "config/rollup.json, blast-optimism/op-node/rollup/chain_spec.go:Taiga"
+  note: >-
+    The EL ladder stops at Ecotone. `config/rollup.json` names exactly
+    regolith / canyon / delta / ecotone / taiga and nothing after it; `taiga` is an
+    OP fork with NO execution-layer effect (it makes the max sequencer drift a
+    protocol constant, `blast-optimism/op-node/rollup/chain_spec.go:12`). Confirmed
+    live: EIP-4788's beacon-roots contract has code, EIP-2935's history contract at
+    0x0000F90827F1C53a10cb7A02335B175320002935 has none.
+  timeline:
+  - {name: bedrock,  activation_time: 0, mainnet_equivalent: null, note: "genesis; Blast launched post-Bedrock"}
+  - {name: regolith, activation_time: 0, mainnet_equivalent: null}
+  - {name: canyon,   activation_time: 0, mainnet_equivalent: shanghai}
+  - {name: delta,    activation_time: 1716843599, mainnet_equivalent: null}
+  - {name: ecotone,  activation_time: 1716843599, mainnet_equivalent: cancun}
+  - {name: taiga,    activation_time: 1746612311, mainnet_equivalent: null,
+     note: "derivation-layer only; no EVM effect"}
+  - {name: fjord,    activation_time: null, status: pending,
+     note: "not in rollup.json; OP Stack has had it since 2024-07"}
+  - {name: prague,   activation_time: null, status: pending,
+     note: "PragueTime exists as a config field and is set nowhere"}
+
+eips:
+  7951:
+    status: removed
+    severity: high
+    note: >-
+      P256VERIFY IS NOT AT 0x0100 — SOMETHING ELSE IS. Blast installs its own
+      state-mutating `blast` precompile at that address in every map from Berlin
+      onward. This is the one row in this dataset where 0x0100 is neither
+      P256VERIFY nor empty: it is a live, ABI-dispatched precompile with entirely
+      unrelated semantics. A passkey library that calls 0x0100 with a 160-byte
+      P-256 signature reaches Blast's selector parser, matches none of its four
+      selectors, and is charged 100,000 gas before reverting. See the 0x0100 entry.
+    src: "blast-geth/core/vm/contracts.go:94, blast-geth/core/vm/contracts.go:1182"
+  2537:
+    status: removed
+    note: >-
+      No BLS12-381. `PrecompiledContractsCancun` stops at 0x0a and there is no
+      Prague map. `PrecompiledContractsBLS` still exists in the file at the
+      abandoned DRAFT addresses 0x0a-0x12 and is referenced by no active map, so it
+      is dead code, not a shipped alternative layout.
+    src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun, blast-geth/core/vm/contracts.go:PrecompiledContractsBLS"
+    src_live: "eth_call 0x0b @ 40090462 -> 0x (empty account, succeeds)"
+  7702:
+    status: removed
+    note: >-
+      `SetCodeTxType = 0x04` is defined in `core/types/transaction.go` but PragueTime
+      is nil on this network, so the type is rejected. Defined-but-unreachable, not
+      supported.
+    src: "blast-geth/core/types/transaction.go:52, config/rollup.json"
+  4844:
+    status: removed
+    note: >-
+      No L2 blob market. `CheckConfigForkOrder` returns early for Blast with the
+      comment "we are blast also doesn't support blobs, and must have a nil
+      BlobScheduleConfig" — the check for every later fork's blob schedule is
+      unreachable code below that return.
+    src: "blast-geth/params/config.go:988"
+  1153: {status: inherited, note: "TSTORE/TLOAD present via Cancun/Ecotone", src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun"}
+  5656:
+    status: inherited
+    note: "MCOPY present."
+    src_live: "eth_call 0x60ff5f5260015f60015e60205ff3 @ latest -> 0x..ff (MCOPY copied the byte)"
+  4788: {status: inherited, note: "beacon-roots predeploy has code — Ecotone is live",
+         src_live: "eth_getCode 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02 @ 40090462 -> 0x3373ff… (non-empty)"}
+  2935: {status: removed, note: "no Prague — the history-storage contract is an empty account",
+         src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ latest -> 0x"}
+  1186:
+    status: modified
+    severity: high
+    note: >-
+      `eth_getProof` DOES NOT RETURN A BALANCE. EIP-1186 specifies the result object
+      as {balance, codeHash, nonce, storageHash, accountProof, storageProof}. Blast
+      returns `flags`, `fixed`, `shares` and `remainder` in place of `balance`, and
+      the account leaf in `accountProof` is a SEVEN-item RLP list, not four. Every
+      light client, bridge and state-proof verifier that decodes an Ethereum account
+      fails here — and the JSON path fails SILENTLY, because `result.balance` is
+      simply `undefined` rather than an error.
+    src: "blast-geth/core/types/state_account.go:StateAccount, blast-geth/core/state/statedb.go:GetBalanceValues"
+    src_live: "eth_getProof 0x4300000000000000000000000000000000000002 @ 40090462 -> keys {address, accountProof, flags, fixed, shares, remainder, codeHash, nonce, storageHash, storageProof}; no `balance`. Leaf RLP f847 80 01 80 80 80 a0.. a0.. = 7 items."
+  3529: {status: inherited, note: "refund quotient 5; unchanged from upstream op-geth", src: "blast-geth/core/state_transition.go:540"}
+
+non_eip_specs:
+  - {id: Blast yield, name: native rebasing ETH via share accounting, adoption: adopted,
+     src: "blast-geth/core/state/state_object.go:computeShareValue"}
+  - {id: Blast gas revenue share, name: per-contract gas fee accrual, adoption: adopted,
+     src: "blast-geth/core/vm/gas_tracker.go:AllocateDevGas"}
+
+tx_types:
+  envelope:
+    status: inherited
+    present: "0x00-0x02"
+    src: "derived from the eips map (2930 / 1559 / 4844 / 7702); see those entries"
+    note: >-
+      No blob transactions and no EIP-7702 set-code transactions — NARROWER than the
+      op-stack row's envelope, which has 0x04, because this chain never reached
+      Prague. Sampled live: 30 consecutive blocks at head, 90 transactions, types
+      0x02 and 0x7e only.
+  "0x04":
+    name: SetCodeTx
+    status: removed
+    note: "defined in this client but PragueTime is nil on the network — see eips.7702"
+    src: "blast-geth/core/types/transaction.go:52"
+  "0x7e":
+    name: DepositTx
+    status: added
+    spec: OP Stack Bedrock
+    note: >-
+      Restated rather than inherited because this client is a separate fork and
+      because deposits carry Blast's yield: the L1 yield reporter's `addValue` call
+      arrives as a 0x7e deposit from the aliased reporter address, and THAT is the
+      transaction that moves every yield-bearing balance on the chain.
+    src: "blast-geth/core/types/deposit_tx.go:27"
+    src_live: "eth_getBlockByNumber @ 40051137 -> tx 0xb029b9c8ea4206ee8c598a62e27cd92f1e1fd23a8b68b210703d72d1f28ba397, type 0x7e, from 0xa9188db053902644191f93988341e31289e1da0f (the aliased L1 reporter), to 0x4300000000000000000000000000000000000000, input 0x5b9af12b = addValue(uint256) with 1.017 ETH of yield"
+  note: >-
+    No Blast-specific type byte. Every Blast divergence is in state and gas, not in
+    the envelope — which is exactly why an envelope-diffing survey misses this chain
+    entirely.
+
+tx_authorization:
+  key_binding: derived
+  signers_per_tx: 1
+  note: >-
+    No delta on the authorizing path — secp256k1 recovery and the unsigned 0x7e
+    deposit path are op-stack's, unchanged. The row is recorded because the OBVIOUS
+    guess is wrong twice over: 0x0100 is occupied here, and it is occupied by
+    something with no signature semantics at all, so Blast is the one chain in this
+    dataset where "does 0x0100 answer?" tells you nothing about P-256 either way.
+  schemes:
+    secp256k1:
+      status: inherited
+      authorizes: protocol
+      precompile: "0x01"
+      note: "unchanged from op-geth; ECRECOVER at 0x01 is stock."
+      src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun"
+    secp256r1:
+      status: removed
+      authorizes: never
+      precompile: none
+      severity: high
+      note: >-
+        NO VERIFIER AT ALL, AND THE ADDRESS IS TAKEN. Unlike Sei (P256VERIFY moved to
+        0x1011) or Hyperliquid (0x0100 empty), Blast has no P-256 verifier anywhere
+        AND has put an unrelated precompile at the canonical address. A caller gets
+        neither a correct answer nor the empty-output signal of an absent
+        precompile — it gets a revert after 100,000 gas, or, for a P-256 signature
+        whose first four bytes happen to collide with one of Blast's four selectors,
+        an answer about a completely different question.
+      src: "blast-geth/core/vm/contracts.go:1182"
+
+precompiles:
+  # verified: blast-geth/core/vm/contracts.go:PrecompiledContractsCancun (the newest
+  # map ActivePrecompiles can select — there is no Prague or Osaka case)
+  base_map:
+    status: inherited
+    present: "0x01-0x0a"
+    p256verify: false
+    src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun"
+    note: >-
+      Cancun-level base: 0x01-0x0a present, NO EIP-2537 BLS at 0x0b-0x11, and NO
+      P256VERIFY — 0x0100 is present but is Blast's own precompile, recorded
+      explicitly below as `modified`. This narrows the op-stack row's base map, which
+      claims 0x01-0x11 plus P256VERIFY.
+  "0x05":
+    name: MODEXP
+    status: modified
+    divergence: gas
+    note: >-
+      Berlin-level `bigModExp{eip2565: true}` — EIP-2565 pricing only. No EIP-7823
+      operand bounds and no EIP-7883 repricing, because neither Prague nor Osaka
+      exists here. Overrides the op-stack entry, which describes the same shortfall
+      against a Jovian client.
+    src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun"
+  "0x08":
+    name: BN256_PAIRING
+    status: inherited
+    note: >-
+      UNCAPPED, unlike its op-stack ancestor. This client predates OP's
+      `Bn256PairingMaxInputSizeGranite`/`…Jovian` fault-proof caps entirely, so 0x08
+      behaves as mainnet does. Declared explicitly to override the inherited
+      `modified` entry — a descendant can be MORE mainnet-faithful than its stack.
+    src: "blast-geth/core/vm/contracts.go:PrecompiledContractsCancun"
+  "0x0100":
+    name: Blast yield/gas configuration precompile
+    status: modified
+    severity: high
+    note: >-
+      MAINNET'S P256VERIFY ADDRESS, OCCUPIED BY A STATE-MUTATING, ABI-DISPATCHED,
+      CALLER-GATED PRECOMPILE. Four selectors: `claim(address,address,uint256)`
+      (50,000 gas), `configure(address,uint8)` (100,000), `getClaimableAmount(address)`
+      (12,100), `getConfiguration(address)` (9,300); anything else costs 100,000 and
+      reverts. The two write selectors additionally require
+      `caller == 0x4300…0002` (the Blast predeploy) and refuse in a static call.
+
+      Two things here have no mainnet analogue. First, the precompile INTERFACE
+      itself is different: Blast changed `PrecompiledContract.Run` to
+      `Run(caller, input, db StateDB, readOnly bool)`, so precompiles on this chain
+      read and write state — `db.SetFlags`, `db.SubClaimableAmount`, `db.AddBalance`.
+      Second, dispatch is by 4-byte selector, the same shape as Sei's `verify(bytes)`
+      at 0x1011, so a raw-bytes call built for the canonical precompile at this
+      address is parsed as a function call.
+    src: "blast-geth/core/vm/contracts.go:1182-1301, blast-geth/core/vm/contracts.go:41-43"
+    src_live: "eth_call 0x0100 getConfiguration(0x4300…0002) @ 40090462 -> 0x…01 (YieldMode.VOID); eth_getCode 0x0100 @ 40090462 -> 0x (no bytecode — a real precompile, not a predeploy)"
+  note: >-
+    ONE address diverges and it is the one address the rest of this dataset treats as
+    universal. Eleven rows carry P256VERIFY at 0x0100; two leave it empty; Blast is
+    the first to put a different, live, state-writing precompile there.
+
+system_contracts:
+  "0x4300000000000000000000000000000000000000":
+    name: Shares
+    status: added
+    severity: high
+    note: >-
+      THE CONTRACT WHOSE STORAGE IS THE CHAIN'S BALANCES. Slot 1 is `price`
+      (Shares.sol's `uint256 public price`, after `Initializable`'s slot 0); slot 51
+      is `_count`. The CLIENT reads slot 1 on every balance query
+      (`StateDB.getSharePrice`) and WRITES slot 51 whenever any account's share count
+      changes (`StateDB.adjustShareCount`). So a public Solidity state variable is
+      maintained by the execution client rather than by the contract's own code, and
+      a single `SSTORE` to slot 1 — performed by `addValue`, callable only by the
+      aliased L1 reporter — restates every yield-bearing balance on the chain.
+    src: "blast-geth/core/state/statedb.go:405, blast-geth/core/state/statedb.go:417, blast-optimism/packages/contracts-bedrock/src/L2/Shares.sol"
+    src_live: "eth_getStorageAt 0x4300…0000 slot 0x1 @ 40090462 -> 1078198508 (share price, wei/share); slot 0x33 -> 13564913432615 shares; product = 14625.89 ETH"
+  "0x4300000000000000000000000000000000000001":
+    name: Gas
+    status: added
+    note: >-
+      Receives the gas revenue share. `GasTracker.AllocateDevGas` credits ETH to this
+      address and writes a packed per-contract record
+      (`mode | etherBalance | etherSeconds | lastUpdated` in one 32-byte slot) into
+      its storage at `keccak256(contractAddress ++ "parameters")` — again a
+      client-side write into a Solidity contract's storage, not a call.
+    src: "blast-geth/core/vm/gas_tracker.go:AllocateDevGas, blast-geth/core/vm/gas_tracker.go:getContractStorageSlot"
+  "0x4300000000000000000000000000000000000002":
+    name: Blast
+    status: added
+    note: >-
+      The only address allowed to call the 0x0100 precompile's write selectors. It is
+      what contracts actually call — `configureAutomaticYield`, `claimAllGas`,
+      `configureGovernor` — and it forwards to `IYield(0x0100)` and `IGas(0x4300…0001)`.
+    src: "blast-optimism/packages/contracts-bedrock/src/L2/Blast.sol:105-140, blast-geth/params/protocol_params.go:34"
+  "0x4300000000000000000000000000000000000003": {name: USDB, status: added,
+     note: "rebasing stablecoin; an ERC-20, not consensus", src: "blast-optimism/packages/contracts-bedrock/src/L2/USDB.sol"}
+  "0x4300000000000000000000000000000000000004": {name: WETHRebasing, status: added,
+     note: "rebasing WETH; an ERC-20, not consensus", src: "blast-optimism/packages/contracts-bedrock/src/L2/WETHRebasing.sol"}
+  "0x4300000000000000000000000000000000000005": {name: L2BlastBridge, status: added,
+     src: "blast-optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol:94"}
+  note: >-
+    The 0x42.. OP Stack predeploy set is inherited. The 0x43.. block is Blast's, and
+    two of them — Shares and Gas — are not ordinary predeploys: the client reads and
+    writes their storage directly, so their state is maintained partly by Solidity
+    and partly by Go.
+
+system_transactions:
+  - name: gas revenue allocation
+    note: >-
+      At the end of every transaction whose gas accounting the client trusts,
+      `AllocateDevGas` walks the per-contract gas allocations, credits ETH to the Gas
+      predeploy and writes one storage slot per accruing contract. No log, no
+      receipt entry, no trace frame.
+    src: "blast-geth/core/state_transition.go:574-577"
+
+opcodes:
+  added: []
+  removed: []
+  modified:
+  - op: "0xf1"
+    name: CALL
+    note: >-
+      DEPTH-DEPENDENT PRICING. Beyond call frame 5 (`params.BlastMaxFrameCount`), the
+      first call into an address that has not yet used gas in this transaction costs
+      an extra `BlastGasParamStorageGas` = `SstoreResetGasEIP2200 + ColdSloadCostEIP2929`
+      = 7,100 gas, to pay for the gas-tracker storage write. The same call, with the
+      same calldata, to the same warm address costs 7,100 more when it happens to sit
+      deeper than five frames down. Gas estimated from a shallow call under-estimates
+      the same code invoked from inside a router.
+    src: "blast-geth/core/vm/operations_acl.go:180-186, blast-geth/params/protocol_params.go:190-191"
+  - {op: "0xf2", name: CALLCODE, note: "same +7,100 beyond frame 5", src: "blast-geth/core/vm/operations_acl.go:180-186"}
+  - {op: "0xf4", name: DELEGATECALL, note: "same +7,100 beyond frame 5", src: "blast-geth/core/vm/operations_acl.go:180-186"}
+  - {op: "0xfa", name: STATICCALL, note: "same +7,100 beyond frame 5", src: "blast-geth/core/vm/operations_acl.go:180-186"}
+  - {op: "0xf0", name: CREATE, note: "+7,100 beyond frame 5, unconditionally (no first-touch test)",
+     src: "blast-geth/core/vm/gas_table.go:gasCreateEip3860, blast-geth/core/vm/gas_table.go:blastGasCreationCost"}
+  - {op: "0xf5", name: CREATE2, note: "+7,100 beyond frame 5, unconditionally",
+     src: "blast-geth/core/vm/gas_table.go:gasCreate2Eip3860"}
+  - op: "0xff"
+    name: SELFDESTRUCT
+    note: >-
+      Both `opSelfdestruct` and `opSelfdestruct6780` call
+      `SetFlags(self, YieldAutomatic)` BEFORE reading the balance, converting a
+      VOID or CLAIMABLE account back to share representation so the full share value
+      is what moves to the beneficiary. A self-destructing contract therefore
+      transfers a different amount than `eth_getBalance` reported for it a moment
+      earlier if its yield mode was CLAIMABLE.
+    src: "blast-geth/core/vm/instructions.go:832, blast-geth/core/vm/instructions.go:848"
+  pending: []
+  tombstoned: []
+  note: >-
+    No new opcode bytes. The delta is entirely in gas, and it is a KIND of gas
+    divergence that does not appear anywhere else in this dataset: the cost depends
+    on the call DEPTH, not on the operands, the state, or the fork.
+
+tx_lifecycle:
+  ordering:
+    verdict: unreachable
+    note: "single OP Stack sequencer; inherited from op-stack with no change."
+    src: "blast-optimism/op-node/rollup/chain_spec.go"
+
+fee_model:
+  metering: gas
+  fee_market: "EIP-1559 (OP Stack), elasticity 6 / denominator 250 post-Canyon"
+  severity: high
+  note: >-
+    THE COINBASE IS NOT PAID. On mainnet and on stock OP Stack the priority fee goes
+    to `block.coinbase`. Here, when the client's own per-contract gas accounting
+    agrees with the standard `gasUsed` total, `AllocateDevGas` distributes base fee
+    PLUS priority fee across the contracts the transaction touched — proportionally
+    to the gas each consumed — and `st.state.AddBalance(Coinbase, fee)` is skipped
+    entirely. A contract that has enabled claimable gas accrues ETH from every
+    transaction that calls it; the rest goes to `OptimismBaseFeeRecipient`.
+
+    The disagreement branch is labelled `CANARY` in the source: if
+    `st.gasUsed() != gasTracker.GetGasUsed()`, the client silently falls back to
+    ordinary OP Stack fee routing for that transaction. So the fee destination is
+    not a property of the chain — it is a property of whether two independent gas
+    counters agreed, and nothing in the receipt says which branch ran.
+  extra_components:
+  - {name: L1 data fee, note: "standard OP Stack L1 cost, to OptimismL1FeeRecipient"}
+  - {name: developer gas share, note: "base + priority fee, split by per-contract gas usage"}
+  src: "blast-geth/core/state_transition.go:529-585, blast-geth/core/vm/gas_tracker.go:AllocateDevGas"
+
+header_fields: {added: [], removed: [], modified: []}
+
+gotchas:
+  - >-
+    THE ACCOUNT IS NOT AN ETHEREUM ACCOUNT. `types.StateAccount` is
+    `{Nonce, Flags, Fixed, Shares, Remainder, Root, CodeHash}` — seven RLP items, and
+    `Balance` is gone. Anything that decodes a four-item account against Blast's state
+    root is wrong: light clients, `eth_getProof` verifiers, cross-chain state bridges,
+    archive tooling. Verified live: the leaf for 0x4300…0002 is
+    `f847 80 01 80 80 80 a0<storageRoot> a0<codeHash>`.
+  - >-
+    BALANCES CHANGE WITH NO TRANSACTION. `Balance()` returns
+    `sharePrice * Shares + Remainder` for a YieldAutomatic account. Between blocks
+    40051136 and 40051137 the share price rose from 1,078,139,877 to 1,078,214,892,
+    and two accounts that appear nowhere in block 40051137's seven transactions
+    gained 97,448,085,720 wei and 1,875,668,833,755 wei respectively. No log, no
+    receipt, no trace, no change to their account leaves. An indexer that reconstructs
+    balances from transfers is wrong on Blast from the first yield report onward.
+  - >-
+    DEFAULTS DIFFER BY ACCOUNT KIND, AND NEITHER IS CONFIGURABLE AT CREATION. A new
+    account defaults to `Flags = 0` (YieldAutomatic) — every EOA earns yield — while
+    `EVM.create` sets `YieldDisabled` immediately after the endowment transfer, so
+    every CREATE'd contract starts VOID and its share of the yield is forfeited to
+    the protocol until someone calls `configure`. Deployment scripts ported from
+    another OP Stack chain silently leave yield on the table.
+  - >-
+    `block.coinbase` receives nothing on the normal path. See fee_model — and note
+    that the fallback branch that DOES pay the coinbase fires precisely when the
+    client's two gas counters disagree, which is not observable from outside.
+  - >-
+    THE PRECOMPILE INTERFACE IS DIFFERENT. `PrecompiledContract.Run` takes a caller,
+    a `StateDB` and a `readOnly` flag. On this chain a precompile can mutate state —
+    the schema's own definition ("native code at an address, no bytecode in state")
+    still holds, but the usual corollary that precompiles are pure does not.
+  - >-
+    0x0100 IS OCCUPIED. Not empty (Hyperliquid), not moved (Sei) — occupied by an
+    unrelated, ABI-dispatched, state-writing precompile. Any code that treats that
+    address as "P256VERIFY or nothing" is wrong here in a third way.
+  - >-
+    CALL COSTS DEPEND ON DEPTH. +7,100 gas past frame 5 on the first touch of an
+    address. Gas estimates taken at the top level under-predict the same code called
+    from inside a router or a multicall.

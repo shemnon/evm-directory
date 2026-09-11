@@ -21,10 +21,14 @@ The site is a dry reference. It states what the data holds and stops.
 **Chain pages** state where that chain's data came from: which client is pinned, at which
 commit, whether the row rests on source, documentation or live probes, and how to
 re-verify it. That is a fact about the chain, and it is the only methodology on the site.
+The same section may carry the operator's current affiliation with the chain and a credit
+for corrections from contributors affiliated with it: fixed sentences generated from
+data, not prose, and never repeated on an aggregate page.
 
 Everything else about method — the schema, the build, the notes about what the schema
 cannot hold — is repo-only, in `SCHEMA.md`, `SITE.md` and `METHOD.md`. The site does not
-render them and does not link to them.
+render them and does not link to them. It links to `CONTRIBUTING.md`, and to nothing
+else in the repo, so a reader can report an error and see who runs the directory.
 
 ## Notes
 

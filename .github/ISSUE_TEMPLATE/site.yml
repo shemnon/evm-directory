@@ -1,0 +1,28 @@
+name: Site problem
+description: A broken link, a page that renders wrongly, a grid control that misbehaves.
+title: "site: "
+labels: [site]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a wrong **fact** about a chain, use the Correction form instead.
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The URL where it happens.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: What you expected, what you saw, and how to reproduce it.
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and viewport
+      description: e.g. Firefox 142, 430px wide, dark mode.

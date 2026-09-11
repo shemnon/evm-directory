@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Re-extract facts from the pinned clones and diff them against chain.yaml.
 
 The dataset's whole claim is "from source, not docs" — but facts reach chain.yaml
@@ -969,6 +970,35 @@ def parse_present(spec):
             out.add(int(p, 16))
     return out
 
+def check_operators(known):
+    """operators.yaml names rows by slug. A misspelt slug silently drops the operator's
+    disclosure from the chain page it was written for, so it is an error, not a skip."""
+    f = ROOT / "operators.yaml"
+    if not f.exists():
+        return ["NO OPERATORS  operators.yaml is missing — CONTRIBUTING.md's disclosure "
+                "has no data behind it"]
+    out = []
+    for a in ((yaml.safe_load(f.read_text()) or {}).get("operator") or {}).get("affiliations") or []:
+        org = a.get("org", "?")
+        if not isinstance(a.get("current"), bool):
+            out.append(f"BAD OPERATOR  {org}: `current:` must be true or false")
+        for s in a.get("chains") or []:
+            if s not in known:
+                out.append(f"BAD OPERATOR  {org}: no such row {s!r}")
+    return out
+
+
+def check_contributions(c):
+    """`affiliated_contributions:` credits a correction on the chain page, so every entry
+    must cite the public issue it came from — an uncited credit cannot be audited."""
+    out = []
+    for e in c.get("affiliated_contributions") or []:
+        n = e.get("issue") if isinstance(e, dict) else None
+        if not isinstance(n, int) or isinstance(n, bool) or n <= 0:
+            out.append(f"BAD CONTRIB  {e!r}: needs a positive integer `issue:`")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Re-extract facts from the pinned clones and diff them against "
@@ -997,7 +1027,10 @@ def main():
     if no_clones:
         print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
               "  running: pin presence, base-map/envelope declaration, opcode keys,\n"
-              "  tx-authorization vocabulary, citation shape, evidence tally.")
+              "  tx-authorization vocabulary, citation shape, evidence tally,\n"
+              "  operator slugs, contribution citations.")
+    for b in check_operators(known):
+        print(f"\noperators.yaml\n  {b}"); problems += 1
     for f in sorted((ROOT / "chains").glob("*/chain.yaml")):
         slug = f.parent.name
         if only and slug not in only: continue
@@ -1019,6 +1052,9 @@ def main():
                           f"'{e.get('name', e.get('opcode', '?'))}' has no `op:` key"
                           + (f" (found `opcode: {e['opcode']}`)" if "opcode" in e else ""))
                     problems += 1
+
+        for b in check_contributions(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
 
         if documented:
             # No client exists to clone, so nothing can be re-extracted. This is a

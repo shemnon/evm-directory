@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Render the static site in `website/` from the dataset.
 
-Inputs are `chains/*/chain.yaml`, `chains/*/SUMMARY.md`, `findings.yaml`, `SCHEMA.md`
-and `README.md`. Nothing in `website/` is hand-edited; see SITE.md for the build model.
+Inputs are `chains/*/chain.yaml`, `chains/*/SUMMARY.md`, `findings.yaml`,
+`operators.yaml`, `SCHEMA.md` and `README.md`. Nothing in `website/` is hand-edited; see SITE.md for the build model.
 
 Every page leads with its grid — the rolled-up chain x entry table the axis exists to
 show. Caveats, per-entry detail and notes sit below it. Every output page declares the
@@ -20,6 +21,11 @@ import markdown as _md
 OUT = ROOT / "website"
 ASSETS = pathlib.Path(__file__).resolve().parent / "assets"
 MANIFEST = OUT / ".manifest.json"
+
+# The repository, for the few links that leave the site: the issue form behind "Report an
+# inaccuracy", the operator disclosure in CONTRIBUTING.md, and the data license. They are
+# navigation, not requests — see prompts/website/00-brief.md, rule 6.
+REPO = "https://github.com/shemnon/evm-directory"
 
 AXES = [
     ("precompiles",      "Precompiles",        "Every precompile address in the dataset, per chain and per address."),
@@ -173,6 +179,11 @@ def layout(path, title, lede, body, wide=False, depth=None, chains=None):
         for h, t in NAV)
     picker = chain_picker(chains, d) if chains else ""
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    # On a chain page the correction form opens with the chain already filled in.
+    page_slug = path[len("chains/"):-len(".html")] if (
+        path.startswith("chains/") and path != "chains/index.html") else None
+    report = (f"{REPO}/issues/new?template=correction.yml&chain={page_slug}" if page_slug
+              else f"{REPO}/issues/new/choose")
     return f"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -191,7 +202,7 @@ def layout(path, title, lede, body, wide=False, depth=None, chains=None):
 {f'<p class="lede">{lede}</p>' if lede else ''}
 {body}
 </main>
-<footer>Generated {stamp}</footer>
+<footer>Generated {stamp} · Data <a href="{REPO}/blob/main/LICENSE-DATA">CC0</a> (a <a href="{REPO}">link back</a> is appreciated) · <a href="{esc(report)}">Report an inaccuracy</a></footer>
 <script src="{r}assets/site.js"></script>
 </body></html>
 """
@@ -718,6 +729,30 @@ def list_section(chains, slug, section, heading, anchor, keyfield):
 # chain pages
 # --------------------------------------------------------------------------
 
+def operator_line(slug):
+    """The operator's CURRENT affiliations that touch this row, as one sentence. Chain
+    pages only, never an aggregate page; former affiliations live in CONTRIBUTING.md."""
+    aff = model.current_affiliations(slug)
+    if not aff:
+        return None
+    who = " and ".join(f'{esc(a["org"])} {esc(a["role"])}' for a in aff)
+    return (f'The operator of this directory is a current {who}; see '
+            f'<a href="{REPO}/blob/main/CONTRIBUTING.md#the-operator">Contributing</a>.')
+
+
+def contributions_line(c):
+    """Credit for merged corrections from contributors affiliated with THIS chain, each
+    citing its public issue. Competitors and unaffiliated filers are not recorded."""
+    cs = c.get("affiliated_contributions") or []
+    if not cs:
+        return None
+    refs = ", ".join(f'<a href="{REPO}/issues/{int(e["issue"])}">#{int(e["issue"])}</a>'
+                     for e in cs)
+    return (f'This row includes corrections and information provided by contributors '
+            f'affiliated with {esc(name(c))}, vetted by AI against publicly available '
+            f'data: {refs}.')
+
+
 def page_chain(chains, slug):
     c = chains[slug]
     B = []
@@ -777,6 +812,8 @@ def page_chain(chains, slug):
         ("Fact provenance", f'<code>src:</code> {tally["src"]} · '
                             f'<code>src_live:</code> {tally["src_live"]} · '
                             f'<code>src_doc:</code> {tally["src_doc"]}'),
+        ("Operator", operator_line(slug)),
+        ("Contributions", contributions_line(c)),
     ]))
 
     # --- findings + silent divergences -----------------------------------
@@ -1884,7 +1921,9 @@ def registry(chains):
         pages.append(Page(f"axes/{k}.html", all_yaml + [findings],
                           (lambda f: lambda ch: f(ch))(axis_fn[k])))
     for s in sorted(chains):
-        ins = model.sources(s) + [findings]
+        # operators.yaml feeds every chain page, not only the rows it names today: an
+        # affiliation gaining a row must rebuild that row's page. Same rule as findings.
+        ins = model.sources(s) + [findings, model.OPERATORS]
         up = chains[s]["lineage"].get("upstream")
         # a chain inheriting from a stack node renders that node's entries too
         if up in chains and is_stack(chains[up]):

@@ -32,6 +32,7 @@ python3 -m http.server -d website 8000     # then http://localhost:8000
 | `chains/<slug>/chain.yaml` | that chain's page, and every axis page |
 | `chains/<slug>/SUMMARY.md` | the "Full write-up" section of that chain's page |
 | `findings.yaml` | the home page, the axis pages, and every chain a finding names |
+| `operators.yaml` | the operator line on the chain page of each row a current affiliation names — chain pages only |
 | `tools/assets/site.css`, `site.js` | copied to `website/assets/` |
 
 `findings.yaml` is the one **content** file in the pipeline — the place where a human
@@ -52,6 +53,7 @@ always just `tools/site.py`. It hashes every page's declared inputs into
 | one `chains/<slug>/SUMMARY.md` | `tools/site.py` | that chain page only |
 | `chains/op-stack/chain.yaml` | `tools/site.py` | the above, **plus its five descendants** (Base, Celo, opBNB, OP Mainnet, World Chain), since they inherit its entries |
 | `findings.yaml` | `tools/site.py` | home, axis pages, and every chain page |
+| `operators.yaml` | `tools/site.py` | every chain page |
 | `tools/site.py`, `model.py`, or an asset | `tools/site.py` | **everything** — the HTML is a function of the code too |
 
 `findings.yaml` is an input to *every* chain page, not only the ones currently named in

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability or other sensitive finding
+    url: https://github.com/shemnon/evm-directory/blob/main/CONTRIBUTING.md#sensitive-findings-and-security
+    about: Do not file it here. This directory is not a secure channel. Report it to the affected chain's security contact or bug-bounty program.
+  - name: Contribution principles
+    url: https://github.com/shemnon/evm-directory/blob/main/CONTRIBUTING.md
+    about: What the directory accepts, what it does not, and what happens to an issue. Read it before filing.

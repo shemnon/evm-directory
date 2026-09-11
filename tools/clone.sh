@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # Re-fetch the evidence. Clones are gitignored; chain.yaml holds the pins.
 # Usage: tools/clone.sh [slug ...]   (default: all)
 set -uo pipefail

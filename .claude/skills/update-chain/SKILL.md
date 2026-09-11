@@ -207,5 +207,9 @@ Then ask whether to commit and open a PR. Do not do either unasked. If they say 
 - Commit subject: `<slug>: <what changed, stated as the finding>`, following the style
   in `git log`, e.g. `bnb: Pasteur is live — 0x64/0x65 tombstoned, precompile map moves`.
 - Commit body: prose saying what the new source showed, then the `Co-Authored-By` trailer.
+- If the update answers an issue, say `Fixes #N` in the PR body. If that issue's filer
+  declared an affiliation with **this** chain and the correction held, add an
+  `affiliated_contributions:` entry citing it (SCHEMA.md, "Affiliated contributions").
+  Unaffiliated and competitor filers are not recorded.
 - Stage `chains/`, the regenerated tables, `website/`, and `findings.yaml` together, so
   that CI's `--check` gates pass on the commit itself.

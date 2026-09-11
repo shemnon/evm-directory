@@ -1,0 +1,74 @@
+name: Add a chain
+description: Propose a chain for a row of its own.
+title: "Add <chain>"
+labels: [new-chain]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A chain is eligible when it meets every criterion in
+        [CONTRIBUTING.md, "Adding a chain"](https://github.com/shemnon/evm-directory/blob/main/CONTRIBUTING.md#adding-a-chain):
+        a live mainnet with a public RPC, a public execution client at a released tag, and a
+        difference from mainnet (or from its framework) worth recording. Eligible does not mean scheduled.
+  - type: input
+    id: name
+    attributes:
+      label: Chain
+    validations:
+      required: true
+  - type: input
+    id: chain_id
+    attributes:
+      label: Mainnet chain ID
+    validations:
+      required: true
+  - type: input
+    id: rpc
+    attributes:
+      label: Public mainnet RPC endpoint
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Execution client repository and released tag
+      description: The code that defines the state transition, e.g. `https://github.com/org/client` at `v1.2.3`. Say so if it is not public.
+    validations:
+      required: true
+  - type: input
+    id: framework
+    attributes:
+      label: Framework, if any
+      description: e.g. OP Stack, Arbitrum Orbit, ZK Stack, Cosmos EVM, Avalanche L1. A chain that reproduces its framework exactly is listed under the framework's row rather than given its own.
+  - type: textarea
+    id: divergence
+    attributes:
+      label: How it differs from Ethereum Mainnet
+      description: Precompiles, transaction types, opcodes, fees, ordering, anything else. Point at source where you can. Claims are measured, not copied.
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Your affiliation with this chain
+      options:
+        - None
+        - Affiliated with this chain (team, foundation, contractor, grantee or investor)
+        - Affiliated with a competing chain
+        - Other (explained below)
+    validations:
+      required: true
+  - type: input
+    id: affiliation_detail
+    attributes:
+      label: Affiliation detail
+      description: Optional. Which organisation, and in what capacity.
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no sensitive or undisclosed security information.
+          required: true
+        - label: I understand that a row is not an endorsement and is not a marketing channel, and that the chain's row will record differences whether or not they flatter it.
+          required: true

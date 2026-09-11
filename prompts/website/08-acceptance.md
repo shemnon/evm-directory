@@ -128,7 +128,19 @@ divergence is measured against (`op-stack-constrains-little` naming OP Mainnet).
 hits stand today. Anything else is survey voice that belongs in `body:`, or material that
 belongs in the other chain's own gloss.
 
-## 7. Portability
+## 7. Disclosure stays on chain pages
+
+Every page carries the report link, and the operator and contribution lines never reach
+an aggregate page ([02-pages.md](02-pages.md#chain-pages--chainsslughtml)).
+
+```bash
+grep -L "Report an inaccuracy" $(find website -name '*.html')            # must print nothing
+grep -l "operator of this directory\|contributors affiliated with" \
+  website/index.html website/axes/*.html website/chains/index.html \
+  website/silent-divergences.html                                         # must print nothing
+```
+
+## 8. Portability
 
 Open `website/index.html` over `file://`. Navigation, assets and grids must work with no
 server and no network.

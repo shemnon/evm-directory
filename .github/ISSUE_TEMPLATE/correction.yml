@@ -1,0 +1,73 @@
+name: Correction
+description: A page states something wrong or incomplete about a chain.
+title: "<chain>: "
+labels: [correction]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [CONTRIBUTING.md](https://github.com/shemnon/evm-directory/blob/main/CONTRIBUTING.md) first.
+        The short version: bring evidence anyone can check, one claim per issue, no marketing.
+        AI models re-derive every change from public source and live data; your wording will not be pasted in.
+
+        **Do not file sensitive findings here.** Issues are public the moment they are filed.
+  - type: input
+    id: chain
+    attributes:
+      label: Chain
+      description: The chain's slug or name, e.g. `base`. Filled in when you arrive from a chain page.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page or entry
+      description: A link to the page, ideally to the entry's anchor (every entry on a chain page has one), e.g. `…/chains/base.html#precompiles-0x100`.
+  - type: textarea
+    id: says
+    attributes:
+      label: What the page says
+      description: Quote it.
+    validations:
+      required: true
+  - type: textarea
+    id: correct
+    attributes:
+      label: What is actually true
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        Strongest first. **Source:** repo, released tag or commit, file and symbol.
+        **Live:** RPC endpoint, method, arguments and the block height you observed it at.
+        **Docs:** a URL. Documentation is the weakest kind and does not overrule the chain's own client.
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Your affiliation with the chain this concerns
+      options:
+        - None
+        - Affiliated with this chain (team, foundation, contractor, grantee or investor)
+        - Affiliated with a competing chain
+        - Other (explained below)
+    validations:
+      required: true
+  - type: input
+    id: affiliation_detail
+    attributes:
+      label: Affiliation detail
+      description: Optional. Which organisation, and in what capacity.
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no sensitive or undisclosed security information.
+          required: true
+        - label: I understand that AI models, not I, will write any resulting change, and that requests to showcase a chain's differentiation will be closed.
+          required: true

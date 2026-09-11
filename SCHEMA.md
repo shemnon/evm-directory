@@ -762,6 +762,32 @@ the opcode simply postdates the chain. A chain that carries the opcode anyway (a
 back-port) records an explicit `opcodes.added` entry, which always wins. An explicit
 `opcodes.removed` renders `–` ("removed, or never adopted").
 
+## Affiliated contributions
+
+`affiliated_contributions:` credits merged corrections that came from contributors who
+disclosed an affiliation with **this** chain — its team, foundation, contractors,
+grantees or investors. It is a list, one entry per issue:
+
+```yaml
+affiliated_contributions:
+  - issue: 12            # required: the public issue the correction came from
+    date: 2026-09-20     # when the change merged
+    note: >-             # optional: what it corrected
+      0x0100 gas cost
+```
+
+When the list is non-empty the chain page's Evidence section carries one line naming the
+chain and linking each issue. Nothing else reads it: no grid, axis page or index shows
+it. Contributions from unaffiliated filers or from competing chains are **not** recorded
+here — the re-derivation against public evidence is the safeguard for those, and the
+credit exists so a reader knows when a row's own team shaped it. `verify.py` requires an
+integer `issue:` on every entry. See [CONTRIBUTING.md](CONTRIBUTING.md#credit-on-the-chain-page).
+
+The operator's own affiliations are not per row. They live in
+[`operators.yaml`](operators.yaml), which names rows by slug; a *current* affiliation
+puts one line on each named row's chain page, and `verify.py` rejects a slug that does
+not exist.
+
 ## Top-level keys
 
 ```yaml
@@ -793,4 +819,6 @@ p2p:          # wire-level limits and transports, keyed by question; every size
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators
+affiliated_contributions: # merged corrections from people affiliated with THIS chain;
+                          # chain page only. See "Affiliated contributions" above.
 ```

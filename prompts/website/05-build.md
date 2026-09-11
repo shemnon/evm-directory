@@ -32,6 +32,7 @@ Expected scope, and worth asserting after changes:
 | one `chains/<slug>/SUMMARY.md` | that chain page only |
 | `chains/op-stack/chain.yaml` | the above, plus its five descendants |
 | `findings.yaml` | Overview, axis pages, and every chain page (chain-scoped there) |
+| `operators.yaml` | every chain page — for the same reason as `findings.yaml` |
 | generator or assets | everything |
 
 `findings.yaml` is an input to *every* chain page, not only the ones a note currently
@@ -50,5 +51,9 @@ it is byte-identical for the same inputs on any machine. Without it in the tree,
 `--check` is the CI gate: it catches a commit that edits `chain.yaml` without rebuilding.
 Pair it with `tools/verify.py`, which checks the dataset against pinned source.
 
-The footer of every page reads `Generated <date>` — no rebuild instructions, no links to
-methodology. Those live in `SITE.md`, which the site does not render.
+The footer of every page reads `Generated <date> · Data CC0 (a link back is appreciated)
+· Report an inaccuracy` — the data dedication with its non-binding link-back request, and
+the issue form, nothing else. No rebuild
+instructions, no links to methodology; those live in `SITE.md`, which the site does not
+render. On a chain page the report link opens the correction form with the chain filled
+in (`?template=correction.yml&chain=<slug>`).

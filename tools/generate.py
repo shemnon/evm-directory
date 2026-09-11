@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Regenerate the top-level aggregate tables from chains/*/chain.yaml.
 
 Ethereum Mainnet is the Schelling point: every row is a delta against it.

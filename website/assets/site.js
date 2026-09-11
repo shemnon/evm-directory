@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Controls for the grids. Progressive enhancement only: every table is complete in
 // the HTML and fully readable with JS disabled.
 (function () {

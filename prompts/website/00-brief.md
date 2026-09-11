@@ -32,9 +32,11 @@ against it, in the fixed vocabulary [`SCHEMA.md`](../../SCHEMA.md) defines.
    page. The single exception is the per-chain page, which states where that chain's
    data came from. See [07-voice.md](07-voice.md).
 
-6. **Self-contained and portable.** No external requests of any kind. Every link and
-   asset path is relative, so the site works identically from `file://`, from GitHub
-   Pages at a subpath, and from `python3 -m http.server -d website`.
+6. **Self-contained and portable.** No external requests of any kind. Every internal
+   link and asset path is relative, so the site works identically from `file://`, from
+   GitHub Pages at a subpath, and from `python3 -m http.server -d website`. The few links
+   that leave the site — a client's source, an EIP, the repository's issue form and
+   `CONTRIBUTING.md` — are navigation, never requests.
 
 7. **Nothing in `website/` is hand-edited.** It is a pure function of the dataset plus
    the generator. If output needs to change, change an input or the generator.

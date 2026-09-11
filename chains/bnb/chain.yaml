@@ -26,9 +26,10 @@ client:
 live_probe:
   endpoint: https://bsc-dataseed.bnbchain.org
   chain_id: 56
-  observed_at_block: 121088698
+  observed_at_block: 121193504
   note: >-
-    Added for the PREVRANDAO and mixHash facts below. Both are cheap to state from
+    Re-pinned on 2026-09-10 to a block after Pasteur (first block 117920136); every
+    src_live below was replayed at this height. Added for the PREVRANDAO and mixHash facts below. Both are cheap to state from
     source and impossible to believe from source alone, because the observable —
     what 0x44 actually pushes — depends on three separate client edits interacting.
 
@@ -40,8 +41,8 @@ consensus:
 
 baseline_fork: osaka
 
-recorded_at: 1755302400   # 2026-08-16
-stale_after: 1787625000   # 2026-08-25 Pasteur — 0x64/0x65 tombstone, precompile set changes
+recorded_at: 1788998400   # 2026-09-10 — re-verified after Pasteur, same v1.7.8 pin
+# stale_after: none — v1.7.8 schedules no mainnet fork after Pasteur (BPO1/BPO2 skipped)
 
 forks:
   src: params/config.go:BSCChainConfig
@@ -58,8 +59,8 @@ forks:
   - {name: fermi,    activation_time: 1768357800, mainnet_equivalent: null}
   - {name: "osaka + mendel", activation_time: 1777343400, mainnet_equivalent: osaka,
      note: "2026-04-28 — nearly five months AFTER mainnet's Osaka (2025-12-03)"}
-  - {name: pasteur, activation_time: 1787625000, status: pending,
-     note: "not yet live; observed pre-activation on 2026-08-16. Will tombstone 0x64 and 0x65."}
+  - {name: pasteur, activation_time: 1787625000, mainnet_equivalent: null,
+     note: "meta-BEP-673 (BEP-682, BEP-695). First block 117920136, timestamp exactly 1787625000. Tombstoned 0x64 and 0x65, hardened and repriced 0x67, replaced StakeHub and Governor bytecode. Chapel testnet took it 2026-07-21."}
   - {name: bpo1, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
   - {name: bpo2, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
 
@@ -98,21 +99,21 @@ eips:
       `opDifficulty` for Satoshi. Same answer, three different mechanisms — see
       chains/core/.
     src: "core/evm.go:75-77, params/config.go:2136, params/config.go:2159-2172, core/vm/jump_table.go:117-118, core/vm/jump_table.go:125-136"
-    src_live: "eth_call 0x445f5260205ff3 @ 121088698 -> 0x..02 (the difficulty); the same call on Ethereum mainnet returns 32 bytes of randomness"
+    src_live: "eth_call 0x445f5260205ff3 @ 121193504 -> 0x..02 (the difficulty); the same call on Ethereum mainnet returns 32 bytes of randomness"
   4844:
     status: inherited
     note: "blob market present; Cancun/Prague/Osaka blob schedules configured"
     src: params/config.go:BSCChainConfig.BlobScheduleConfig
   2537: {status: inherited, note: "BLS12-381 0x0b-0x11 fully present (Prague/Pascal)",
-         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+         src: "core/vm/contracts.go:PrecompiledContractsPasteur"}
   7702: {status: inherited, note: "tx type 0x04 present — the only non-mainnet chain here with EIP-7702",
          src: "core/types/transaction.go:SetCodeTxType"}
   7823: {status: inherited, note: "bigModExp{eip7823: true} matches mainnet Osaka exactly",
-         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+         src: "core/vm/contracts.go:PrecompiledContractsPasteur"}
   7883: {status: inherited, note: "bigModExp{eip7883: true} matches mainnet Osaka exactly",
-         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+         src: "core/vm/contracts.go:PrecompiledContractsPasteur"}
   7951: {status: inherited, note: "p256Verify{eip7951: true} — mainnet gas, unlike OP Stack",
-         src: "core/vm/contracts.go:PrecompiledContractsOsaka"}
+         src: "core/vm/contracts.go:PrecompiledContractsPasteur"}
   2935:
     status: inherited
     note: >-
@@ -141,7 +142,8 @@ eips:
 
 non_eip_specs:
   - {id: BEP-comprehensive, name: BSC BEP series, adoption: adopted,
-     note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs"}
+     note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs. Pasteur is meta-BEP-673: BEP-682 and BEP-695 need the fork; BEP-675 (builder-proposed blocks) is only gated on it.",
+     src_doc: "https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-673.md"}
 
 tx_types:
   envelope:
@@ -209,63 +211,70 @@ tx_authorization:
       src: "core/vm/contracts.go:blsSignatureVerify, core/types/vote.go:VoteAttestation"
 
 precompiles:
-  # verified: core/vm/contracts.go:PrecompiledContractsOsaka (LIVE set as of 2026-08-16)
+  # verified: core/vm/contracts.go:PrecompiledContractsPasteur (LIVE since block 117920136; re-read 2026-09-10)
   base_map:
     status: inherited
     present: "0x01-0x11"
     p256verify: true
-    src: core/vm/contracts.go:PrecompiledContractsOsaka
+    src: core/vm/contracts.go:PrecompiledContractsPasteur
     note: >-
       The full mainnet Osaka base range, unmodified — BLS12-381 (Prague/Pascal),
       MODEXP with EIP-7823/7883 bounds, P256VERIFY with mainnet gas. The most
       mainnet-faithful base map in this dataset.
   "0x64":
     name: tmHeaderValidate
-    status: added
-    tombstoned_at: 1787625000
+    status: tombstoned
     note: >-
-      Tendermint header validation for the BNB Beacon Chain bridge. LIVE today.
-      Will become tmHeaderValidateDeprecated at Pasteur (2026-08-25), after which it
-      returns errors.New("deprecated") — tombstoned, not removed.
-    src: core/vm/contracts.go:343, core/vm/contracts_lightclient.go:139-147
+      Tendermint header validation for the BNB Beacon Chain bridge. Tombstoned at
+      Pasteur (block 117920136, 2026-08-25): the map now binds
+      tmHeaderValidateDeprecated, whose Run returns errors.New("deprecated") for
+      every input. The address stays consumed — calling it fails, where calling an
+      absent address would succeed with empty output.
+    src: "core/vm/contracts.go:374, core/vm/contracts_lightclient.go:tmHeaderValidateDeprecated"
+    src_live: "eth_call to 0x...0064 data 0x00 @ 121193504 -> error -32000 'deprecated'"
   "0x65":
     name: iavlMerkleProofValidate
-    status: added
-    tombstoned_at: 1787625000
+    status: tombstoned
     note: >-
-      IAVL merkle proof validation. Currently the Plato variant; has been revised
-      four times (base, Moran, Planck, Plato). Also tombstoned at Pasteur.
-    src: core/vm/contracts.go:344
+      IAVL merkle proof validation, revised four times (base, Moran, Planck, Plato)
+      and then tombstoned at Pasteur alongside 0x64: iavlMerkleProofValidateDeprecated
+      returns errors.New("deprecated") for every input.
+    src: "core/vm/contracts.go:375, core/vm/contracts_lightclient.go:iavlMerkleProofValidateDeprecated"
+    src_live: "eth_call to 0x...0065 data 0x00 @ 121193504 -> error -32000 'deprecated'"
   "0x66":
     name: blsSignatureVerify
     status: added
     fork: luban
-    src: core/vm/contracts.go:345
+    src: core/vm/contracts.go:376
   "0x67":
     name: cometBFTLightBlockValidate
     status: added
     fork: luban
-    note: "currently the Hertz variant; Pasteur introduces another"
-    src: core/vm/contracts.go:346
+    note: >-
+      Now the Pasteur variant, the third after the base and Hertz ones. BEP-682: input
+      decoding rejects a light block that lists a validator twice
+      (requireUniqueValidators), and gas scales with input — 3000 plus 16 per byte,
+      where every earlier variant charged a flat 3000.
+    src: "core/vm/contracts.go:377, core/vm/contracts_lightclient.go:cometBFTLightBlockValidatePasteur, params/protocol_params.go:CometBFTLightBlockValidatePerByteGas"
   "0x68":
     name: verifyDoubleSignEvidence
     status: added
     note: "consensus slashing evidence verification exposed to the EVM"
-    src: core/vm/contracts.go:347
+    src: core/vm/contracts.go:378
   "0x69":
     name: secp256k1SignatureRecover
     status: added
     note: "distinct from ECRECOVER at 0x01"
-    src: core/vm/contracts.go:348
+    src: core/vm/contracts.go:379
   "0x0100": {name: P256VERIFY, status: inherited, note: "mainnet semantics and gas",
-             src: "core/vm/contracts.go:PrecompiledContractsOsaka, params/protocol_params.go:P256VerifyGas"}
+             src: "core/vm/contracts.go:PrecompiledContractsPasteur, params/protocol_params.go:P256VerifyGas"}
   note: >-
     ADDRESS PLACEMENT RISK. BSC's custom precompiles occupy 0x64-0x69 (decimal
     100-105), which sits BETWEEN mainnet's occupied 0x01-0x11 and 0x0100. Mainnet
     allocates upward from 0x11, leaving only 0x12-0x63 of headroom before collision.
     Every other chain in this dataset placed customs at 0x0100.., 0x0200.. or higher.
-    BSC is the one on a collision course, and two of these addresses are being
-    tombstoned rather than freed — permanently consumed.
+    BSC is the one on a collision course, and two of these addresses were
+    tombstoned at Pasteur rather than freed — permanently consumed.
 
 system_contracts:
   # verified: core/systemcontracts/const.go:5-21
@@ -280,9 +289,11 @@ system_contracts:
   "0x0000000000000000000000000000000000001008": {name: TokenManagerContract, status: added, src: "core/systemcontracts/const.go:TokenManagerContract"}
   "0x0000000000000000000000000000000000002000": {name: CrossChainContract, status: added, src: "core/systemcontracts/const.go:CrossChainContract"}
   "0x0000000000000000000000000000000000002001": {name: StakingContract, status: added, src: "core/systemcontracts/const.go:StakingContract"}
-  "0x0000000000000000000000000000000000002002": {name: StakeHubContract, status: added, src: "core/systemcontracts/const.go:StakeHubContract"}
+  "0x0000000000000000000000000000000000002002": {name: StakeHubContract, status: added, src: "core/systemcontracts/const.go:StakeHubContract, core/systemcontracts/upgrade.go:pasteurUpgrade",
+    note: "bytecode replaced by the client at Pasteur (BEP-695 staking hardening; bsc-genesis-contract 041881a0)"}
   "0x0000000000000000000000000000000000002003": {name: StakeCreditContract, status: added, src: "core/systemcontracts/const.go:StakeCreditContract"}
-  "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added, src: "core/systemcontracts/const.go:GovernorContract"}
+  "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added, src: "core/systemcontracts/const.go:GovernorContract, core/systemcontracts/upgrade.go:pasteurUpgrade",
+    note: "bytecode replaced by the client at Pasteur (BEP-695 governance hardening; bsc-genesis-contract 041881a0)"}
   "0x0000000000000000000000000000000000002005": {name: GovTokenContract, status: added, src: "core/systemcontracts/const.go:GovTokenContract"}
   "0x0000000000000000000000000000000000002006": {name: TimelockContract, status: added, src: "core/systemcontracts/const.go:TimelockContract"}
   "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added, src: "core/systemcontracts/const.go:TokenRecoverPortalContract"}
@@ -297,7 +308,8 @@ system_contracts:
       maxwell, fermi, pasteur, ...). Unique in this dataset: on every other chain,
       code at an address changes only by transaction. Here the client swaps it, so
       the same address can have completely different behaviour across a fork with no
-      on-chain transaction to observe.
+      on-chain transaction to observe. Most recently Pasteur (block 117920136)
+      replaced StakeHub (0x2002) and Governor (0x2004) under BEP-695.
 
 system_transactions:
   note: >-
@@ -317,7 +329,7 @@ opcodes:
       London set rather than from the merge set — so it pushes
       `Context.Difficulty`, which Parlia sets to 1 or 2. See eips.4399.
     src: "core/vm/jump_table.go:117-118, core/vm/instructions.go:477-481"
-    src_live: "eth_call 0x445f5260205ff3 @ 121088698 -> 0x..02"
+    src_live: "eth_call 0x445f5260205ff3 @ 121193504 -> 0x..02"
 
 tx_lifecycle:
   ordered_then_invalid:
@@ -381,13 +393,13 @@ header_fields:
       The RPC surfaces it as a `milliTimestamp` key, which is the honest reading.
       What is not honest is `mixHash` itself: a tool that reads it expecting
       post-merge randomness gets a small integer that increments with block
-      production. Verified live: mixHash 0x258 = 600, timestamp 1789051672,
-      milliTimestamp 1789051672600.
+      production. Verified live: mixHash 0x352 = 850, timestamp 1789098849,
+      milliTimestamp 1789098849850.
 
       Third meaning for a repurposed header field in this dataset, after OP
       Stack's `blobGasUsed` (DA footprint) and Avalanche's (pinned to zero).
     src: "consensus/parlia/parlia.go:1176-1180, consensus/parlia/parlia.go:626-635, core/types/block.go:161-173"
-    src_live: "eth_getBlockByNumber @ 121088698 -> mixHash 0x..0258 (600), timestamp 1789051672, milliTimestamp 1789051672600 — MilliTimestamp()/1000 == Time, as verifyHeader requires"
+    src_live: "eth_getBlockByNumber @ 121193504 -> mixHash 0x..0352 (850), timestamp 1789098849, milliTimestamp 1789098849850 — MilliTimestamp()/1000 == Time, as verifyHeader requires"
 
 gotchas:
   - >-
@@ -417,7 +429,8 @@ gotchas:
     (statedb.SetCode). Code at a fixed address can change with no transaction in any
     block. Indexers reconstructing contract history from transactions will miss it.
   - >-
-    0x64 and 0x65 become always-erroring at Pasteur (activation_time 1787625000 = 2026-08-25) —
+    0x64 and 0x65 have always errored since Pasteur (block 117920136, 2026-08-25): a call
+    fails with "deprecated" instead of succeeding empty, the way an absent address would —
     the same tombstoning pattern as Avalanche's native-asset precompiles.
   - >-
     Only chain here with EIP-7702 besides mainnet, and the only one with zero

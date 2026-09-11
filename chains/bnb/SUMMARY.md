@@ -18,9 +18,12 @@ activation timestamps rather than a "current fork" label.
 `BPO1Time` and `BPO2Time` are `nil` with the comment *"will be skipped in BSC"* — the
 blob-parameter forks are explicitly declined.
 
-**Pasteur activates 2026-08-25 and was not yet live when this row was recorded (2026-08-16).** All
-precompile facts below are read from `PrecompiledContractsOsaka`, the currently
-active set, not from the newer Pasteur map in the same file.
+**Pasteur went live on 2026-08-25 at block 117920136** (Chapel testnet: 2026-07-21). It
+is meta-BEP-673: BEP-682 hardens `0x67`, BEP-695 replaces the StakeHub and Governor
+bytecode, and `0x64`/`0x65` are tombstoned. All precompile facts below are read from
+`PrecompiledContractsPasteur`, the active set. The row was re-verified on 2026-09-10
+against the same `v1.7.8` pin — there is no newer stable release (`v1.8.0-alpha` is a
+preview, and schedules no new fork).
 
 ## Prague, split cleanly down the middle
 
@@ -66,10 +69,10 @@ BSC and mainnet are the only two chains in this dataset with EIP-7702.
 
 | Addr | Name | Notes |
 |---|---|---|
-| `0x64` | tmHeaderValidate | BNB Beacon Chain bridge. **Tombstoned at Pasteur** |
+| `0x64` | tmHeaderValidate | BNB Beacon Chain bridge. **Tombstoned at Pasteur** — every call returns `deprecated` |
 | `0x65` | iavlMerkleProofValidate | revised 4× (base/Moran/Planck/Plato). **Tombstoned at Pasteur** |
 | `0x66` | blsSignatureVerify | |
-| `0x67` | cometBFTLightBlockValidate | currently the Hertz variant |
+| `0x67` | cometBFTLightBlockValidate | Pasteur variant: rejects duplicate validators (BEP-682), 3000 + 16 gas/byte |
 | `0x68` | verifyDoubleSignEvidence | consensus slashing evidence, exposed to the EVM |
 | `0x69` | secp256k1SignatureRecover | distinct from `ECRECOVER` at `0x01` |
 
@@ -79,9 +82,10 @@ headroom before collision.
 
 This is the placement risk predicted from the Ethereum baseline, actually realised.
 Every other chain surveyed put customs at `0x0100…`, `0x0200…` or higher; BSC is the
-one exception. And because `0x64`/`0x65` are being **tombstoned rather than freed** at
-Pasteur — `tmHeaderValidateDeprecated.Run` returns `errors.New("deprecated")` — those
-addresses are permanently consumed. Same pattern as Avalanche's native-asset trio,
+one exception. And because `0x64`/`0x65` were **tombstoned rather than freed** at
+Pasteur — `tmHeaderValidateDeprecated.Run` returns `errors.New("deprecated")`, and a live
+`eth_call` at block 121193504 returns exactly that — those addresses are permanently
+consumed. Same pattern as Avalanche's native-asset trio,
 independently arrived at.
 
 ## Client-rewritten system contract bytecode
@@ -134,7 +138,7 @@ deposits, which carry no signature at all, sit on the other.
 ## `block.prevrandao` returns 1 or 2, and `mixHash` is a clock
 
 The most mainnet-faithful EVM in this dataset does not have PREVRANDAO. `0x44` pushes
-the Parlia difficulty — 1 out of turn, 2 in turn. Verified live at block 121088698:
+the Parlia difficulty — 1 out of turn, 2 in turn. Verified live at block 121193504, after Pasteur:
 `eth_call 0x445f5260205ff3` returns `0x…02`, while the same call on Ethereum mainnet
 returns 32 bytes of randomness.
 
@@ -177,8 +181,8 @@ if header.MilliTimestamp()/1000 != header.Time {
 ```
 
 So `mixHash` is a consensus-validated timestamp fraction in `[0, 999]`. At block
-121088698 it was `0x258` = 600, with `timestamp` 1789051672 and `milliTimestamp`
-1789051672600.
+121193504 it was `0x352` = 850, with `timestamp` 1789098849 and `milliTimestamp`
+1789098849850.
 
 The RPC's `milliTimestamp` key is the honest reading of the field. What is not honest
 is `mixHash` itself: a tool that reads it expecting post-merge randomness gets a small
@@ -194,7 +198,7 @@ from source alone.
 
 ```
 git clone --depth 1 --branch v1.7.8 https://github.com/bnb-chain/bsc
-sed -n '324,352p' core/vm/contracts.go               # LIVE Osaka set incl. 0x64-0x69
+sed -n '353,380p' core/vm/contracts.go               # LIVE Pasteur set incl. 0x64-0x69
 sed -n '/BSCChainConfig = /,/^	}/p' params/config.go  # fork timestamps
 sed -n '1910,1935p' params/config.go                 # IsInBSC system contract split
 sed -n '1,25p' core/systemcontracts/const.go         # 17 system contracts
@@ -223,6 +227,12 @@ sed -n '161,173p' $B/core/types/block.go
 curl -s -X POST https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["latest",false]}' \
   | python3 -c 'import sys,json;b=json.load(sys.stdin)["result"];print({k:b[k] for k in ("difficulty","mixHash","timestamp","milliTimestamp")})'
+
+# Pasteur: 0x64/0x65 tombstoned, 0x67 hardened, StakeHub/Governor bytecode replaced
+sed -n '446,462p' $B/core/vm/contracts_lightclient.go
+sed -n '1062,1076p' $B/core/systemcontracts/upgrade.go
+curl -s -X POST https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000064","data":"0x00"},"latest"]}'   # error "deprecated"
 
 # row check
 tools/.venv/bin/python tools/verify.py bnb

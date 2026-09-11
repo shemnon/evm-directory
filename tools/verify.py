@@ -275,8 +275,12 @@ def ex_opstack():
     return go_addrs(block(text("op-stack", "core/vm/contracts.go"),
                           "var PrecompiledContractsJovian = "))
 def ex_bnb():
-    return go_addrs(block(text("bnb", "core/vm/contracts.go"),
-                          "var PrecompiledContractsOsaka = "))
+    """The map the client selects at its newest fork, read from the switch. Naming
+    Osaka here kept this checking Osaka's map for two weeks after Pasteur replaced
+    it. Pasteur leaves 0x64/0x65 IN the map as `*Deprecated` stubs that return
+    errors.New("deprecated") — tombstoned, the same shape as Scroll's `*Disabled`."""
+    e, _ = geth_active(text("bnb", "core/vm/contracts.go"))
+    return Found(e, {a for a, t in e.items() if t.endswith("Deprecated")})
 def consts(s):
     """name -> int for `var Foo = common.BytesToAddress(...)` / HexToAddress(...)."""
     out = {}

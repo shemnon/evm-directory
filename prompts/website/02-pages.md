@@ -61,6 +61,13 @@ stable anchor** — `precompiles-0x64`, `opcodes-0xd0`, `eips-7702`. See
 commit, whether the row rests on source, docs or live probes, and the commands to
 re-verify it. Documented rows — no public client — say so plainly at the top.
 
+Evidence also carries two fixed, data-generated sentences when they apply: the operator's
+**current** affiliation with this chain (from `operators.yaml`), and a credit for merged
+corrections supplied by contributors affiliated with this chain
+(`affiliated_contributions:`, linking each issue). Both are facts about who touched the
+row, so they sit with its provenance — on the chain page only, never on an axis page, an
+index or a grid.
+
 **Repriced precompiles** lists entries whose divergence is pricing only, stating that
 current live pricing is the reference rather than pricing at any historical fork. These
 are deliberately *not* flagged in the aggregate grids; see
@@ -87,3 +94,8 @@ repo-only documents: useful to someone reading or extending the dataset, noise t
 someone who arrived with a question about a chain. Every note in `findings.yaml`
 therefore names one of the eight axes and renders on that axis page; a note with no
 axis page is a build error, not a note that lands on a method page.
+
+The one repo document the site links to is `CONTRIBUTING.md`, and it does not render it.
+Every page's footer carries **Report an inaccuracy**, opening the repository's issue form
+— the correction form pre-filled with the chain on a chain page, the form chooser
+elsewhere — and the operator line on a chain page links to the disclosure.

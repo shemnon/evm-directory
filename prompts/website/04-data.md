@@ -73,6 +73,9 @@ Every non-obvious fact carries `src:`, `src_live:` or `src_doc:`, and which key 
 part of the fact. The site surfaces provenance **only** on chain pages and in per-entry
 detail rows — never as prose on an axis page. See [07-voice.md](07-voice.md).
 
+The operator's affiliations (`operators.yaml`, read through `model.current_affiliations`)
+and a row's `affiliated_contributions:` follow the same rule: chain pages only.
+
 ## Changing the schema
 
 Adding a field to `SCHEMA.md` is a dataset change, not a site change, and it needs a

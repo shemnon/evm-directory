@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Shared data model over `chains/*/chain.yaml`.
 
 Both `generate.py` (the top-level Markdown tables) and `site.py` (the static site
@@ -10,6 +11,22 @@ import pathlib, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHAINS = ROOT / "chains"
+OPERATORS = ROOT / "operators.yaml"
+
+
+def operator_affiliations():
+    """Every affiliation disclosed in operators.yaml, current and former."""
+    if not OPERATORS.exists():
+        return []
+    data = yaml.safe_load(OPERATORS.read_text()) or {}
+    return (data.get("operator") or {}).get("affiliations") or []
+
+
+def current_affiliations(s):
+    """The operator's CURRENT affiliations that name row `s` — the only ones a chain
+    page states. Former affiliations are disclosed in CONTRIBUTING.md alone."""
+    return [a for a in operator_affiliations()
+            if a.get("current") is True and s in (a.get("chains") or [])]
 
 # Display order: distance from Ethereum's orbit, by category — not by fork lineage.
 # Mainnet first, then Arbitrum, then the OP Stack row with the networks built on it,

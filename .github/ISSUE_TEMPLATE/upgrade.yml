@@ -1,0 +1,62 @@
+name: Network upgrade
+description: A chain's mainnet has forked, or its client has a release newer than the pinned version.
+title: "<chain>: <fork or release>"
+labels: [upgrade]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The directory records what a chain's mainnet runs **now**. A fork that is scheduled
+        but not yet active can be reported with its date; its effects are recorded when it activates.
+        Read [CONTRIBUTING.md](https://github.com/shemnon/evm-directory/blob/main/CONTRIBUTING.md) first.
+  - type: input
+    id: chain
+    attributes:
+      label: Chain
+      description: The chain's slug or name, e.g. `bnb`.
+    validations:
+      required: true
+  - type: input
+    id: change
+    attributes:
+      label: Fork or release
+      description: The fork's name, or the client release tag.
+    validations:
+      required: true
+  - type: input
+    id: activation
+    attributes:
+      label: Mainnet activation
+      description: Block number, timestamp, or other activation condition, and whether it is already live.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: The release tag or commit that carries the fork, and the chain's own announcement if there is one.
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Your affiliation with the chain this concerns
+      options:
+        - None
+        - Affiliated with this chain (team, foundation, contractor, grantee or investor)
+        - Affiliated with a competing chain
+        - Other (explained below)
+    validations:
+      required: true
+  - type: input
+    id: affiliation_detail
+    attributes:
+      label: Affiliation detail
+      description: Optional. Which organisation, and in what capacity.
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before you submit
+      options:
+        - label: This issue contains no sensitive or undisclosed security information.
+          required: true

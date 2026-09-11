@@ -291,6 +291,8 @@ chains/<slug>/
   SUMMARY.md     findings, caveats, and re-verification commands
   repos/         pinned shallow clones (gitignored; evidence, not content)
 findings.yaml       the narrative layer: what the dataset means
+operators.yaml      the operator's disclosed affiliations and the AI models in use
+CONTRIBUTING.md     principles, how to report an inaccuracy, the operator disclosure
 METHOD.md           method notes — repo-only, deliberately not on the site
 website/            generated static site (see SITE.md)
 tools/model.py      the shared data model both generators read
@@ -323,3 +325,21 @@ reports drift in both directions:
 It also fails if a tag has been moved upstream, which is why commits are pinned
 alongside tags. All four failure modes are exercised; a verifier that cannot fail is
 worse than none.
+
+## Contributing
+
+Issues are open to everyone; pull requests are accepted from collaborators only. The
+dataset is AI-generated from public evidence, so a correction is an issue carrying
+evidence, not a patch — and it is not a marketing channel. Every page on the site links
+to the issue form as **Report an inaccuracy**. The principles, the process, what to do
+with a sensitive finding (not file it here), and the operator's affiliations are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Code (`tools/`, `.claude/` scripts, `.github/` workflows) is licensed under the
+[Apache License 2.0](LICENSE). Data and prose (`chains/`, `findings.yaml`,
+`operators.yaml`, the generated tables, the Markdown documents and the site's content)
+are dedicated to the public domain under [CC0 1.0](LICENSE-DATA). If you use or
+republish the data, a link back to this repository is appreciated — so readers can find
+corrections — but it is a request, not a condition.

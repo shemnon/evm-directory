@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Where one row's client pins stand against upstream, and what its fork schedule says.
 
 The mechanical half of the update-chain skill. Everything here is a lookup and none of

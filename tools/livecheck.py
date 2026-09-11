@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Re-probe every row's live endpoint and report drift since the pinned block.
 
 `verify.py` closes the loop on `src:` — it re-reads the pinned clone and diffs it

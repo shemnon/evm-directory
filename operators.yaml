@@ -1,0 +1,36 @@
+# The operator of this directory, their affiliations, and the AI models that write the
+# dataset. This is the machine-readable half of CONTRIBUTING.md's "The operator"
+# section; change the two together.
+#
+# tools/site.py reads it for one line on the chain page of every row a CURRENT
+# affiliation touches, and nowhere else: never on an axis page, an index or the
+# Markdown tables. Former affiliations are disclosed in CONTRIBUTING.md only.
+# `chains:` names rows by slug, and tools/verify.py rejects one that does not exist.
+as_of: 2026-09-11
+operator:
+  name: Danno Ferrin
+  github: shemnon
+  affiliations:
+    - org: Sei Labs
+      role: engineer
+      current: true
+      chains: [sei]
+    - org: an unreleased reth-derived chain
+      role: engineer
+      current: false
+      chains: []
+    - org: Hedera
+      role: execution and smart-contract engineer
+      current: false
+      chains: [hedera]
+    - org: Hyperledger Besu
+      role: core developer
+      current: false
+      chains: [linea, hedera]       # Linea's client is a Besu package; Hedera runs Besu's EVM as a library
+    - org: Ethereum Foundation
+      role: Ethereum core developer
+      current: false
+      chains: [ethereum]            # the baseline every other row is a delta against
+ai_models:
+  - name: Claude Opus 5
+    vendor: Anthropic

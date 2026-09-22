@@ -483,6 +483,24 @@ system_transactions:
     src: crates/evm/src/executor.rs:validate_beneficiary_not_blocklisted
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      ZERO AT EVERY POINT THE MALACHITE APP BUILDS A PAYLOAD. `prev_randao: B256::ZERO`
+      appears in `finalize.rs`, `payload.rs`, `handlers/decided.rs` and
+      `handlers/consensus_ready.rs` — the block-production, finalisation and
+      consensus-ready paths all agree on it, so this is the value, not one branch's
+      default. Arc's consensus is Malachite BFT, which has a proposer and signatures and
+      could supply something; the EVM is handed zero. Note this row is pinned to Arc's
+      TESTNET, the only network live at the time of writing.
+    src: >-
+      arc-node/crates/malachite-app/src/finalize.rs:168,
+      arc-node/crates/malachite-app/src/payload.rs:377,
+      arc-node/crates/malachite-app/src/handlers/decided.rs:380
+    src_live: "eth_call 0x445f5260205ff3 @ 0x3c05adb -> 0x00..00, header mixHash 0x00..00"
   added: []
   removed: []
   modified:

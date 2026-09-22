@@ -312,6 +312,25 @@ system_contracts:
     the deposit contract all require Prague, which was never adopted.
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the constant 1
+    chooser: >-
+      nobody — the dummy consensus engine writes `header.Difficulty = big.NewInt(1)`,
+      and `wrapped_block.go` rejects any block whose difficulty is not exactly 1
+    known_at: always
+    note: >-
+      COPIED FROM THE DIFFICULTY FIELD BY A libevm HOOK, NOT READ FROM ANY HEADER MIX.
+      `OverrideNewEVMArgs` runs inside `vm.NewEVM`: from Shanghai onward it sets
+      `BlockContext.Random = Difficulty.Bytes()` and then zeroes `Difficulty`. The
+      comment says why — "This allows using the same jump table as upstream": coreth
+      wants stock geth's post-merge jump table, where 0x44 is `opRandom`, so it feeds
+      the difficulty in through the `Random` slot rather than patch the instruction.
+      `DummyEngine` fixes the difficulty at 1 and `wrapped_block.go` rejects anything
+      else, so `block.prevrandao` and `block.difficulty` are both 1 forever.
+    src: >-
+      core/evm.go:OverrideNewEVMArgs, consensus/dummy/consensus.go:234,
+      plugin/evm/wrapped_block.go:391
   added: []
   removed: []
   modified: []

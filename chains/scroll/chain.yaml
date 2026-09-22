@@ -513,6 +513,25 @@ system_transactions:
       events or by diffing code at deployment sites sees nothing at all.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word, pushed by a patched opcode that reads nothing
+    chooser: >-
+      nobody — `opDifficulty` was rewritten to ignore the block context entirely
+    known_at: always
+    note: >-
+      THE OPCODE BODY ITSELF WAS REPLACED BY A CONSTANT. Scroll's geth predates the
+      merge jump table, so 0x44 is still `DIFFICULTY` — but `opDifficulty` does not read
+      `Context.Difficulty` the way an unmodified pre-merge client would. Its whole body
+      is `v := uint256.NewInt(0); scope.Stack.push(v)`. `NewEVMBlockContext` never sets
+      `Random` at all, so the field is nil and would fault if anything reached it;
+      nothing does. The header meanwhile carries a real difficulty of 1 from the
+      system-contract engine, so the RPC and the EVM disagree: `eth_getBlockByNumber`
+      reports difficulty 1 and 0x44 pushes 0.
+    src: >-
+      core/vm/instructions.go:opDifficulty, core/evm.go:NewEVMBlockContext,
+      consensus/system_contract/consensus.go:301
+    src_live: "eth_call 0x445f5260205ff3 @ 0x2178621 -> 0x00..00, while the same header reports difficulty 0x1"
   added:
     - {op: "0x1e", name: CLZ, fork: galileo, note: "EIP-7939, an Osaka opcode", src: "core/vm/jump_table.go:newGalileoInstructionSet"}
     - {op: "0x5c", name: TLOAD, fork: curie, note: "EIP-1153, a Cancun opcode", src: "core/vm/jump_table.go:newCurieInstructionSet"}

@@ -907,6 +907,25 @@ system_transactions:
     src: "pallets/ethereum-xcm/src/lib.rs:force_transact_as"
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word, reached through the DIFFICULTY fallback
+    chooser: nobody
+    known_at: always
+    note: >-
+      THE SAME FRONTIER FALLBACK AS AUTONOMYS, ON A CHAIN THAT HAS REAL RANDOMNESS AND
+      ROUTES IT ELSEWHERE. `block_randomness()` returns `None` in
+      `frame/evm/src/runner/stack.rs`, so 0x44 falls through to `block_difficulty()`,
+      which returns `U256::zero()`. What makes this row worth reading twice is that
+      Moonbeam ships `pallet_randomness` — VRF-backed, with BABE epoch randomness behind
+      it — as pallet index 120, and exposes it through `RandomnessPrecompile` at 0x0809.
+      So the chain has exactly the thing a contract reaching for `block.prevrandao`
+      wants, and the opcode is not how you get it.
+    src: >-
+      frontier/frame/evm/src/runner/stack.rs:1102 (block_randomness),
+      moonbeam/runtime/moonbeam/src/lib.rs:1517 (pallet_randomness),
+      moonbeam/runtime/moonbeam/src/precompiles.rs:RandomnessPrecompile
+    src_live: "eth_call CREATE @ 16790908 with 4460005260206000f3 -> 0x0"
   added: []
   removed:
   - {op: "0x49", name: BLOBHASH,

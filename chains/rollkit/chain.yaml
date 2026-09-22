@@ -513,6 +513,25 @@ system_transactions:
     src: crates/node/src/builder.rs:apply_pre_execution_changes
 
 opcodes:
+  prevrandao:
+    source: block-number
+    value: the block height, zero-extended to 32 bytes
+    chooser: nobody — it is the height
+    known_at: always
+    note: >-
+      PREVRANDAO IS THE BLOCK NUMBER, WRITTEN DOWN AS SUCH. ev-node builds the payload
+      attributes with `"prevRandao": c.derivePrevRandao(blockHeight)`, and
+      `derivePrevRandao` is one line: `common.BigToHash(new(big.Int).SetUint64(blockHeight))`.
+      ev-reth then passes `attributes.prev_randao` into the block environment unchanged
+      and the header's mixHash records the same value. Every chain on this axis that
+      returns a constant at least returns something a reader might not immediately
+      recognise; here `block.prevrandao == block.number` exactly, so a contract drawing
+      "randomness" draws a counter that anyone can name for any future block.
+    src: >-
+      ev-node/execution/evm/execution.go:derivePrevRandao,
+      ev-node/execution/evm/execution.go:buildPayloadAttributes,
+      ev-reth/crates/node/src/builder.rs:145
+    src_live: "eth_call 0x445f5260205ff3 @ 0xbfad7f0 -> 0x00…0bfad7f0, which is that block's own number; mixHash carries the same word"
   added: []
   removed: []
   modified:

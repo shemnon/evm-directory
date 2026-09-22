@@ -714,7 +714,7 @@ def list_section(chains, slug, section, heading, anchor, keyfield):
                 f'{" <span class=\"pill s-removed\">silent</span>" if e.get("severity") == "high" else ""}'
                 f'{provenance(e, on_chain=True)}</div>',
             ])
-    if not rows and not d.get("note"):
+    if not rows and not d.get("note") and not d.get("prevrandao"):
         return ""
     out = [h2(heading + f' <span class="pill">{len(rows)}</span>', anchor)]
     if d.get("note"):
@@ -942,6 +942,7 @@ def page_chain(chains, slug):
                             for e in ents]))
 
     B.append(list_section(chains, slug, "opcodes", "Opcodes", "opcodes", "op"))
+    B.append(prevrandao_section(chains, slug))
 
     # --- transaction lifecycle -------------------------------------------
     tl = lifecycle(chains, slug)
@@ -1446,6 +1447,95 @@ def page_cryptography(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
+# --------------------------------------------------------------------------
+# PREVRANDAO (0x44) derivation
+# --------------------------------------------------------------------------
+
+# How 0x44 gets its value. The class of mechanism, not the value: two chains can
+# both push a 32-byte word and be nothing alike underneath.
+PREVRANDAO_SOURCE = {
+    "beacon-randao":    "beacon RANDAO",
+    "l1-randao":        "L1 RANDAO",
+    "consensus-randao": "consensus randomness",
+    "difficulty":       "difficulty field",
+    "timestamp":        "block timestamp",
+    "block-number":     "block number",
+    "constant":         "constant",
+    "nil":              "nil / faults",
+    "unrecorded":       "unrecorded",
+}
+
+# When the value first becomes knowable to someone who wants to game it. This is the
+# axis that decides whether a contract may use 0x44 as entropy at all.
+PREVRANDAO_KNOWN_AT = {
+    "execution":  "not before execution",
+    "proposal":   "proposer knows it early",
+    "l1-epoch":   "public an L1 block early",
+    "always":     "always knowable",
+}
+
+
+def prevrandao_block(c):
+    d = (c.get("opcodes") or {}).get("prevrandao")
+    return d if isinstance(d, dict) else None
+
+
+def prevrandao_section(chains, slug):
+    """The chain page's own PREVRANDAO derivation, anchored `prevrandao` so the opcodes
+    axis page can link straight at it — the same shape as a per-opcode anchor."""
+    d = prevrandao_block(chains[slug])
+    if not d:
+        return ""
+    src = str(d.get("source", "unrecorded"))
+    known = str(d.get("known_at", ""))
+    out = [h3('PREVRANDAO (<code>0x44</code>) derivation', "prevrandao"),
+           kv([("Source", f'<span class="pill">{esc(PREVRANDAO_SOURCE.get(src, src))}</span>'),
+               ("Pushes", inline_md(d.get("value"))),
+               ("Chosen by", inline_md(d.get("chooser"))),
+               ("Knowable", esc(PREVRANDAO_KNOWN_AT.get(known, known)))])]
+    if d.get("note"):
+        out.append(note(markdown(flat(d["note"]))
+                        + provenance(d, on_chain=True)))
+    elif provenance(d, on_chain=True):
+        out.append(note(provenance(d, on_chain=True)))
+    return "\n".join(out)
+
+
+def page_prevrandao_table(chains, slugs):
+    """One row per chain on the opcodes axis page, each linking at that chain's own
+    derivation anchor. Aggregate surface: no provenance, per the hard rule."""
+    rows, attrs, row_slugs = [], [], []
+    for s in slugs:
+        d = prevrandao_block(chains[s])
+        if not d:
+            continue
+        row_slugs.append(s)
+        src = str(d.get("source", "unrecorded"))
+        known = str(d.get("known_at", ""))
+        rows.append([
+            f'<a href="../chains/{esc(s)}.html#prevrandao">{esc(short(s))}</a>',
+            f'<span class="pill">{esc(PREVRANDAO_SOURCE.get(src, src))}</span>',
+            f'<div class="wrap">{inline_md(d.get("value"))}</div>',
+            f'<div class="wrap">{inline_md(d.get("chooser"))}</div>',
+            esc(PREVRANDAO_KNOWN_AT.get(known, known)),
+        ])
+        attrs.append("")
+    if not rows:
+        return ""
+    return "\n".join([
+        h2(f'PREVRANDAO (<code>0x44</code>) derivation '
+           f'<span class="pill">{len(rows)} chains</span>', "prevrandao"),
+        note('<p>What <code>0x44</code> pushes is the symptom; where the value comes '
+             'from is the fact. A chain can return 32 plausible-looking bytes and still '
+             'have no randomness in it — and one that returns <code>1</code> forever is '
+             'not failing, it is answering a different question. Each row links to that '
+             'chain\u2019s own derivation, with citations.</p>'),
+        filter_box("prevrandao-grid"),
+        table(["Chain", "Source", "What 0x44 pushes", "Chosen by", "Knowable"],
+              rows, tid="prevrandao-grid", row_attrs=attrs, row_chains=row_slugs),
+    ])
+
+
 def page_opcodes(chains):
     slugs = order(chains)
     per = {}
@@ -1521,6 +1611,8 @@ def page_opcodes(chains):
                        [[f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>',
                          f'<code>{esc(i)}</code>', esc(n), f'<div class="wrap">{esc(nt)}</div>']
                         for s, i, n, nt in other]))
+
+    B.append(page_prevrandao_table(chains, slugs))
 
     B.append(h2("Per entry", "entries"))
     rows = [[f'<code>{esc(op)}</code>',

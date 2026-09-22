@@ -599,6 +599,29 @@ system_transactions:
   src: params/config.go:MainnetChainConfig
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: the KIP-114 mix hash — 32 bytes, unpredictable to everyone but the proposer
+    chooser: >-
+      the block's proposer, which contributes `randomReveal = BLS_sign(sk, blockNumber)`;
+      the chain folds it into the running mix
+    known_at: proposal
+    note: >-
+      A BLS RANDAO OF KAIA'S OWN, WITH ONE SHARP EDGE. `CalcRandao` computes
+      `randomReveal = bls.Sign(proposerSK, blockNumber.to_bytes(32))` and
+      `mixHash = prevMixHash XOR keccak256(randomReveal)`; `VerifyRandao` re-checks both
+      halves against the proposer's registered pubkey, so the proposer cannot grind —
+      a BLS signature over a fixed message is unique. THE EDGE IS THAT THE MESSAGE IS
+      JUST THE BLOCK NUMBER. A validator can sign any future height it will propose at
+      any time, so it knows its own future contributions arbitrarily far ahead and, with
+      the current mix, can compute the exact PREVRANDAO of a block it has not yet
+      produced. Unpredictable to a contract's counterparties; not unpredictable to the
+      proposer. Before the Randao fork there was no mixHash in the header at all.
+    src: >-
+      consensus/istanbul/backend/randao.go:CalcRandao,
+      consensus/istanbul/backend/randao.go:calcMixHash,
+      consensus/istanbul/backend/engine.go:458-464
+    src_live: "eth_call 0x445f5260205ff3 @ 0xd916190 -> 0x52015128…, equal to that block's mixHash"
   added: []
   removed: []
   modified:

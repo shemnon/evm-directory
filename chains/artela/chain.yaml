@@ -880,6 +880,23 @@ non_evm_transactions:
     src: "app/ante/handler.go:ExtensionOptionsWeb3Tx, ethereum/eip712/eip712_legacy.go:FeePayer"
 
 opcodes:
+  prevrandao:
+    source: nil
+    value: nothing — executing 0x44 dereferences a nil pointer and kills the transaction
+    chooser: not applicable
+    known_at: always
+    note: >-
+      THE ONE ROW WHERE PREVRANDAO DOES NOT RETURN A WRONG VALUE — IT FAULTS. Artela's
+      block context runs the stock test `if header.Difficulty.Cmp(common.Big0) == 0 {
+      random = &header.MixDigest }`, but the Cosmos block context it is handed leaves
+      `Random` nil, while the jump table is built from the merge set and so installs
+      `opRandom` at 0x44. `opRandom` calls `evm.Context.Random.Bytes()`, and
+      `common.Hash.Bytes` has a VALUE receiver, so the nil pointer is dereferenced. The
+      transaction dies. 0x44 is also pre-merge DIFFICULTY, so old bytecode hits the same
+      trap. Compare the Cosmos EVM ancestor, where the same field is at least a
+      constant, and Sei, where it is a function of the timestamp: here it is an
+      unconditional transaction-killer.
+    src: artela-evm/core/evm.go:NewEVMBlockContext
   added: []
   removed:
   - op: "0x49"

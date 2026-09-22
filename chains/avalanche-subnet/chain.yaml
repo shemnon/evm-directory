@@ -218,6 +218,19 @@ system_contracts:
   note: none — no Ethereum system contracts (no Prague, no beacon chain)
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the constant 1
+    chooser: nobody — the same dummy-engine difficulty the C-Chain uses
+    known_at: always
+    note: >-
+      IDENTICAL MECHANISM TO THE C-CHAIN, in a separate codebase. subnet-evm carries its
+      own copy of the libevm `OverrideNewEVMArgs` hook: from Shanghai,
+      `BlockContext.Random = Difficulty.Bytes()` and `Difficulty` is then zeroed, so the
+      upstream merge jump table can be used unmodified while 0x44 reports a constant.
+      A subnet that wants real randomness has to reach a precompile for it; the opcode
+      will never carry any.
+    src: core/evm.go:OverrideNewEVMArgs
   added: []
   removed: []
   modified: []

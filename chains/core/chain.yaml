@@ -332,6 +332,21 @@ system_transactions:
     src: "core/state_transition.go:533-660"
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the Satoshi Plus difficulty — 1 or 2, the same one-bit in-turn flag as BSC
+    chooser: the Satoshi Plus validator rotation
+    known_at: always
+    note: >-
+      DELIBERATELY REVERTED, IN A NAMED FORK. Core is a BSC fork, so it inherited a jump
+      table built on `newMergeInstructionSet` — `opRandom` really was installed at 0x44.
+      `newSatoshiRevertDifficultyInstructionSet` then rebinds 0x44 back to
+      `opDifficulty`, under the comment "reverts the PREVRANDAO opcode to DIFFICULTY
+      opcode, as Satoshi doesn't implement the PREVRANDAO opcode". Same destination as
+      BSC and Polygon, reached by a third route: this chain had PREVRANDAO and took it
+      out on purpose.
+    src: core/vm/jump_table.go:newSatoshiRevertDifficultyInstructionSet
+    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02, matching the header difficulty 0x2"
   added: []
   removed: []
   modified:

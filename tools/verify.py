@@ -988,6 +988,35 @@ def check_operators(known):
     return out
 
 
+PREVRANDAO_SOURCES = {"beacon-randao", "l1-randao", "consensus-randao", "difficulty",
+                      "timestamp", "block-number", "constant", "nil", "unrecorded"}
+PREVRANDAO_KNOWN_AT = {"execution", "proposal", "l1-epoch", "always"}
+
+
+def check_prevrandao(c):
+    """`opcodes.prevrandao` — how 0x44 gets its value. Required on every row: a chain
+    with no block is still a chain whose 0x44 does something, and the interesting cell
+    is the derivation, not the byte. Enumerated so the axis table stays comparable."""
+    bad = []
+    d = (c.get("opcodes") or {}).get("prevrandao")
+    if d is None:
+        return ["NO PREVRANDAO  opcodes.prevrandao is missing (how does 0x44 get its value?)"]
+    if not isinstance(d, dict):
+        return ["BAD PREVRANDAO  opcodes.prevrandao must be a mapping"]
+    src = d.get("source")
+    if src not in PREVRANDAO_SOURCES:
+        bad.append(f"BAD PREVRANDAO  source: {src!r} not in {sorted(PREVRANDAO_SOURCES)}")
+    k = d.get("known_at")
+    if k not in PREVRANDAO_KNOWN_AT:
+        bad.append(f"BAD PREVRANDAO  known_at: {k!r} not in {sorted(PREVRANDAO_KNOWN_AT)}")
+    for f in ("value", "chooser", "note"):
+        if not str(d.get(f) or "").strip():
+            bad.append(f"BAD PREVRANDAO  `{f}:` is required and empty")
+    if src != "unrecorded" and not any(d.get(x) for x in ("src", "src_live", "src_doc")):
+        bad.append("BAD PREVRANDAO  no src / src_live / src_doc")
+    return bad
+
+
 def check_contributions(c):
     """`affiliated_contributions:` credits a correction on the chain page, so every entry
     must cite the public issue it came from — an uncited credit cannot be audited."""
@@ -1052,6 +1081,9 @@ def main():
                           f"'{e.get('name', e.get('opcode', '?'))}' has no `op:` key"
                           + (f" (found `opcode: {e['opcode']}`)" if "opcode" in e else ""))
                     problems += 1
+
+        for b in check_prevrandao(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_contributions(c):
             print(f"\n{slug}\n  {b}"); problems += 1

@@ -710,6 +710,23 @@ system_transactions:
     src: "taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:finalize_, taraxa-node/libraries/core_libs/network/rpc/eth/Eth.cpp:totalReward"
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the zero word — `BlockHeader::difficulty()` is a static `ZeroU256`
+    chooser: nobody
+    known_at: always
+    note: >-
+      0x44 IS LIVE, IS `DIFFICULTY`, AND READS A FIELD THAT IS A COMPILE-TIME ZERO.
+      `opDifficulty` does the honest thing — `uint256.FromBig(evm.block.Difficulty)` —
+      but `finalize_` passes a difficulty taken from `data.cpp:difficulty`, which is a
+      static zero, so the honest read yields a constant. This is a different failure
+      from Scroll's: Scroll patched the instruction to ignore the field, Taraxa left the
+      instruction alone and emptied the field. `mixHash` in the RPC JSON is likewise a
+      hard-coded zero hash.
+    src: >-
+      taraxa-evm/core/vm/instructions.go:opDifficulty,
+      taraxa-node/libraries/core_libs/consensus/src/final_chain/data.cpp:difficulty,
+      taraxa-node/libraries/core_libs/consensus/src/final_chain/final_chain.cpp:finalize_
   added:
   - {op: "0xb3", name: TLOAD (draft numbering), severity: high,
      note: "EIP-1153's abandoned draft opcode, live since genesis and still live after Cacti added the final 0x5c. Invalid on mainnet.",

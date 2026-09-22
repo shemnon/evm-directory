@@ -215,6 +215,29 @@ system_contracts:
     note: "COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose."
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: >-
+      the Bor span difficulty — the producer's distance from its in-turn slot; 1 at every
+      height probed
+    chooser: >-
+      the validator set rotation, via `Difficulty(validatorSet, signer) =
+      totalValidators - (signerIndex - proposerIndex mod totalValidators)`
+    known_at: always
+    note: >-
+      BOR COMMENTED THE MERGE REBINDING OUT. `newMergeInstructionSet` in bor's jump table
+      contains the upstream `instructionSet[PREVRANDAO] = &operation{execute: opRandom …}`
+      block VERBATIM BUT COMMENTED, under the line "disabling in pos due to
+      incompatibility with prevrandao". So 0x44 never stops being `opDifficulty`, and
+      `opDifficulty` reads `header.Difficulty`, which Bor sets from the producer's
+      position in the span. `mixHash` stays the zero hash in every header. This is the
+      same end state as BSC and Core but a third distinct edit: BSC never took the merge
+      rung, Core took it and rebound the byte in a later fork, Bor took it and disabled
+      the rebinding at the source.
+    src: >-
+      core/vm/jump_table.go:newMergeInstructionSet, core/vm/instructions.go:opDifficulty,
+      consensus/bor/snapshot.go:Difficulty, consensus/bor/bor.go:1042
+    src_live: "eth_call 0x445f5260205ff3 @ 0x59ba052 -> 0x00..01, header difficulty 0x1, mixHash 0x00..00"
   added:
   - {op: "0x1e", name: CLZ, fork: lisovo,
      note: "EIP-7939, an Osaka opcode, enabled via enable7939 in the Lisovo/LisovoPro/Chicago jump table on an otherwise-Prague instruction set — Polygon never activates Osaka.",

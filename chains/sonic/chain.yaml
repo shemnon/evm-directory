@@ -586,6 +586,30 @@ system_transactions:
       a transaction can be ordered by consensus and then silently vanish.
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: >-
+      SHA-256 of a 24-byte fold of the block's confirmed Lachesis event hashes — 32 real
+      bytes
+    chooser: >-
+      no single party: it is the XOR of the event hashes the DAG confirmed in this block,
+      so every validator whose event was included contributes
+    known_at: execution
+    note: >-
+      FOLDED OUT OF THE DAG, NOT SIGNED BY A PROPOSER — and the only construction on this
+      axis that uses SHA-256 rather than keccak. `computePrevRandao` XORs bytes 8..31 of
+      each confirmed event hash into a 24-byte accumulator and returns
+      `sha256(accumulator)`; the first 8 bytes of every event hash are skipped with the
+      comment "first 8 bytes should be ignored as they are not pseudo-random", because
+      they encode epoch and Lamport time. So the entropy pool is 24 bytes wide, not 32,
+      before hashing. `evmcore/evm.go` then does something stock geth never does: it
+      tests `header.PrevRandao != 0` rather than `Difficulty == 0`, and ZEROES the
+      difficulty when the randao is present. Since there is no single proposer choosing
+      the set of confirmed events, no one participant can fix the outcome.
+    src: >-
+      gossip/prevrandao.go:computePrevRandao, gossip/c_block_callbacks.go:212,
+      evmcore/evm.go:NewEVMBlockContext
+    src_live: "eth_call 0x445f5260205ff3 @ 0x4bcf0cf -> 0x3e7f85f4…, equal to that block's mixHash"
   added: []
   removed: []
   modified: []

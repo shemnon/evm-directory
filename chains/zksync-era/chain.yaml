@@ -502,6 +502,24 @@ system_transactions:
     these would be either implicit client behaviour or EIP-4788-style system calls.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the constant 2500000000000000 (2.5e15)
+    chooser: nobody — it is a storage slot in a system contract, written once
+    known_at: always
+    note: >-
+      NOT A BLOCK FIELD AT ALL, BUT A SYSTEM-CONTRACT STORAGE SLOT. EraVM has no
+      mixHash; `block.difficulty` / `block.prevrandao` resolve to
+      `SystemContext.difficulty`, declared `uint256 public difficulty = 2.5e15` at slot
+      5, with the source comments "(!) EVM emulator doesn't expect this value to change"
+      and, on the sequencer-side constant, "The number is chosen for compatibility with
+      other L2s". So the value is a compatibility shim picked to look like a plausible
+      post-merge difficulty, and the EVM emulator is explicitly built on the assumption
+      that it never moves. Non-zero, identical in every block — a contract using it for
+      randomness gets the same number forever, with no error.
+    src: >-
+      era-contracts/system-contracts/contracts/SystemContext.sol:68,
+      zksync-era/core/lib/constants/src/system_context.rs:SYSTEM_CONTEXT_DIFFICULTY
   added:
     - {op: "n/a", name: "EraVM instruction set", note: "17 opcode families — Invalid, Nop, Add, Sub, Mul, Div, Jump, Context, Shift, Binop, Ptr, NearCall, Log, FarCall, Ret, UMA — over 16 registers, not a 256-entry byte jump table"}
   removed:

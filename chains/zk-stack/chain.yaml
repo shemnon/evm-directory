@@ -246,6 +246,19 @@ system_contracts:
   src_live: "zks_getMainContract @ the four heads listed in live_probe"
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the constant 2500000000000000 (2.5e15), as on Era
+    chooser: nobody — the SystemContext slot every ZK Stack chain deploys
+    known_at: always
+    note: >-
+      A STACK-WIDE CONSTANT, NOT A PER-CHAIN CHOICE. Every ZK Stack chain deploys the
+      same `SystemContext` system contract, whose `difficulty` slot holds 2.5e15 and
+      which the EVM emulator is written to assume never changes. A chain built on this
+      stack therefore cannot give `block.prevrandao` a real value by configuration; it
+      would have to change a system contract the whole stack shares. Read the Era row
+      for the mechanism.
+    src: era-contracts/system-contracts/contracts/SystemContext.sol:68
   added: []
   removed: []
   modified: []

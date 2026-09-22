@@ -125,7 +125,35 @@ precompiles:
 system_contracts:
   note: inherits the OP Stack 0x42.. predeploy set
 
-opcodes: {added: [], removed: [], modified: []}
+opcodes:
+  prevrandao:
+    source: l1-randao
+    value: >-
+      the L1 origin block's beacon RANDAO mix, repeated for every L2 block in that
+      epoch — here the L1 is BNB Smart Chain, not Ethereum
+    chooser: >-
+      Ethereum's beacon proposer, one L1 block earlier; the sequencer only copies it
+      into the payload attributes
+    known_at: l1-epoch
+    note: >-
+      THE L1's RANDAO, READ ACROSS THE BRIDGE, AND ALREADY PUBLIC WHEN THE L2 BLOCK IS
+      BUILT. op-node's `attributes.go` sets `PrevRandao: eth.Bytes32(l1Info.MixDigest())`
+      — the mixHash of the L1 ORIGIN block for the epoch, not of any L2 block. op-geth
+      then takes the stock path: `Difficulty.Sign() == 0` holds on every OP block, so
+      `random = &header.MixDigest` and `opRandom` pushes it. Two consequences a mainnet
+      contract does not expect. First, THE VALUE REPEATS: every L2 block in an L1 epoch
+      shares one L1 origin, so at a 2s L2 block time against 12s L1 slots the same word
+      is returned by five or six consecutive blocks. Second, it is OLD: the L1 block it
+      comes from was finalized and public before the L2 block existed, so anyone can
+      read the next several L2 blocks' PREVRANDAO off Ethereum in advance. The entropy
+      is genuine beacon-chain entropy; the freshness is not.
+      ONE FURTHER TWIST HERE: opBNB's L1 is BSC, whose own 0x44 is the Parlia difficulty
+      and whose mixHash is the zero hash on Parlia blocks. What op-node copies is the L1
+      header's MixDigest field, so what arrives is BSC's mixHash, not any randomness.
+    src: op-geth/core/evm.go:NewEVMBlockContext
+  added: []
+  removed: []
+  modified: []
 
 fee_model:
   metering: gas

@@ -283,6 +283,24 @@ system_contracts:
   note: none — Tron has no predeploy/system-contract concept
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word — 0x44 is DIFFICULTY, and its body pushes DataWord.ZERO()
+    chooser: nobody
+    known_at: always
+    note: >-
+      TRON NEVER HAD PREVRANDAO, AND ITS DIFFICULTY IS A LITERAL ZERO. `Op.java`
+      declares `DIFFICULTY = 0x44` and nothing else at that byte; `OperationRegistry`
+      wires it to `OperationActions::difficultyAction`, whose entire body is
+      `DataWord result = DataWord.ZERO(); program.stackPush(result);` — it does not read
+      the block at all. GASLIMIT next to it is written the same way. So `block.prevrandao`
+      compiles, executes, costs base-tier energy and yields 0 on every call. Tron is the
+      one chain here that took sixteen custom opcodes at 0xd0–0xdf and still left this
+      one as a stub.
+    src: >-
+      actuator/src/main/java/org/tron/core/vm/Op.java:116,
+      actuator/src/main/java/org/tron/core/vm/OperationRegistry.java:320,
+      actuator/src/main/java/org/tron/core/vm/OperationActions.java:difficultyAction
   added:
     - {op: "0xd0", name: CALLTOKEN,   note: "call transferring a TRC-10 token"}
     - {op: "0xd1", name: TOKENBALANCE}

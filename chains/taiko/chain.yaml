@@ -488,6 +488,27 @@ system_transactions:
     note: "Runs, but against an address with no code. The history contract is never populated, so its reads return empty forever."
 
 opcodes:
+  prevrandao:
+    source: l1-randao
+    value: the L1 origin block's RANDAO mix, taken from the proposed block's metadata
+    chooser: >-
+      Ethereum's beacon proposer; the Taiko proposer copies `meta.MixHash` into the
+      payload it hands the driver
+    known_at: l1-epoch
+    note: >-
+      SAME SOURCE AS THE OP STACK, BUT REACHED THROUGH A PATCH THE OP STACK DOES NOT
+      NEED. On Taiko the header's difficulty IS NOT ZERO — since Unzen it carries the
+      block's zk gas — so the upstream `Difficulty.Sign() == 0` test fails and stock
+      geth would leave `Random` nil. taiko-geth adds a branch ahead of it: when
+      `chainCfg.IsUnzen(header.Time)` it sets `random = &header.MixDigest` regardless of
+      difficulty (and pins `blobBaseFee` to 1 for the same reason). So this is a chain
+      where a NON-ZERO difficulty and a WORKING PREVRANDAO coexist, which stock geth
+      treats as impossible. The driver fills `MixHash` from `meta.MixHash` on the
+      proposed block, i.e. the L1 origin's mix.
+    src: >-
+      taiko-geth/core/evm.go:NewEVMBlockContext,
+      taiko-mono/packages/taiko-client/driver/chain_syncer/event/blocks_inserter/common.go:68
+    src_live: "eth_call 0x445f5260205ff3 @ 0xb10c1f -> 0xc81e3598…, equal to that block's mixHash, while the same header reports a non-zero difficulty of 0x11b632"
   added: []
   removed: []
   modified: []

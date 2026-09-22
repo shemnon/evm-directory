@@ -272,7 +272,27 @@ system_contracts:
     same bytecode, in a fork that shares no module path with it — convergent
     porting, not shared code.
 
-opcodes: {added: [], removed: [], modified: [], note: "the interpreter is the unvendored crypto-org-chain/go-ethereum; no opcode delta was established in either clone."}
+opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      ETHERMINT PINS IT TO ZERO, AND SIMULATION TAKES THE SAME PATH FOR ONCE.
+      `EVMConfig` sets `Random: &zero`, and `simulate.go` sets a non-nil `blockCtx.Random`
+      for the explicit reason recorded in the source — "Post-merge: always set Random so
+      EVM recognizes merge status. vm.NewEVM uses `blockCtx.Random != nil` to determine
+      isMerge." So the field exists to satisfy a merge test, not to carry a value, and
+      `block.prevrandao` is 0 on every block and in every `eth_call`.
+    src: >-
+      ethermint/x/evm/keeper/config.go:114, ethermint/x/evm/keeper/simulate.go:112-116,
+      ethermint/x/evm/keeper/state_transition.go:66
+    src_live: "eth_call 0x445f5260205ff3 @ 0x5a7e2be -> 0x00..00, header mixHash 0x00..00"
+  added: []
+  removed: []
+  modified: []
+  note: the interpreter is the unvendored crypto-org-chain/go-ethereum; no opcode delta was established in either clone.
 
 tx_lifecycle:
   ordering:

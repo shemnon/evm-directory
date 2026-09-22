@@ -588,6 +588,22 @@ system_transactions:
     src: crates/evm/src/block.rs:deploy_precompile_at_boundary
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      HARDCODED IN THE ONLY CONSTRUCTOR THAT BUILDS A REAL PAYLOAD.
+      `TempoPayloadAttributes::new` writes `prev_randao: B256::ZERO` into the inner
+      `EthPayloadAttributes` for every block; reth then carries that zero into the block
+      environment and out of 0x44, and the header's mixHash records the same zero. What
+      makes it a choice rather than an oversight is the company it keeps in that struct:
+      the same constructor takes a `proposer_public_key` and a `consensus_context`, so
+      the material a randomness derivation would need is already in hand at the moment
+      the field is set to zero.
+    src: tempo/crates/payload/types/src/attrs.rs:80
+    src_live: "eth_call 0x445f5260205ff3 @ 0x2667862 -> 0x00..00, header mixHash 0x00..00"
   added: []
   removed:
   - op: "0x4f"

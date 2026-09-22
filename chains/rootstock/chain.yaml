@@ -475,6 +475,29 @@ system_transactions:
     src: "rskj-core/src/main/java/org/ethereum/vm/PrecompiledContracts.java:BRIDGE_ADDR_STR"
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: >-
+      the merge-mining difficulty — a large, slowly moving, Bitcoin-derived number
+      (0x170c8f70111f937a5d5 when probed)
+    chooser: >-
+      the Bitcoin miners merge-mining RSK, through the difficulty adjustment; no one
+      picks it per block
+    known_at: always
+    note: >-
+      NEVER MERGED, SO 0x44 IS STILL `DIFFICULTY`, AND IT IS A REAL ONE. `OpCode.java`
+      declares `DIFFICULTY(0x44, 0, 1, BASE_TIER)` and there is no PREVRANDAO entry at
+      all; `doDIFFICULTY` pushes the merge-mining difficulty from the program invoke.
+      Solidity's `block.prevrandao` compiles to 0x44 regardless, so a ported contract
+      reads the mining difficulty — high-entropy-looking, entirely public, and barely
+      changing between blocks. The RPC compounds it: `mixHash` and `nonce` are reported
+      as all-zero even though NEITHER IS A CONSENSUS FIELD in this header, so a reader
+      cross-checking the header for randomness finds a zero that means "no such field".
+    src: >-
+      rskj-core/src/main/java/org/ethereum/vm/OpCode.java:260,
+      rskj-core/src/main/java/org/ethereum/vm/VM.java:doDIFFICULTY,
+      rskj-core/src/main/java/org/ethereum/vm/program/invoke/ProgramInvokeImpl.java:getDifficulty
+    src_live: "eth_call 0x4460005260206000f3 @ 0x8d3398 -> 0x170c8f70111f937a5d5, exactly the header difficulty, with mixHash 0x00..00"
   added: []
   removed: []
   modified:

@@ -509,6 +509,20 @@ system_transactions:
     src: "coreth/core/governance_settings.go:UpdateInitialAirdropAddress, coreth/core/governance_settings.go:UpdateDistributionAddress"
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the constant 1
+    chooser: nobody — the coreth dummy engine's fixed difficulty
+    known_at: always
+    note: >-
+      go-flare vendors coreth, so it inherits the hook verbatim: from Shanghai,
+      `BlockContext.Random = Difficulty.Bytes()`, `Difficulty` zeroed, upstream jump
+      table reused. The irony is specific to this chain — Flare's whole product is the
+      State Connector and an on-chain random number feed, and none of it reaches 0x44.
+      A contract that wants Flare's randomness calls the RandomNumberV2 contract; a
+      contract that reads `block.prevrandao` gets 1.
+    src: coreth/core/evm.go:OverrideNewEVMArgs
+    src_live: "eth_call 0x4460005260206000f3 @ 0x42e6f84 -> 0x00..01, with the header reporting difficulty 0x1 and mixHash 0x00..00"
   added: []
   removed: []
   modified: []

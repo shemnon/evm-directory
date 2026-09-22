@@ -681,6 +681,34 @@ system_transactions:
   src: x/evm/keeper/abci.go:BeginBlock
 
 opcodes:
+  prevrandao:
+    source: timestamp
+    value: >-
+      keccak256 of the Go-binary encoding of the block timestamp — in a transaction; the
+      ZERO WORD in eth_call
+    chooser: >-
+      the block proposer, by choosing the CometBFT header time; the value is a pure
+      function of it
+    known_at: proposal
+    note: >-
+      A HASH OF THE CLOCK, AND THE RPC DOES NOT SHOW YOU THE SAME ANSWER A TRANSACTION
+      GETS. `GetVMBlockContext` computes `rh = Keccak256(ctx.BlockHeader().Time.MarshalBinary())`
+      under the comment "Use hash of block timestamp as info for PREVRANDAO" and passes
+      `Random: &rh`. So a real transaction reads a deterministic function of the block
+      time — which the proposer picks — with no entropy in it at all; the encoding does
+      carry CometBFT's nanosecond field, so it is not reproducible from the
+      second-resolution timestamp the RPC exposes, but it is not random either.
+      THE SECOND HALF IS WORSE FOR TESTING: `eth_call` does not take that path. It goes
+      through `export.DoCall`, which builds `blockCtx := core.NewEVMBlockContext(header)`
+      from the RPC header — whose mixHash is the zero hash — and passes it NON-NIL into
+      `GetEVM`, whose keeper branch only fires when `blockCtx == nil`. A contract
+      therefore reads one value when simulated and a different one when mined, with
+      nothing to signal the difference.
+    src: >-
+      sei-chain/x/evm/keeper/keeper.go:267-272 (GetVMBlockContext),
+      sei-chain/evmrpc/simulate.go:606-609 (GetEVM),
+      go-ethereum/internal/ethapi/api.go:661 (doCall)
+    src_live: "eth_call 0x445f5260205ff3 @ 0xde25b8c and at \"latest\"/\"pending\" -> 0x00..00 in every case, with the header's mixHash also 0x00..00"
   added: []
   removed: []
   modified:

@@ -520,8 +520,7 @@ opcodes:
     src: >-
       era-contracts/system-contracts/contracts/SystemContext.sol:68,
       zksync-era/core/lib/constants/src/system_context.rs:SYSTEM_CONTEXT_DIFFICULTY
-  added:
-    - {op: "n/a", name: "EraVM instruction set", note: "17 opcode families — Invalid, Nop, Add, Sub, Mul, Div, Jump, Context, Shift, Binop, Ptr, NearCall, Log, FarCall, Ret, UMA — over 16 registers, not a 256-entry byte jump table"}
+  added: []
   removed:
     - {op: "0xff", name: SELFDESTRUCT, note: "the EVM emulator lists 0xFF among its 'Unused opcode' cases; it is invalid, not a no-op"}
     - {op: "0xf2", name: CALLCODE, note: "also an 'Unused opcode' case in the emulator"}
@@ -541,6 +540,179 @@ opcodes:
     EVM opcode table is inapplicable, which is a stronger statement than any row in this
     section can carry. The emulator IS live on Era mainnet: zks_getProtocolVersion
     reports a non-zero evm_emulator base-system-contract hash.
+
+non_evm_instruction_sets:
+  eravm:
+    name: EraVM
+    kind: register
+    role: primary
+    note: >-
+      SIXTEEN OPCODE FAMILIES, FIFTY INSTRUCTIONS, NO BYTE TABLE. EraVM decodes a
+      fixed-width instruction word into a family plus a sub-variant and operates on a
+      register file — there is no 256-entry jump table to be a delta against, which is
+      why this set has a section of its own rather than rows in `opcodes:`. The
+      `opcodes:` section on this row describes the EVM EMULATOR
+      (system-contracts/contracts/EvmEmulator.yul) that runs ON TOP of this machine;
+      the two are different objects and were previously listed side by side.
+      The family count corrects the record: `Opcode::variant_idx` runs 0 through 15 and
+      the enum has exactly SIXTEEN variants, not the seventeen this row used to claim
+      while listing sixteen.
+    src: crates/zkevm_opcode_defs/src/definitions/all.rs:Opcode
+    registers:
+      count: 15
+      note: >-
+        FIFTEEN, NOT SIXTEEN. The register field in an instruction is four bits
+        (`split_as_u4` masks with 0x0f, and `merge_u4` asserts both halves are under
+        16), so sixteen register indices are ENCODABLE — but the machine state holds
+        `[PrimitiveValue; REGISTERS_COUNT]` with REGISTERS_COUNT = 15, in the
+        interpreter and in the circuit alike. Index 0 is the constant-zero register,
+        which is an encoding rather than storage. "16 registers" counts the encoding
+        space; the machine has 15.
+      src: "crates/zkevm_opcode_defs/src/lib.rs:REGISTERS_COUNT, crates/zkevm_opcode_defs/src/utils.rs:split_as_u4, crates/zk_evm/src/vm_state/mod.rs:VmLocalState"
+    metering:
+      unit: ergs
+      note: >-
+        THE GAS SCHEDULE IS THE PROVING COST MODEL, LITERALLY. Every instruction's
+        `ergs_price` is a sum of constants from an auto-generated file whose header reads
+        "This file is auto-generated, do not edit it manually. Any changes to this file
+        require system upgrade!" — and the constants are named after CIRCUITS, not
+        operations: VM_CYCLE_COST_IN_ERGS = 4, RAM_PERMUTATION_COST_IN_ERGS = 1,
+        LOG_DEMUXER_COST_IN_ERGS = 1, STORAGE_SORTER_COST_IN_ERGS = 2,
+        CODE_DECOMMITTER_SORTER_COST_IN_ERGS = 1, plus pubdata-hasher costs. A far call
+        costs two VM cycles plus a RAM permutation plus a storage read plus three sorter
+        costs. Mainnet prices an opcode by what it costs a node; EraVM prices it by what
+        it costs the prover. Same axis as this row's 32-byte modexp cap, one level down.
+      src: crates/zkevm_opcode_defs/src/circuit_prices.rs
+    families:
+      - idx: 0
+        name: Invalid
+        instructions: [Invalid]
+        note: "the explicit invalid instruction; a unit struct, one variant, no sub-variant space"
+        src: crates/zkevm_opcode_defs/src/definitions/invalid_opcode.rs:InvalidOpcode
+      - idx: 1
+        name: Nop
+        instructions: [Nop]
+        note: "no-op; also the family a decoded-but-unused slot lands in"
+        src: crates/zkevm_opcode_defs/src/definitions/noop.rs:NopOpcode
+      - idx: 2
+        name: Add
+        instructions: [Add]
+        note: "one variant — unlike the EVM there is no separate ADDMOD; modular arithmetic is composed"
+        src: crates/zkevm_opcode_defs/src/definitions/add.rs:AddOpcode
+      - idx: 3
+        name: Sub
+        instructions: [Sub]
+        src: crates/zkevm_opcode_defs/src/definitions/sub.rs:SubOpcode
+      - idx: 4
+        name: Mul
+        instructions: [Mul]
+        note: "a unit struct: one instruction, producing a double-width result across two destinations"
+        src: crates/zkevm_opcode_defs/src/definitions/mul.rs:MulOpcode
+      - idx: 5
+        name: Div
+        instructions: [Div]
+        note: "quotient and remainder from one instruction — the EVM's DIV and MOD are a single EraVM op"
+        src: crates/zkevm_opcode_defs/src/definitions/div.rs:DivOpcode
+      - idx: 6
+        name: Jump
+        instructions: [Jump]
+        note: >-
+          one instruction, and NO JUMPDEST ANALYSIS — the EVM's valid-destination rule
+          is a property of a byte-addressed code array that EraVM does not have.
+        src: crates/zkevm_opcode_defs/src/definitions/jump.rs:JumpOpcode
+      - idx: 7
+        name: Context
+        instructions: [This, Caller, CodeAddress, Meta, ErgsLeft, Sp, GetContextU128,
+                       SetContextU128, AuxMutating0, IncrementTxNumber]
+        kernel_only: [SetContextU128, AuxMutating0, IncrementTxNumber]
+        static_forbidden: [SetContextU128, AuxMutating0, IncrementTxNumber]
+        note: >-
+          the largest family, and the one that shows the VM is bootloader-driven:
+          `IncrementTxNumber` advances the transaction counter WITHIN a running VM, which
+          is how one bootloader invocation executes a whole block. `SetContextU128` sets
+          the value a subsequent far call will report — the ether-value mechanism, done in
+          the register machine rather than in a call frame. All three mutating variants
+          are kernel-only and static-forbidden.
+        src: crates/zkevm_opcode_defs/src/definitions/context.rs:ContextOpcode
+      - idx: 8
+        name: Shift
+        instructions: [Shl, Shr, Rol, Ror]
+        note: "FOUR, NOT THREE: EraVM has rotates. The EVM has SHL/SHR/SAR and no ROL/ROR at all."
+        src: crates/zkevm_opcode_defs/src/definitions/shift.rs:ShiftOpcode
+      - idx: 9
+        name: Binop
+        instructions: [Xor, And, Or]
+        note: "no NOT — the EVM's NOT is composed, as its absence from this list is the only place that shows"
+        src: crates/zkevm_opcode_defs/src/definitions/binop.rs:BinopOpcode
+      - idx: 10
+        name: Ptr
+        instructions: [Add, Sub, Pack, Shrink]
+        note: >-
+          FAT POINTERS AS FIRST-CLASS VALUES, with no EVM counterpart whatsoever. A
+          register holds either an integer or a pointer to a memory slice, and these four
+          instructions are the only arithmetic allowed on the pointer form — `Shrink`
+          narrows a slice, `Pack` combines a pointer with a payload. This is how calldata
+          is passed without copying, and it is the reason `src0_can_be_pointer` is a
+          per-instruction property of the whole ISA.
+        src: crates/zkevm_opcode_defs/src/definitions/ptr.rs:PtrOpcode
+      - idx: 11
+        name: NearCall
+        instructions: [NearCall]
+        note: >-
+          a call WITHIN the current contract's frame with its own ergs budget and its own
+          catch label — closer to a checkpointed function call than to the EVM's CALL.
+          The EVM has no equivalent: every EVM call crosses a contract boundary.
+        src: crates/zkevm_opcode_defs/src/definitions/near_call.rs:NearCallOpcode
+      - idx: 12
+        name: Log
+        instructions: [StorageRead, StorageWrite, ToL1Message, Event, PrecompileCall,
+                       Decommit, TransientStorageRead, TransientStorageWrite]
+        kernel_only: [Event, ToL1Message, PrecompileCall, Decommit]
+        static_forbidden: [StorageWrite, Event, ToL1Message, TransientStorageWrite]
+        note: >-
+          THE PRIVILEGE BOUNDARY, AND THE MOST SURPRISING ENTRY IN THE SET. Storage and
+          transient storage are ordinary user instructions, but `Event` IS KERNEL-ONLY —
+          a user contract cannot emit a log directly, and every EVM `LOG0`-`LOG4` on this
+          chain reaches the L1 messenger through a system contract instead. So is
+          `PrecompileCall`: a precompile is not an address you CALL here, it is a
+          privileged instruction. `Decommit` (unpack code by hash) and `ToL1Message` are
+          kernel-only for the same reason. Four of the eight are also static-forbidden,
+          which is a different and overlapping set.
+        src: crates/zkevm_opcode_defs/src/definitions/log.rs:LogOpcode
+      - idx: 13
+        name: FarCall
+        instructions: [Normal, Delegate, Mimic]
+        kernel_only: [Mimic]
+        note: >-
+          `Normal` and `Delegate` map onto CALL and DELEGATECALL. `Mimic` DOES NOT EXIST
+          ON MAINNET IN ANY FORM: it performs a far call while presenting an ARBITRARY
+          address as the caller, and it is kernel-only. That single instruction is the
+          mechanism native account abstraction is built on — the bootloader mimics the
+          account so a contract sees the account as `msg.sender` — and it is why this
+          chain's account model cannot be expressed as an EVM delta.
+        src: crates/zkevm_opcode_defs/src/definitions/far_call.rs:FarCallOpcode
+      - idx: 14
+        name: Ret
+        instructions: [Ok, Revert, Panic]
+        note: >-
+          THREE TERMINATION MODES, WHERE THE EVM HAS TWO. `Panic` is distinct from
+          `Revert`: a revert returns data and refunds remaining ergs, a panic burns the
+          frame's ergs and returns nothing. The EVM collapses both into "consumed all
+          gas" versus "returned revert data", with no instruction that chooses.
+        src: crates/zkevm_opcode_defs/src/definitions/ret.rs:RetOpcode
+      - idx: 15
+        name: UMA
+        instructions: [HeapRead, HeapWrite, AuxHeapRead, AuxHeapWrite, FatPointerRead,
+                       StaticMemoryRead, StaticMemoryWrite]
+        kernel_only: [StaticMemoryRead, StaticMemoryWrite]
+        note: >-
+          Unaligned Memory Access — and THREE SEPARATE MEMORY SPACES where the EVM has
+          one. The heap is the contract's own memory; the AUX heap is a second region the
+          system uses for calldata and return data so a far call need not disturb the
+          first; `FatPointerRead` reads through a slice handed in by a caller without
+          copying it. Static memory is kernel-only. An EVM `MSTORE`/`MLOAD` mental model
+          maps onto exactly two of these seven.
+        src: crates/zkevm_opcode_defs/src/definitions/uma.rs:UMAOpcode
 
 p2p:
   max_tx_bytes:

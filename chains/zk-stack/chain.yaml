@@ -40,8 +40,10 @@ lineage:
   note: >-
     THE EVM FACTS ARE NOT RESTATED HERE. ZKsync Era is the reference deployment of
     this template and its `chains/zksync-era/` row holds the full EraVM delta — the
-    tombstoned kernel address space, the 0x8000-0x8012 system contracts, tx type
-    0x71, the EVM emulator, the modexp operand cap, CREATE derivation. Every fact
+    EraVM instruction set itself (16 families, 50 instructions, under
+    `non_evm_instruction_sets:`), the tombstoned kernel address space, the
+    0x8000-0x8012 system contracts, tx type 0x71, the EVM emulator, the modexp
+    operand cap, CREATE derivation. Every fact
     there applies to a ZK Chain at protocol version 30 because it is the same
     bytecode, and duplicating it would violate the delta convention this dataset is
     built on. This row carries only what VARIES across deployments, plus the evidence

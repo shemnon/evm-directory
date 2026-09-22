@@ -190,6 +190,15 @@ def gen_matrix(chains):
     row("System contracts", lambda c, s: sum(1 for k in (c.get("system_contracts") or {})
                                              if str(k).startswith("0x")) or "0")
     row("Txs outside EIP-2718", lambda c, s: "yes" if c.get("non_evm_transactions") else "no")
+    # A VM with no byte table has no `opcodes.added` to be counted by the row above, so
+    # without this one the matrix would read zksync-era as having no instruction-set
+    # divergence at all — which is the opposite of true. Names the set, because "yes"
+    # for EraVM and "yes" for a WASM VM beside the EVM are not the same answer.
+    row("Non-EVM instruction set",
+        lambda c, s: ", ".join(
+            str(v.get("name", k)) for k, v in
+            (c.get("non_evm_instruction_sets") or {}).items() if isinstance(v, dict))
+        or "no")
     def eip(c, slug, num, neg):
         """Resolution lives in model.eip_status, shared with the website."""
         st, _ = eip_status(chains, slug, num)

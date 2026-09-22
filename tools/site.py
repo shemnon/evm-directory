@@ -1003,6 +1003,7 @@ def page_chain(chains, slug):
 
     B.append(list_section(chains, slug, "opcodes", "Opcodes", "opcodes", "op"))
     B.append(prevrandao_section(chains, slug))
+    B.append(instruction_sets_section(chains, slug))
 
     # --- transaction lifecycle -------------------------------------------
     tl = lifecycle(chains, slug)
@@ -1564,6 +1565,70 @@ PREVRANDAO_KNOWN_AT = {
 }
 
 
+def instruction_sets_section(chains, slug):
+    """A VM with no 256-entry byte table, rendered whole.
+
+    One table per family — index, instructions, and the two privilege axes — because
+    the interesting cell here is not "which byte" but "which instructions a user
+    contract may not issue". On EraVM that list contains `Event`, so the section has to
+    show privilege per instruction or it loses the finding."""
+    d = chains[slug].get("non_evm_instruction_sets") or {}
+    if not isinstance(d, dict) or not d:
+        return ""
+    B = []
+    for key, v in d.items():
+        if not isinstance(v, dict): continue
+        fams = [f for f in v.get("families") or [] if isinstance(f, dict)]
+        ins = [i for f in fams for i in f.get("instructions") or []]
+        B.append(h2(f'{esc(v.get("name", key))} instruction set '
+                    f'<span class="pill">{len(fams)} families</span> '
+                    f'<span class="pill">{len(ins)} instructions</span>',
+                    f"isa-{slugify(key)}"))
+        B.append(kv([("Dispatch", f'<code>{esc(v.get("kind"))}</code>'),
+                     ("Role", f'<code>{esc(v.get("role"))}</code>'
+                              + (" — replaces the EVM as this chain's execution "
+                                 "environment" if v.get("role") == "primary"
+                                 else " — runs beside the EVM"))]))
+        B.append(note(markdown(flat(v.get("note")))
+                      + provenance(v, on_chain=True)))
+        for sub, label in (("registers", "Registers"), ("metering", "Metering")):
+            w = v.get(sub)
+            if not isinstance(w, dict): continue
+            head = (str(w.get("count")) if sub == "registers"
+                    else str(w.get("unit") or ""))
+            B.append(h3(f'{label} <span class="pill">{esc(head)}</span>',
+                        f"isa-{slugify(key)}-{sub}"))
+            B.append(f'<div class="wrap">{markdown(flat(w.get("note")))}'
+                     f'{provenance(w, on_chain=True)}</div>')
+        rows = []
+        for f in fams:
+            kern = set(f.get("kernel_only") or [])
+            stat = set(f.get("static_forbidden") or [])
+            # Privilege is marked per instruction rather than listed under the table:
+            # the reader's question is "may my contract issue this one", and a footnote
+            # answers it only after they have matched two lists by eye.
+            names = " ".join(
+                f'<code>{esc(i)}</code>'
+                + ('<span class="s-modified" title="kernel mode only — a user '
+                   'contract cannot issue this">&#128273;</span>' if i in kern else "")
+                + ('<span class="s-removed" title="forbidden in a static context">'
+                   '&#8856;</span>' if i in stat else "")
+                for i in f.get("instructions") or [])
+            rows.append([f'<code>{esc(f.get("idx"))}</code>',
+                         esc(f.get("name", "")),
+                         f'<div class="wrap">{names}</div>',
+                         f'<div class="wrap">{markdown(flat(f.get("note")))}'
+                         f'{provenance(f, on_chain=True)}</div>'])
+        B.append(table(["#", "Family", "Instructions", "Detail"], rows,
+                       tid=f"isa-{slugify(key)}-grid"))
+        B.append('<p class="legend">'
+                 '<span class="s-modified">&#128273;</span> kernel mode only — a user '
+                 'contract cannot issue it &middot; '
+                 '<span class="s-removed">&#8856;</span> forbidden in a static context. '
+                 'The two overlap and are not the same set.</p>')
+    return "\n".join(B)
+
+
 def prevrandao_block(c):
     d = (c.get("opcodes") or {}).get("prevrandao")
     return d if isinstance(d, dict) else None
@@ -1686,20 +1751,47 @@ def page_opcodes(chains):
          'are as shipped for each row\'s pinned client.</p>']
     B.append(axis_notes(chains, "opcodes"))
 
-    other = []
-    for s in slugs:
-        for e in chains[s].get("non_eip_specs") or []:
-            if isinstance(e, dict) and re.search(r"wasm|webassembly|vm\b", str(e.get("name", "")), re.I):
-                other.append((s, e.get("id", ""), e.get("name", ""), flat(e.get("note"))))
-        for e in (chains[s].get("opcodes") or {}).get("added") or []:
-            if isinstance(e, dict) and str(e.get("op")) == "n/a":
-                other.append((s, "—", e.get("name", ""), flat(e.get("note"))))
-    if other:
+    # An instruction set with no byte table is recorded in its own section, not as an
+    # `op: "n/a"` row — see SCHEMA.md. What is left in `non_eip_specs` is the rows that
+    # NAME another VM without yet enumerating it (Stylus), so both are surfaced here:
+    # the enumerated sets as a summary table, the named-only ones as the gap they are.
+    sets = [(s, k, v) for s in slugs
+            for k, v in (chains[s].get("non_evm_instruction_sets") or {}).items()
+            if isinstance(v, dict)]
+    named = [(s, e.get("id", ""), e.get("name", ""), flat(e.get("note")))
+             for s in slugs for e in chains[s].get("non_eip_specs") or []
+             if isinstance(e, dict)
+             and re.search(r"wasm|webassembly|vm\b", str(e.get("name", "")), re.I)]
+    if sets or named:
         B.append(h2("Execution environments beside the EVM", "other-vms"))
+    if sets:
+        rows = []
+        for s, k, v in sets:
+            fams = [f for f in v.get("families") or [] if isinstance(f, dict)]
+            ins = [i for f in fams for i in f.get("instructions") or []]
+            kern = [i for f in fams for i in f.get("kernel_only") or []]
+            rows.append([
+                f'<a href="../chains/{esc(s)}.html#isa-{esc(slugify(k))}">'
+                f'{esc(short(s))}</a>',
+                esc(v.get("name", k)),
+                f'<code>{esc(v.get("kind"))}</code>',
+                f'<code>{esc(v.get("role"))}</code>',
+                f'{len(fams)} families, {len(ins)} instructions'
+                + (f', {len(kern)} kernel-only' if kern else ''),
+                f'<div class="wrap">{esc(teaser(flat(v.get("note"))))}</div>'])
+        B.append(table(["Chain", "Set", "Dispatch", "Role", "Size", "Note"], rows))
+        B.append('<p class="legend"><code>role: primary</code> means the set REPLACES '
+                 'the EVM as the chain\'s execution environment; <code>beside-evm</code> '
+                 'means it runs alongside one. A <code>register</code> machine has no '
+                 '256-entry jump table, so it cannot be a delta against mainnet\'s and '
+                 'is recorded whole rather than in <code>opcodes:</code>. Follow the '
+                 'chain for the full set.</p>')
+    if named:
+        B.append(h3("Named, not yet enumerated", "other-vms-named"))
         B.append(table(["Chain", "ID", "Name", "Note"],
                        [[f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>',
                          f'<code>{esc(i)}</code>', esc(n), f'<div class="wrap">{esc(nt)}</div>']
-                        for s, i, n, nt in other]))
+                        for s, i, n, nt in named]))
 
     B.append(page_prevrandao_table(chains, slugs))
 

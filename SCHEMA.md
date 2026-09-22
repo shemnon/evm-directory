@@ -462,6 +462,11 @@ consensus split rather than a graceful error.
   appear in `tx_types` because they have no type byte, and omitting them entirely
   would hide all cross-chain value movement.
 
+- **non_evm_instruction_sets** — an instruction set with **no 256-entry byte table**:
+  EraVM's 16 opcode families over a register file. They cannot appear in `opcodes:`
+  because they have no `op:` byte to key on, and recording them as `op: "n/a"` produced
+  one placeholder row carrying a paragraph.
+
 Keeping these separate is the difference between a table you can act on and a list of
 addresses.
 
@@ -605,6 +610,72 @@ their origin, so a reader can tell "World Chain has `0x7e`" from "World Chain
 
 Inheritance is override-by-key: a descendant re-declaring an address or type byte its
 ancestor already declared **replaces** it and must carry a `note` explaining why.
+
+## Instruction sets that are not the EVM (`non_evm_instruction_sets:`)
+
+`opcodes:` is keyed `op: "0xNN"` against mainnet's 256-entry jump table, and `verify.py`
+enforces that key. That is the right shape for every chain whose VM *is* a byte-dispatched
+EVM, and the wrong shape for one whose VM is not. EraVM has no byte table: it decodes a
+fixed-width instruction word into an opcode **family** plus a sub-variant, over a register
+file. Recording it as `op: "n/a"` rows was a placeholder that the grid could not render
+per instruction, and it produced exactly one entry carrying a paragraph of prose.
+
+`non_evm_instruction_sets:` is the section for those, in the same spirit as
+`non_evm_transactions:` — protocol transactions with no EIP-2718 type byte, which cannot
+live in `tx_types:` for the same structural reason. It is keyed by a short set name:
+
+```yaml
+non_evm_instruction_sets:
+  eravm:
+    name: EraVM
+    kind: register            # register | stack | wasm
+    role: primary             # primary | beside-evm
+    note: >-
+      ...
+    src: crates/zkevm_opcode_defs/src/definitions/all.rs:Opcode
+    registers: {count: 15, note: "...", src: "..."}
+    metering: {unit: ergs, note: "...", src: "..."}
+    families:
+      - idx: 7
+        name: Context
+        instructions: [This, Caller, CodeAddress, Meta, ErgsLeft, Sp,
+                       GetContextU128, SetContextU128, AuxMutating0, IncrementTxNumber]
+        kernel_only: [SetContextU128, AuxMutating0, IncrementTxNumber]
+        static_forbidden: [SetContextU128, AuxMutating0, IncrementTxNumber]
+        note: >-
+          ...
+        src: crates/zkevm_opcode_defs/src/definitions/context.rs:ContextOpcode
+```
+
+`kind:` says how the machine dispatches, because that is what makes the EVM's schema
+inapplicable: `register` (EraVM), `stack` (a second stack machine that is not the EVM),
+`wasm` (Arbitrum Stylus, when that row is written). `role:` says whether the set
+**replaces** the EVM as the chain's execution environment (`primary`) or runs **beside**
+it (`beside-evm`) — Stylus is the second case, EraVM the first, and conflating them would
+put "this chain is not an EVM" and "this chain has an extra VM" in one cell.
+
+`idx:` is the family's discriminant in the source's own enumeration, and it is required
+and contiguous from zero for the same reason `op:` is required on an opcode delta: it is
+the stable key, it is what the source orders by, and a set that cannot be keyed cannot be
+diffed when the next protocol version moves it.
+
+`kernel_only:` and `static_forbidden:` are subsets of `instructions:`, checked as
+subsets by `verify.py:check_instruction_sets`. They are the two privilege axes EraVM
+actually has, and both are load-bearing rather than decorative — on this VM `Event` is
+kernel-only, so a user contract **cannot emit a log directly**, and `FarCall::Mimic`
+lets kernel code call while presenting an arbitrary caller, which is the mechanism
+account abstraction is built on. Neither fact has anywhere to live in `opcodes:`.
+
+### Why this is not `opcodes.added`
+
+An `opcodes:` entry answers "what does this chain do differently at byte `0xNN`". Every
+field on it — the key, the mainnet-relative `status`, the silent-divergence index that
+reads it — presumes a shared 256-entry table to be a delta against. EraVM shares no such
+table, so every one of those fields would be either empty or a lie. The set is recorded
+whole, and the EVM-relative facts for the same chain stay in `opcodes:`, where they
+describe the **EVM emulator** that ZKsync Era runs *on top of* EraVM — a genuinely
+different object, and the reason the old placeholder sat in a list beside seven entries
+about something else.
 
 ## The transaction lifecycle (`tx_lifecycle:`)
 
@@ -957,6 +1028,8 @@ system_transactions:
 opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed op:;
               # plus baseline_set on the ethereum row, and prevrandao (required on
               # every row: how 0x44 gets its value). See "Opcodes" above.
+non_evm_instruction_sets:  # VMs with no 256-entry byte table, keyed by set name;
+              # families[] keyed idx:, with kernel_only/static_forbidden subsets
 tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
 p2p:          # wire-level limits and transports, keyed by question; every size
               # carries a tier: consensus | policy | transport

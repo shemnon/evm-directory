@@ -1075,6 +1075,70 @@ def check_proofs(c):
     return bad
 
 
+ISA_KINDS = {"register", "stack", "wasm"}
+ISA_ROLES = {"primary", "beside-evm"}
+
+
+def check_instruction_sets(c):
+    """`non_evm_instruction_sets:` — a VM with no 256-entry byte table.
+
+    `idx:` is checked contiguous from zero because it is this section's `op:`: the
+    source's own discriminant, the stable key across protocol versions, and the only
+    thing a future diff can align on. A gap means either a family was dropped from the
+    row or the source grew one nobody recorded, and both are findings.
+
+    `kernel_only:` and `static_forbidden:` are checked as SUBSETS of `instructions:`.
+    A privilege list naming an instruction the family does not have renders as silently
+    empty everywhere downstream, so it has to fail here or it fails nowhere."""
+    bad = []
+    d = c.get("non_evm_instruction_sets")
+    if d is None:
+        return bad
+    if not isinstance(d, dict):
+        return ["BAD ISA  non_evm_instruction_sets: must be a mapping"]
+    for key, v in d.items():
+        if not isinstance(v, dict):
+            bad.append(f"BAD ISA  {key}: must be a mapping"); continue
+        if v.get("kind") not in ISA_KINDS:
+            bad.append(f"BAD ISA  {key}.kind: {v.get('kind')!r} not in {sorted(ISA_KINDS)}")
+        if v.get("role") not in ISA_ROLES:
+            bad.append(f"BAD ISA  {key}.role: {v.get('role')!r} not in {sorted(ISA_ROLES)}")
+        if not str(v.get("note") or "").strip():
+            bad.append(f"BAD ISA  {key} has no `note:`")
+        if not any(v.get(x) for x in ("src", "src_live", "src_doc")):
+            bad.append(f"BAD ISA  {key} has no src / src_live / src_doc")
+        fams = v.get("families")
+        if not isinstance(fams, list) or not fams:
+            bad.append(f"BAD ISA  {key}.families must be a non-empty list"); continue
+        seen = []
+        for f in fams:
+            if not isinstance(f, dict):
+                bad.append(f"BAD ISA  {key}: a families entry is not a mapping"); continue
+            idx, nm = f.get("idx"), f.get("name")
+            if not isinstance(idx, int) or isinstance(idx, bool):
+                bad.append(f"BAD ISA  {key}.{nm or '?'}: `idx:` must be an integer")
+            else:
+                seen.append(idx)
+            ins = f.get("instructions")
+            if not isinstance(ins, list) or not ins:
+                bad.append(f"BAD ISA  {key}.{nm or idx}: `instructions:` must be a "
+                           f"non-empty list"); continue
+            have = set(ins)
+            for field in ("kernel_only", "static_forbidden"):
+                extra = set(f.get(field) or []) - have
+                if extra:
+                    bad.append(f"BAD ISA  {key}.{nm}: {field} names "
+                               f"{sorted(extra)}, which "
+                               f"{'is' if len(extra) == 1 else 'are'} not in this "
+                               f"family's instructions")
+            if not any(f.get(x) for x in ("src", "src_live", "src_doc")):
+                bad.append(f"BAD ISA  {key}.{nm or idx} has no src / src_live / src_doc")
+        if seen and sorted(seen) != list(range(len(seen))):
+            bad.append(f"BAD ISA  {key}.families idx must be contiguous from 0; "
+                       f"got {sorted(seen)}")
+    return bad
+
+
 def check_contributions(c):
     """`affiliated_contributions:` credits a correction on the chain page, so every entry
     must cite the public issue it came from — an uncited credit cannot be audited."""
@@ -1114,8 +1178,8 @@ def main():
     if no_clones:
         print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
               "  running: pin presence, base-map/envelope declaration, opcode keys,\n"
-              "  tx-authorization vocabulary, proofs vocabulary, citation shape,\n"
-              "  evidence tally,\n"
+              "  tx-authorization vocabulary, proofs vocabulary, non-EVM\n"
+              "  instruction sets, citation shape, evidence tally,\n"
               "  operator slugs, contribution citations.")
     for b in check_operators(known):
         print(f"\noperators.yaml\n  {b}"); problems += 1
@@ -1145,6 +1209,9 @@ def main():
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_proofs(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
+
+        for b in check_instruction_sets(c):
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_contributions(c):

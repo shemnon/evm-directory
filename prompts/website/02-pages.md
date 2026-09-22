@@ -21,7 +21,7 @@ there are.
 |---|---|
 | **Precompiles** | grid · notes · addresses that cannot be enumerated · per address |
 | **Transaction types** | grid · notes · byte-range occupancy · transactions outside EIP-2718 · per type byte |
-| **Opcodes** | grid · notes · execution environments beside the EVM · per entry |
+| **Opcodes** | grid · notes · execution environments beside the EVM (enumerated sets, then named-but-not-enumerated) · PREVRANDAO derivation · per entry |
 | **System contracts** | grid · bytecode that changes with no transaction · per address |
 | **EIP activation set** | grid · notes · baseline fork claimed · per EIP |
 | **Cryptography** | grid · notes · authorizes with no verifier · per scheme |
@@ -102,6 +102,19 @@ last or pairs it with a warning colour is making a claim the dataset does not.
 collapsed into `state_transition` even though four rows in five make it redundant.
 
 An empty cell is `—` ("not established"), never `=` ("as mainnet"), as everywhere else.
+
+## Instruction sets that are not the EVM
+
+A set with no 256-entry byte table renders on the **chain page**, whole, one table per
+opcode family — not as rows in the opcodes grid, which is keyed by mainnet's byte table
+and has nothing to align them against. The opcodes axis page carries a summary line per
+set (dispatch, role, size) linking to it, and lists separately the rows that NAME another
+VM without enumerating it, because that gap is a fact about the dataset and should be
+visible rather than absent.
+
+Privilege is marked per instruction, inline, not as a footnote listing kernel-only names
+under the table. The reader's question is "may my contract issue this one", and a
+footnote answers it only after they have matched two lists by eye.
 
 ## Method is not a page
 

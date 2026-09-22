@@ -740,7 +740,7 @@ def ex_txtypes(slug, chain=None):
     return out
 
 PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
-                 "non_evm_transactions", "system_transactions", "p2p"]
+                 "non_evm_transactions", "system_transactions", "p2p", "proofs"]
 
 def provenance(c):
     """Tally how each fact in this row is evidenced. The generated tables merge
@@ -1017,6 +1017,64 @@ def check_prevrandao(c):
     return bad
 
 
+PROOF_VOCAB = {
+    "state_transition":   {"validity", "fault", "consensus", "none"},
+    "proving_live":       {"live", "permissioned", "staged", "halted", "n/a"},
+    "settlement":         {"self", "own-l1", "ethereum", "celestia", "bitcoin", "none"},
+    "prover_constraints": {"binding", "lifted", "none"},
+    "state_proof":        {"served", "partial", "absent"},
+    "proof_root":         {"canonical", "deferred", "foreign-hash", "no-commitment"},
+}
+
+# A proof system that exists in a repo is not one adjudicating mainnet, and a chain
+# whose own validators are the only attestation is not proving anything at all. These
+# two pairings are the ones that would let a roadmap read as a fact, so they are the
+# ones enforced rather than left to review.
+PROVING_NA = {"consensus", "none"}
+
+
+def check_proofs(c):
+    """`proofs:` — what can be proven about this row, and to whom. Optional as a
+    section (an absent key is "not established", which the grid renders `-`), but every
+    key that IS present must use the axis vocabulary and say how it is known. Without
+    the closed vocabulary the grid cannot compare rows, which is the only reason the
+    axis is a grid rather than prose."""
+    bad = []
+    d = c.get("proofs")
+    if d is None:
+        return bad
+    if not isinstance(d, dict):
+        return ["BAD PROOFS  proofs: must be a mapping"]
+    for k, v in d.items():
+        if k not in PROOF_VOCAB:
+            bad.append(f"BAD PROOFS  {k!r} is not a proofs question "
+                       f"(want one of {sorted(PROOF_VOCAB)})")
+            continue
+        if not isinstance(v, dict):
+            bad.append(f"BAD PROOFS  proofs.{k} must be a mapping"); continue
+        verdict = v.get("verdict")
+        if verdict not in PROOF_VOCAB[k]:
+            bad.append(f"BAD PROOFS  proofs.{k}.verdict: {verdict!r} not in "
+                       f"{sorted(PROOF_VOCAB[k])}")
+        if not str(v.get("note") or "").strip():
+            bad.append(f"BAD PROOFS  proofs.{k} has no `note:` — the verdict is one "
+                       f"word and the mechanism is the fact")
+        if not any(v.get(x) for x in ("src", "src_live", "src_doc")):
+            bad.append(f"BAD PROOFS  proofs.{k} has no src / src_live / src_doc")
+    # `proving_live` answers "is the proving live", so it is meaningless where nothing
+    # is proven and required where something is. Both directions are caught: a `fault`
+    # row that never says whether its proofs run is the exact gap this axis exists for.
+    st = (d.get("state_transition") or {}).get("verdict")
+    pl = (d.get("proving_live") or {}).get("verdict")
+    if st in PROVING_NA and pl is not None and pl != "n/a":
+        bad.append(f"BAD PROOFS  state_transition: {st} proves nothing, so "
+                   f"proving_live must be `n/a`, not {pl!r}")
+    if st in ("validity", "fault") and pl in (None, "n/a"):
+        bad.append(f"BAD PROOFS  state_transition: {st} needs a proving_live that is "
+                   f"not {pl!r} — whether the proofs actually run is the fact")
+    return bad
+
+
 def check_contributions(c):
     """`affiliated_contributions:` credits a correction on the chain page, so every entry
     must cite the public issue it came from — an uncited credit cannot be audited."""
@@ -1056,7 +1114,8 @@ def main():
     if no_clones:
         print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
               "  running: pin presence, base-map/envelope declaration, opcode keys,\n"
-              "  tx-authorization vocabulary, citation shape, evidence tally,\n"
+              "  tx-authorization vocabulary, proofs vocabulary, citation shape,\n"
+              "  evidence tally,\n"
               "  operator slugs, contribution citations.")
     for b in check_operators(known):
         print(f"\noperators.yaml\n  {b}"); problems += 1
@@ -1083,6 +1142,9 @@ def main():
                     problems += 1
 
         for b in check_prevrandao(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
+
+        for b in check_proofs(c):
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_contributions(c):

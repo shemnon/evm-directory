@@ -544,6 +544,24 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: Malachite, purpose: BFT consensus messages}
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      a permissioned validator set signing with Ed25519 — the signatures on a block ARE its attestation, and there is nothing outside the set to prove anything to. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "crates/types/src/signing.rs:Ed25519"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "crates/types/src/signing.rs:Ed25519"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "crates/types/src/signing.rs:Ed25519"
+
 fee_model:
   metering: gas, denominated in 18-decimal units of the native USDC coin
   fee_market: EIP-1559 formula over an EMA-smoothed gas figure, fixed-point params, contract-governed bounds

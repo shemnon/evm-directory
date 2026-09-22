@@ -38,6 +38,7 @@ AXES = [
     ("lineage",          "Lineage",            "Code ancestry and fork ancestry, tracked separately."),
     ("ordering",         "Ordering & execution", "What happens to a transaction between being ordered and being executed."),
     ("p2p",              "P2P & limits",       "How big a transaction, block or message may be, who enforces each bound, and which transports carry them."),
+    ("proofs",           "Proofs",             "What can be proven about this chain, and to whom: how its state transition is proven, and whether it can prove a slot to a caller."),
 ]
 AXIS_TITLE = {k: t for k, t, _ in AXES}
 
@@ -89,6 +90,63 @@ TIER_TITLE = {
 }
 
 
+# The proofs axis. Order is the reading order of the question: what backs the
+# transition, whether that machinery actually runs, where it lands, what it costs the
+# EVM — then the other half, which is what a caller can prove about a single slot.
+PROOFS = [
+    ("state_transition",   "State transition",
+     "What actually backs this chain's state transition."),
+    ("proving_live",       "Proving live",
+     "Whether that machinery adjudicates mainnet today, or is a design."),
+    ("settlement",         "Settles to",
+     "The layer that accepts or rejects the transition."),
+    ("prover_constraints", "Prover constraints",
+     "Whether a limit of the proving system reaches EVM semantics."),
+    ("state_proof",        "eth_getProof",
+     "Whether EIP-1186 is served, and whether what comes back conforms."),
+    ("proof_root",         "Proof verifies against",
+     "Whether a returned proof checks out against the header's state root."),
+]
+PROOFS_TITLE = {k: t for k, t, _ in PROOFS}
+
+# The half each question belongs to. Both halves answer "what can be proven about this
+# chain, and to whom"; the split is what the reader is proving, and to whom — so the
+# grid bands them rather than interleaving six unrelated-looking columns.
+PROOFS_HALF = {
+    "state_transition": "transition", "proving_live": "transition",
+    "settlement": "transition", "prover_constraints": "transition",
+    "state_proof": "caller", "proof_root": "caller",
+}
+
+# What each verdict means, spelled out on hover. The one-word verdict is what makes the
+# grid comparable; these are what stop it being read as a ranking.
+PROOF_VERDICT = {
+    "validity":      "a succinct proof, verified by a settlement contract",
+    "fault":         "an assertion anyone may challenge within a window",
+    "consensus":     "the chain's own validator set is the only attestation — the honest answer for an L1, not a lesser one",
+    "none":          "nothing adjudicates the state transition",
+    "live":          "the machinery is deployed and enforced today",
+    "permissioned":  "proofs are produced and accepted, but only by a whitelisted party",
+    "staged":        "live on a testnet, or shadow-proving mainnet without enforcement",
+    "halted":        "a proving system that once ran and no longer does",
+    "n/a":           "nothing is being proven, so nothing could be live",
+    "self":          "settles itself; no external layer accepts or rejects it",
+    "own-l1":        "a separate settlement chain belonging to the same protocol",
+    "ethereum":      "Ethereum L1",
+    "celestia":      "Celestia",
+    "bitcoin":       "Bitcoin",
+    "binding":       "a limit of the proving system reaches EVM semantics today",
+    "lifted":        "carried such a constraint and no longer does — kept, because contracts deployed under the old rule still exist",
+    "served":        "EIP-1186 is served, and the result conforms",
+    "partial":       "the method answers, and what comes back is not a conforming EIP-1186 account",
+    "absent":        "eth_getProof is not implemented",
+    "canonical":     "verifies against header.Root of the block it was taken at — mainnet's answer",
+    "deferred":      "a real, sound root that belongs to a DIFFERENT block",
+    "foreign-hash":  "committed under another hash or another trie; sound, and not decodable by an Ethereum verifier",
+    "no-commitment": "the header commits to no state at all",
+}
+
+
 def fmt_bytes(n):
     """Exact binary sizes read as KiB/MiB; anything else keeps its digits. A limit of
     95,000 is not 92.8 KiB in any useful sense — it was chosen in decimal, against an
@@ -107,8 +165,10 @@ def lifecycle(chains, slug, section="tx_lifecycle"):
     overrides the ones it states itself — the same override-by-key rule the address
     sections use. Returns {key: (entry, origin_slug)}; origin != slug means inherited.
 
-    `section` selects the axis: `tx_lifecycle` (ordering) or `p2p` (wire limits). Both
-    have the same shape, so they share the walk rather than duplicating it."""
+    `section` selects the axis: `tx_lifecycle` (ordering), `p2p` (wire limits) or
+    `proofs`. All three have the same shape, so they share the walk rather than
+    duplicating it — which is why Blast inherits op-stack's four half-one proof answers
+    while overriding `state_proof` alone."""
     out = {}
     chain = [slug]
     seen = {slug}
@@ -991,6 +1051,35 @@ def page_chain(chains, slug):
         if prows:
             B.append(table(["Limit", "Value", "Enforced by", "Why"], prows))
 
+    # --- proofs ------------------------------------------------------------
+    pr = lifecycle(chains, slug, "proofs")
+    if pr:
+        B.append(h2(f'Proofs <span class="pill">{len(pr)}</span>', "proofs"))
+        rows, ids = [], []
+        for k, _, _ in PROOFS:
+            do = pr.get(k)
+            if not do: continue
+            d, o = do
+            if not (isinstance(d, dict) and d.get("verdict")): continue
+            v = d["verdict"]
+            # Per-question anchor, so the axis grid's drill-down lands on the ROW and
+            # not merely on the page. addr_section and the eips table already do this;
+            # tx_lifecycle and p2p do not, and their cell links dead-end at the top of
+            # the chain page.
+            ids.append(f' id="{esc(anchor_id("proofs", k))}"')
+            rows.append([
+                esc(PROOFS_TITLE.get(k, k)),
+                (f'<span class="pill" title="{esc(PROOF_VERDICT.get(v, ""))}">'
+                 f'{esc(v)}</span>')
+                + ("" if o == slug else
+                   f' <span class="s-inherited" title="inherited">from '
+                   f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>'),
+                f'<div class="wrap">{markdown(flat(d.get("note")))}'
+                f'{provenance(d, on_chain=True)}</div>'])
+        if rows:
+            B.append(table(["Question", "Verdict", "What that means here"], rows,
+                           row_attrs=ids))
+
     # --- fee model & header fields ---------------------------------------
     fm = c.get("fee_model") or {}
     if fm:
@@ -1785,6 +1874,77 @@ def page_p2p(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
+def page_proofs(chains):
+    """Two questions that look unrelated and are the same one. A chain that commits its
+    state under a non-Keccak hash has both an exotic prover and an eth_getProof nobody
+    can verify; recording those on two axes would split one design decision in two.
+
+    The grid's sharpest column is `prover_constraints`, because it is the one place a
+    proving system becomes an EVM fact: Linea's RIPEMD160 works in eth_call and can
+    never be mined, zkSync caps modexp operands at 32 bytes because the circuit does,
+    Taiko meters a second gas dimension that truncates blocks. None of that is visible
+    from an address list, a fork schedule or an EIP table."""
+    slugs = order(chains)
+    data = {s: lifecycle(chains, s, "proofs") for s in slugs}
+    cols = [c for c in PROOFS
+            if any((d or {}).get("verdict") for s in slugs
+                   for d, _ in [data[s].get(c[0], (None, s))])]
+
+    def cell(s, key):
+        # No inheritance mark here, for the reason page_p2p gives: with chains as rows
+        # a `=` in every op-stack descendant's cell reads as a value, not provenance.
+        d, _ = data[s].get(key, (None, s))
+        v = d.get("verdict") if isinstance(d, dict) else None
+        if not v:
+            return '<span class="s-inherited" title="not established">&mdash;</span>'
+        tip = PROOF_VERDICT.get(v, "")
+        detail = flat(d.get("note"))
+        title = f"{tip}\n\n{detail}" if tip and detail else (tip or detail)
+        return cell_link(s, "proofs", key,
+                         f'<span class="pill" title="{esc(title)[:600]}">{esc(v)}</span>')
+
+    B = []
+    for half, heading, anchor, blurb in (
+        ("transition", "Proving the state transition", "transition",
+         "Who checks that this chain computed its own state correctly, whether that "
+         "machinery actually runs, and what it costs the EVM to be provable."),
+        ("caller", "Proving state to a caller", "caller",
+         "Whether the chain can hand one account or storage slot to a verifier who "
+         "does not trust it — EIP-1186, and whether the answer checks out."),
+    ):
+        hc = [c for c in cols if PROOFS_HALF[c[0]] == half]
+        if not hc: continue
+        B.append(h2(f'{esc(heading)} <span class="pill">{len(hc)} questions</span>',
+                    anchor))
+        B.append(f'<p class="legend">{blurb}</p>')
+        B.append(filter_box(f"proofs-{anchor}-grid",
+                            uniform="hide chains that match mainnet exactly"))
+        B.append(chain_grid(chains, slugs, hc, cell, f"proofs-{anchor}-grid"))
+
+    B.append(
+        '<p class="legend"><code>consensus</code> is not a weaker answer than '
+        '<code>validity</code> or <code>fault</code> — it is the honest one for a chain '
+        'whose own validator set is the only attestation there is, and the axis names it '
+        'rather than leaving the cell blank. <code>proving_live</code> exists so a '
+        'roadmap cannot read as a fact: a proof system in a repository, on a testnet, or '
+        'behind a whitelisted prover is a different claim from one adjudicating mainnet '
+        'today, and <code>halted</code> is a fourth thing again. '
+        '<code>prover_constraints: lifted</code> is deliberately kept rather than '
+        'deleted — Scroll\'s 32-byte modexp cap ended at Galileo, and every contract '
+        'deployed under it is still deployed. On the second half, the three ways to fail '
+        '<code>canonical</code> are not one failure: <code>deferred</code> needs only an '
+        'offset, <code>foreign-hash</code> needs the other hash function, and '
+        '<code>no-commitment</code> has no workaround at all. A <code>&mdash;</code> '
+        'means the question is not established for that chain, not that it answers as '
+        'mainnet does. Hover a verdict for the finding; follow it for the cited '
+        'source.</p>')
+    B.append(axis_notes(chains, "proofs"))
+    return layout("axes/proofs.html", "Proofs",
+                  "What can be proven about this chain, and to whom: how its state "
+                  "transition is proven, and whether it can prove a slot to a caller.",
+                  "\n".join(x for x in B if x), wide=True, chains=chains)
+
+
 def page_lineage(chains):
     """Two independent ancestries. A chain's code can descend from one project while
     its consensus rules track a different fork line, and conflating them makes both
@@ -2006,6 +2166,7 @@ def registry(chains):
     ]
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
                "ordering": page_ordering, "p2p": page_p2p,
+               "proofs": page_proofs,
                "cryptography": page_cryptography, "opcodes": page_opcodes,
                "system-contracts": page_system_contracts, "fees-envelope": page_fees,
                "lineage": page_lineage}

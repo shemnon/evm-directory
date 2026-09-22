@@ -618,6 +618,36 @@ p2p:
       why the message-size cap does more work here than a mesh protocol's would.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: FloodSub block + header gossip}
+proofs:
+  state_transition:
+    verdict: none
+    severity: high
+    note: >-
+      NOTHING ADJUDICATES IT. There is no L1 settlement contract, no fraud proof and no
+      validity proof; Celestia supplies data availability and, for the forced-inclusion
+      namespace, ordering — it does not check the rollup's state transition. The
+      canonical chain is "the blocks the sequencer signed, in the order its header chain
+      declares, as recovered from Celestia", plus a censorship check full nodes apply
+      locally by halting. `none` is the honest verdict and is different from `consensus`:
+      an L1 has a validator set attesting to the result, and this has one signer
+      asserting it.
+    src: "block/internal/executing/executor.go:executionLoop"
+  proving_live:
+    verdict: n/a
+    note: "nothing is proven, so nothing can be live"
+    src: "block/internal/executing/executor.go:executionLoop"
+  settlement:
+    verdict: celestia
+    severity: high
+    note: >-
+      Celestia, for DATA ONLY — and the RPC does not say so. Two incompatible notions of
+      finality coexist: the real one (header and data blobs on Celestia, finalized
+      there) and the one eth_getBlockByNumber reports, where `finalized` is head minus
+      three rollup blocks — a hard-coded local lag with NO reference to DA at all. A
+      bridge reading the Ethereum RPC's `finalized` tag is reading a number that knows
+      nothing about settlement.
+    src: "block/internal/executing/executor.go:executionLoop"
+
 fee_model:
   metering: standard EVM gas (upstream reth interpreter)
   fee_market: >-

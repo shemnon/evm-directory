@@ -963,6 +963,24 @@ p2p:
       subprotocol, and no transaction pool with geth's slot arithmetic.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: Substrate block + extrinsic gossip}
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      a parachain of Polkadot in code lineage, but this row's consensus hook runs its own collator set and the EVM state transition is attested by that set — not proven to a separate layer. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "runtime/moonbeam/src/lib.rs:ConsensusHook"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "runtime/moonbeam/src/lib.rs:ConsensusHook"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "runtime/moonbeam/src/lib.rs:ConsensusHook"
+
 fee_model:
   metering: "gas, projected from three Substrate meters"
   fee_market: "Substrate transaction-payment slow-adjusting multiplier, presented as an EIP-1559 baseFeePerGas"

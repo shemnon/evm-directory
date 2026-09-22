@@ -87,12 +87,28 @@ states, because validation precedes ordering — and every other column is a del
 it. An empty cell is `—` ("not established"), never `=` ("as mainnet"): silence here is
 absence of evidence, and the two must not look alike.
 
+## Proofs — `axes/proofs.html`
+
+Two banded grids, not one, because the axis asks two questions and a reader arrives
+with only one of them. **Proving the state transition** carries `state_transition`,
+`proving_live`, `settlement` and `prover_constraints`; **Proving state to a caller**
+carries `state_proof` and `proof_root`. Chains are rows, questions are columns, each
+cell a `verdict:` from `proofs:`.
+
+`consensus` must not render as a deficiency. It is the correct answer for every L1 —
+the validator set IS the settlement layer — and a design that greys it out, sorts it
+last or pairs it with a warning colour is making a claim the dataset does not.
+`proving_live` is the column that keeps a roadmap from reading as a fact, so it is never
+collapsed into `state_transition` even though four rows in five make it redundant.
+
+An empty cell is `—` ("not established"), never `=` ("as mainnet"), as everywhere else.
+
 ## Method is not a page
 
 The site carries no page about itself. `SCHEMA.md`, `SITE.md` and `METHOD.md` are
 repo-only documents: useful to someone reading or extending the dataset, noise to
 someone who arrived with a question about a chain. Every note in `findings.yaml`
-therefore names one of the eight axes and renders on that axis page; a note with no
+therefore names one of the eleven axes and renders on that axis page; a note with no
 axis page is a build error, not a note that lands on a method page.
 
 The one repo document the site links to is `CONTRIBUTING.md`, and it does not render it.

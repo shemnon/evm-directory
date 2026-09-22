@@ -429,6 +429,39 @@ p2p:
       `10 * ByteUnits.MEGABYTE`, and `MEGABYTE = 1 << 20`, so 10 MiB exactly — agreeing
       with geth. `TransactionsMessageHandler` enforces it on inbound transaction messages,
       which is what makes it the operative per-transaction ceiling on this client.
+proofs:
+  state_transition:
+    verdict: validity
+    note: >-
+      A zk proof over an execution trace, verified on L1. The trace is the thing that
+      constrains the chain: every module of the arithmetization has a line-count limit,
+      and a transaction that overruns one is not merely expensive, it is unprovable.
+    src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/ZkCounter.java:ripemdBlocks"
+  proving_live:
+    verdict: live
+    note: "proving is the production path, and the trace limits below are live consequences of it"
+    src: "linea-besu/package/linea-besu/config/trace-limits.mainnet.toml"
+  settlement:
+    verdict: ethereum
+    note: "proofs are verified by an L1 contract"
+    src_doc: https://docs.linea.build/architecture
+  prover_constraints:
+    verdict: binding
+    severity: high
+    note: >-
+      THE SHARPEST CASE IN THE DATASET, because the precompile still works in
+      simulation. PRECOMPILE_RIPEMD_BLOCKS = 0 and PRECOMPILE_BLAKE_ROUNDS = 0 in the
+      mainnet trace-limit file, so any transaction reaching RIPEMD160 or BLAKE2F with
+      non-empty input overruns its module on the first block, comes back as
+      TX_MODULE_LINE_COUNT_OVERFLOW, and is cached as permanently invalid — it can
+      never be mined. IT STILL WORKS IN eth_call: probing 0x03 with empty input at
+      block 31744343 returned the correct RIPEMD160 of the empty string. Every
+      simulation-based tool — eth_call, eth_estimateGas, forked test suites — reports
+      success for code no block can contain. A prover bound, invisible to every
+      conventional check, that changes which transactions exist.
+    src: "linea-besu/package/linea-besu/config/trace-limits.mainnet.toml"
+    src_live: "eth_call @ 31744343 -> 0x0000000000000000000000009c1185a5c5e9fc54612808977ee8f548b2258d31 (correct RIPEMD160 of empty input)"
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559, but the base fee is inert"

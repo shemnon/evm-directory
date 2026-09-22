@@ -571,6 +571,34 @@ p2p:
     src: "core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth. Notable only because Taiko's proposer path accepts transaction lists via L1 rather than the pool, so this limit governs the gossip route and not every route into a block.
+proofs:
+  state_transition:
+    verdict: validity
+    note: "a zk proof over the block, with the prover's cost model exposed directly in the EVM as a second gas dimension"
+    src: "core/vm/taiko_zk_gas.go:FailsafeMultiplier"
+  proving_live:
+    verdict: live
+    note: "the zk-gas meter runs in block production and truncates blocks, so the proving cost model is enforced at execution time, not after it"
+    src: "miner/taiko_worker.go:commitL2Transactions"
+  settlement:
+    verdict: ethereum
+    note: "proofs are verified by an L1 contract"
+    src_doc: https://docs.taiko.xyz/core-concepts/multi-proofs/
+  prover_constraints:
+    verdict: binding
+    severity: high
+    note: >-
+      A WHOLE SECOND GAS DIMENSION, WHICH IS THE PROVER'S COST MODEL MADE CONSENSUS.
+      From Unzen every opcode and precompile is charged `gasUsed x multiplier` against a
+      per-block ZK-GAS budget, with precompile multipliers from 4 (ripemd160) to 859
+      (point evaluation) — and any address ABSENT from the table falls to
+      FailsafeMultiplier = 65535, which against a 100,000,000 budget leaves roughly
+      1,500 units of raw gas for the entire block. Overrun does not revert: the block is
+      TRUNCATED. So a precompile added by a future upstream geth rebase, but not added
+      to unzenPrecompileMultipliers, becomes unusable rather than merely mispriced. No
+      other row makes the prover's budget this visible to a contract author.
+    src: "core/vm/taiko_zk_gas_unzen.go:unzenPrecompileMultipliers, core/vm/taiko_zk_gas.go:FailsafeMultiplier, core/state_processor.go:ErrZkGasLimitExceeded"
+
 fee_model:
   metering: "gas AND zk gas — two independent, simultaneously-enforced dimensions"
   fee_market: "EIP-4396 (from Shasta), floored at 0.01 gwei and CAPPED at 1 gwei"

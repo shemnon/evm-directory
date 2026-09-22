@@ -561,6 +561,34 @@ p2p:
       constraint rather than a network one, which is the causal origin no other row on this
       axis shares. It coincidentally equals EIP-7825's per-transaction GAS cap, in
       completely unrelated units.
+proofs:
+  state_transition:
+    verdict: validity
+    note: >-
+      a zk proof over the batch, verified on L1. Protocol upgrades arrive as an L1
+      transaction that swaps bootloader / default-account / EVM-emulator bytecode
+      hashes, so the proving system and the execution semantics move together.
+    src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+  proving_live:
+    verdict: live
+    note: "proving is the production path; the operand cap below is a live consequence of it"
+    src: "system-contracts/contracts/EvmEmulator.yul"
+  settlement:
+    verdict: ethereum
+    note: "batches and proofs are submitted to L1 contracts"
+    src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+  prover_constraints:
+    verdict: binding
+    severity: high
+    note: >-
+      MODEXP OPERANDS ARE CAPPED AT 32 BYTES EACH — base, exponent and modulus — and
+      the source states the reason and the consequence in one breath: the limit "comes
+      from circuit limitations" and violates EVM equivalence. That is 32x tighter than
+      EIP-7823's 1024-byte bound, at a mainnet precompile address, with no address-level
+      signal that anything is different. Scroll had the identical cap and lifted it at
+      Galileo; this one stands.
+    src: "system-contracts/contracts/EvmEmulator.yul"
+
 fee_model:
   metering: "ergs (EraVM) plus a separate pubdata budget; EVM gas is simulated on top for emulated contracts"
   fee_market: "L1-derived gas price plus an independently quoted pubdata price"

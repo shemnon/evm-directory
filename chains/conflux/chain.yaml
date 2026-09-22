@@ -981,6 +981,24 @@ p2p:
       knob — it sits beside the other protocol parameters the executor is versioned by, so
       it is a rule of the chain rather than a relay preference. Roughly 2.4x mainnet's
       mempool figure.
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      the Tree-Graph consensus fixes a total order and every full node re-executes it; nothing outside the chain adjudicates the result (the separate `proof_root` key records what its header commits to, which is a different question). `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "crates/parameters/src/lib.rs:DEFERRED_STATE_EPOCH_COUNT, crates/cfxcore/core/src/consensus/consensus_graph/rpc_api/phantom_block_provider.rs:get_phantom_block_by_number"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "crates/parameters/src/lib.rs:DEFERRED_STATE_EPOCH_COUNT, crates/cfxcore/core/src/consensus/consensus_graph/rpc_api/phantom_block_provider.rs:get_phantom_block_by_number"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "crates/parameters/src/lib.rs:DEFERRED_STATE_EPOCH_COUNT, crates/cfxcore/core/src/consensus/consensus_graph/rpc_api/phantom_block_provider.rs:get_phantom_block_by_number"
+
 fee_model:
   metering: gas
   fee_market: "CIP-1559 with two independent per-space base fees, per-DAG-block updates driven by packed gas LIMITS, a 20 gwei eSpace floor, and a DAO-adjustable burn share"

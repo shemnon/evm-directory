@@ -803,6 +803,48 @@ p2p:
       neither RLPx framing nor the `eth` subprotocol caps apply at any layer.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: Substrate block + tx gossip}
+proofs:
+  state_transition:
+    verdict: fault
+    note: >-
+      AUTO EVM IS A DOMAIN, NOT AN L1, AND THE DISTINCTION IS THE FACT. Domain state
+      transitions are secured by the Subspace consensus chain's fraud-proof mechanism:
+      an execution proof is generated over a phase finer than a whole block —
+      initialize_block, a single extrinsic, finalize_block — and verified without the
+      verifier holding the state. The challenge window is the domain block-tree pruning
+      depth. A reader who files Autonomys under "L1" gets the security model wrong.
+    src: "crates/sp-domains-fraud-proof/src/execution_prover.rs:ExecutionProver"
+  proving_live:
+    verdict: live
+    note: >-
+      The fraud-proof machinery is in the runtime and the pruning depth that bounds the
+      challenge window is a live runtime config, not a roadmap item. As on the op-stack
+      row, `live` means the machinery is deployed and enforced.
+    src: "crates/subspace-runtime/src/lib.rs:BlockTreePruningDepth"
+  settlement:
+    verdict: own-l1
+    note: >-
+      The Subspace consensus chain, not Ethereum. This is what `own-l1` exists for: a
+      settlement layer belonging to the same protocol, which is neither "settles itself"
+      nor any of the named external layers.
+    src: "crates/subspace-runtime/src/lib.rs:BlockTreePruningDepth"
+  state_proof:
+    verdict: absent
+    note: >-
+      eth_getProof is not implemented (Method not found), so a light client, storage-
+      proof bridge or account-proof verifier has no path here — and implementing it
+      would not help, because there is no Ethereum MPT underneath to prove against.
+    src_live: "eth_getProof @ 4577685 -> Method not found"
+  proof_root:
+    verdict: foreign-hash
+    note: >-
+      EVM state is Substrate storage: accounts and slots live in frame_evm's
+      StorageDoubleMap and are committed by the domain's Substrate trie, not by a Keccak
+      MPT. Recorded as `foreign-hash` rather than `no-commitment` because the state IS
+      committed and the commitment IS sound — under a trie an Ethereum verifier does not
+      implement.
+    src: "frontier/frame/evm/src/lib.rs:AccountStorages"
+
 fee_model:
   metering: "gas, converted to Substrate Weight at a fixed 25,000 ps/gas"
   fee_market: "Substrate SlowAdjustingFeeUpdate over domain-block WEIGHT fullness, plus a consensus-chain storage fee — not EIP-1559"

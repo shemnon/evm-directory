@@ -589,6 +589,31 @@ p2p:
     src: "go-ethereum/core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged in the embedded go-ethereum. The EVM runs as a chain inside Wasp, so this pool bounds what the embedded client accepts; the surrounding IOTA node has its own unrelated transport.
+proofs:
+  state_proof:
+    verdict: absent
+    severity: high
+    note: >-
+      eth_getProof is not implemented and could not be: there is no Merkle-Patricia
+      trie over EVM state to build a proof from. EVM state lives in the ISC key-value
+      state, committed by ISC's own trie.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+    src_live: "eth_getProof @ 12793600 -> -32601 does not exist"
+  proof_root:
+    verdict: no-commitment
+    severity: high
+    note: >-
+      PERMANENTLY ZERO, IN EVERY BLOCK INCLUDING GENESIS. The minted header type stores
+      {Hash, GasLimit, GasUsed, Time, TxHash, ReceiptHash, Bloom} — there is no `Root`
+      field to store — and the Ethereum header does not reference the ISC trie that does
+      commit the state. transactionsRoot and receiptsRoot are worse than absent: they
+      are computed with a fakeHasher that returns the zero hash unconditionally, so a
+      block WITH transactions carries the zero root and an empty block carries the real
+      EmptyRootHash, inverting the mainnet signal. No light client over IOTA EVM is
+      possible, and nothing about the header says so.
+    src: "packages/vm/core/evm/emulator/blockchaindb.go:makeHeader"
+    src_live: "eth_getBlockByNumber @ 12793600 and at 0x0, 0x1, 0xc33701-0xc33705 -> stateRoot 0x00..00 in all"
+
 fee_model:
   metering: >-
     TWO METERS, and the receipt reports the larger. The EVM meters normally; then

@@ -919,6 +919,24 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: consensus only — mempool disabled}
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      CometBFT (via beacon-kit) finalises the EVM payload; the validator set's votes are the attestation and no external contract adjudicates them. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "src/node/evm/config.rs:BERACHAIN_BLOCK_TIME_SECONDS, beacon-kit/consensus/cometbft/service/prepare_proposal.go:PrepareProposalResponse, beacon-kit/beacon/validator/block_builder.go:retrieveExecutionPayload, src/engine/builder.rs:default_berachain_payload, beacon-kit/beacon/blockchain/process_proposal.go:verifyStateRoot, beacon-kit/execution/engine/engine.go:ErrInvalidPayloadStatus, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "src/node/evm/config.rs:BERACHAIN_BLOCK_TIME_SECONDS, beacon-kit/consensus/cometbft/service/prepare_proposal.go:PrepareProposalResponse, beacon-kit/beacon/validator/block_builder.go:retrieveExecutionPayload, src/engine/builder.rs:default_berachain_payload, beacon-kit/beacon/blockchain/process_proposal.go:verifyStateRoot, beacon-kit/execution/engine/engine.go:ErrInvalidPayloadStatus, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "src/node/evm/config.rs:BERACHAIN_BLOCK_TIME_SECONDS, beacon-kit/consensus/cometbft/service/prepare_proposal.go:PrepareProposalResponse, beacon-kit/beacon/validator/block_builder.go:retrieveExecutionPayload, src/engine/builder.rs:default_berachain_payload, beacon-kit/beacon/blockchain/process_proposal.go:verifyStateRoot, beacon-kit/execution/engine/engine.go:ErrInvalidPayloadStatus, beacon-kit/consensus/cometbft/service/process_proposal.go:PROCESS_PROPOSAL_STATUS_REJECT, beacon-kit/testing/simulated/malicious_proposer_test.go:TestProcessProposal_BadBlock_IsRejected"
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 with a per-fork base-fee floor and a 6x slower change denominator"

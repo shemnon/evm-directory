@@ -605,6 +605,24 @@ p2p:
     stack:
       - {layer: consensus, protocol: RaptorCast, purpose: erasure-coded block + vote propagation}
 
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      MonadBFT finalises blocks and every validator re-executes; note that execution is DEFERRED — block N's header carries a real post-state root and agreement on it arrives at N+3 — but the attestation is still the validator set's, not a proof. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0"
+
 fee_model:
   metering: gas
   fee_market: "Monad TFM — adaptive exponential base fee, 80% target, damped by trend/moment"

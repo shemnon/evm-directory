@@ -826,6 +826,24 @@ p2p:
       `kMaxTransactionsInPacket` at 500 transactions, whichever binds first. Mainnet has no
       equivalent pairing: its `eth` message cap is a single ceiling with no count limit
       beside it.
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      the DAG's computed order is re-executed by every node and attested by the validator set; nothing external adjudicates it. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
+
 fee_model:
   metering: single gas dimension, Constantinople schedule with EIP-1884's three prices
   fee_market: >-

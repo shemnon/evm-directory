@@ -462,6 +462,53 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: libp2p, purpose: beacon block + blob sidecar gossip}
 
+proofs:
+  # The baseline, stated once, exactly as opcodes.baseline_set and tx_lifecycle are.
+  # Every other row in this axis is a delta against these six answers.
+  state_transition:
+    verdict: consensus
+    note: >-
+      Nothing proves mainnet's state transition to anybody else, because there is no
+      anybody else: the validator set attesting to a block IS the settlement layer.
+      Every validating node re-executes and compares its computed root against the
+      header's. Recorded as `consensus` rather than left blank on purpose — it is the
+      baseline the rollup rows are a delta against, not an absence of evidence.
+    src: "core/block_validator.go:ValidateState"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "core/block_validator.go:ValidateState"
+  settlement:
+    verdict: self
+    note: >-
+      Mainnet settles itself. No external contract accepts or rejects its state
+      transition, and there is no window in which a transition can be revoked by a
+      party outside the chain.
+    src: "consensus/beacon/consensus.go:Finalize"
+  prover_constraints:
+    verdict: none
+    note: >-
+      No circuit bound reaches EVM semantics. Mainnet precompiles carry gas costs and,
+      from EIP-7823, explicit input bounds written as consensus rules — but those are
+      chosen for pricing and DoS, not to keep a prover inside a trace budget, and no
+      mainnet precompile succeeds in eth_call while being unminable in a block.
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+  state_proof:
+    verdict: served
+    note: >-
+      EIP-1186 as specified: eth_getProof returns {balance, codeHash, nonce,
+      storageHash, accountProof, storageProof} and the account leaf is a four-item RLP
+      list. This is the shape every light client and bridge in the ecosystem decodes.
+    src: "internal/ethapi/api.go:GetProof"
+  proof_root:
+    verdict: canonical
+    note: >-
+      The accountProof verifies against `header.Root` of the block it was taken at.
+      That property is what the other rows on this axis break, and they break it in
+      three different ways — a root from another block, a root under another hash, and
+      no root at all.
+    src: "core/types/block.go:Header"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (base fee burned + priority tip)

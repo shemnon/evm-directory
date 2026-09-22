@@ -551,6 +551,25 @@ system_transactions:
     src: "core/state/intra_block_state_zkevm.go:ScalableSetTimestamp, core/state/intra_block_state_zkevm.go:WriteGerManagerL1BlockHash, core/blockchain_zkevm.go:PrepareBlockTxExecution"
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word, from an opcode body that ignores the header
+    chooser: nobody
+    known_at: always
+    note: >-
+      TWO INDEPENDENT REASONS FOR THE SAME ZERO. cdk-erigon keeps the upstream Erigon
+      derivation — `if header.Difficulty.Cmp(merge.ProofOfStakeDifficulty) == 0 {
+      *prevRandDao = header.MixDigest }`, with the comment that a zero difficulty is
+      "a telltale of Proof-of-Stake blocks" — but the zkEVM also ships its own
+      instruction, `opDifficulty_zkevm`, which is hardcoded to zero and never reads the
+      header. The prover is the reason: a value that varies per block and is not derived
+      from anything the circuit constrains would have to be witnessed, so the chain
+      constrains it to a constant instead. This is the honest version of Scroll's patch —
+      same destination, same motive, written as a zkEVM-specific opcode rather than a
+      rewrite of the generic one.
+    src: >-
+      core/vm/instructions_zkevm.go:opDifficulty_zkevm, core/evm.go:NewEVMBlockContext
+    src_live: "eth_call DIFFICULTY @ 33391890 -> 0x00..00"
   added:
     - {op: "0x5f", name: PUSH0, fork: "forkID 5 Dragonfruit",
        note: "EIP-3855, a Shanghai opcode, reached at forkID 5 Dragonfruit — independently of any Shanghai activation, which will never come. See eips.3855.",

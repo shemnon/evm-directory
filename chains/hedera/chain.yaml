@@ -764,6 +764,30 @@ system_contracts:
       (3) Schedules get the same treatment via `ScheduleEvmAccount`.
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: >-
+      the first 32 bytes of the N-3 record running hash for the current transaction —
+      genuine hashgraph entropy
+    chooser: >-
+      nobody: it is the running hash of records three transactions back, fixed by
+      consensus ordering before this transaction executes
+    known_at: execution
+    note: >-
+      THE OPCODE WAS REPLACED, AND THE REPLACEMENT IS THE ONE ON THIS AXIS THAT ACTUALLY
+      IMPROVES ON MAINNET. `CustomPrevRandaoOperation` is registered at 0x44 in every
+      version module from V038 onward, and it does not read a header at all — it calls
+      `proxyUpdaterFor(frame).entropy()`, which surfaces the N-3 record running hash,
+      truncated to 32 bytes. The client even names the opcode `PRNGSEED` rather than
+      PREVRANDAO. Two things follow. Hedera has no mixHash to speak of, so the RPC
+      relay reports `mixHash: 0x00…00` WHILE 0x44 RETURNS REAL ENTROPY — the header and
+      the opcode disagree, and a reader checking the header would conclude there is no
+      randomness. And the entropy is a Hedera quantity with Hedera's bias properties,
+      not the beacon randomness a ported mainnet contract assumes.
+    src: >-
+      hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomPrevRandaoOperation.java,
+      hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/ProxyWorldUpdater.java:entropy
+    src_live: "eth_call 0x445f5260205ff3 @ 0x5f86971 -> 0x2ab047ca755bab1cd7b479d4671e15c5f18877b307003b52eb2f33d08e1e340c, while the same block's mixHash reads 0x00..00"
   note: >-
     The instruction table is Besu 25.2.2's Cancun set, then nine operation classes are
     REPLACED by Hedera versions in the Dagger module. The replacements are listed here,

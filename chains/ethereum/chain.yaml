@@ -190,6 +190,23 @@ system_transactions:
   src: params/protocol_params.go:SystemAddress
 
 opcodes:
+  prevrandao:
+    source: beacon-randao
+    value: the beacon chain's RANDAO mix for the slot — 32 bytes of accumulated entropy
+    chooser: >-
+      the beacon proposer, by revealing its BLS signature over the epoch; the reveal is
+      mixed into the beacon state before the execution payload is built, so no execution
+      participant chooses it
+    known_at: execution
+    note: >-
+      THE BASELINE. `NewEVMBlockContext` sets `random = &header.MixDigest` only when
+      `header.Difficulty.Sign() == 0` — the post-merge telltale — and `opRandom` pushes
+      `evm.Context.Random`. The word in `mixHash` is `get_randao_mix(state, epoch)`,
+      built by XOR-ing `sha256(reveal)` into the running mix once per block. A proposer
+      can withhold its block to bias the next mix by one bit, which is the known and
+      bounded weakness; it cannot choose the value. Every other row on this axis is a
+      delta against this sentence, and most of them are not randomness at all.
+    src: "core/evm.go:NewEVMBlockContext, core/vm/instructions.go:opRandom"
   added: []
   removed: []
   modified: []

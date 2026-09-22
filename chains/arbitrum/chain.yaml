@@ -293,6 +293,28 @@ system_contracts:
   src: go-ethereum/core/types/arbitrum_signer.go
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the constant 1
+    chooser: >-
+      nobody — ArbOS writes `Difficulty: big.NewInt(1)` into every header it builds
+    known_at: always
+    note: >-
+      ARBOS REBINDS 0x44 TO THE DIFFICULTY FIELD, AND THE DIFFICULTY IS ALWAYS 1.
+      `NewEVMBlockContext` runs the stock merge test first (`Difficulty.Sign() == 0` →
+      `random = &header.MixDigest`), then overrides it: when
+      `DeserializeHeaderExtraInformation(header).ArbOSFormatVersion > 0` it sets
+      `random = BigToHash(header.Difficulty)`. `createNewHeader` hardcodes
+      `Difficulty: big.NewInt(1)`, so `block.prevrandao` is 1 on every Arbitrum block.
+      The override exists because `MixDigest` IS NOT RANDOMNESS ON THIS CHAIN — it is a
+      packed struct: bytes 0-7 SendCount, 8-15 L1BlockNumber, 16-23 ArbOSFormatVersion,
+      byte 25 a CollectTips flag. Reading `mixHash` off the RPC and expecting entropy
+      gets you an L1 block number and a version counter instead.
+    src: >-
+      go-ethereum/core/evm.go:NewEVMBlockContext,
+      go-ethereum/core/types/arb_types.go:DeserializeHeaderExtraInformation,
+      arbos/block_processor.go:createNewHeader
+    src_live: "eth_call 0x445f5260205ff3 @ 0x1e357c42 -> 0x00..01, while the same block's mixHash reads 0x00000000000288b800000000018ceb86000000000000003d0000000000000000 — SendCount 166072, L1 block 26143622, ArbOS version 61"
   added: []
   removed: []
   modified: []

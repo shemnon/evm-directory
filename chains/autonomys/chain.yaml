@@ -632,6 +632,27 @@ system_transactions:
       because the blob lives on a different chain.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word, reached through the DIFFICULTY fallback
+    chooser: nobody
+    known_at: always
+    note: >-
+      NOT "PREVRANDAO RETURNS ZERO" — PREVRANDAO FALLS THROUGH TO DIFFICULTY, AND
+      DIFFICULTY IS ZERO. The rust-evm interpreter maps `Opcode::DIFFICULTY` to
+      `system::prevrandao`, which is written as a fallback:
+      `if let Some(rand) = handler.block_randomness() { push(rand) } else {
+      difficulty(runtime, handler) }`. Frontier's pallet-evm implements
+      `block_randomness() -> None` unconditionally, so the else-branch always runs, and
+      `block_difficulty() -> U256::zero()`. The header has no mixHash at all, so the
+      zero does not even come from a field — it comes from a default. Autonomys runs a
+      Proof-of-Archival-Storage consensus with real VRF-derived randomness in the
+      Subspace layer; none of it is plumbed to the EVM.
+    src: >-
+      rust-evm/runtime/src/eval/system.rs:206 (prevrandao),
+      rust-evm/runtime/src/eval/mod.rs:43,
+      frontier/frame/evm/src/runner/stack.rs:1085 (block_randomness)
+    src_live: "eth_call @ 4577685 with bytecode 0x44… -> 0x00..00"
   added: []
   removed:
   - {op: "0x49", name: BLOBHASH, severity: high,

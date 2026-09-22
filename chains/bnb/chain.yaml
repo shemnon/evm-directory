@@ -317,6 +317,24 @@ system_transactions:
     (consensus/parlia/parlia.go:1357,1945). isToSystemContract gates them.
 
 opcodes:
+  prevrandao:
+    source: difficulty
+    value: the Parlia difficulty — 2 in turn, 1 out of turn
+    chooser: >-
+      the Parlia validator rotation: `calcDifficulty(snap, coinbase)` returns diffInTurn
+      (2) when the sealer is the scheduled one and diffNoTurn (1) otherwise
+    known_at: always
+    note: >-
+      BSC NEVER TOOK THE MERGE RUNG, so 0x44 is still bound to `opDifficulty` and reads
+      the Parlia header difficulty — a one-bit value announcing whether the block's
+      sealer was in turn. `NewEVMBlockContext` still carries the upstream
+      `Difficulty.Sign() == 0` test, but Parlia never writes a zero difficulty, so the
+      branch is dead and `Random` stays nil. `block.prevrandao` in Solidity therefore
+      reads 1 or 2 — not a reduced-entropy value, a schedule flag.
+    src: >-
+      consensus/parlia/parlia.go:calcDifficulty, consensus/parlia/parlia.go:93-94,
+      core/evm.go:NewEVMBlockContext
+    src_live: "eth_call 0x445f5260205ff3 @ 121193504 -> 0x..02, the header difficulty; the same call on Ethereum mainnet returns 32 bytes of randomness"
   added: []
   removed: []
   modified:

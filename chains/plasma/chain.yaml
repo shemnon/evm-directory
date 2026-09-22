@@ -234,6 +234,25 @@ system_contracts:
   src_live: "eth_config @ 30724096 -> systemContracts {BEACON_ROOTS_ADDRESS, HISTORY_STORAGE_ADDRESS, WITHDRAWAL_REQUEST_PREDEPLOY_ADDRESS, CONSOLIDATION_REQUEST_PREDEPLOY_ADDRESS, DEPOSIT_CONTRACT_ADDRESS} all at mainnet addresses"
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: 32 bytes supplied by PlasmaBFT in the payload attributes; non-constant per block
+    chooser: >-
+      the PlasmaBFT consensus client, which is closed source; reth only copies
+      `attributes.prev_randao` into the EVM block environment
+    known_at: proposal
+    note: >-
+      A STOCK RETH EXECUTION PATH BEHIND A CONSENSUS CLIENT THAT CANNOT BE READ.
+      Plasma's execution layer is unmodified reth on this axis: `prev_randao` travels
+      from the payload attributes into `BlockEnv` and out of 0x44 with no Plasma-specific
+      code in between, and there is no patched opcode, no override and no constant in
+      the clone. PlasmaBFT — pipelined Fast HotStuff — is not open source, so the
+      derivation that fills the field is outside the evidence this directory is built
+      from. Recorded as `proposal` rather than `execution` for the same reason as Linea:
+      a single-operator BFT chain whose proposer supplies the word is assumed to know it
+      first until a public derivation says otherwise.
+    src: reth/crates/evm/evm/src/lib.rs:498
+    src_live: "eth_call 0x445f5260205ff3 @ 0x1f5e51e -> 0x37a95487…, equal to that block's mixHash"
   added: []
   removed: []
   modified: []

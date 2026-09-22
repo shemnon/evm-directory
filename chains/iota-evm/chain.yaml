@@ -447,6 +447,20 @@ system_transactions:
     src_live: "GET /v1/chain @ 12793600 -> validatorFeeShare 0, chainAdmin 0x8779ca52589fd6f4ca1776b63b200a7b8f9fd71f2c4d386a987dfdb24569fc5e"
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      THE HEADER IS FABRICATED, AND THE DIFFICULTY IN IT IS AN EMPTY big.Int. IOTA EVM is
+      an ISC smart contract emulating an Ethereum chain: `blockchaindb.go` synthesises
+      each header, writing `Difficulty: &big.Int{}` — the zero value — and no mix. 0x44
+      reads that and pushes 0. Real randomness DOES exist on this chain, from the ISC
+      layer, but it is reachable only through the magic contract at 0x1074, not through
+      any opcode.
+    src: packages/vm/core/evm/emulator/blockchaindb.go:GetPendingHeader
+    src_live: "eth_call PREVRANDAO @ 12793600 -> 0x00..00"
   added: []
   removed: []
   modified:

@@ -873,6 +873,21 @@ system_transactions:
       shows failures of the inner call but never failures of the outer one.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word — on a proof-of-work chain that has a real nonce and a real difficulty
+    chooser: nobody
+    known_at: always
+    note: >-
+      ZERO, WITH GENUINE ENTROPY SITTING UNUSED ONE FIELD AWAY. eSpace's environment
+      hardcodes the randomness to `H256::default()`, so 0x44 pushes 0 — while the same
+      block's header reports a live PoW difficulty and a live mined nonce, either of
+      which would have been better than nothing. Conflux is the only chain on this axis
+      that could have supplied a hard-won random value and supplies a constant instead.
+    src: >-
+      crates/execution/vm-interpreter/src/interpreter/mod.rs:DIFFICULTY,
+      crates/rpc/rpc-eth-types/src/block.rs:mix_hash
+    src_live: "eth_call 0x445f5260205ff3 @ 0x95d6267 -> 0x00..00, while the same header reports difficulty 0x3978446d02 and nonce 0xc5bf8de1125dafc5"
   added: []
   removed: []
   modified:

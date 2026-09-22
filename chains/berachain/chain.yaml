@@ -822,6 +822,30 @@ system_transactions:
     is consumed by the consensus layer.
 
 opcodes:
+  prevrandao:
+    source: beacon-randao
+    value: beacon-kit's RANDAO mix for the epoch — 32 real bytes
+    chooser: >-
+      the beacon-kit proposer, by revealing a BLS signature over the epoch under
+      `DomainTypeRandao`; verified against the proposer's registered pubkey before the
+      payload is accepted
+    known_at: execution
+    note: >-
+      AN ETHEREUM CONSENSUS-SPEC RANDAO, REIMPLEMENTED, ON COMETBFT. `processRandaoReveal`
+      verifies the proposer's reveal against `ComputeRandaoSigningRoot(DomainTypeRandao,
+      epoch)` and then folds it in with `buildRandaoMix(prevMix, reveal) = prevMix XOR
+      sha256(reveal)` — the spec's formula, into `randao_mixes[epoch %
+      EpochsPerHistoricalVector]`. The payload factory reads that vector for
+      `prev_randao`, and bera-reth passes it into the EVM as
+      `prevrandao: Some(attributes.prev_randao)`. beacon-kit additionally REJECTS an
+      all-zero mix outright (`ErrEmptyPrevRandao`), so the constant-zero failure that
+      catches nine other rows on this axis cannot happen here — the block would not
+      validate.
+    src: >-
+      beacon-kit/state-transition/core/state_processor_randao.go:processRandaoReveal,
+      beacon-kit/engine-primitives/engine-primitives/attributes.go:93,
+      bera-reth/src/node/evm/config.rs:224
+    src_live: "eth_call 0x445f5260205ff3 @ 0x192f834 -> 0xbb653cae…, equal to that block's mixHash"
   added: []
   removed: []
   modified: []

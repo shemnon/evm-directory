@@ -778,6 +778,20 @@ system_transactions:
       EVM StateDB knowingly disagree.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: "0xffff…ff — the all-ones word"
+    chooser: nobody
+    known_at: always
+    note: >-
+      THE MAXIMUM WORD, CHOSEN AS A MERGE FLAG RATHER THAN AS A VALUE. The EVM keeper
+      sets `BlockContext.Random` to `common.MaxHash`, because geth decides whether the
+      chain is post-merge by testing `blockCtx.Random != nil` — the framework needed a
+      non-nil pointer and picked all-ones "to signal it is after the merge". The
+      side effect is that every `block.prevrandao` read returns the same 32 bytes of
+      0xff forever. The RPC header meanwhile reports `mixHash: 0x00…00`, so the header
+      and the opcode do not even agree on the constant.
+    src: "x/vm/keeper/state_transition.go:63 — Random: &common.MaxHash"
   added: []
   removed: []
   modified:

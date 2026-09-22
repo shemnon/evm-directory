@@ -470,6 +470,34 @@ system_transactions:
     2,000,000 gas limit purely to pass the intrinsic-gas check.
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: >-
+      keccak of the proposer's round signature — 32 bytes, fresh every block even when
+      two blocks share a timestamp
+    chooser: >-
+      the round's proposer, which signs the RLP-encoded consensus round number; the
+      block validator rejects any header whose mix_hash is not exactly that hash
+    known_at: proposal
+    note: >-
+      SIGNED OVER THE ROUND NUMBER, AND NOTHING ELSE. Consensus builds
+      `RoundSignature = sign(proposerKey, RLP(round))` and the header takes
+      `mix_hash = round_signature.get_hash()`, i.e. the hash of the RLP-encoded
+      signature; `monad-eth-block-validator` enforces
+      `mix_hash == header.round_signature.get_hash()`. Execution then reads it through
+      the usual pre/post-merge shape: `block_prev_randao = hdr.difficulty ?
+      store_be(hdr.difficulty) : hdr.prev_randao`, and the interpreter's `prevrandao`
+      loads `ctx.env.tx_context->block_prev_randao`. BECAUSE THE SIGNED MESSAGE IS THE
+      ROUND ALONE, a proposer can compute the mix for every future round it is scheduled
+      to lead — the source itself carries the open question, "TODO should this
+      incorporate parent_block_id to increase 'randomness'?". Real entropy against
+      outside observers, fully known to the leader.
+    src: >-
+      monad-bft/monad-consensus-types/src/payload.rs:RoundSignature,
+      monad-bft/monad-consensus-state/src/lib.rs:2417,
+      monad-bft/monad-eth-block-validator/src/lib.rs:269,
+      monad/category/execution/ethereum/tx_context.cpp:46
+    src_live: "eth_call 0x445f5260205ff3 @ 0x654bbe5 -> 0x8ed63097…, equal to that block's mixHash; blocks 106216812-106216815 carry four different mixHashes on one timestamp"
   added: []
   removed: []
   modified:

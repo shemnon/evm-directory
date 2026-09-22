@@ -615,6 +615,19 @@ system_transactions:
   src_live: "eth_getTransactionCount 0x2222...2222 @ 43436288 -> 0xf7c1b (1015323); no matching transaction found in 60 sampled blocks; debug_traceBlockByNumber -> Method not found"
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      ESTABLISHED BY PROBE, NOT BY SOURCE — HyperEVM's node is closed, so this is the one
+      row on the axis with no clone to read. 0x44 pushes zero at the pinned height and
+      `mixHash` is the zero hash in all 120 headers scanned, so whatever fills the field
+      is a constant rather than a beacon. The failure mode is the dangerous one: the
+      opcode is present, costs gas, returns successfully and lies, which is a different
+      shape from Tron's stub only in that Tron's is readable.
+    src_live: "eth_call PREVRANDAO 0x44 @ 43436288 -> 0x00..00; mixHash 0x00..00 in 120/120 headers sampled"
   added: []
   removed: []
   modified:

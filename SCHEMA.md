@@ -762,6 +762,48 @@ the opcode simply postdates the chain. A chain that carries the opcode anyway (a
 back-port) records an explicit `opcodes.added` entry, which always wins. An explicit
 `opcodes.removed` renders `–` ("removed, or never adopted").
 
+### PREVRANDAO (`0x44`) — the derivation, not the value
+
+`opcodes.prevrandao` is **required on every row** and records *how* `0x44` gets its
+value. It is a keyed block, not a list, because there is exactly one answer per chain:
+
+```yaml
+opcodes:
+  prevrandao:
+    source: difficulty        # the mechanism class (enumerated, below)
+    value: "the constant 1"   # what a contract actually reads off the stack
+    chooser: >-               # who fixes the value, and at what point
+      nobody — the header field it reads is a constant written by the block builder
+    known_at: always          # when it first becomes knowable (enumerated, below)
+    note: >-                  # the mechanism, in source terms
+      ...
+    src: core/evm.go:NewEVMBlockContext
+```
+
+`source:` is one of `beacon-randao` (this chain's own beacon chain RANDAO mix),
+`l1-randao` (an L1 block's RANDAO, read across the bridge), `consensus-randao` (a
+randomness the chain's own consensus derives — a BLS reveal, a DAG fold, a running
+hash), `difficulty` (the byte is still, or again, bound to a difficulty field),
+`timestamp`, `block-number`, `constant`, `nil` (reading it faults), or `unrecorded`.
+
+`known_at:` is one of `execution` (nobody can know it before the block is executed),
+`proposal` (the proposer can compute its own future values), `l1-epoch` (public one L1
+block ahead, and constant for every L2 block in that epoch), or `always` (a constant, or
+a pure function of something already public).
+
+**Why the value alone is not enough.** Recording only what `0x44` pushes puts BSC's
+Parlia difficulty, Arbitrum's ArbOS `1` and Avalanche's dummy-engine `1` in the same
+cell, when they arrive by three unrelated edits; and it puts mainnet, Gnosis, Base and
+Monad in the same cell, when one is a beacon mix, one is another chain's beacon mix
+arriving 12 seconds stale, and one is a signature over a round number that its proposer
+could have computed a week earlier. `known_at:` is the column a contract author is
+actually asking about.
+
+Rendering: the block gets an anchor `#prevrandao` on the chain page, under the Opcodes
+heading, and the opcodes axis page carries one row per chain linking at that anchor —
+the same shape as a per-opcode anchor. Per the provenance hard rule the axis table
+carries no citations; those live on the chain page.
+
 ## Affiliated contributions
 
 `affiliated_contributions:` credits merged corrections that came from contributors who
@@ -812,7 +854,8 @@ precompiles:  # base_map (the 0x01-0x11 + 0x0100 range, condensed); then
 system_contracts:
 system_transactions:
 opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed op:;
-              # plus baseline_set on the ethereum row. See "Opcodes" above.
+              # plus baseline_set on the ethereum row, and prevrandao (required on
+              # every row: how 0x44 gets its value). See "Opcodes" above.
 tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
 p2p:          # wire-level limits and transports, keyed by question; every size
               # carries a tier: consensus | policy | transport

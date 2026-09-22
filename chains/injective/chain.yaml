@@ -701,6 +701,20 @@ system_transactions:
       depth for this row; recorded so the category is not understated.
 
 opcodes:
+  prevrandao:
+    source: constant
+    value: the zero word
+    chooser: nobody
+    known_at: always
+    note: >-
+      A DELIBERATE OVERRIDE OF THE FRAMEWORK'S CONSTANT, TO A WORSE ONE. Injective's EVM
+      module is built on the Cosmos EVM framework, which sets `Random` to
+      `common.MaxHash`; `EVMBlockConfig` replaces that with `Random: &zero`. Both are
+      constants, but zero is the value a contract is least likely to notice, because it
+      is also what an uninitialised field, a missing header and a failed decode all look
+      like. `block.prevrandao` is 0 in every block.
+    src: injective-chain/modules/evm/keeper/config.go:75
+    src_live: "eth_call with state-override code 0x445f5260205ff3 @ 180071265 -> 0x00..00"
   added: []
   removed: []
   modified:

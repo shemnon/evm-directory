@@ -373,6 +373,27 @@ system_transactions:
     transaction was found.
 
 opcodes:
+  prevrandao:
+    source: consensus-randao
+    value: 32 bytes supplied by Maru in the payload attributes; non-constant per block
+    chooser: >-
+      Maru, Linea's QBFT consensus client, which is not open source; the execution client
+      only reads what the Engine API hands it
+    known_at: proposal
+    note: >-
+      BESU READS THE HEADER FIELD FAITHFULLY; THE QUESTION IS WHAT MARU PUTS THERE.
+      `PrevRanDaoOperation.execute` pushes `frame.getBlockValues().getMixHashOrPrevRandao()`
+      — Besu's single accessor for the field that was mixHash before the merge and
+      prevRandao after — so the opcode contributes nothing of its own. Linea's consensus
+      is QBFT driven by Maru over the Engine API with a single validator, and MARU IS NOT
+      IN THE PINNED SOURCE SET, so the derivation behind the value cannot be read from a
+      clone the way every other row here can. What is established: the value is a
+      different 32 bytes each block and is not the zero word. What is NOT established is
+      whether it is a commitment a validator could have precomputed. With one validator
+      operating both the sequencer and the consensus client, `known_at: proposal` is the
+      safe reading, not `execution`.
+    src: "besu/evm/src/main/java/org/hyperledger/besu/evm/operation/PrevRanDaoOperation.java:34"
+    src_live: "eth_call 0x445f5260205ff3 @ 0x1e98d7c -> 0x47af0f21…, equal to that block's mixHash"
   added: []
   removed: []
   modified: []

@@ -1041,6 +1041,18 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
 
+proofs:
+  proof_root:
+    verdict: foreign-hash
+    severity: high
+    note: >-
+      `stateRoot` is the CometBFT APP HASH, a commitment to the whole Cosmos multistore
+      rather than to an Ethereum state trie — same key, same 32 bytes, unrelated
+      meaning, so no eth_getProof result can verify against it. Stated on this row
+      rather than inherited because cosmos-evm is a `template`, not a `stack`, and the
+      axis's inheritance walk deliberately does not cross templates.
+    src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"
+
 fee_model:
   metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"

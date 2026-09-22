@@ -730,6 +730,107 @@ questions, but consensus and transaction signatures are not, and splitting one P
 across two axes would serve neither. It belongs to the cryptography axis; this note exists
 so the next person does not add `pqc_*` keys here by default.
 
+## The proofs axis (`proofs:`)
+
+Two questions that look unrelated and are the same question: **what can be proven about
+this chain, and to whom.** One half asks how the chain's own state transition is proven
+to whoever settles it; the other asks whether the chain can prove a single account or
+storage slot to a caller. They share an axis because one design decision routinely lands
+in both halves — a chain that commits state under a non-Keccak hash has both an exotic
+prover and an `eth_getProof` nobody can verify, and recording those in two places would
+split one fact in two.
+
+`proofs:` is keyed by question, each key carrying its own `verdict:` and evidence, in
+the same shape as `tx_lifecycle:` and `p2p:`:
+
+```yaml
+proofs:
+  state_transition:
+    verdict: fault          # validity | fault | consensus | none
+    severity: high          # optional, as elsewhere
+    src: ...
+    note: >-
+      ...
+  proving_live:
+    verdict: permissioned   # live | permissioned | staged | halted | n/a
+  settlement:
+    verdict: ethereum       # self | own-l1 | ethereum | celestia | bitcoin | none
+  prover_constraints:
+    verdict: binding        # binding | lifted | none
+  state_proof:
+    verdict: served         # served | partial | absent
+  proof_root:
+    verdict: canonical      # canonical | deferred | foreign-hash | no-commitment
+```
+
+### Half one — proving the state transition
+
+`state_transition:` names what actually backs the transition. `validity` is a succinct
+proof verified by a settlement contract; `fault` is an assertion anyone may challenge
+within a window; `consensus` is a chain whose own validator set is the only attestation
+there is, which is the honest answer for every L1 and is **not** a lesser one; `none` is
+a chain that publishes data and adjudicates nothing.
+
+`proving_live:` is the key that stops a roadmap from reading as a fact. A proof system
+that exists in a repository, on a testnet, or behind a permissioned prover set is not
+the same claim as one adjudicating mainnet today, and the distinction is invisible in
+every other field. `permissioned` means proofs are produced and accepted but only a
+whitelisted party may produce them; `staged` means live on a testnet or shadow-proving
+mainnet without enforcement; `halted` means a system that once ran and no longer does.
+`n/a` belongs to `consensus` and `none` rows, where nothing is being proven.
+
+`settlement:` names the layer, not the object it accepts — which proof or root a
+settlement contract takes is `note:` material. `self` is a chain that settles itself;
+`own-l1` is a chain settled by a separate chain of the same protocol rather than by
+Ethereum, which is how an Autonomys domain relates to the Subspace consensus chain.
+
+`prover_constraints:` is where this axis earns its place in a dataset about EVM
+semantics. A prover is a circuit, a circuit has bounds, and those bounds leak upward
+into rules the EVM is supposed to guarantee. The result is a chain where a precompile
+is present, correct in `eth_call`, and cannot be mined. `binding` means at least one
+such constraint is live; `lifted` means the row carried one and no longer does — which
+is why Scroll's entry has a date on it, and Linea's does not; `none` means the question
+was asked and the answer is that no prover bound reaches EVM semantics.
+
+`lifted` exists so that a fixed constraint stays in the dataset. Deleting the key when
+a chain lifts its cap would make "never had one" and "had one until last December"
+identical, and contracts deployed under the old rule are still deployed.
+
+### Half two — proving state to a caller
+
+`state_proof:` is EIP-1186 `eth_getProof`, as actually served: `served`, `absent` (the
+method is not implemented), or `partial` — the method answers, and what comes back is
+not a conforming EIP-1186 account. `partial` is the one worth having. Blast returns
+`flags`, `fixed`, `shares` and `remainder` in place of `balance`, so `result.balance` is
+`undefined` rather than an error, and every verifier that decodes a four-item account
+fails silently against a seven-item one.
+
+`proof_root:` asks the question underneath: does what comes back verify against the
+state root in the block header? `canonical` is mainnet's answer. The three ways to fail
+it are all in this dataset and are **not** the same failure:
+
+| verdict | what is wrong | rows |
+|---|---|---|
+| `deferred` | the root is real and belongs to a **different block** | conflux (epoch N−5) |
+| `foreign-hash` | the root commits under another hash or another trie | polygon-zkevm (Poseidon SMT), cosmos-evm (CometBFT app hash) |
+| `no-commitment` | the header commits to no state at all | iota-evm, hyperliquid (zero root, every block) |
+
+A boolean here would render all four as "no" and lose the only thing a bridge author
+needs to know, which is *what to do instead*. `no-commitment` has no workaround;
+`foreign-hash` has one if you can verify that hash; `deferred` needs only patience and
+an offset.
+
+**The `ethereum` row states the baseline**, as it does for `tx_lifecycle:` and
+`opcodes.baseline_set`: `consensus` / `n/a` / `self` / `none` / `served` / `canonical`.
+Every other row is a delta against that. An **absent** key means the question is not
+established for that row — it does **not** mean the chain answers as mainnet does, and
+the grid renders `—` rather than `=`.
+
+Inheritance is the same override-by-key walk the address sections use: a row whose
+`lineage.upstream` names a stack node inherits that node's answers key by key and
+overrides the ones it states itself. Blast inherits all of `op-stack`'s half-one answers
+and overrides `state_proof:` alone.
+
 ## Opcodes
 
 `opcodes:` holds `added` / `removed` / `modified` / `pending` / `tombstoned` lists of
@@ -859,6 +960,9 @@ opcodes:      # {added/removed/modified/pending/tombstoned: []}, entries keyed o
 tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
 p2p:          # wire-level limits and transports, keyed by question; every size
               # carries a tier: consensus | policy | transport
+proofs:       # what can be proven about this chain and to whom, keyed by question:
+              # state_transition / proving_live / settlement / prover_constraints
+              # (half one) and state_proof / proof_root (half two)
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators

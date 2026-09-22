@@ -845,6 +845,24 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p (sei fork), purpose: tx broadcast + consensus}
 
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      sei-tendermint's validator set attests the block through ABCI; nothing outside the chain re-checks the state transition. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting
   fee_market: >-

@@ -655,6 +655,26 @@ p2p:
       message limits are not published in a form this axis can cite, and a live probe
       cannot reveal a rejection threshold without sending oversized transactions to a
       production network.
+proofs:
+  state_proof:
+    verdict: absent
+    note: >-
+      eth_getProof is not a supported method on the endpoint — which is what one would
+      expect when there is no state trie to prove against. Corroborates the zero
+      stateRoot independently rather than restating it.
+    src_live: "eth_getProof @ 43436288 -> Method not found"
+  proof_root:
+    verdict: no-commitment
+    severity: high
+    note: >-
+      THE ZERO HASH AT EVERY HEIGHT SAMPLED ACROSS THE WHOLE CHAIN — all 120 blocks of a
+      contiguous scan, and blocks 1, 100, 1e6, 1e7, 2e7, 3e7 and 4e7. HyperEVM headers
+      commit to no state at all, so no state claim can be proved against a header:
+      no light clients, no Merkle state proofs, no trust-minimised bridge reading
+      HyperEVM state. Severity is high because the field is PRESENT and well-formed —
+      tooling reads a plausible 32-byte value and never errors.
+    src_live: "eth_getBlockByNumber 43436288-43436407 @ 43436288 -> stateRoot 0x00..00 120/120; also at blocks 1, 100, 1000000, 10000000, 20000000, 30000000, 40000000"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 with a hard base-fee floor and burned priority fees

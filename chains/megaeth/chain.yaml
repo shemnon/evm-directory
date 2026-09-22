@@ -867,6 +867,16 @@ tx_lifecycle:
       that would settle it.
       the sealed list.
 
+proofs:
+  settlement:
+    verdict: ethereum
+    note: >-
+      Inherits the op-stack fault-proof shape, with an extra stage in front of it: a
+      certificate is batched to Ethereum L1 and only then enters the OP fault-proof
+      dispute window. The half-one verdicts above this key are the stack's; this row
+      states only where the difference is.
+    src: "stateless-validator/test_data/mainnet/genesis.json:blockTime"
+
 fee_model:
   metering: "dual: compute gas + storage gas, drawn from one gas_limit"
   fee_market: "EIP-1559 with elasticity 1 and denominator 1000 (effectively fixed base fee) + inherited OP L1 data fee and operator fee"

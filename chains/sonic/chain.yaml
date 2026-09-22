@@ -719,6 +719,24 @@ p2p:
     src: "core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth at 4 x 32 KiB. Stated rather than left absent because Sonic replaces consensus, state storage (Carmen) and the EVM interpreter (Tosca) wholesale, which invites the assumption that the txpool was rewritten too; it was not.
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      the Lachesis/Opera DAG consensus of the validator set is the attestation; there is no settlement contract behind it. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
+
 fee_model:
   metering: gas
   fee_market: "time-based exponential on gas-per-second; floor from on-chain MinBaseFee"

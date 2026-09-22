@@ -678,6 +678,24 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: Simplex, purpose: consensus messages (ed25519 identities)}
+proofs:
+  state_transition:
+    verdict: consensus
+    note: >-
+      the chain's own consensus context attests each header; no external layer accepts or rejects the transition. `consensus` is the honest verdict for a chain
+      whose own validator set is the only attestation there is, and it is not a lesser
+      one than `validity` or `fault` — it is a different security model, which is why
+      the axis names it rather than leaving the cell empty.
+    src: "crates/primitives/src/header.rs:TempoConsensusContext"
+  proving_live:
+    verdict: n/a
+    note: "nothing is being proven, so there is nothing that could be live or staged"
+    src: "crates/primitives/src/header.rs:TempoConsensusContext"
+  settlement:
+    verdict: self
+    note: "settles itself; no external contract accepts or rejects its state transition"
+    src: "crates/primitives/src/header.rs:TempoConsensusContext"
+
 fee_model:
   metering: gas, priced in attodollars, settled in a 6-decimal TIP-20 token
   fee_market: EIP-1559 formula, fixed 10M target, elasticity 1, hard-clamped

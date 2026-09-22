@@ -440,6 +440,45 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: tx gossip}
       - {layer: consensus, protocol: libp2p, purpose: unsafe block gossip from sequencer}
 
+proofs:
+  state_transition:
+    verdict: fault
+    note: >-
+      An output root is proposed to L1 and may be challenged within a window by
+      bisection down to a single instruction, re-executed on L1 by the fault-proof VM.
+      The stack ships two games: FaultDisputeGame (permissionless) and
+      PermissionedDisputeGame, whose own source describes itself as the way "to support
+      the fault proof iteration of the OptimismPortal contract without needing to
+      support a fully permissionless system", and as a fallback if the permissionless
+      system fails. WHICH game a given deployment runs is a per-chain fact this
+      template row does not settle.
+    src: "optimism/packages/contracts-bedrock/src/dispute/FaultDisputeGame.sol:FaultDisputeGame, optimism/packages/contracts-bedrock/src/dispute/PermissionedDisputeGame.sol:PermissionedDisputeGame"
+  proving_live:
+    verdict: live
+    note: >-
+      The dispute game is deployed and adjudicating on L1; it is not a design. The
+      permissioned variant exists in the same tree as a documented fallback, so `live`
+      here means the machinery runs, not that every deployment runs it permissionlessly.
+    src: "optimism/packages/contracts-bedrock/src/dispute/DisputeGameFactory.sol:DisputeGameFactory"
+  settlement:
+    verdict: ethereum
+    note: "output roots are proposed to, and disputes resolved by, contracts on Ethereum L1"
+    src: "optimism/packages/contracts-bedrock/src/dispute/AnchorStateRegistry.sol:AnchorStateRegistry"
+  prover_constraints:
+    verdict: binding
+    severity: high
+    note: >-
+      FOUR PRECOMPILES ARE CAPPED SO THE FAULT PROOF FITS ON L1, and the source says so
+      outright: "Jovian precompile limits ensure accelerated precompiles for fault
+      proofs stay under the 16M gas transaction limit introduced in Fusaka (EIP-7825).
+      Since accelerated precompiles execute on L1 via
+      PreimageOracle.loadPrecompilePreimagePart, the entire L1 transaction must stay
+      under 16M gas". So bn254 pairing takes 81,984 bytes / 427 pairs, BLS G1 MSM
+      288,960, BLS G2 MSM 278,784 and BLS pairing 156,672 — where mainnet caps none of
+      them. This is the axis's defining shape: a limit of the proving system, written
+      into the EVM rules, at a mainnet address, detectable by no address enumeration.
+    src: "op-geth/params/protocol_params.go:189-197"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 on L2 base fee

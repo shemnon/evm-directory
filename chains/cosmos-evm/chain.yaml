@@ -951,6 +951,17 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
 
+proofs:
+  proof_root:
+    verdict: foreign-hash
+    severity: high
+    note: >-
+      `stateRoot` is the CometBFT APP HASH — a commitment to the entire Cosmos
+      multistore, not to an Ethereum state trie. Same key, same 32-byte shape, unrelated
+      meaning, so no eth_getProof result can ever verify against it. The multistore does
+      have IAVL proofs; they are simply not the object an Ethereum verifier decodes.
+    src: "rpc/types/utils.go:MakeHeader"
+
 fee_model:
   metering: "EVM gas, with Cosmos SDK store gas charged into the same counter at 1:1"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, optional"

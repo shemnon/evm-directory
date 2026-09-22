@@ -402,6 +402,22 @@ tx_lifecycle:
     note: "single OP Stack sequencer; inherited from op-stack with no change."
     src: "blast-optimism/op-node/rollup/chain_spec.go"
 
+proofs:
+  state_proof:
+    verdict: partial
+    severity: high
+    note: >-
+      eth_getProof ANSWERS AND DOES NOT RETURN A BALANCE. Blast's StateAccount is
+      {Nonce, Flags, Fixed, Shares, Remainder, Root, CodeHash} — seven RLP items, with
+      `Balance` gone — so the result object carries `flags`, `fixed`, `shares` and
+      `remainder` where EIP-1186 specifies `balance`. The proof itself is sound against
+      Blast's own root; what fails is every verifier that decodes a four-item Ethereum
+      account, and it fails SILENTLY, because `result.balance` is `undefined` rather
+      than an error. This is why `state_proof` is a three-way key and not a boolean:
+      "served" and "absent" would both be wrong here.
+    src: "blast-geth/core/types/state_account.go:StateAccount"
+    src_live: "eth_getProof 0x4300000000000000000000000000000000000002 @ 40090462 -> keys {address, accountProof, flags, fixed, shares, remainder, codeHash, nonce, storageHash, storageProof}; no `balance`. Leaf RLP f847 80 01 80 80 80 a0.. a0.. = 7 items."
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 (OP Stack), elasticity 6 / denominator 250 post-Canyon"

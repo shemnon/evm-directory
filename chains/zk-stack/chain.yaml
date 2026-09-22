@@ -293,6 +293,27 @@ p2p:
       `1 << 24`, the bootloader's encoded-transaction ceiling — a circuit constraint shared
       by every chain built on this stack, and the one limit here a deployment cannot
       configure away.
+proofs:
+  state_transition:
+    verdict: validity
+    note: >-
+      The ZK Stack instantiates EraVM per deployment, and at protocol version 30 the
+      four sampled chains carry byte-identical system-contract hashes — so the proving
+      story is the template's, not each chain's. The zksync-era row holds the EVM-level
+      consequence (the modexp operand cap).
+    src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+  proving_live:
+    verdict: live
+    note: "proving is the production path for a ZK Chain at protocol version 30"
+    src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+  settlement:
+    verdict: ethereum
+    note: >-
+      L1, per deployment. A ZK Chain may settle to Ethereum directly or through a
+      gateway; this row records the layer, and which route a given deployment takes is
+      per-chain variation it does not measure.
+    src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
+
 fee_model:
   metering: "ergs (EraVM), with a second independent price per byte of pubdata"
   fee_market: per-deployment

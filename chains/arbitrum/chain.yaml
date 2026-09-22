@@ -380,6 +380,27 @@ p2p:
       - {layer: execution, protocol: websocket, purpose: sequencer feed (ordered output)}
       - {layer: settlement, protocol: devp2p, purpose: batch posting to L1}
 
+proofs:
+  state_transition:
+    verdict: fault
+    note: >-
+      BOLD — an all-vs-all bisection game over assertions posted to L1, resolved by
+      re-executing a single WAVM instruction. Its own README states the property that
+      makes it a fault proof rather than a permissioned attestation: "enables anyone on
+      Ethereum to challenge invalid rollup state transitions", with a fixed upper bound
+      on confirmation delay.
+    src: "bold/challenge/manager.go, bold/README.md"
+  proving_live:
+    verdict: live
+    note: >-
+      The challenge manager runs as part of the node, against assertions already on
+      L1 — not a separate proving service that a deployment may omit.
+    src: "bold/challenge/manager.go"
+  settlement:
+    verdict: ethereum
+    note: "assertions are posted to, and challenges resolved by, rollup contracts on Ethereum L1"
+    src: "bold/assertions/poster.go"
+
 fee_model:
   metering: gas (plus Stylus "ink" for WASM execution)
   fee_market: ArbOS speed-limit-based L2 pricing

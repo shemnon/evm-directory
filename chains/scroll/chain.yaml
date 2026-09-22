@@ -606,6 +606,35 @@ p2p:
       there is no second blob cap beneath it — the clone has no `core/txpool/` package at
       all. The absence of `max_blob_tx_bytes` on this row is a fact about the fork point,
       not a gap in the research.
+proofs:
+  state_transition:
+    verdict: validity
+    note: "a zk proof over the batch, verified by an L1 contract"
+    src: "core/vm/contracts.go:PrecompiledContractsGalileo"
+  proving_live:
+    verdict: live
+    note: "proving is the production path; the constraint below was a live consequence of it until Galileo"
+    src: "core/vm/contracts.go:errModexpUnsupportedInput"
+  settlement:
+    verdict: ethereum
+    note: "batches and their proofs are submitted to L1"
+    src_doc: https://docs.scroll.io/en/technology/
+  prover_constraints:
+    verdict: lifted
+    severity: high
+    note: >-
+      RECORDED AS `lifted` RATHER THAN DELETED, AND THE DATE IS THE FACT. From genesis
+      until 1765868400 `bigModExp.Run` rejected any base, exponent or modulus longer
+      than 32 bytes with errModexpUnsupportedInput — a circuit bound, 32x tighter than
+      EIP-7823's 1024-byte limit, sitting at a mainnet precompile address. Galileo sets
+      eip7823: true and replaces it with the Osaka bound. Dropping the key at that point
+      would make Scroll indistinguishable from a chain that never had the cap, and
+      every contract deployed under the old rule is still deployed. Exactly the arc
+      Linea's modexp cap took, and the opposite of Polygon zkEVM's, which was never
+      restored.
+    src: "core/vm/contracts.go:errModexpUnsupportedInput, core/vm/contracts.go:PrecompiledContractsGalileo"
+    src_live: "eth_call @ 34765788 -> 0x05 with 64-byte base and modulus returns 3^3 mod 10 = 7 as 64 bytes"
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 on L2, with baseFeeOverhead/baseFeeScalar read from a predeploy's storage"

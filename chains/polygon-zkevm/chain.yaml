@@ -696,6 +696,56 @@ p2p:
       enough for a transaction with 6 blobs" — sized to the same 6-blob target that geth
       reaches via `BlobTxMaxBlobs`, but expressed as a round decimal rather than a binary
       one. Two clients aiming at the same blob count land on caps 248,576 bytes apart.
+proofs:
+  state_transition:
+    verdict: validity
+    note: "a SNARK over the batch, verified by an L1 contract — when a batch is sequenced at all"
+    src: "core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry"
+  proving_live:
+    verdict: halted
+    severity: high
+    note: >-
+      THE ONLY `halted` ROW, AND IT IS NOT A ROADMAP CLAIM. The Mainnet Beta sequencer
+      was sunset on 2026-07-03; the head has been block 33391890 across two independent
+      endpoints and three probes. 30,593 batches were produced and never sequenced to
+      L1, so roughly five and a half million blocks — 17% of the chain's history — sit
+      above the last finalized one with no proof behind them and will never have one.
+      A validity chain whose prover has stopped is not the same object as one whose
+      prover runs, and no other key on this axis would show the difference.
+    src_live: "eth_getBlockByNumber latest @ 2026-09-09 -> 33391890, timestamp 2026-07-03, identical across two endpoints and three probes on 2026-08-24, 2026-08-25, 2026-09-09"
+  settlement:
+    verdict: ethereum
+    note: "batches are sequenced to L1 and proved there — for the 83% of history that was sequenced before the sunset"
+    src: "zk/utils/utils.go:UpdateZkEVMBlockCfg"
+  prover_constraints:
+    verdict: binding
+    severity: high
+    note: >-
+      MODEXP IS DISABLED AND WAS NEVER RESTORED. forkID 7 Etrog dropped RIPEMD160 and
+      BLAKE2F; forkID 8 Elderberry dropped MODEXP itself, and the live fork (12 Banana)
+      still carries forkID 8's precompile set. Compare Scroll, which had a 32-byte
+      modexp cap and lifted it: the same class of circuit constraint, one relaxed and
+      one permanent, which is the distinction `binding` vs `lifted` exists to carry.
+      The forks also move a prover step budget directly — forkID 11 doubles it to 2^25
+      and drops the safety margin to 1.25%.
+    src: "core/vm/contracts_zkevm.go:PrecompiledContractsForkID8Elderberry, core/vm/zk_counters_limits.go:getTotalSteps"
+  state_proof:
+    verdict: served
+    note: "the method answers; what it returns is not an Ethereum-verifiable proof — see proof_root"
+    src: "smt/pkg/smt/smt.go:NewSMT"
+  proof_root:
+    verdict: foreign-hash
+    severity: high
+    note: >-
+      The state trie is a POSEIDON sparse Merkle tree, not a Keccak MPT, so stateRoot is
+      a field element — which is why observed values start with a low byte
+      (0x02df6fea..., 0x94c51a12...). eth_getProof returns something, and no mainnet
+      light client or storage-proof verifier can check it. Distinct from `no-commitment`:
+      there IS a commitment and it is sound, under a hash function the verifier does not
+      implement.
+    src: "smt/pkg/smt/smt.go:NewSMT"
+    src_live: "eth_getBlockByNumber 0x1fd8511 @ 33391890 -> stateRoot 0x02df6fea936e2d0ca3472d7082de46dfbee2e32963aff33cb691c74354f5e67d"
+
 fee_model:
   metering: "gas AND eight zk counters"
   fee_market: "none — no EIP-1559, no base fee, no base-fee header field"

@@ -2,8 +2,8 @@
 
 **Chain ID 59144 · role: `fork` · baseline: Osaka · QBFT (Maru), 1s blocks**
 
-Reference: [LFDT-Lineth/lineth-monorepo `releases/linea-besu-package/v2.1.1`](https://github.com/LFDT-Lineth/lineth-monorepo)
-@ `0f74f554`, with [besu-eth/besu](https://github.com/besu-eth/besu) @ `6580da84` — the
+Reference: [LFDT-Lineth/lineth-monorepo `releases/linea-besu-package/v2.3.0`](https://github.com/LFDT-Lineth/lineth-monorepo)
+@ `8d016431`, with [besu-eth/besu](https://github.com/besu-eth/besu) @ `fa4bae71` — the
 exact commit that monorepo pins — cloned alongside as the EVM.
 
 ## The client is not what CANDIDATES.md said, and that is the first finding
@@ -254,11 +254,11 @@ per-deployment knob on Linea to opt into.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch releases/linea-besu-package/v2.1.1 \
+git clone --depth 1 --branch releases/linea-besu-package/v2.3.0 \
   https://github.com/LFDT-Lineth/lineth-monorepo
 mkdir besu && cd besu && git init && \
   git remote add origin https://github.com/besu-eth/besu && \
-  git fetch --depth 1 origin 6580da84187533a3b0ced343dc516ebe2adba6ec && \
+  git fetch --depth 1 origin fa4bae715808cea87bc36354fe8eb656bb932971 && \
   git checkout FETCH_HEAD && cd ..
 
 # the prover budget that is the whole story

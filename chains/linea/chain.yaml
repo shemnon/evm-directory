@@ -21,9 +21,21 @@ lineage:
   ancestry: [ethereum]
   fork_of: hyperledger-besu
   sync_point: >-
-    Besu @ 6580da84 (gradle/libs.versions.toml `besuCommit`). Upstream Besu ships
-    Linea mainnet as a BUILT-IN network, so the genesis and fork schedule are in the
-    client itself, not in a Linea-owned file.
+    Besu @ fa4bae71 (gradle/libs.versions.toml `besuCommit`), 323 commits on from the
+    previous pin. Upstream Besu ships Linea mainnet as a BUILT-IN network, so the genesis
+    and fork schedule are in the client itself, not in a Linea-owned file.
+    UPSTREAM NOW CARRIES AMSTERDAM MACHINERY THAT LINEA DOES NOT SCHEDULE:
+    `MainnetHardforkId` gained BOGOTA, EIP-7843's `slotNumber` became a REQUIRED and
+    validated header field under a `slotNumberAwareBlockHeaderValidator`, and the
+    block-access-list state-root committer lost its `Bal` prefix. None of it reaches this
+    row — `linea-mainnet.json` stops at `osakaTime` 1764798551 with no `amsterdamTime`,
+    so the gates stay shut. One upstream change WOULD have been load-bearing and is not:
+    `RequestContractAddresses.fromGenesis` got deliberately stricter for PoA chains,
+    requiring all three system-contract addresses rather than defaulting the withdrawal
+    and consolidation ones. Linea is a clique chain and its built-in genesis configures
+    all three (deposit 0x94d4a744…, withdrawal 0x66355689…, consolidation 0xF0e003F0…),
+    so it opts in cleanly where a deposit-only PoA genesis would now change how its
+    blocks execute.
   note: >-
     Governance moved during 2026: Consensys/linea-monorepo is now
     LFDT-Lineth/lineth-monorepo, an LF Decentralized Trust project (org created
@@ -34,8 +46,8 @@ lineage:
 client:
   name: lineth-monorepo (Linea Besu package + plugins + tracer)
   repo: https://github.com/LFDT-Lineth/lineth-monorepo
-  version: releases/linea-besu-package/v2.1.1
-  commit: 0f74f5545f15ffb18d41c2ee62f8714f355b8542
+  version: releases/linea-besu-package/v2.3.0
+  commit: 8d0164319186e2aa9f4a2285831b13334895b268
   language: kotlin/java
   note: >-
     The execution client is not in this repo. This repo pins the Besu commit, holds
@@ -43,7 +55,7 @@ client:
     plugin. Besu is cloned alongside as a companion at exactly the pinned commit.
   companion_repos:
   - {name: besu, repo: "https://github.com/besu-eth/besu",
-     commit: 6580da84187533a3b0ced343dc516ebe2adba6ec,
+     commit: fa4bae715808cea87bc36354fe8eb656bb932971,
      provides: "the EVM itself, and the built-in linea-mainnet genesis/fork schedule"}
 
 live_probe:

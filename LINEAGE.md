@@ -42,7 +42,7 @@ ethereum (baseline — go-ethereum v1.17.8, Osaka)
   └── Sei (v6.6.1, prague)
   └── Sonic (v2.2.1, prague)
   └── Taraxa (v1.14.1, constantinople)
-  └── Tempo (v1.13.1, osaka)
+  └── Tempo (v1.16.0, osaka)
 
 zkSync Era — no upstream (role: independent)
 

@@ -1,21 +1,24 @@
 # Arc — the same brief as Tempo, the opposite answer
 
-Client pinned: `circlefin/arc-node` **v0.7.3**, commit
-`79b6fddf18345732007bb94b4af3add4c2efd12d`, Rust, built on `paradigmxyz/reth`
-**tag v1.11.3** (a released tag, not a floating rev). Apache-2.0.
+Client pinned: `circlefin/arc-node` **v0.8.1**, commit
+`ab09dbfd9553a7ad48f9c134ec5e808c36512c74`, Rust, built on `paradigmxyz/reth`
+**tag v2.2.0** (a released tag, not a floating rev — and a major-version move up from
+v1.11.3 at the previous pin). Apache-2.0.
 
-**Mainnet (5042) is not live.** `https://rpc.arc.network` does not resolve; chain
-id 5042 exists in this tag as a constant and a hardfork table and nothing else.
+**Mainnet (5042) is not live.** `https://rpc.arc.network` still did not answer on
+2026-10-08, while the testnet was at block 66,193,736. Chain id 5042 exists in this
+tag as a constant and a hardfork table and nothing else.
 Circle's announced public-mainnet date is 2026-09-16, and as of the last check —
 **2026-09-09**, seven days short of it — the hostname is still NXDOMAIN. Every live
 fact below comes from the **public testnet, 5042002**, probed at block **58728247**
 (`0x3801f37`, `finalized`). The row is `live: false` / `live_state: prelaunch`, and
 every `src_live:` should be read as "the testnet does this".
 
-When mainnet does appear, flipping `live_state` is not the update this row needs.
-The testnet is running Zero7 and the mainnet table at this tag stops at Zero6 (§8),
-so the live half of the row describes a protocol mainnet will not launch with. It
-has to be re-probed against 5042 at a mainnet height, not relabelled.
+When mainnet does appear, flipping `live_state` is not the update this row needs —
+the live half still has to be re-probed against 5042 at a mainnet height rather than
+relabelled. But the gap it would be closing just narrowed a long way: at v0.7.3 the
+mainnet table stopped at Zero6, and at v0.8.1 it carries Zero7 and Zero8 as well
+(§8). Testnet is no longer running a protocol mainnet will not launch with.
 `live_probe.awaiting_endpoint` records the mainnet URL so `tools/livecheck.py`
 reports the day that becomes possible.
 
@@ -140,12 +143,26 @@ The SLOADs are **unmetered** — a documented choice ("Blocklist SLOADs are unme
 — no extra gas is added for blocklist checks"), which matters for worst-case
 block-validation cost modelling.
 
-Then there is a **second, independent blocklist that is not consensus at all**. The
-`--arc.denylist.address` / `--arc.denylist.storage-slot` flags point the mempool and
-a revm pre-flight at an arbitrary contract's ERC-7201 mapping. Two nodes configured
-differently accept different transactions — SCHEMA.md's config-switchable warning,
-applied to censorship instead of to signatures. It is not deployed at the default
-address on testnet.
+Then there is a **second, independent blocklist** — and at v0.8.1 it stopped being
+node configuration. The `--arc.denylist.address` / `--arc.denylist.storage-slot`
+flags are **gone**. `ArcChainSpec::denylist_address` resolves the address from the
+chain id against four hardcoded constants, and the doc comment is explicit that
+changing one takes "a change and a rebuild, not a CLI flag":
+
+| network | Denylist address |
+|---|---|
+| localdev | `0x36059b61…34221` |
+| devnet | `0x36061d38…e2993` |
+| testnet | `0x360b451b…777757` |
+| **mainnet** | **`0x3600…0004`** — "the next system-contract slot, deployed in genesis" |
+
+An unrecognised chain id returns `None`, and the caller must reject that chain spec
+at startup: **there is no denylist-free Arc node.** So this row's config-switchable
+warning no longer applies — the divergence became network-wide and unavoidable rather
+than per-operator, which is a stronger claim, not a weaker one.
+
+It is also deployed now: `eth_getCode` on the testnet address returns **1494 bytes**
+at block 66,193,736, where the old localdev default returned `0x`.
 
 ## 6. `msg.sender` is not proof of a signature (Zero7)
 
@@ -184,13 +201,18 @@ axis (a scheme that authorizes with no verifier to match).
 
 ## 8. Mainnet and testnet do not run the same protocol
 
-`ARC_MAINNET_HARDFORKS` gives chain 5042 Zero3, Zero4, Osaka, Zero5, Zero6 — all at
-genesis — and **stops**. Zero7 and Zero8 are not in the mainnet table at this tag.
-Testnet has been through Zero3..Zero7 on a real timeline and is running Zero7 now.
+**This section used to say they do not. At v0.8.1 they very nearly do.**
 
-So CallFrom, Multicall3From, Memo and the Zero7 SELFDESTRUCT variant — everything in
-§6 — are **live on testnet and not scheduled for mainnet genesis**. Anyone treating
-testnet as a preview of mainnet is testing against a superset.
+`ARC_MAINNET_HARDFORKS` gives chain 5042 Zero3, Zero4, Osaka, Zero5 and Zero6 at
+genesis, and then — new at this tag — Zero7 at `1789052400` and Zero8 at the **same**
+`1789052400` (2026-09-10 15:00 UTC). Both timestamps are already in the past, and
+mainnet has never produced a block, so the practical effect is that **Zero7 and Zero8
+will both be active from mainnet's first block**.
+
+So CallFrom, Multicall3From, Memo and the later SELFDESTRUCT variants — everything in
+§6 — are no longer "live on testnet and not scheduled for mainnet". They are
+scheduled, at genesis. Testnet has stopped being a superset; what it is now is
+*earlier*, having reached Zero7 in June and Zero8 in September on a real timeline.
 
 The activation *mechanism* is mixed too: Zero3/Zero4 by block; Zero5/Zero6 by block
 on mainnet but by **timestamp** on testnet; Zero7+ by timestamp everywhere. The
@@ -284,8 +306,8 @@ Source over comment, as usual.
 
 ```sh
 cd /Volumes/TendiesTown/EVM-Directory/chains/arc/repos/arc-node
-git rev-parse HEAD          # 79b6fddf18345732007bb94b4af3add4c2efd12d
-git describe --tags         # v0.7.3
+git rev-parse HEAD          # ab09dbfd9553a7ad48f9c134ec5e808c36512c74
+git describe --tags         # v0.8.1
 grep -n 'reth-chainspec' Cargo.toml    # tag = "v1.11.3"
 
 # 1/2. the native coin is 18-decimal; the ERC-20 view is a separate contract
@@ -314,7 +336,8 @@ grep -n 'PROTOCOL_CONFIG_ADDRESS\|fn retrieve_fee_params\|fn determine_bounded_b
 grep -n -A20 'fn check_blocklist' crates/evm/src/handler.rs
 grep -n 'Blocklist SLOADs are unmetered' crates/evm/src/handler.rs
 grep -n -A25 'fn validate_beneficiary_not_blocklisted' crates/evm/src/executor.rs
-grep -n 'DEFAULT_DENYLIST_ADDRESS\|DEFAULT_DENYLIST_ERC7201_BASE_SLOT\|ERR_DENYLISTED_ADDRESS' \
+grep -n -A10 'fn denylist_address' crates/execution-config/src/chainspec.rs
+grep -n 'DEFAULT_DENYLIST_ERC7201_BASE_SLOT\|ERR_DENYLISTED_ADDRESS' \
      crates/execution-config/src/addresses_denylist.rs
 
 # 6. CallFrom and its two hardcoded callers
@@ -322,7 +345,7 @@ grep -n -A12 'fn build_subcall_registry' crates/evm/src/evm.rs
 cat crates/execution-config/src/call_from.rs | tail -10
 
 # 7. the post-quantum precompile
-grep -n -A10 'interface IPQ' crates/precompiles/src/pq.rs
+grep -n -A10 'interface IPQ' crates/pq-precompile/src/lib.rs   # moved crate in v0.8.0
 grep -n -A6 'PQ_ADDRESS =>' crates/precompiles/src/precompile_provider.rs
 
 # 8/9. two fork schedules; Osaka despite the "Prague" comments
@@ -419,10 +442,10 @@ call eth_call '[{"to":"0x1800000000000000000000000000000000000004","data":"0x"},
 call eth_call '[{"to":"0x0000000000000000000000000000000000000100","data":"0x'$(printf '00%.0s' {1..160})'"},"0x3801f37"]'  # -> 0x
 call eth_call '[{"to":"0x000000000000000000000000000000000000000a","data":"0x'$(printf '00%.0s' {1..192})'"},"0x3801f37"]'  # -> PrecompileError
 
-# Zero7 contracts exist on testnet; the node-configurable Denylist does not
+# Zero7 contracts exist on testnet; the Denylist is deployed at the TESTNET address
 call eth_getCode '["0x522fAf9A91c41c443c66765030741e4AaCe147D0","0x3801f37"]'   # Multicall3From — deployed
 call eth_getCode '["0x5294E9927c3306DcBaDb03fe70b92e01cCede505","0x3801f37"]'   # Memo — deployed
-call eth_getCode '["0x36059b615370eB999e8eC0c9401835B407834221","0x3801f37"]'   # Denylist — 0x
+call eth_getCode '["0x360b451bb0490637F52fa1794961455615777757","0x3f20948"]'  # Denylist — 1494 bytes
 
 # 4788 dead, 2935 alive, 7002/7251 absent
 call eth_getCode '["0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02","0x3801f37"]'   # -> 0x

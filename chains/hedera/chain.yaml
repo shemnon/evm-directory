@@ -39,28 +39,33 @@ lineage:
     LIBRARY rather than as a diff against a client — but with the libraries taken from Besu
     rather than revm, and with no upstream chain configuration inherited at all: Hedera never
     reads a genesis file, has no fork-schedule JSON, and selects its EVM by a network
-    property `contracts.evm.version` (default `v0.67`) whose values are Hedera release
-    numbers, not Ethereum fork names. Each of the nine `HederaEvmVersion` values wires up a
-    Dagger module that calls a Besu `MainnetEVMs.register*Operations` entry point; `v0.65`,
-    `v0.66` and `v0.67` all call `registerCancunOperations` and
-    `MainnetPrecompiledContracts.populateForCancun`. So the mainnet-equivalent fork is
-    CANCUN, and it is a claim about Besu's jump table and precompile map only.
+    property `contracts.evm.version` (DEFAULT `v0.70`, raised from `v0.67` in v0.77.x)
+    whose values are Hedera release numbers, not Ethereum fork names. Each of the TEN
+    `HederaEvmVersion` values wires up a Dagger module that selects a Besu operation
+    registry and precompile map; `v0.65`, `v0.66` and `v0.67` call `populateForCancun`, and
+    the new `v0.70` — commented `/* Pectra */` — calls
+    `MainnetPrecompiledContracts.populateForPrague` with
+    `HederaOperationsRegistry.forVersion(EvmSpecVersion.PRAGUE)`. So the mainnet-equivalent
+    fork is now PRAGUE, and it is still a claim about Besu's jump table and precompile map
+    only — see `sync_point` for what Prague did NOT bring.
   sync_point: >-
-    STOPS AT CANCUN, AND STOPPED THERE IN BESU 25.2.2. Hedera has no Prague/Osaka path:
-    there is no `registerPragueOperations` call anywhere in the tree, `CustomGasCalculator`
-    extends Besu's `CancunGasCalculator` with a source comment saying it is deliberately
-    fixed at that level, and `eth_getCode` at the EIP-4788 and EIP-2935 system-contract
-    addresses returns `0x` on mainnet. A reader must not infer "Cancun" to mean blobs:
-    `populateForCancun` installs KZG point evaluation at `0x0a` and `registerCancunOperations`
-    installs TLOAD/TSTORE/MCOPY/BLOBHASH/BLOBBASEFEE, but there is no blob transaction type,
-    no blob gas market and no `excessBlobGas` header field anywhere in the stack.
-  src: "hiero-dependency-versions/build.gradle.kts:org.hyperledger.besu:evm, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:CancunGasCalculator"
+    IT NO LONGER STOPS AT CANCUN. This row said "STOPS AT CANCUN, AND STOPPED THERE IN BESU
+    25.2.2 … there is no `registerPragueOperations` call anywhere in the tree"; every clause
+    of that is now false. Besu went 25.2.2 -> 26.2.0 (the artifact renamed too,
+    `org.hyperledger.besu:evm` -> `besu-evm`), the new `v0.70` EVM version is the DEFAULT,
+    and `HederaGasCalculatorImpl` extends Besu's `PragueGasCalculator` where
+    `CustomGasCalculator` extended `CancunGasCalculator`. PRAGUE HERE IS THE JUMP TABLE AND
+    THE PRECOMPILE MAP, NOT THE SYSTEM CONTRACTS: `eth_getCode` at the EIP-4788 and
+    EIP-2935 addresses still returns `0x` on mainnet, verified at block 100,888,551. And
+    Prague still does not mean blobs — no blob transaction type, no blob gas market and no
+    `excessBlobGas` header field anywhere in the stack.
+  src: "hiero-dependency-versions/build.gradle.kts:besu-evm, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:populateForPrague, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/HederaGasCalculatorImpl.java:PragueGasCalculator"
 
 client:
   name: hiero-consensus-node (Hedera Services)
   repo: https://github.com/hiero-ledger/hiero-consensus-node
-  version: v0.76.1
-  commit: cd5a2ad0946e1950c64f5a76754a6cd3ee29793e
+  version: v0.77.2
+  commit: 74a11d913a948651132c282d93aa46662751aaa9
   language: java
   built_on: "org.hyperledger.besu:evm:25.2.2 (library, not a fork)"
   note: >-
@@ -69,12 +74,15 @@ client:
     `hashgraph/hedera-json-rpc-relay` is GONE (HTTP 404) and lives at
     `hiero-ledger/hiero-json-rpc-relay`. Any tooling still pointing at the `hashgraph`
     coordinates resolves for the node and 404s for the relay.
-    MAINNET RUNS A VERSION WITH NO PUBLIC TAG: every record file carries
-    `hapi_version: 0.76.2` and there is no `v0.76.2` tag in the repository — the newest
-    `vX.Y.Z` tag is `v0.76.1`, which is what this row pins. The gap is one patch release.
+    MAINNET RUNS A VERSION THAT WAS NEVER RELEASED: the newest
+    `vX.Y.Z` RELEASE is `v0.77.2`, which is what this row pins. The gap is now three patch
+    versions, and its shape has changed: at v0.76.1 no `v0.76.2` tag existed at all,
+    whereas `v0.77.3`, `v0.77.4` and `v0.77.5` DO exist as tags — they were never published
+    as GitHub releases, so `pin_status.py`, which reads releases, does not offer them. The
+    mirror node reported `hapi_version: 0.77.5` at block 100,888,823.
   companion_repos:
   - {name: hiero-json-rpc-relay, repo: "https://github.com/hiero-ledger/hiero-json-rpc-relay",
-     version: v0.78.4, commit: 1701d192333ca19c3cfd630a4e6ababcdf6cd001, language: typescript,
+     version: v0.79.0, commit: cc01872f1e290ba9701811840c8bfb9e7dd2419a, language: typescript,
      provides: "the entire eth_* JSON-RPC surface: block synthesis, header field fabrication, tag resolution, eth_getCode overrides, gas price conversion, receipt assembly. NOT part of the state transition, and versioned independently of the node."}
   note_relay_is_not_consensus: >-
     THE RELAY IS NOT A NODE. It holds no state, executes nothing, and reaches consensus data
@@ -123,16 +131,21 @@ consensus:
     already iterating an ordered round. Block number is therefore a COUNT OF TWO-SECOND
     BUCKETS, not a chain of committed objects, and no quorum ever votes on one.
 
-baseline_fork: cancun
+baseline_fork: prague
 baseline_note: >-
-  `V067Module.provideEVM` calls Besu's `MainnetEVMs.registerCancunOperations` and
-  `MainnetPrecompiledContracts.populateForCancun`, and constructs the EVM with
-  `EvmSpecVersion.CANCUN`; `contracts.evm.version` defaults to `v0.67`. So the instruction
-  set and precompile map ARE Besu 25.2.2's Cancun, minus/plus the overrides listed below.
-  "Cancun" here says nothing about blobs (no blob transaction type exists), nothing about
-  withdrawals (none exist), and nothing about the header (there is no Ethereum header at
-  all — see `header_fields`). EIP-4788 and EIP-2935, both Cancun-or-later mainnet system
-  contracts, are absent from state.
+  `V070Module.provideEVM` builds its operation registry with
+  `HederaOperationsRegistry.forVersion(EvmSpecVersion.PRAGUE)`, calls
+  `MainnetPrecompiledContracts.populateForPrague`, and constructs the EVM with
+  `EvmSpecVersion.PRAGUE`; `contracts.evm.version` defaults to `v0.70`. So the instruction
+  set and precompile map ARE Besu 26.2.0's Prague, minus/plus the overrides listed below.
+  CONFIRMED ON MAINNET, not inferred from the default: at block 100,888,551 `eth_call` to
+  0x0b returned the 128-byte point at infinity for zero input and 0x0d returned the
+  256-byte one, which only a Prague BLS12-381 map does, while 0x0100 and 0x12 returned
+  empty. "Prague" here says nothing about blobs (no blob transaction type exists), nothing
+  about withdrawals (none exist), and nothing about the header (there is no Ethereum header
+  at all — see `header_fields`). EIP-4788 and EIP-2935 are still absent from state, both
+  probed `0x` at the same block — so the fork brought the EVM forward and left the system
+  contracts behind.
 
 transaction_identity:
   model: "payer account + valid-start timestamp (TransactionID), NOT (sender, nonce) and NOT a hash of the contents"
@@ -279,7 +292,7 @@ tx_types:
       `case 3 -> null;` with the comment "We don't currently support Cancun blob
       transactions". Rejected at decode. Note the asymmetry: the Cancun OPCODES
       (BLOBHASH, BLOBBASEFEE) and the KZG precompile at 0x0a ARE installed, because they
-      come with Besu's `registerCancunOperations`/`populateForCancun`.
+      come with Besu's Prague registration (`HederaOperationsRegistry.forVersion`/`populateForPrague`).
   "0x04":
     name: EIP-7702 set code
     status: removed
@@ -344,7 +357,7 @@ tx_authorization:
         recovery contract written in Solidity CANNOT verify the very signatures the protocol
         just accepted. The only in-EVM path to an ED25519 check is `isAuthorizedRaw` on the
         Hedera Account Service system contract at 0x16a, which is a Hedera-specific dispatch,
-        not a precompile, and which `CustomGasCalculator.getEdSignatureVerificationSystemContractGasCost`
+        not a precompile, and which `HederaGasCalculatorImpl.getEdSignatureVerificationSystemContractGasCost`
         prices at the ECRECOVER rate.
     key_lists_and_thresholds:
       status: added
@@ -657,26 +670,28 @@ fee_model:
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/ContextTransactionProcessor.java:opsDurationCounter, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ContractsConfig.java:opsDurationThrottleCapacity"
   - name: "storage rent priced into LOG"
     note: >-
-      `CustomGasCalculator.logOperationGasCost` returns
+      `HederaGasCalculatorImpl.logOperationGasCost` returns
       `max(besuLogCost, gasCostOfStoring(logSize, recordsTtl, tinycentRbhPrice, tinycentGasPrice))`.
       LOG0-LOG4 therefore cost MORE than mainnet whenever the storage-rent term dominates,
       and the amount depends on the HBAR/USD exchange rate and the record TTL. An opcode
       whose gas cost moves with an external price oracle has no mainnet analogue.
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/HederaGasCalculatorImpl.java:logOperationGasCost"
 
 precompiles:
   base_map:
     status: inherited
-    present: "0x01-0x0a"
+    present: "0x01-0x11"
     p256verify: false
     src: >-
-      hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:providePrecompileContractRegistry
+      hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:providePrecompileContractRegistry
+    src_live: "eth_call @ 100888551 -> 0x0b returns 128 zero bytes and 0x0d returns 256 zero bytes (BLS12-381 point at infinity) for zero input; 0x11 returns 256 bytes; 0x0100 and 0x12 return 0x"
     note: >-
-      `providePrecompileContractRegistry` calls Besu 25.2.2's
-      `MainnetPrecompiledContracts.populateForCancun` and nothing else: 0x01-0x0a
-      stock Cancun, no EIP-2537 BLS, no P256VERIFY (Besu's Cancun map has no 0x0100
-      entry). The divergence is at every OTHER address below 0x2EE — see the sink
-      note below, which also settles the P256VERIFY probe.
+      THE RANGE GREW FROM 0x01-0x0a TO 0x01-0x11. `providePrecompileContractRegistry` now
+      calls Besu 26.2.0's `MainnetPrecompiledContracts.populateForPrague` where v0.67
+      called `populateForCancun`, so the EIP-2537 BLS12-381 set at 0x0b-0x11 is present
+      and live — not merely compiled in. P256VERIFY is STILL absent: it is Osaka, not
+      Prague, and the probe at 0x0100 returns empty. The divergence is at every OTHER
+      address below 0x2EE — see the sink note below.
   note: >-
     `V067Module.providePrecompileContractRegistry` calls Besu's
     `MainnetPrecompiledContracts.populateForCancun` and NOTHING ELSE — no address is added,
@@ -687,13 +702,13 @@ precompiles:
     status: added
     severity: high
     pattern: "long-zero address with entity number <= 750 (0x2EE), excluding 0x01-0x0a and 0x167-0x16d"
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v038/Version038AddressChecks.java:isSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:NUM_SYSTEM_ACCOUNTS"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccountCall, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v038/Version038AddressChecks.java:isSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:NUM_SYSTEM_ACCOUNTS"
     src_live: "eth_call to 0x0000000000000000000000000000000000000100 with 160 zero bytes @ 99380446 -> 0x (success, empty output); eth_getCode 0x0100 @ 99380446 -> 0x"
     note: >-
       `Version038AddressChecks.isSystemAccount` returns true for EVERY long-zero address
       whose entity number is <= `NUM_SYSTEM_ACCOUNTS` = 750. In
       `CustomMessageCallProcessor.start`, such an address that resolves to neither a Besu
-      precompile nor a Hedera system contract reaches `handleNonExtantSystemAccount`, which
+      precompile nor a Hedera system contract reaches `handleNonExtantSystemAccountCall`, which
       does `frame.clearGasRemaining()` and then returns `PrecompileContractResult.success(Bytes.EMPTY)`.
       THE CALL SUCCEEDS, RETURNS NOTHING, AND CONSUMES EVERY UNIT OF GAS FORWARDED TO IT.
       On mainnet the same call to, say, 0x0b succeeds and costs 100 gas. Here it silently
@@ -776,7 +791,7 @@ system_contracts:
     note: >-
       Carries `isAuthorizedRaw`, the ONLY way EVM code can check an ED25519 signature on
       this chain. Priced at the ECRECOVER rate by
-      `CustomGasCalculator.getEdSignatureVerificationSystemContractGasCost`.
+      `HederaGasCalculatorImpl.getEdSignatureVerificationSystemContractGasCost`.
   "0x000000000000000000000000000000000000016b":
     name: Hedera Schedule Service (HSS)
     status: added
@@ -788,19 +803,30 @@ system_contracts:
     name: "code that is invented per account, and per CALL"
     status: added
     severity: high
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/TokenEvmAccount.java:getCode, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/ProxyEvmAccount.java:ACCOUNT_PROXY_FUNCTION_SELECTOR, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/utils/RedirectBytecodeUtils.java:PROXY_PRE_BYTES"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/TokenEvmAccount.java:CODE, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/ProxyEvmAccount.java:createDelegationIndicator"
+    src_live: "eth_getCode(0x...06f89a) and eth_getCode(0x...0b2ad5) @ 100888551 -> both 0xef01000000000000000000000000000000000000000167, byte-identical"
     src_doc: https://hips.hedera.com/hip/hip-218
     note: >-
-      THE ACCOUNT MODEL IS NOT ETHEREUM'S. (1) Every HTS TOKEN has an EVM address whose
-      "code" is generated on demand by `RedirectBytecodeUtils.tokenProxyBytecodeFor(address)`
-      — a proxy that delegate-calls 0x167 with the token address prepended — so a native
-      Hedera token that was never deployed presents as an ERC-20/721 contract with a
-      deterministic, address-dependent `EXTCODEHASH`. The relay reproduces the same bytes in
-      `CommonService.redirectBytecodeAddressReplace`. (2) `ProxyEvmAccount.getEvmCode` takes
-      the CALL'S FUNCTION SELECTOR as an argument and returns account-proxy bytecode only
-      when the selector is one of `hbarAllowance`, `hbarApprove` or
-      `setUnlimitedAutomaticAssociations`, and `0x` otherwise. AN ACCOUNT'S CODE IS A
-      FUNCTION OF THE CALLDATA USED TO CALL IT. There is no expressible Ethereum account
+      THE ACCOUNT MODEL IS NOT ETHEREUM'S. (1) Every HTS TOKEN has an EVM address with
+      "code", AND v0.77.2 CHANGED WHAT THAT CODE IS. It used to be generated per address by
+      `RedirectBytecodeUtils.tokenProxyBytecodeFor(address)` — a proxy delegate-calling
+      0x167 with the token address prepended, giving each token a distinct, address-derived
+      `EXTCODEHASH`. That helper is GONE. `TokenEvmAccount.CODE` is now a single constant,
+      `CODE_DELEGATION_PREFIX || 0x167`, i.e. the EIP-7702 DELEGATION DESIGNATOR
+      `0xef01000000000000000000000000000000000000000167` — so Hedera expresses its native
+      token redirect in Prague's delegation encoding, and EVERY token address now returns
+      the SAME 23 bytes and the SAME `EXTCODEHASH`. Two unrelated mainnet tokens probed
+      byte-identical. An indexer that keyed tokens by code hash, or that reads a 7702
+      designator as "this EOA delegated to a contract", is wrong in a new way. (2) THE CALLDATA-DEPENDENT ACCOUNT CODE IS GONE. This row used to record that
+      `ProxyEvmAccount.getEvmCode` took the CALL'S FUNCTION SELECTOR as an argument and
+      returned account-proxy bytecode only for `hbarAllowance`, `hbarApprove` or
+      `setUnlimitedAutomaticAssociations` — "an account's code is a function of the calldata
+      used to call it", the nastiest shape in this row. v0.77.2 replaced it: `getCode()`
+      reads `account.delegationAddress()` and returns either `Bytes.EMPTY` or
+      `CODE_DELEGATION_PREFIX || delegationAddress`, a standard EIP-7702 designator. So
+      Hedera retired both of its synthetic-bytecode mechanisms in the same release and
+      expressed both in Prague's delegation encoding instead — tokens with a constant
+      designator pointing at 0x167, accounts with a per-account one from state. There is no expressible Ethereum account
       state that behaves this way, and no static analysis over `eth_getCode` can predict it.
       (3) Schedules get the same treatment via `ScheduleEvmAccount`.
 
@@ -907,7 +933,7 @@ opcodes:
   - op: "0xf1"
     name: CALL
     severity: high
-    src: &hedera_msgcall_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccount"
+    src: &hedera_msgcall_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccountCall"
     note: &hedera_msgcall_note >-
       A call to any address in 0x01..0x2EE that is neither a Besu precompile nor a Hedera
       system contract SUCCEEDS with empty output after `frame.clearGasRemaining()` — the
@@ -930,7 +956,7 @@ opcodes:
     note: *hedera_msgcall_note
   - op: "0xa0"
     name: LOG0
-    src: &hedera_log_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:logOperationGasCost"
+    src: &hedera_log_src "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/HederaGasCalculatorImpl.java:logOperationGasCost"
     divergence: gas
     note: &hedera_log_note "Priced at max(Besu cost, Hedera storage-rent cost), where the rent term depends on the live HBAR/USD exchange rate."
   - op: "0xa1"
@@ -1047,13 +1073,13 @@ header_fields:
     note: >-
       Not present at all — not zero, ABSENT. A Cancun header decoder that requires
       `excessBlobGas`/`blobGasUsed`/`parentBeaconBlockRoot` fails on every block, despite
-      `baseline_fork: cancun`.
+      `baseline_fork: prague` (and `cancun` before it).
 
 forks:
   src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEvmVersion.java:EVM_VERSIONS"
   note: >-
     NO TIMESTAMPS, NO FORK SCHEDULE, NO GENESIS FILE. The EVM version is a NETWORK PROPERTY
-    string (`contracts.evm.version`, default `v0.67`) whose value is a Hedera RELEASE number.
+    string (`contracts.evm.version`, default `v0.70`) whose value is a Hedera RELEASE number.
     A "fork" here is a governance action that updates file 0.0.121 or a software upgrade that
     changes the default — there is no `activation_time` to publish and nothing a client can
     compute in advance. `HederaEvmVersion.EVM_VERSIONS` enumerates the nine values a node
@@ -1068,13 +1094,26 @@ forks:
   - {name: "v0.51", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.51", note: "adds the Hedera Account Service system contract at 0x16a"}
   - {name: "v0.65", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.65", note: "alternate gas schedule"}
   - {name: "v0.66", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.66", note: "native-library verification; alternate gas schedule DISABLED — a fork that removed a pricing change"}
-  - {name: "v0.67", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.67 (the default at the pinned tag)", note: "re-enables the alternate gas schedule; can select the experimental BonnevilleEVM via contracts.evm.UseBonnevilleEVM (default false)"}
+  - {name: "v0.67", mainnet_equivalent: cancun, activation_condition: "contracts.evm.version = v0.67", note: "re-enables the alternate gas schedule; can select the experimental BonnevilleEVM via contracts.evm.UseBonnevilleEVM (default false)"}
+  - name: "v0.70"
+    mainnet_equivalent: prague
+    activation_condition: "contracts.evm.version = v0.70 (the default at the pinned tag)"
+    note: >-
+      THE FIRST HEDERA EVM VERSION PAST CANCUN, commented `/* Pectra */` in the enum. It
+      calls `populateForPrague` and builds its registry with
+      `HederaOperationsRegistry.forVersion(EvmSpecVersion.PRAGUE)`, which raises this row's
+      `baseline_fork` from cancun to prague. There is still no timestamp and no schedule —
+      the activation is a network property, so "when" is a governance fact this tree cannot
+      answer. What the tree can answer is that v0.70 is the DEFAULT, and the live probes at
+      block 100,888,551 confirm mainnet is running it: the 0x0b-0x11 BLS set answers and
+      EIP-4788/EIP-2935 are still empty.
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEvmVersion.java:VERSION_070, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ContractsConfig.java:evmVersion"
 
 eips:
   note: >-
-    Mainnet-relative. The Cancun instruction set and precompile map arrive wholesale from
-    Besu 25.2.2, so most EIPs at or below Cancun are `inherited` and are not restated. Listed
-    here are the ones that are NOT what a reader would assume from `baseline_fork: cancun`.
+    Mainnet-relative. The Prague instruction set and precompile map arrive wholesale from
+    Besu 26.2.0, so most EIPs at or below Prague are `inherited` and are not restated. Listed
+    here are the ones that are NOT what a reader would assume from `baseline_fork: prague`.
   155:
     status: inherited
     src_live: "eth_getBlockByNumber 0x5ec6cde @ 99380446 -> transactions[0].v = 0x272 = 626 = 2*295 + 36, the EIP-155 encoding for chainId 295"
@@ -1131,23 +1170,34 @@ eips:
     src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 99380446 -> 0x"
     note: "Absent, consistent with a Cancun baseline. Block hashes come from an in-state ring of 256 SHA-384 hashes instead."
   7702:
-    status: removed
-    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:EthTransactionType"
+    status: inherited
+    src: "hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/EthTxData.java:EIP7702, hedera-node/hapi-utils/src/main/java/com/hedera/node/app/hapi/utils/ethereum/CodeDelegation.java:CodeDelegation, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/handlers/EthereumTransactionHandler.java:parseInnerCodeDelegations"
     note: >-
-      Type 4 does not decode. Ironically Hedera has had protocol-level account abstraction
-      since launch — a `Key` may be a contract ID, and any account may delegate authority —
-      but none of it is reachable through 7702's interface.
+      WAS `removed` — "Type 4 does not decode." IT DECODES NOW, and it is validated rather
+      than merely parsed: `EthTransactionType` gained an `EIP7702` member, there is a
+      `CodeDelegation` type in hapi-utils, and `EthereumTransactionHandler` rejects a type-4
+      transaction whose authorization list is empty or which has no `to` address, then parses
+      the inner delegations and charges them through
+      `gasCalculator.transactionGasRequirements`. The older irony stands and has sharpened:
+      Hedera has had protocol-level account abstraction since launch — a `Key` may be a
+      contract ID — and it now ALSO reuses 7702's delegation-designator ENCODING for its own
+      native-token redirect, which is a separate thing from honouring user delegations. See
+      `system_contracts.synthesised_bytecode`.
   7951:
     status: removed
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
     note: "No P256VERIFY. An eth_call to 0x0100 returns empty output because of the system-account sink, which is not the same thing."
   2537:
-    status: removed
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
-    note: "BLS12-381 precompiles are Prague; the map stops at Cancun."
+    status: inherited
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:populateForPrague"
+    src_live: "eth_call(0x0b, 256 zero bytes) @ 100888551 -> 128 zero bytes (point at infinity)"
+    note: >-
+      WAS `removed` ("BLS12-381 precompiles are Prague; the map stops at Cancun"). The map
+      no longer stops at Cancun: the v0.70 EVM version calls populateForPrague and the
+      0x0b-0x11 set answers on mainnet.
   7623:
     status: removed
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java:transactionIntrinsicGasCost"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/HederaGasCalculator.java:transactionIntrinsicGasCost"
     note: >-
       `transactionIntrinsicGasCost` overrides Besu's and DISCARDS the `baselineCost`
       argument entirely, with the comment "We won't use the baseline cost for now". Correct
@@ -1155,21 +1205,22 @@ eips:
       moves.
   170:
     status: unrecorded
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:provideMaxCodeSizeRule"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:provideContractValidationRules"
     note: >-
-      `ProcessorModule.provideMaxCodeSizeRule` calls
-      `MaxCodeSizeRule.from(EvmSpecVersion.defaultVersion(), ...)` — Besu's DEFAULT spec
-      version, not the CANCUN the rest of the module is pinned to. At Besu 25.2.2 both give
-      24576, so no divergence is observable today, but the max code size is bound to the
-      library's default rather than to this chain's declared spec. Not established what
-      happens on a Besu bump.
+      `ProcessorModule.provideContractValidationRules` (renamed from
+      `provideMaxCodeSizeRule`) calls `MaxCodeSizeRule.from(EvmSpecVersion.defaultVersion(),
+      ...)` — Besu's DEFAULT spec version, not the PRAGUE the rest of the module is pinned
+      to. THE BESU BUMP THIS NOTE WORRIED ABOUT HAS NOW HAPPENED (25.2.2 -> 26.2.0) and the
+      value still agrees at 24576, so there is still no observable divergence — but the
+      coupling is unchanged: max code size is bound to the library's default rather than to
+      this chain's declared spec.
   1153:
     status: inherited
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations"
-    note: "TLOAD/TSTORE arrive with Besu's Cancun registration and are not overridden."
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:HederaOperationsRegistry"
+    note: "TLOAD/TSTORE arrive with Besu's registration (Cancun-era opcodes, now carried by the v0.70 Prague registry) and are not overridden."
   5656:
     status: inherited
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:registerCancunOperations"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:HederaOperationsRegistry"
   3855:
     status: inherited
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/hevm/HederaEVM.java:enableShanghai"
@@ -1255,7 +1306,7 @@ gotchas:
   - >-
     CALLING ANY ADDRESS FROM 0x01 TO 0x2EE THAT IS NOT A PRECOMPILE CONSUMES ALL FORWARDED
     GAS AND REPORTS SUCCESS. `Version038AddressChecks.isSystemAccount` covers entity numbers
-    up to 750; `CustomMessageCallProcessor.handleNonExtantSystemAccount` calls
+    up to 750; `CustomMessageCallProcessor.handleNonExtantSystemAccountCall` calls
     `frame.clearGasRemaining()` and returns success with empty output. On mainnet the same
     call costs 100 gas. Sending value to such an address halts with `INVALID_CONTRACT_ID`
     instead of creating the account. This is also why an `eth_call` to 0x0100 returns empty

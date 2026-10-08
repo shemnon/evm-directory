@@ -33,7 +33,7 @@ ethereum (baseline — go-ethereum v1.17.8, Osaka)
     └── Injective (v1.20.3, prague)
   └── Flare (v1.14.0, cancun)
   └── Gnosis Chain (1.39.3, osaka)
-  └── Hedera (v0.76.1, cancun)
+  └── Hedera (v0.77.2, prague)
   └── IOTA EVM (v2.0.3, cancun)
   └── Kaia (v2.2.2, osaka)
   └── Plasma (v1.11.3, prague)
@@ -96,7 +96,7 @@ Tron — no upstream (role: independent)
 | Injective | `prague` | As on the framework, the Ethereum fork level is x/evm module state rather than client constants, and the real upgrade axis is Cosmos governance-scheduled named upgrades. Injective's delta is |
 | Flare | `cancun` | Flare does not define forks of its own on the EVM side. It reuses Avalanche's fork NAMES with its own TIMESTAMPS, hardcoded in a `Flare` Config literal beside avalanchego's `Mainnet` one. Th |
 | Gnosis Chain | `osaka` | Gnosis uses MAINNET fork names for everything except one fork of its own, and the lag is NOT monotonic — which is the interesting part. It was 110 days late to Shanghai, then shipped Cancun  |
-| Hedera | `cancun` | NO TIMESTAMPS, NO FORK SCHEDULE, NO GENESIS FILE. The EVM version is a NETWORK PROPERTY string (`contracts.evm.version`, default `v0.67`) whose value is a Hedera RELEASE number. A "fork" her |
+| Hedera | `prague` | NO TIMESTAMPS, NO FORK SCHEDULE, NO GENESIS FILE. The EVM version is a NETWORK PROPERTY string (`contracts.evm.version`, default `v0.70`) whose value is a Hedera RELEASE number. A "fork" her |
 | Hyperliquid (HyperEVM) | `cancun` | No named fork schedule is published, no fork timestamps are exposed by the RPC, and with no client source there is no fork-condition table to read. Feature activation cannot be reconstructed |
 | IOTA EVM | `cancun` | There is no fork schedule. `getConfig(chainID)` returns a hand-built params.ChainConfig with every pre-merge fork at block 0, `ShanghaiTime: 0`, `CancunTime: 0` and nothing after. No activat |
 | Kaia | `osaka` | Activation is by BLOCK NUMBER, not timestamp — the mechanism Kaia shares with Polygon, against OP Stack's enforced timestamp equality, Avalanche's assigned timestamps and Arbitrum's ArbOS ve |

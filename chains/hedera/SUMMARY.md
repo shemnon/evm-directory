@@ -1,32 +1,38 @@
 # Hedera — what this row teaches
 
 **Client (consensus):** `hiero-ledger/hiero-consensus-node` — the org rename is real, and
-`hashgraph/hedera-services` now redirects here. Pinned at `v0.76.1`, commit
-`cd5a2ad0946e1950c64f5a76754a6cd3ee29793e`. **Mainnet runs a version with no public tag:**
-every record file carries `hapi_version: 0.76.2` and no `v0.76.2` tag exists; `v0.76.1` is
-the newest released `vX.Y.Z`.
+`hashgraph/hedera-services` now redirects here. Pinned at `v0.77.2`, commit
+`74a11d913a948651132c282d93aa46662751aaa9`. **Mainnet runs a version that was never
+released, still:** at block 100,888,823 the mirror node reported `hapi_version: 0.77.5`.
+The shape of the gap changed, though — `v0.77.3`, `v0.77.4` and `v0.77.5` all exist as
+**tags**, they were simply never published as GitHub **releases**. The newest release is
+`v0.77.2`, which is what this row pins, per its own convention of pinning the newest
+released `vX.Y.Z`.
 
-**Companion (the entire `eth_*` API):** `hiero-ledger/hiero-json-rpc-relay` at `v0.78.4`,
-commit `1701d192333ca19c3cfd630a4e6ababcdf6cd001`. The old
+**Companion (the entire `eth_*` API):** `hiero-ledger/hiero-json-rpc-relay` at `v0.79.0`,
+commit `cc01872f1e290ba9701811840c8bfb9e7dd2419a`. The old
 `hashgraph/hedera-json-rpc-relay` is a 404. This is a **separate process in a separate
 repository, versioned independently**, that synthesises Ethereum JSON-RPC out of Hedera
 record data fetched over HTTP from a third component (the mirror node). The live endpoint
-reports `web3_clientVersion` = `relay/0.78.4` — the relay's version, from the component that
-executes nothing.
+reports `web3_clientVersion` = `relay/0.79.0` — matching this pin exactly, and still the
+relay's version, from the component that executes nothing.
 
-**EVM:** `org.hyperledger.besu:evm:25.2.2` consumed as an **ordinary Maven dependency**.
+**EVM:** `org.hyperledger.besu:besu-evm:26.2.0` consumed as an **ordinary Maven dependency**
+(the artifact was `org.hyperledger.besu:evm:25.2.2` at the previous pin — both the version
+and the coordinate changed).
 This is the MegaETH pattern — semantics inherited as a *library*, not as a diff against a
 client — with Besu instead of revm, and with no upstream chain configuration inherited at
-all. `V067Module` calls `MainnetEVMs.registerCancunOperations` and
-`MainnetPrecompiledContracts.populateForCancun` and constructs the EVM with
-`EvmSpecVersion.CANCUN`.
+all. `V070Module` — the module for the new default EVM version — builds its registry with
+`HederaOperationsRegistry.forVersion(EvmSpecVersion.PRAGUE)`, calls
+`MainnetPrecompiledContracts.populateForPrague`, and constructs the EVM with
+`EvmSpecVersion.PRAGUE`. **This row's baseline moved Cancun → Prague at this re-pin.**
 
 **Live probe:** `https://mainnet.hashio.io/api`, `eth_chainId` → `0x127` (295), pinned at
 **block 99380446** (`0x5ec6cde`), observed 2026-08-28. That block was chosen because it
 contains a transaction; most Hedera blocks are EVM-empty. Secondary reference:
 `https://mainnet-public.mirrornode.hedera.com/api/v1`, which is what the relay itself reads.
 
-**Baseline fork:** `cancun`. **Role:** `independent`, `equivalence: behavioural`.
+**Baseline fork:** `prague` (was `cancun`). **Role:** `independent`, `equivalence: behavioural`.
 **Lineage upstream:** `ethereum` — not a fork of any Ethereum client.
 
 **Evidence path:** `source`, with a hard split. Ordering, fees, duplicates, expiry and
@@ -190,7 +196,7 @@ yet", never "gone forever"** — the exact opposite of Conflux, IOTA EVM, Artela
   (`contracts.maxGasPerSec`, `contracts.maxGasPerTransaction`), both defaulting to 15,000,000
   at the pinned tag.
 - `excessBlobGas`, `blobGasUsed`, `parentBeaconBlockRoot` and `requestsHash` are **absent
-  keys**, not zeros, on a chain whose baseline is Cancun.
+  keys**, not zeros, on a chain whose baseline is Prague.
 
 ## 6. The block hash is 48 bytes, and `BLOCKHASH(n-1) == parentHash` anyway
 
@@ -234,7 +240,8 @@ halts with `INVALID_CONTRACT_ID` instead of creating the account.
 
 **This also settles the P256VERIFY probe.** `eth_call` to `0x0100` with 160 zero bytes
 returned `0x` — which the standard rubric reads as "EIP-7951 semantics present". It is not:
-Besu 25.2.2's Cancun map has no `0x0100` entry, and the empty answer is the sink. Source
+Besu 26.2.0's Prague map has no `0x0100` entry either (P256VERIFY is Osaka), and the empty
+answer is the sink. Source
 was needed to avoid getting this backwards.
 
 ## 9. `eth_getCode` at `0x167` returns `0xfe`, and the relay invented it
@@ -257,23 +264,36 @@ not exist and only one of six addresses has it.
 i.e. the HBAR/USD oracle **that prices gas**, readable by contracts, at an address
 `eth_getCode` calls empty.
 
-## 10. An account's code depends on the calldata used to call it
+## 10. Both synthetic-bytecode hacks were replaced by EIP-7702 designators
 
-`ProxyEvmAccount.getEvmCode(functionSelector, codeFactory)` takes **the call's function
-selector as a parameter** and sets the account's address field — and hence returns
-account-proxy bytecode — only when the selector is one of `hbarAllowance(address)`,
-`hbarApprove(address,int256)` or `setUnlimitedAutomaticAssociations(bool)`. Otherwise the
-same account has empty code.
+**This section used to be titled "An account's code depends on the calldata used to call
+it." That is no longer true, and the replacement is more interesting than the original.**
 
-Separately, every HTS **token** has an EVM address whose code is generated on demand by
-`RedirectBytecodeUtils.tokenProxyBytecodeFor(address)` — a proxy that delegate-calls `0x167`
-with the token address spliced in — so a native Hedera token that was never deployed
-presents as an ERC-20/721 contract with a deterministic, address-dependent `EXTCODEHASH`.
-The relay reproduces the identical bytes in `CommonService.redirectBytecodeAddressReplace`.
-Schedules get the same treatment via `ScheduleEvmAccount`.
+At v0.76.1, `ProxyEvmAccount.getEvmCode(functionSelector, codeFactory)` took **the call's
+function selector as a parameter** and returned account-proxy bytecode only for
+`hbarAllowance(address)`, `hbarApprove(address,int256)` or
+`setUnlimitedAutomaticAssociations(bool)` — the same account had empty code for anything
+else. Separately, every HTS **token** got per-address bytecode from
+`RedirectBytecodeUtils.tokenProxyBytecodeFor(address)`, a proxy delegate-calling `0x167`
+with the token address spliced in, giving each token a distinct address-derived
+`EXTCODEHASH`.
 
-There is no expressible Ethereum account state that behaves like either, and no static
-analysis over `eth_getCode` can predict it.
+Both mechanisms are gone at v0.77.2, and `RedirectBytecodeUtils` is deleted. Hedera now
+expresses both redirects in **Prague's delegation-designator encoding**:
+
+| account kind | `eth_getCode` returns |
+|---|---|
+| HTS token | the constant `TokenEvmAccount.CODE` = `CODE_DELEGATION_PREFIX ‖ 0x167` = **`0xef01000000000000000000000000000000000000000167`** |
+| regular account | `Bytes.EMPTY`, or `CODE_DELEGATION_PREFIX ‖ account.delegationAddress()` when the account has one |
+
+Probed on mainnet at block **100,888,551**: two unrelated tokens
+(`0x…06f89a`, `0x…0b2ad5`) returned **byte-identical** code.
+
+Two consequences replace the old one. The calldata-dependent code is gone, so static
+analysis over `eth_getCode` now works. But **every HTS token now shares one
+`EXTCODEHASH`**, where before each had its own — so an indexer keying tokens by code hash
+breaks, and one that reads a 7702 designator as "this EOA delegated to a contract" now
+misreads every native token on the chain.
 
 ## 11. Gas is priced in dollars; `block.basefee` is zero while the RPC says 1.11e12
 
@@ -358,7 +378,7 @@ the EVM entirely.
 ## 16. `authorizes: protocol` with `precompile: none` — ED25519
 
 ED25519 is Hedera's original and still most common key type. It can pay for and authorise any
-HAPI transaction, including one carrying an EVM call. Besu's Cancun precompile set has **no
+HAPI transaction, including one carrying an EVM call. Besu's Prague precompile set has **no
 ED25519 verifier**, so an on-chain multisig, guardian or recovery contract written in
 Solidity **cannot verify the signatures the protocol just accepted**. The only in-EVM path is
 `isAuthorizedRaw` on the Hedera Account Service at `0x16a` — a Hedera-specific native
@@ -379,7 +399,7 @@ the entity number. `ecrecover(sig) == from` is not an identity here.
    user base, real HTS token volume, and a Solidity developer surface that people write
    contracts against.
 2. **Expected divergence** — very high, and *not where a reader would guess*. The EVM itself
-   is stock Besu Cancun (`populateForCancun`, no precompile added, removed or repriced), so
+   is stock Besu Prague (`populateForPrague`, no precompile added, removed or repriced), so
    the naive "the EVM is different" prediction would be **refuted**. Everything diverges
    *around* the EVM: the identity model, the unit system, the header, the account model, the
    fee model, and the fact that the RPC layer is a different program.
@@ -431,7 +451,7 @@ network does" and "what the RPC says" are separately citable and repeatedly disa
 ```bash
 # =====================================================================
 # --- pins
-git clone --depth 1 --branch v0.76.1 --single-branch \
+git clone --depth 1 --branch v0.77.2 --single-branch \
   https://github.com/hiero-ledger/hiero-consensus-node chains/hedera/repos/hiero-consensus-node
 git -C chains/hedera/repos/hiero-consensus-node rev-parse HEAD
 #   -> cd5a2ad0946e1950c64f5a76754a6cd3ee29793e
@@ -452,7 +472,7 @@ cd chains/hedera/repos/hiero-consensus-node
 
 # --- source: Besu as a LIBRARY, pinned at Cancun
 grep -n 'val besu\|org.hyperledger.besu:evm' hiero-dependency-versions/build.gradle.kts
-grep -n 'registerCancunOperations\|populateForCancun\|EvmSpecVersion.CANCUN' \
+grep -n 'populateForPrague\|EvmSpecVersion.PRAGUE' \
   hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java
 grep -n 'CancunGasCalculator' \
   hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/gas/CustomGasCalculator.java
@@ -499,7 +519,9 @@ grep -n 'topLevelTinybarGasPrice' -A 8 hedera-node/hedera-smart-contract-service
 
 # --- source: synthesised code (finding 10)
 grep -n 'ACCOUNT_PROXY_FUNCTION_SELECTOR' -A 22 hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/ProxyEvmAccount.java
-grep -n 'PROXY_PRE_BYTES\|tokenProxyBytecodeFor' hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/utils/RedirectBytecodeUtils.java
+# RedirectBytecodeUtils is gone; the designators live here now
+grep -n 'CODE =\|createDelegationIndicator' \
+  hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/state/{TokenEvmAccount,ProxyEvmAccount}.java
 
 # --- source: 59 HAPI transaction types (finding 15)
 grep -n 'oneof data' -A 400 hapi/hedera-protobuf-java-api/src/main/proto/services/transaction.proto | grep -cE '= [0-9]+;'

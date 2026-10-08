@@ -1,6 +1,6 @@
 # Per-axis update checklist
 
-Each of the site's ten axes (`tools/site.py:AXES`) reads specific `chain.yaml` keys.
+Each of the site's twelve axes (`tools/site.py:AXES`) reads specific `chain.yaml` keys.
 Walk every axis for the row, including axes the row currently leaves empty. A new
 release can add a fact where there was none.
 

@@ -19,8 +19,8 @@ lineage:
 client:
   name: go-ethereum
   repo: https://github.com/ethereum/go-ethereum
-  version: v1.17.5
-  commit: 9621c6ad10934a01b5514886fb6fbd87640b6c05
+  version: v1.17.8
+  commit: a579077007b98217c3e253a66e4b452ca0c32b96
   language: go
   note: reference-by-consensus, not by fiat; cross-check against execution-specs
 
@@ -46,7 +46,7 @@ consensus:
 baseline_fork: osaka
 
 forks:
-  src: params/config.go:MainnetChainConfig
+  src: params/chainspecs/mainnet.json, params/config.go:MainnetChainConfig
   timeline:
   - name: shanghai
     activation_time: 1681338455
@@ -68,13 +68,32 @@ forks:
     activation_time: 1767747671
     mainnet_equivalent: self
     note: blob-parameter-only fork; target 14 / max 21 — current live blob schedule
+  - name: amsterdam
+    activation_time: null
+    status: pending
+    mainnet_equivalent: self
+    note: >-
+      SCHEDULED ON SEPOLIA ONLY. Sepolia activates it at 1791294816
+      (2026-10-06 13:53:36 UTC); mainnet has no `amsterdamTime` at v1.17.8, so
+      nothing it changes is live. It is recorded because the fork is implemented and
+      already running on a testnet, which is what makes the downstream rows start
+      carrying it. Brings EIP-7928 block access lists (adding a
+      `blockAccessListHash` header field), EIP-7843 `slotNumber` (another header
+      field), EIP-8037 two-dimensional gas with a 4,294,967,295 per-transaction
+      total cap, and EIP-2780 intrinsic-cost repricing. None of those appear in
+      `header_fields:` or `eips:` on this row for exactly that reason — this row
+      records what mainnet runs, and mainnet runs Osaka through BPO2.
+    src: params/chainspecs/sepolia.json
   - name: bogota
     activation_time: null
     status: pending
     note: >-
-      next named fork in geth's ordering (amsterdam -> bogota -> ubt per
-      params/config.go:465-467). Not scheduled. BPO3/BPO4 blob configs exist in
-      params but are not on the mainnet schedule.
+      last named fork in geth's ordering (`params/forks/forks.go`: ... Osaka, BPO1
+      through BPO5, Amsterdam, Bogota — the UBT entry this note used to name is
+      gone). Not scheduled on any network. BPO3 and BPO4 blob configs exist in
+      params but are on no mainnet schedule, and BPO5 exists in the ordering with no
+      blob config at all.
+    src: params/forks/forks.go:Bogota
 
 eips:
   # Baseline chain: every mainnet EIP is `inherited` by definition, so this section

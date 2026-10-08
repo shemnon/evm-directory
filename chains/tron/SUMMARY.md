@@ -2,7 +2,7 @@
 
 **Chain ID 728126428 · role: `independent` · equivalence: `behavioural` · no upstream**
 
-Reference: [tronprotocol/java-tron `GreatVoyage-v4.8.2.1`](https://github.com/tronprotocol/java-tron) @ `f8b05d40`.
+Reference: [tronprotocol/java-tron `GreatVoyage-v4.8.2.3`](https://github.com/tronprotocol/java-tron) @ `5c449a18`.
 
 Not a fork of any Ethereum client. java-tron reimplements EVM semantics in Java with
 its own resource model, transaction format and address encoding. Every delta below is
@@ -132,7 +132,7 @@ why `forks.timeline` is empty rather than guessed at.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch GreatVoyage-v4.8.2.1 https://github.com/tronprotocol/java-tron
+git clone --depth 1 --branch GreatVoyage-v4.8.2.3 https://github.com/tronprotocol/java-tron
 F=actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java
 sed -n '133,213p' $F        # all precompile addresses
 sed -n '552,580p' $F        # 0x03 is not RIPEMD160

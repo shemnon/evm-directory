@@ -25,8 +25,8 @@ lineage:
 client:
   name: java-tron
   repo: https://github.com/tronprotocol/java-tron
-  version: GreatVoyage-v4.8.2.1
-  commit: f8b05d40abc949fa588ab64d8fd8fd82845ebeed
+  version: GreatVoyage-v4.8.2.3
+  commit: 5c449a18a2bb995d3b688d1587e664d909b473c7
   language: java
 
 consensus:
@@ -85,6 +85,19 @@ eips:
 non_eip_specs:
   - {id: TIP series, name: Tron Improvement Proposals, adoption: adopted,
      note: "activation by on-chain SR governance proposal, not by client release"}
+  - id: "chain parameter 99"
+    name: ALLOW_OPTIMIZE_TVM_STORAGE
+    adoption: proposed
+    src: "actuator/src/main/java/org/tron/core/utils/ProposalUtil.java:ALLOW_OPTIMIZE_TVM_STORAGE, chainbase/src/main/java/org/tron/core/store/DynamicPropertiesStore.java:allowOptimizeTvmStorage"
+    src_live: "wallet/getchainparameters @ 86940471 -> getAllowOptimizeTvmStorage present with NO value, i.e. unset"
+    note: >-
+      NEW IN GreatVoyage-v4.8.2.3 AND NOT YET ACTIVE. Proposable only to the value 1,
+      never back to 0, like the rest of Tron's feature flags. It changes how
+      `RepositoryImpl` constructs a contract's `Storage` (the optimised path is passed
+      `VMConfig.allowOptimizeTvmStorage()`), so it is a storage-layer change reachable by
+      SR vote with no client release. Recorded as `proposed` rather than omitted because
+      the parameter is live in the proposal validator today — a vote could turn it on
+      between re-pins, and nothing in a client diff would mark the moment.
 
 tx_types:
   envelope:
@@ -309,7 +322,10 @@ opcodes:
     - {op: "0xd5", name: FREEZE}
     - {op: "0xd6", name: UNFREEZE}
     - {op: "0xd7", name: FREEZEEXPIRETIME}
-    - {op: "0xd8", name: VOTEWITNESS,  note: "consensus voting from inside the EVM"}
+    - {op: "0xd8", name: VOTEWITNESS,
+       note: "consensus voting from inside the EVM. THREE ENERGY TIERS, selected by chain parameter, not by release: `getVoteWitnessCost3` under `allowTvmOsaka` (LIVE — mainnet reports getAllowTvmOsaka=1), else `getVoteWitnessCost2` under `allowEnergyAdjustment`, else the default. The flag named Osaka has nothing to do with Ethereum Osaka.",
+       src: "actuator/src/main/java/org/tron/core/vm/OperationRegistry.java:adjustVoteWitness",
+       src_live: "wallet/getchainparameters @ 86940471 -> getAllowTvmOsaka=1, getAllowEnergyAdjustment=1, getAllowOptimizeTvmStorage present with NO value (unset)"}
     - {op: "0xd9", name: WITHDRAWREWARD}
     - {op: "0xda", name: FREEZEBALANCEV2}
     - {op: "0xdb", name: UNFREEZEBALANCEV2}
@@ -373,6 +389,15 @@ header_fields:
     Ethereum header. Field-level diffing is not meaningful.
 
 gotchas:
+  - >-
+    TRON HAS A LIVE CHAIN PARAMETER CALLED "OSAKA" AND IT IS NOT ETHEREUM'S OSAKA.
+    `ALLOW_TVM_OSAKA` is chain parameter 96, mainnet reports `getAllowTvmOsaka = 1`, and
+    what it gates is Tron's own bundle: the third VOTEWITNESS energy tier
+    (`getVoteWitnessCost3`) and `VMActuator.clearExceptionResult`, which clears
+    `deleteAccounts` and the log list when a transaction throws. It brings no EIP, no
+    precompile and no opcode from Ethereum's Osaka — this row's `baseline_fork` stays
+    `cancun`. Anyone matching fork names across rows to compare capability gets Tron
+    exactly wrong here.
   - >-
     0x03 is named RIPEMD160 and is not RIPEMD160. It returns
     SHA256(SHA256(data)[0:20]). Contracts ported from Ethereum that call 0x03 get

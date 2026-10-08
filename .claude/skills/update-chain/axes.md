@@ -29,6 +29,7 @@ function), not only the files that are already cited.
 | **lineage** | `lineage.sync_point`, `fork_of`, `second_heritage`; `client.*` | **Always** rewrite `sync_point`: it names upstream versions (e.g. "tracks go-ethereum v1.17.5 through Osaka") and goes stale on every bump. | Name the new upstream sync; say so if the fork diverges from its ancestor. |
 | **ordering** | `tx_lifecycle.*` (`verdict:` + `note:`) | Mempool / ordering / execution changes in the diff | Re-check every verdict. Forks often change inclusion and failure handling. |
 | **p2p** | `p2p.max_tx_bytes`, `max_blob_tx_bytes`, `max_block_bytes`, `max_message_bytes`, `fragmentation`, `transports` | The txpool size constant; the transport message caps | EIP-7934-style consensus caps and blob limits. Every size stays a raw integer with a `tier:`, and `max_tx_bytes` keeps its reason in `note:`. |
+| **block-metrics** | `block_metrics.block_gas_limit`, `tx_gas_limit`, `gas_target`, `block_time`, `blob_count`, `blob_gas_limit`, `extras` | Run `tools/blockprobe.py <slug>` and act on the drift it reports — this is the one axis whose values move with no source change. Refresh with `--write`, which rewrites `observed:`, the height, the date and the `src_live:` together. | Re-read the CODE half: a fork can change the per-tx gas cap (EIP-7825 and its overrides), the blob schedule, or the cadence. Then re-pin the observed half at a block **after** activation. Gas stays a raw integer, times stay integer **milliseconds**, and every key keeps its `mutability:`. |
 
 ## Not an axis, still in scope
 
@@ -36,7 +37,7 @@ function), not only the files that are already cited.
 |---|---|
 | `client` (+ `companion_repos`) | Always: the new `version` and the full 40-hex `commit`, peeled from the tag. |
 | `live_probe.observed_at_block` | On a fork, re-pin it to a block **after** activation and replay every `src_live:` on the row at the new height. Each `src_live:` keeps its own `@ <block>`. |
-| `consensus` (`block_time`, `block_time_history`) | Forks often change the block time (BSC halves it every few forks). |
+| `consensus` (`engine`, `finality`) | Forks can change the engine or the finality window. **`block_time` is no longer here** — it moved to the `block_metrics` axis above, as an integer in milliseconds with a measured counterpart. |
 | `gotchas` | Remove any that the fork fixed, and add any it created. |
 | `recorded_at` / `stale_after` | Only if the row already carries them. Set them to now and to the next pending activation. |
 | `chains/<slug>/SUMMARY.md` | Always update the `Reference:` line. Update fork tables, "not yet live" prose, and anything that quotes a now-stale symbol. |

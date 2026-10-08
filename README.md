@@ -259,7 +259,7 @@ else. Same field, same JSON key, three meanings across the dataset.
 ## Website
 
 A browsable static site is generated into [`website/`](website/) — one page per chain,
-plus an axis page for each of the eleven axes and an index of every silent divergence.
+plus an axis page for each of the twelve axes and an index of every silent divergence.
 Nothing in it is hand-edited. The site carries data only: the schema, the build model
 and the method notes stay in this repo and are not published.
 
@@ -274,7 +274,7 @@ python3 -m http.server -d website 8000
 Findings live in [`findings.yaml`](findings.yaml), the one content file in the pipeline:
 a finding is written once and surfaces on the home page, on its axis page, and on the
 page of every chain it names — as the full cross-chain survey on the first two, and as
-that chain's own slice of it on the third. Every finding names one of the eleven axes;
+that chain’s own slice of it on the third. Every finding names one of the twelve axes;
 methodology notes go in [METHOD.md](METHOD.md) instead. See [SITE.md](SITE.md) for the
 full build model.
 
@@ -307,7 +307,17 @@ tools/clone.sh      re-fetch the pinned evidence (gitignored) from chain.yaml
 tools/verify.py     re-extract facts from source, diff against chain.yaml
 tools/generate.py   regenerate the four top-level tables
 tools/site.py       regenerate website/ (incremental; see SITE.md)
+tools/livecheck.py  re-probe live endpoints: halted chains, moved endpoints, forks
+tools/blockprobe.py re-sample block metrics; --write refreshes the observed values
 ```
+
+The last two are not CI gates and deliberately so: they need the public internet and
+other people's rate limits, and a build that goes red during a third party's outage is
+a build nobody reads. They close the loop on `src_live:` the way `verify.py` closes it
+on `src:` — run them by hand or on a schedule. `blockprobe.py` exists because
+`block_metrics:` is the one axis whose values move while nobody touches the repo: its
+first run found RISE running 2,250,000,000 gas against a recorded 1,500,000,000, a 50%
+capacity change no source diff could ever have surfaced.
 
 `generate.py` and `site.py` both read the dataset through `tools/model.py` — the same
 ordering, address canonicalisation, stack-inheritance and EIP-resolution rules — so the

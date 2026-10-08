@@ -57,7 +57,6 @@ live_probe:
 consensus:
   engine: single sequencer, validity (zk) proofs verified on Ethereum L1
   finality: L1 finality after proof verification
-  block_time: sub-second L2 blocks, batched into L1 batches
   note: >-
     Two block concepts. L2 blocks are what eth_getBlockByNumber returns; L1 batches are
     the proving unit and appear as l1BatchNumber / l1BatchTimestamp on each block. The
@@ -733,6 +732,42 @@ p2p:
       constraint rather than a network one, which is the causal origin no other row on this
       axis shares. It coincidentally equals EIP-7825's per-transaction GAS cap, in
       completely unrelated units.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 1125899906842624
+    observed_at_block: 72295913
+    observed_at: 2026-10-01
+    mutability: unbounded
+    src_live: "eth_getBlockByNumber @ 72295913 -> gasLimit 0x4000000000000"
+    note: >-
+      NOT A CAPACITY. 1,125,899,906,842,624 is 2^50, the header's way of spelling
+      "unbounded" — an EraVM batch is bounded by prover circuits, recorded on the proofs
+      axis as `prover_constraints`, and by nothing in this field. The row also reports
+      `size` 0 for every block, a second sentinel in the same header. Excluded from the
+      derived throughput column, which would otherwise read 188 Tgas/s.
+  block_time:
+    verdict: ~
+    observed: 6116.7
+    observed_at_block: 72295913
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 72295913 vs 72285913 -> 61167s / 10000 blocks"
+    note: >-
+      sub-second L2 blocks, batched into L1 batches. The observed 6,105 ms measures
+      batches, not blocks: `eth_blockNumber` counts the batched unit, so the sub-second
+      block a user experiences is invisible to this measurement.
+  extras:
+  - name: pubdata per batch
+    value: ~
+    note: >-
+      The real bound on an EraVM batch, and it is denominated in BYTES of state diff
+      published to L1 rather than in gas. A batch seals when pubdata fills, when the
+      prover's circuits fill, or on a timer — none of which the header's 2^50 `gasLimit`
+      describes. The circuit half is recorded on the proofs axis as
+      `prover_constraints`.
+
 proofs:
   state_transition:
     verdict: validity

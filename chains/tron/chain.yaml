@@ -31,7 +31,6 @@ client:
 
 consensus:
   engine: DPoS (27 Super Representatives)
-  block_time: 3s
 
 baseline_fork: cancun
 baseline_note: >-
@@ -348,6 +347,14 @@ p2p:
     note: >-
       Neither devp2p nor libp2p: java-tron carries its own protobuf-message p2p with its
       own handshake, so none of the RLPx framing or `eth` subprotocol limits apply.
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: fixed
+    note: >-
+      3s, fixed by DPoS slot scheduling.
+
 fee_model:
   metering: energy + bandwidth (dual resource), NOT gas
   fee_market: none

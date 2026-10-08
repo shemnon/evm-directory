@@ -54,7 +54,6 @@ live_probe:
 consensus:
   engine: based rollup — L1 proposers, no L2 sequencer; driver-derived over the Engine API
   finality: inherits L1 finality once the proposal is proved
-  block_time: 2s target
   note: >-
     Block production runs through a Taiko-only Engine API path: the driver calls
     forkchoiceUpdated with a `BlockMetadata` payload attribute that already carries the
@@ -571,6 +570,26 @@ p2p:
     src: "core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth. Notable only because Taiko's proposer path accepts transaction lists via L1 rather than the pool, so this limit governs the gossip route and not every route into a block.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 46000000
+    observed_at_block: 12125028
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 12125028 -> gasLimit 0x2bde780"
+  block_time:
+    verdict: ~
+    observed: 2034.0
+    observed_at_block: 12125028
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 12125028 vs 12115028 -> 20340s / 10000 blocks"
+    note: >-
+      2s target, based-rollup: proposers bid for the right to build, so the target is a
+      protocol intent rather than a producer's setting.
+
 proofs:
   state_transition:
     verdict: validity

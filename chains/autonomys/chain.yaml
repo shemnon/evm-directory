@@ -92,7 +92,6 @@ consensus:
     probabilistic on the consensus chain (confirmation_depth_k = 100 consensus
     blocks); domain execution receipts are optimistic and become irreversible
     only after domain_block_pruning_depth = 14,400 domain blocks
-  block_time: "6s consensus slot; one domain block per consensus block that carries at least one bundle"
   src: "crates/subspace-runtime-primitives/src/lib.rs:production_params, crates/subspace-runtime/src/lib.rs:BlockTreePruningDepth"
   src_live: 'eth_getBlockByNumber(finalized) @ 4580360 -> block 4565366; latest was 4580360, i.e. 14,994 domain blocks of lag'
   note: >-
@@ -803,6 +802,28 @@ p2p:
       neither RLPx framing nor the `eth` subprotocol caps apply at any layer.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: Substrate block + tx gossip}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 52000000
+    observed_at_block: 4991378
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 4991378 -> gasLimit 0x3197500"
+  block_time:
+    verdict: ~
+    observed: 7698.9
+    observed_at_block: 4991378
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_getBlockByNumber @ 4991378 vs 4981378 -> 76989s / 10000 blocks"
+    note: >-
+      6s consensus slot; one domain block per consensus block that carries at least one
+      bundle. The observed 7,696 ms exceeds the slot because a consensus block with no
+      bundle produces no domain block at all — the cadence is traffic-dependent above a
+      6s floor.
+
 proofs:
   state_transition:
     verdict: fault

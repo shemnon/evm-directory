@@ -38,6 +38,7 @@ AXES = [
     ("lineage",          "Lineage",            "Code ancestry and fork ancestry, tracked separately."),
     ("ordering",         "Ordering & execution", "What happens to a transaction between being ordered and being executed."),
     ("p2p",              "P2P & limits",       "How big a transaction, block or message may be, who enforces each bound, and which transports carry them."),
+    ("block-metrics",    "Block metrics",      "How much fits in a block and how often one arrives — what the code sets, what the network ran, and the throughput that follows."),
     ("proofs",           "Proofs",             "What can be proven about this chain, and to whom: how its state transition is proven, and whether it can prove a slot to a caller."),
 ]
 AXIS_TITLE = {k: t for k, t, _ in AXES}
@@ -88,6 +89,43 @@ TIER_TITLE = {
     "policy":    "policy — the local mempool refuses it; a block containing it is still valid",
     "transport": "transport — the wire cannot carry it; the connection errors",
 }
+
+
+# The block-metrics axis. Order is the reading order of the question: how much fits,
+# how much one transaction may take of it, how often a block arrives, then the blob
+# lane, which is a separate budget that only some rows have.
+BLOCK_METRICS = [
+    ("block_gas_limit", "Block gas limit",
+     "Gas available in one block. Often not a code constant — producers may move it."),
+    ("tx_gas_limit",    "Per-tx gas cap",
+     "The most gas ONE transaction may use, which is what bounds a single user."),
+    ("gas_target",      "Gas target",
+     "The EIP-1559 target. Blocks above it raise the base fee; this is what a user pays for."),
+    ("block_time",      "Block time",
+     "Milliseconds between blocks. Code value and measured value, which differ."),
+    ("blob_count",      "Blobs / block",
+     "Blobs one block may carry, where the chain has a blob lane at all."),
+    ("blob_gas_limit",  "Blob gas limit",
+     "The blob lane's own gas budget, independent of the execution gas limit."),
+]
+BLOCK_METRICS_TITLE = {k: t for k, t, _ in BLOCK_METRICS}
+
+# `mutability` is this axis's load-bearing field, for the reason `tier` is the p2p
+# axis's: it decides whether an observation predicts anything. A `fixed` limit's
+# observed value is confirmation; an `adjustable` one's is a snapshot that decays.
+MUTABILITY_TITLE = {
+    "fixed":       "fixed — compiled in; changing it needs a client release or a fork",
+    "adjustable":  "adjustable — producers move it within a bound, per block",
+    "governance":  "governance — an on-chain vote sets it",
+    "config":      "config — node operator or genesis sets it; differs per deployment",
+    "interleaved": "interleaved — the chain runs more than one class of block, with "
+                   "different limits",
+    "unbounded":   "unbounded — no limit; the field carries a sentinel, not a capacity",
+}
+
+# Keys whose unit is milliseconds rather than gas. Only this one, but naming it beats
+# testing the key name at four call sites.
+MS_KEYS = {"block_time"}
 
 
 # The proofs axis. Order is the reading order of the question: what backs the
@@ -159,16 +197,82 @@ def fmt_bytes(n):
     return f"{n:,} B"
 
 
+# 2^50 in a `gasLimit` field is "unbounded" spelled in the header's units, not a
+# capacity. Kept as an explicit set rather than a magnitude cutoff, for the reason
+# tools/blockprobe.py gives: MegaETH's 10,000,000,000 is a real limit real blocks fill.
+GAS_SENTINELS = {1 << 50}
+
+
+def fmt_gas(n):
+    """Gas reads in M/G once it is large, because 150,000,000 and 1,500,000,000 differ
+    by one character and by a factor of ten. Exact multiples only — 28,027,352 keeps
+    its digits, because the non-round value IS the finding on that row (Flare's limit
+    is being actively adjusted and no round number would be right for long)."""
+    if not isinstance(n, int) or isinstance(n, bool):
+        return str(n)
+    if n in GAS_SENTINELS:
+        return "2^50"
+    # Two decimals at most, and only when they are exact: 2,250,000,000 is 2.25G and
+    # 12,500,000 is 12.5M, but 27,972,664 falls through to its digits rather than
+    # becoming a rounded 27.97M that no longer matches the cited source.
+    for unit, sz in (("G", 10 ** 9), ("M", 10 ** 6), ("k", 10 ** 3)):
+        if n >= sz and n % (sz // 100) == 0:
+            return f"{n / sz:g}{unit}"
+    return f"{n:,}"
+
+
+def fmt_ms(v):
+    """Cadence in the unit a reader thinks in: sub-second stays in ms, seconds become
+    seconds. A measured value keeps one decimal — 12,049.2 ms is not 12s, and rounding
+    it to 12s would erase the missed-slot gap that makes it interesting."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return str(v)
+    if v < 1000:
+        return f"{v:g} ms"
+    # Four significant figures, not three: mainnet's code says 12s and its network
+    # measures 12,049.2 ms, and at three figures BOTH render "12 s" — the pair would
+    # print the same number twice and the missed-slot gap would vanish from the page.
+    return f"{v / 1000:.4g} s"
+
+
+def gas_per_second(entries):
+    """Throughput, derived from the two keys that bound it and NEVER stored — storing
+    it would make a third number that can disagree with the two it comes from.
+
+    Returns None when the figure would be a lie rather than merely unknown: a sentinel
+    gas limit (the zkStack rows' 2^50 yields 188 Tgas/s) or a missing half. The caller
+    renders `n/a` and the chain page's note says why."""
+    gl = (entries.get("block_gas_limit") or {})
+    bt = (entries.get("block_time") or {})
+    limit = gl.get("observed") if gl.get("observed") is not None else gl.get("verdict")
+    ms = bt.get("observed") if bt.get("observed") is not None else bt.get("verdict")
+    if not isinstance(limit, int) or limit in GAS_SENTINELS:
+        return None
+    if not isinstance(ms, (int, float)) or ms <= 0:
+        return None
+    return limit / (ms / 1000)
+
+
+def fmt_gps(v):
+    if v is None:
+        return None
+    for unit, sz in (("Ggas/s", 10 ** 9), ("Mgas/s", 10 ** 6), ("kgas/s", 10 ** 3)):
+        if v >= sz:
+            return f"{v / sz:,.3g} {unit}"
+    return f"{v:,.0f} gas/s"
+
+
 def lifecycle(chains, slug, section="tx_lifecycle"):
     """A chain's effective answers for a keyed-question section. A row whose
     `lineage.upstream` names a stack node inherits that node's answers key by key, and
     overrides the ones it states itself — the same override-by-key rule the address
     sections use. Returns {key: (entry, origin_slug)}; origin != slug means inherited.
 
-    `section` selects the axis: `tx_lifecycle` (ordering), `p2p` (wire limits) or
-    `proofs`. All three have the same shape, so they share the walk rather than
-    duplicating it — which is why Blast inherits op-stack's four half-one proof answers
-    while overriding `state_proof` alone."""
+    `section` selects the axis: `tx_lifecycle` (ordering), `p2p` (wire limits),
+    `proofs` or `block_metrics`. All four have the same shape, so they share the walk
+    rather than duplicating it — which is why Blast inherits op-stack's four half-one
+    proof answers while overriding `state_proof` alone, and why the OP Stack
+    descendants inherit the stack node's cadence while overriding their own gas limit."""
     out = {}
     chain = [slug]
     seen = {slug}
@@ -838,9 +942,10 @@ def page_chain(chains, slug):
         ("Ancestry", " → ".join(esc(x) for x in ln.get("ancestry") or []) or "—"),
         ("Forked from", esc(ln.get("fork_of")) if ln.get("fork_of") else None),
         ("Sync point", esc(ln.get("sync_point")) if ln.get("sync_point") else None),
-        ("Consensus", esc(flat((c.get("consensus") or {}).get("engine"))) +
-                      (f' · block time {esc((c.get("consensus") or {}).get("block_time"))}'
-                       if (c.get("consensus") or {}).get("block_time") else "")),
+        # block time used to be appended here from consensus.block_time. It moved to
+        # the block-metrics axis, where it is a comparable integer with a measured
+        # counterpart rather than one of 47 differently-worded strings.
+        ("Consensus", esc(flat((c.get("consensus") or {}).get("engine")))),
         ("Note", markdown(flat(ch.get("note"))) if ch.get("note") else None),
         ("Lineage note", markdown(flat(ln.get("note"))) if ln.get("note") else None),
     ]))
@@ -1052,6 +1157,57 @@ def page_chain(chains, slug):
         if prows:
             B.append(table(["Limit", "Value", "Enforced by", "Why"], prows))
 
+    # --- block metrics -----------------------------------------------------
+    bm = lifecycle(chains, slug, "block_metrics")
+    if bm:
+        flat_bm = {k: d for k, (d, _) in bm.items()}
+        B.append(h2(f'Block metrics <span class="pill">{len(bm)}</span>',
+                    "block-metrics"))
+        brows = []
+        for k, _, _ in BLOCK_METRICS:
+            do = bm.get(k)
+            if not do:
+                continue
+            d, o = do
+            if not isinstance(d, dict):
+                continue
+            fmt = fmt_ms if k in MS_KEYS else fmt_gas
+            ver, obs = d.get("verdict"), d.get("observed")
+            code = (f'<span class="pill">{esc(fmt(ver))}</span>' if ver is not None
+                    else '<span class="s-inherited" title="the code sets no value '
+                         'here">—</span>')
+            if obs is None:
+                live = '<span class="s-inherited">—</span>'
+            else:
+                live = (f'<span class="obs">{esc(fmt(obs))}</span>'
+                        f'<br><span class="s-inherited">@{esc(d.get("observed_at_block"))}'
+                        f' · {esc(d.get("observed_at"))}</span>')
+            mut = d.get("mutability")
+            mh = (f'<span title="{esc(MUTABILITY_TITLE.get(mut, mut))}">'
+                  f'<code>{esc(mut)}</code></span>' if mut
+                  else '<span class="s-inherited">—</span>')
+            if o != slug:
+                mh += (f' <span class="s-inherited" title="inherited">from '
+                       f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')
+            body = markdown(flat(d.get("note"))) if d.get("note") else ""
+            brows.append([esc(BLOCK_METRICS_TITLE.get(k, k)), code, live, mh,
+                          f'<div class="wrap">{body}'
+                          f'{provenance(d, on_chain=True)}</div>'])
+        if brows:
+            B.append(table(["Metric", "Code", "Observed", "Mutability", "Why"], brows))
+        gps = gas_per_second(flat_bm)
+        if gps is not None:
+            B.append(f'<p class="legend">Derived throughput: '
+                     f'<b>{esc(fmt_gps(gps))}</b> — the gas limit over the block time, '
+                     f'computed here and never stored.</p>')
+        xs = (c.get("block_metrics") or {}).get("extras") or []
+        if xs:
+            B.append(table(["Chain-specific limit", "What it does"],
+                           [[esc(e.get("name", "")),
+                             f'<div class="wrap">{markdown(flat(e.get("note")))}'
+                             f'{provenance(e, on_chain=True)}</div>']
+                            for e in xs if isinstance(e, dict)]))
+
     # --- proofs ------------------------------------------------------------
     pr = lifecycle(chains, slug, "proofs")
     if pr:
@@ -1090,7 +1246,6 @@ def page_chain(chains, slug):
                      ("Blob fee market", esc(fm.get("blob_fee_market", None))),
                      ("Extra components", esc(fee_components(fm["extra_components"])[1])
                       if fm.get("extra_components") else None),
-                     ("Gas limit", esc(fm.get("gas_limit", None))),
                      ("Note", markdown(flat(fm.get("note"))) if fm.get("note") else None)]))
         B.append(provenance(fm, on_chain=True))
 
@@ -1966,6 +2121,106 @@ def page_p2p(chains):
                   "\n".join(x for x in B if x), wide=True, chains=chains)
 
 
+def page_block_metrics(chains):
+    """Capacity and cadence on one page, because neither is interpretable alone.
+
+    The grid carries a PAIR in every cell — what the code sets over what the network
+    ran — which no other axis does, and the disagreements are the point: Gnosis's chain
+    spec says 10M and its producers run 17M. The derived throughput column is what
+    makes the two halves worth putting side by side, and it is the only figure that
+    survives comparison across a 300 ms chain and a 30 s one."""
+    slugs = order(chains)
+    data = {s: lifecycle(chains, s, "block_metrics") for s in slugs}
+    flat_ = {s: {k: d for k, (d, _) in data[s].items()} for s in slugs}
+    cols = [c for c in BLOCK_METRICS
+            if any((flat_[s].get(c[0]) or {}).get(k) is not None
+                   for s in slugs for k in ("verdict", "observed"))]
+
+    def pair(s, key):
+        """`verdict` over `observed`, with the second suppressed when it agrees — a
+        cell repeating 21/21 spends two lines saying one thing."""
+        d = flat_[s].get(key) or {}
+        ver, obs = d.get("verdict"), d.get("observed")
+        fmt = fmt_ms if key in MS_KEYS else fmt_gas
+        if ver is None and obs is None:
+            return None
+        bits = []
+        if ver is not None:
+            bits.append(f'<span class="pill" title="code / config value">{esc(fmt(ver))}</span>')
+        # Compare what the reader SEES, not the raw values: two numbers that differ in
+        # a digit the formatter drops would otherwise print as the same string twice.
+        if obs is not None and (ver is None or fmt(obs) != fmt(ver)):
+            bits.append(f'<span class="obs" title="observed on the network at block '
+                        f'{esc(d.get("observed_at_block"))} on {esc(d.get("observed_at"))}">'
+                        f'{esc(fmt(obs))}</span>')
+        return " ".join(bits)
+
+    def cell(s, key):
+        inner = pair(s, key)
+        if inner is None:
+            return '<span class="s-inherited" title="not established">—</span>'
+        d = flat_[s].get(key) or {}
+        mut = d.get("mutability")
+        tag = (f'<span class="tier" title="{esc(MUTABILITY_TITLE.get(mut, mut))}">'
+               f'{esc(mut)}</span>') if mut else ""
+        return cell_link(s, "block_metrics", key, inner) + tag
+
+    def throughput(s, _key):
+        v = gas_per_second(flat_[s])
+        if v is None:
+            d = flat_[s].get("block_gas_limit") or {}
+            why = ("the gas limit is a sentinel, not a capacity"
+                   if (d.get("observed") or d.get("verdict")) in GAS_SENTINELS
+                   else "capacity or cadence is not established")
+            return f'<span class="s-inherited" title="{esc(why)}">n/a</span>'
+        return (f'<span class="pill" title="derived from the gas limit and the block '
+                f'time on this row; never stored">{esc(fmt_gps(v))}</span>')
+
+    grid_cols = cols + [("_gps", "Gas / second",
+                         "Derived: gas limit ÷ block time. The only figure "
+                         "comparable across a 300 ms chain and a 30 s one.")]
+
+    def dispatch(s, key):
+        return throughput(s, key) if key == "_gps" else cell(s, key)
+
+    B = [h2(f'Capacity &amp; cadence <span class="pill">{len(cols)} questions</span>',
+            "metrics"),
+         filter_box("bm-grid", uniform="hide chains that match mainnet exactly"),
+         chain_grid(chains, slugs, grid_cols, dispatch, "bm-grid"),
+         '<p class="legend">Each cell carries a <b>pair</b>: the '
+         '<span class="pill">code</span> value the client or chain spec sets, then the '
+         '<span class="obs">observed</span> value the network actually ran, shown only '
+         'when it differs. Mainnet has no code value for its gas limit at all — go-ethereum '
+         'bounds only how fast producers may move it — so the observed figure is the only '
+         'answer that exists, and it decays. Gnosis shows the opposite case: a chain spec '
+         'saying 10M against a network running 17M, both correct. The <code>mutability</code> '
+         'tag says what it would take for the number to be different tomorrow, which is what '
+         'decides whether an observation predicts anything. <code>Gas / second</code> is '
+         'derived and never stored; it reads <code>n/a</code> where the gas limit is a '
+         'sentinel rather than a capacity. A <code>—</code> means the question is not '
+         'established for that chain. Hover any value for the finding; follow it for the '
+         'cited source.</p>']
+
+    # Chain-specific limits that no shared column could compare. They are the reason
+    # `extras:` exists, so they get their own table rather than a footnote.
+    ex = [(s, e) for s in slugs
+          for e in (chains[s].get("block_metrics") or {}).get("extras") or []
+          if isinstance(e, dict)]
+    if ex:
+        B.append(h2(f'Limits that fit no column <span class="pill">{len(ex)}</span>',
+                    "extras"))
+        B.append(table(["Chain", "Limit", "What it does"],
+                       [[f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>',
+                         esc(e.get("name", "")),
+                         f'<div class="wrap">{markdown(flat(e.get("note")))}</div>']
+                        for s, e in ex]))
+    B.append(axis_notes(chains, "block-metrics"))
+    return layout("axes/block-metrics.html", "Block metrics",
+                  "How much fits in a block and how often one arrives — what the code "
+                  "sets, what the network ran, and the throughput that follows.",
+                  "\n".join(x for x in B if x), wide=True, chains=chains)
+
+
 def page_proofs(chains):
     """Two questions that look unrelated and are the same one. A chain that commits its
     state under a non-Keccak hash has both an exotic prover and an eth_getProof nobody
@@ -2258,6 +2513,7 @@ def registry(chains):
     ]
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
                "ordering": page_ordering, "p2p": page_p2p,
+               "block-metrics": page_block_metrics,
                "proofs": page_proofs,
                "cryptography": page_cryptography, "opcodes": page_opcodes,
                "system-contracts": page_system_contracts, "fees-envelope": page_fees,

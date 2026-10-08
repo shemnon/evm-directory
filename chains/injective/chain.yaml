@@ -79,7 +79,6 @@ live_probe:
 consensus:
   engine: CometBFT (InjectiveLabs fork) with skip-mev block-sdk lanes
   finality: single-block instant finality; no reorgs, no uncles
-  block_time: ~0.65s
   note: >-
     Inherits the Cosmos-EVM shape from the framework row. What is Injective's own
     is that the block's EndBlocker runs a frequent batch auction over the whole
@@ -838,6 +837,27 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 150000000
+    observed_at_block: 185441585
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 185441585 -> gasLimit 0x8f0d180"
+    note: >-
+      150,000,000 at a 593 ms cadence — 253 Mgas/s, eighth in the dataset, and the same
+      gas limit Monad and Hedera carry at three very different cadences.
+  block_time:
+    verdict: ~
+    observed: 593.4
+    observed_at_block: 185441585
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 185441585 vs 185431585 -> 5934s / 10000 blocks"
+    note: >-
+      ~0.65s, CometBFT. The observed 593 ms runs under the nominal figure.
 
 fee_model:
   metering: EVM gas, converted to Cosmos gas for block accounting

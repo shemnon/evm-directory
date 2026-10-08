@@ -60,7 +60,6 @@ live_probe:
 consensus:
   engine: Snowman++ (Avalanche consensus)
   finality: sub-second, single-slot
-  block_time: ~1.8s
 
 baseline_fork: cancun
 
@@ -576,6 +575,31 @@ p2p:
       pull the gap, in place of mainnet's push-and-announce.
     stack:
       - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 27972664
+    observed_at_block: 71096315
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src_live: "eth_getBlockByNumber @ 71096315 -> gasLimit 0x1aad438"
+    note: >-
+      The non-round figure is the finding: Flare's limit is being actively adjusted
+      block to block, so no round number would be correct for long and two probes
+      minutes apart return different values. Recorded here with the height it was read
+      at, which is the only form in which such a number means anything.
+  block_time:
+    verdict: ~
+    observed: 1087.7
+    observed_at_block: 71096315
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 71096315 vs 71086315 -> 10877s / 10000 blocks"
+    note: >-
+      ~1.8s nominal; the observed 1,088 ms is well under it because Flare's cadence
+      tightened without the documented figure following.
+
 fee_model:
   metering: gas
   fee_market: ACP-176 dynamic fee (coreth), with a Flare-specific per-call override

@@ -75,7 +75,6 @@ live_probe:
 consensus:
   engine: Lachesis aBFT (leaderless DAG of validator `events`, Atropos ordering)
   finality: aBFT, no reorg after an event is confirmed
-  block_time: "sub-second; emitter interval 600 ms by default, block duration carried in extraData"
   src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
   note: >-
     NO UNCLES, and no possibility of them: blocks are derived from a confirmed DAG
@@ -719,6 +718,43 @@ p2p:
     src: "core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth at 4 x 32 KiB. Stated rather than left absent because Sonic replaces consensus, state storage (Carmen) and the EVM interpreter (Tosca) wholesale, which invites the assumption that the txpool was rewritten too; it was not.
+
+block_metrics:
+  block_gas_limit:
+    verdict: 5000000000
+    observed: 5000000000
+    observed_at_block: 80212074
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_getBlockByNumber @ 80212074 -> gasLimit 0x12a05f200"
+    note: >-
+      5,000,000,000 IS IN THE HEADER AND BINDS NOTHING. It is a technical ceiling; real
+      capacity is a per-second gas-power allocation shared among validators by stake,
+      recorded in `extras:` below. A throughput figure derived from this number and the
+      block time is 2.8 Ggas/s, which the network will not deliver — the derived column
+      reports it because the header says it, and this note is why it should not be
+      believed.
+  block_time:
+    verdict: ~
+    observed: 1758.9
+    observed_at_block: 80212074
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 80212074 vs 80202074 -> 17589s / 10000 blocks"
+    note: >-
+      sub-second; emitter interval 600 ms by default, block duration carried in
+      extraData. The observed 1,753 ms is well above the emitter interval because the
+      interval is a floor on production, not a target.
+  extras:
+  - name: gas power per second
+    value: ~
+    note: >-
+      THE LIMIT THAT ACTUALLY BINDS. Sonic allocates gas as a per-second power budget
+      shared among validators by stake, so a validator's capacity refills with time
+      rather than resetting at a block boundary. The 5,000,000,000 header `gasLimit` is
+      a technical ceiling nothing reaches, which is why the derived throughput column on
+      this row should not be believed.
+
 proofs:
   state_transition:
     verdict: consensus

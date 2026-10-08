@@ -72,7 +72,6 @@ client:
 consensus:
   engine: CometBFT (Tendermint BFT), Cosmos SDK ABCI application
   finality: single-block instant finality; no reorgs, NO UNCLES
-  block_time: per deployment
   note: >-
     There is no Ethereum block and no Ethereum header anywhere in consensus. The
     block eth_getBlockByNumber returns is assembled at RPC time from a CometBFT
@@ -950,6 +949,14 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      per deployment. The row is a template, not a network: there is no cadence to
+      observe because there is no chain.
 
 proofs:
   proof_root:

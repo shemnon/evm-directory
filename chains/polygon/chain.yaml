@@ -28,7 +28,6 @@ client:
 
 consensus:
   engine: Bor (PoS) + Heimdall checkpointing to Ethereum
-  block_time: ~2s
 
 baseline_fork: prague
 
@@ -304,6 +303,15 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip (eth, snap)}
       - {layer: execution, protocol: devp2p, purpose: block witnesses (wit)}
       - {layer: consensus, protocol: Tendermint p2p, purpose: Heimdall checkpoints}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      ~2s, Bor. Heimdall checkpoints to Ethereum on a much slower cycle, so the cadence
+      a user sees and the one that settles differ by orders of magnitude.
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (London at block 23850000), with a configurable burn contract

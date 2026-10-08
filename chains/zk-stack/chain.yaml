@@ -82,7 +82,6 @@ consensus:
   engine: >-
     per-deployment single sequencer, validity (zk) proofs verified on Ethereum L1
     directly or through the ZKsync Gateway
-  block_time: sub-second L2 blocks, batched into L1 batches
   finality: L1 finality after proof verification
 
 baseline_fork: osaka
@@ -295,6 +294,30 @@ p2p:
       `1 << 24`, the bootloader's encoded-transaction ceiling — a circuit constraint shared
       by every chain built on this stack, and the one limit here a deployment cannot
       configure away.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 1125899906842624
+    observed_at_block: 72295913
+    observed_at: 2026-10-01
+    mutability: unbounded
+    src_live: "eth_getBlockByNumber @ 72295913 -> gasLimit 0x4000000000000"
+    note: >-
+      NOT A CAPACITY — 2^50, the header's "unbounded" sentinel. See the zkSync Era row:
+      the binding constraint is the prover, not this field.
+  block_time:
+    verdict: ~
+    observed: 6116.7
+    observed_at_block: 72295913
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 72295913 vs 72285913 -> 61167s / 10000 blocks"
+    note: >-
+      sub-second L2 blocks, batched into L1 batches. The observed 6,105 ms measures
+      BATCHES rather than blocks, because that is what the zkStack RPC numbers — so the
+      cadence a user feels is far faster than this row's figure.
+
 proofs:
   state_transition:
     verdict: validity

@@ -74,7 +74,6 @@ live_probe:
 consensus:
   engine: OP Stack (single sequencer), with a preconfirmation path in the EL
   finality: inherits L1 finality after challenge window
-  block_time: 2s
   note: >-
     The client carries a `preconf/` package (FIFO tx set, preconf deposit sources,
     a preconf miner config and a separate preconf_checker in miner/) that upstream
@@ -551,6 +550,24 @@ opcodes:
     switch in core/vm/evm.go tests IsMantleBaseFee before IsShanghai and selects the
     Shanghai set, so PUSH0 arrived on Mantle with the BaseFee fork rather than with
     Shanghai. Purely additive.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 60000000
+    observed_at_block: 101381217
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 101381217 -> gasLimit 0x3938700"
+  block_time:
+    verdict: ~
+    observed: 2000.0
+    observed_at_block: 101381217
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 101381217 vs 101371217 -> 20000s / 10000 blocks"
+    note: >-
+      2s, inherited from OP Stack's `l2BlockTime`.
 
 fee_model:
   metering: gas

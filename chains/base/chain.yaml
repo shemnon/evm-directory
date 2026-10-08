@@ -37,7 +37,6 @@ client:
 
 consensus:
   engine: OP Stack (sequencer) + fault proofs
-  block_time: 2s
 
 baseline_fork: osaka
 
@@ -294,6 +293,15 @@ p2p:
       configurable pass-through, where the op-geth value inherited from `op-stack` is a
       compile-time constant. Same 128 KiB, different enforcement and different override
       story, and reth's blob-transaction measurement differs from geth's — see `plasma`.
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      2s, the OP Stack `l2BlockTime` every descendant inherits unless it overrides it.
+      Changeable by the chain operator through the SystemConfig, not by a fork.
+
 fee_model:
   metering: gas
   note: >-

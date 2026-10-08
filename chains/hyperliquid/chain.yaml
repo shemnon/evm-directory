@@ -57,7 +57,6 @@ live_probe:
 consensus:
   engine: HyperBFT
   finality: single-slot (BFT), no reorgs by construction
-  block_time: 1s (small blocks) / 60s (large blocks) — interleaved in ONE chain
   src_doc: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/dual-block-architecture
   note: >-
     The headline divergence. HyperEVM produces TWO block kinds in a single, strictly
@@ -655,6 +654,36 @@ p2p:
       message limits are not published in a form this axis can cite, and a live probe
       cannot reveal a rejection threshold without sending oversized transactions to a
       production network.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 3000000
+    observed_at_block: 47413501
+    observed_at: 2026-10-01
+    mutability: interleaved
+    src_live: "eth_getBlockByNumber @ 47413501 -> gasLimit 0x2dc6c0"
+    note: >-
+      TWO GAS LIMITS IN ONE CHAIN, and a single probe returns a coin flip weighted 60:1.
+      Hyperliquid interleaves small blocks (1s, 3,000,000 gas) with large blocks (60s,
+      30,000,000 gas); over 150 consecutive blocks at head 47,413,131 exactly 148
+      carried the small limit and 2 the large one. `observed:` records the small-block
+      limit because that is what 98.7% of blocks are, and the large-block value is the
+      one a user submitting a big transaction actually needs — it waits for a block
+      class that arrives once a minute.
+  block_time:
+    verdict: ~
+    observed: 983.6
+    observed_at_block: 47413501
+    observed_at: 2026-10-01
+    mutability: interleaved
+    src_live: "eth_getBlockByNumber @ 47413501 vs 47403501 -> 9836s / 10000 blocks"
+    note: >-
+      1s (small blocks) / 60s (large blocks) — interleaved in ONE chain. The observed
+      984 ms is the small-block cadence, which 98.7% of blocks follow; a transaction
+      that needs a large block waits up to a minute. The gas limit differs between the
+      two classes as well — see `block_gas_limit`.
+
 proofs:
   state_proof:
     verdict: absent

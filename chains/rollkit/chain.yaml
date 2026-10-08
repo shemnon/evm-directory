@@ -118,10 +118,6 @@ consensus:
     (2) The one the Ethereum RPC reports: `finalized` = head minus 3 rollup
     blocks, a hard-coded local lag with NO reference to DA at all. See eips
     and gotchas.
-  block_time: >-
-    per deployment (pkg/config/defaults.go default 1s; Eden runs 100ms). With
-    LazyMode enabled, blocks are produced only when transactions arrive, plus
-    one heartbeat block every LazyBlockInterval (default 60s).
   src: block/internal/executing/executor.go:executionLoop
   src_live: "eth_getBlockByNumber @ 182440651 -> 100ms cadence; blocks 182440253-182440255 all carry timestamp 0x6a91e1ab"
   note: >-
@@ -618,6 +614,32 @@ p2p:
       why the message-size cap does more work here than a mesh protocol's would.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: FloodSub block + header gossip}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 50000000
+    observed_at_block: 211405042
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 211405042 -> gasLimit 0x2faf080"
+    note: >-
+      50,000,000 per deployment; Eden's 102 ms cadence makes it 492 Mgas/s, but another
+      deployment of the same template would answer differently.
+  block_time:
+    verdict: ~
+    observed: 103.4
+    observed_at_block: 211405042
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 211405042 vs 211395042 -> 1034s / 10000 blocks"
+    note: >-
+      per deployment (pkg/config/defaults.go default 1s; Eden runs 100ms). With LazyMode
+      enabled, blocks are produced only when transactions arrive, plus one heartbeat
+      block every LazyBlockInterval (default 60s). The observed 102 ms is Eden's
+      setting, not the default, and a lazy chain's cadence is a function of its traffic
+      rather than its config.
+
 proofs:
   state_transition:
     verdict: none

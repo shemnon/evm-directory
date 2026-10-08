@@ -207,6 +207,22 @@ def gen_matrix(chains):
     row("EIP-7702", lambda c, s: eip(c, s, 7702, "**no**"))
     row("Blobs (4844)", lambda c, s: eip(c, s, 4844, "no"))
     row("Metering", lambda c, s: (c.get("fee_model") or {}).get("metering", "—"))
+
+    # Capacity and cadence. The EFFECTIVE value is what belongs in a quick-reference
+    # table — the observed one where the network has been measured, the code one
+    # otherwise — because a reader scanning this row wants the number that is true of
+    # the running chain, not a client default the producers overrode. The pair, the
+    # mutability and the citation are on the axis page; this is the glance.
+    def metric(c, key, unit):
+        e = ((c.get("block_metrics") or {}).get(key)) or {}
+        v = e.get("observed") if e.get("observed") is not None else e.get("verdict")
+        if v is None:
+            return "—"
+        if unit == "ms":
+            return f"{v:g} ms" if v < 1000 else f"{v / 1000:.4g} s"
+        return "2^50" if v == 1 << 50 else f"{v:,}"
+    row("Block gas limit", lambda c, s: metric(c, "block_gas_limit", "gas"))
+    row("Block time", lambda c, s: metric(c, "block_time", "ms"))
     L.append(legend())
 
     # --- what can SIGN a transaction: an axis of its own -------------------

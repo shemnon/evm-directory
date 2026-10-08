@@ -32,7 +32,6 @@ client:
 
 consensus:
   engine: Snowman++ (per-L1 validator set)
-  block_time: configurable
 
 baseline_fork: cancun
 
@@ -285,6 +284,15 @@ p2p:
       pull the gap, in place of mainnet's push-and-announce.
     stack:
       - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      configurable per subnet. There is no single answer for this row: the subnet
+      operator sets it in genesis.
+
 fee_model:
   metering: gas
   fee_market: ACP-176 style dynamic fee, plus optional runtime reconfiguration

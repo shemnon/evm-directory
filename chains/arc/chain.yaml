@@ -86,7 +86,6 @@ live_probe:
 consensus:
   engine: Malachite (Tendermint BFT, Rust), Ed25519 validator keys
   finality: single-slot deterministic (BFT), sub-second
-  block_time: ~1s (testnet, observed)
   note: >-
     Permissioned validator set governed by a PermissionedValidatorManager
     contract. No beacon chain — but the header still carries
@@ -544,6 +543,26 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: Malachite, purpose: BFT consensus messages}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 30000000
+    observed_at_block: 65015143
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 65015143 -> gasLimit 0x1c9c380"
+  block_time:
+    verdict: ~
+    observed: 508.9
+    observed_at_block: 65015143
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 65015143 vs 65005143 -> 5089s / 10000 blocks"
+    note: >-
+      ~1s on the TESTNET, which is the only network that exists: the row is prelaunch,
+      so this cadence may not survive mainnet. Malachite BFT.
+
 proofs:
   state_transition:
     verdict: consensus

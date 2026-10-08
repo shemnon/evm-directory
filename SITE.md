@@ -49,7 +49,7 @@ always just `tools/site.py`. It hashes every page's declared inputs into
 
 | You changed | Run | What rebuilds |
 |---|---|---|
-| one `chains/<slug>/chain.yaml` | `tools/site.py` | 13 pages: that chain page, all 9 axis pages, home and both indexes — **not** the other 18 chain pages |
+| one `chains/<slug>/chain.yaml` | `tools/site.py` | 16 pages: that chain page, all 12 axis pages, home, both indexes and silent divergences — **not** the other 46 chain pages |
 | one `chains/<slug>/SUMMARY.md` | `tools/site.py` | that chain page only |
 | `chains/op-stack/chain.yaml` | `tools/site.py` | the above, **plus its five descendants** (Base, Celo, opBNB, OP Mainnet, World Chain), since they inherit its entries |
 | `findings.yaml` | `tools/site.py` | home, axis pages, and every chain page |

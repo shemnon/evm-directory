@@ -78,7 +78,6 @@ consensus:
     Gnosis Beacon Chain (Gasper) over the Engine API; AuRa before the merge, and the
     AuRa objects are still in the chainspec
   finality: ~1 min 40 s (2 epochs of 16 slots x 5 s)
-  block_time: 5s
   note: >-
     Validators stake GNO, not the gas token. 1 GNO = 32 mGNO on the beacon side, so a
     validator's 32-mGNO effective balance mirrors mainnet's 32 ETH — and that factor
@@ -675,6 +674,39 @@ p2p:
       1 MiB, matching geth's blob pool, and selected by the same filter:
       `tx.SupportsBlobs ? _configuredMaxBlobTxSize : _configuredMaxTxSize`. One filter with
       a branch, where geth uses two separate pools.
+
+block_metrics:
+  block_gas_limit:
+    verdict: 10000000
+    observed: 17000000
+    observed_at_block: 48540228
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src: "src/Nethermind/Chains/gnosis.json:133"
+    src_live: "eth_getBlockByNumber @ 48540228 -> gasLimit 0x1036640"
+    note: >-
+      CODE AND NETWORK DISAGREE BY 70%, AND BOTH NUMBERS ARE CORRECT. The chain spec's
+      genesis `gasLimit` is 0x989680 = 10,000,000; the network runs 17,000,000, walked
+      there by producers under the same 1024 bound divisor mainnet uses. The genesis
+      value is a starting point, not a cap, which is what `mutability: adjustable` means
+      — and why a reader who cites the chain spec for "Gnosis's gas limit" is off by
+      7,000,000. The 17,000,000 figure also sits 222,784 gas above EIP-7825's per-
+      transaction cap, so one transaction may legally consume 98.7% of a block.
+  tx_gas_limit:
+    verdict: 16777216
+    mutability: fixed
+    src: "src/Nethermind/Chains/gnosis.json:eip7825TransitionTimestamp"
+  block_time:
+    verdict: ~
+    observed: 5099.0
+    observed_at_block: 48540228
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_getBlockByNumber @ 48540228 vs 48530228 -> 50990s / 10000 blocks"
+    note: >-
+      5s, and the observed 5,100 ms is 2% above it for the same reason mainnet's is: a
+      missed slot inserts a full extra interval that no average removes.
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559, mainnet parameters, base fee COLLECTED not burned"

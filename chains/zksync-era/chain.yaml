@@ -43,10 +43,10 @@ client:
     definitions). Citations below are written relative to whichever clone holds them.
   companion_repos:
   - {name: era-contracts, repo: "https://github.com/matter-labs/era-contracts",
-     commit: 101ab952b2c7b03e7648e30842f081042afc2d9a,
+     commit: 81a82896f7e0fb0d70b43e583bce5f7d89981eb5,
      provides: "system contracts, EvmEmulator.yul, CREATE/CREATE2 derivation; pinned as the `contracts` git submodule of this tag"}
   - {name: zksync-protocol, repo: "https://github.com/matter-labs/zksync-protocol",
-     version: v0.153.14, commit: 4b2c1e618c6df65e9cdf656172a60fee6c91a2d4,
+     version: v0.153.15, commit: 750395978562e80ddda8aca49ceb8c6014326aa1,
      provides: "EraVM opcode set, kernel address space, ergs constants; pinned as zk_evm_1_5_2 in core/Cargo.toml"}
 
 live_probe:
@@ -479,7 +479,9 @@ system_contracts:
   "0x0000000000000000000000000000000000010006": {name: SloadContract, status: added,
     src: "core/lib/constants/src/contracts.rs:SLOAD_CONTRACT_ADDRESS"}
   "0x000000000000000000000000000000000001000d": {name: L2InteropCenter, status: added,
-    src: "core/lib/constants/src/contracts.rs:L2_INTEROP_CENTER_ADDRESS"}
+    src: "core/lib/constants/src/contracts.rs:L2_INTEROP_CENTER_ADDRESS",
+    src_live: "eth_getCode @ 72392082 -> 0x (no bytecode at the address; kernel-space addresses revert rather than succeed when empty, so this is not the same as 'absent')",
+    note: "THE TWO REPOS DISAGREE ABOUT THIS ADDRESS AS OF THIS PIN. The node still names it — the constant is untouched, and the client pin did not move. The era-contracts companion moved 22 commits and REMOVED the bootloader's interop plumbing: `L2_INTEROP_CENTER_ADDR`, the settlement-layer chain-id slot and the interop-fee slot are all gone from `bootloader.yul`, and 1000d appears nowhere under system-contracts/ any more. So the address is declared by the node, no longer referenced by the bootloader, and carries no bytecode on mainnet. Kept as `added` because the node's declaration is what this row cites; flagged because the next re-pin should decide whether the node constant outlived its purpose."}
   "0x000000000000000000000000000000000001000e": {name: L2InteropHandler, status: added,
     src: "core/lib/constants/src/contracts.rs:L2_INTEROP_HANDLER_ADDRESS"}
   note: >-

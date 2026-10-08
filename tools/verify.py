@@ -552,10 +552,15 @@ def ex_gnosis():
     n = repo("gnosis") / "src/Nethermind"
     impl = (n / "Nethermind.Blockchain/EthereumPrecompileProvider.cs").read_text(errors="replace")
     names = {}
-    for f in sorted((n / "Nethermind.Evm.Precompiles").glob("*.cs")):
-        m = re.search(r"public static Address Address \{ get; \} = Address\.FromNumber\(([\dxa-fA-F]+)\)",
-                      f.read_text(errors="replace"))
-        if m: names[f.stem] = int(m.group(1), 0)
+    # TWO DIRECTORIES: Nethermind 2.x left most precompiles in `Nethermind.Evm.Precompiles`
+    # but moved IdentityPrecompile (0x04) into `Nethermind.Evm/Precompiles`. Scanning only
+    # the first dropped a Frontier precompile out of the active set and reported it as a
+    # base-map mismatch, which is the one way this extractor can be wrong and look right.
+    for d in ("Nethermind.Evm.Precompiles", "Nethermind.Evm/Precompiles"):
+        for f in sorted((n / d).glob("*.cs")):
+            m = re.search(r"public static Address Address \{ get; \} = Address\.FromNumber\(([\dxa-fA-F]+)\)",
+                          f.read_text(errors="replace"))
+            if m: names[f.stem] = int(m.group(1), 0)
     runnable = {names[c] for c in re.findall(r"\[(\w+)\.Address\]", impl) if c in names}
     if not runnable: raise ExtractError("gnosis: EthereumPrecompileProvider resolved to nothing")
 

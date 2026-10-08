@@ -2,8 +2,8 @@
 
 **Chain ID 100 · role: `fork` · upstream: ethereum · baseline: Osaka (Fusaka, 2026-04-14)**
 
-Reference: [NethermindEth/nethermind `1.39.3`](https://github.com/NethermindEth/nethermind)
-@ `28cbe2a0`, cross-checked against [gnosischain/reth_gnosis `v2.0.0`](https://github.com/gnosischain/reth_gnosis)
+Reference: [NethermindEth/nethermind `2.1.0`](https://github.com/NethermindEth/nethermind)
+@ `b3e7e84c`, cross-checked against [gnosischain/reth_gnosis `v2.2.0`](https://github.com/gnosischain/reth_gnosis)
 @ `5b236a06` and the normative [gnosischain/specs](https://github.com/gnosischain/specs)
 @ `045d46d6`. Live probes at block **47884196**.
 
@@ -132,8 +132,9 @@ difficulty (`8626000000000000000000058750000000000000000000`) comes from.
 entirely historical — and it covers roughly 40 million blocks.
 
 Checked and cleared, since four rows have now found a consensus dimension hiding in a
-header field: `extraData` is 18 bytes of ASCII client version (`Nethermind v1.39.3`)
-with no protocol meaning; `blobGasUsed`/`excessBlobGas` carry real blob gas for a
+header field: `extraData` is 18 bytes of ASCII client version with no protocol meaning —
+and still decoded to `Nethermind v1.39.3` at block 48,657,980, one major version behind
+this pin, which is the producer-versus-pin gap stated plainly in a header; `blobGasUsed`/`excessBlobGas` carry real blob gas for a
 real market; `mixHash` post-merge carries a real RANDAO from a real beacon chain.
 
 ## 5. There is a blob market, and its floor is a billion times mainnet's
@@ -314,7 +315,7 @@ cd chains/gnosis/repos
 R=https://rpc.gnosischain.com; B=0x2daa7a4      # block 47884196
 
 # --- pins
-git -C nethermind  rev-parse HEAD    # 28cbe2a0ae28373f66abdc584f3eaf21516e84b3
+git -C nethermind  rev-parse HEAD    # b3e7e84c1695420e771326f73801b66fa0574871
 git -C specs       rev-parse HEAD    # 045d46d6db96a39b4d91485f9783474c13546ac9
 git -C reth_gnosis rev-parse HEAD    # 5b236a06cfa29a29060fcb3355b73fef182e6e0c
 git -C configs     rev-parse HEAD    # e542d132340e68fd7922149b145a0d361e1c87d4

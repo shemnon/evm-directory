@@ -32,7 +32,8 @@ lineage:
     go.mod requires `github.com/ethereum/go-ethereum v1.17.1` and `replace`s it with
     `github.com/0xsoniclabs/go-ethereum` @ e9dfccd4 (2026-05-07), whose
     version/version.go reads 1.17.2-stable. The dataset's Ethereum row pins geth
-    v1.17.5 — Sonic is four patch releases behind upstream, not four years.
+    v1.17.8 — Sonic is six patch releases behind upstream (1.17.2 to 1.17.8), not
+    four years.
   note: >-
     The consensus half is the Fantom inheritance: `Fantom-foundation/lachesis-base`
     is still a direct dependency, the package holding the fork flags and the network

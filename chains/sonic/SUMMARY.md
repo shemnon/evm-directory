@@ -21,8 +21,8 @@ that matters.
 Sonic does not fork go-ethereum's tree at all. `go.mod` **requires**
 `github.com/ethereum/go-ethereum v1.17.1` and `replace`s it onto
 `0xsoniclabs/go-ethereum` @ `e9dfccd4` (2026-05-07), whose `version/version.go` reads
-**1.17.2-stable**. The Ethereum row in this dataset pins geth `v1.17.5`. Sonic is four
-patch releases behind upstream, not four years.
+**1.17.2-stable**. The Ethereum row in this dataset pins geth `v1.17.8`. Sonic is six
+patch releases behind upstream (1.17.2 to 1.17.8), not four years.
 
 And the patch fork is tiny. Grepping `Sonic|Fantom|Opera` across `core/vm/`,
 `core/state_transition.go`, `core/types/` and `params/` in that fork returns **eleven

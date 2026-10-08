@@ -16,13 +16,15 @@ lineage:
     other OP-Stack descendant here. NOT a thin row: Base has its own fork line
     (Azul, Beryl, Cobalt, Zombie), its own precompile framework, native account
     abstraction, and a DYNAMIC precompile address space.
-  sync_point: OP Stack sequence through Jovian, then Base-specific upgrades
+  sync_point: >-
+    base v1.4.2: the OP Stack sequence through Jovian, then four Base-specific
+    upgrades — Azul, Beryl and Cobalt live, Denim unscheduled — plus the Zenith gate.
 
 client:
   name: base (base-reth-node)
   repo: https://github.com/base/base
-  version: v1.2.0
-  commit: 8e28af24a0d45439f410e67b1b7847d9a7e7177c
+  version: v1.4.2
+  commit: 5034ef80bc90261ff6c4841fdf4baed34283abad
   language: rust
   built_on: reth / op-reth (revm 40.0.3, reth-revm v2.3.0)
   note: >-
@@ -30,10 +32,13 @@ client:
     Reading node alone would have produced a near-empty and badly wrong row.
   companion_repos:
   - {name: node, repo: "https://github.com/base/node",
-     commit: 552280fe4291b3795d7342e39dbb9646e84b175a,
+     commit: 36cedd9185512d8664721ab3fd89381ddd0fcd97,
      provides: "nothing this row states — pinned only so the rejection above names a
-       specific tree. This is the repo the obvious search finds; versions.env in it is
-       what identified base/base v1.2.0 as the client that actually runs."}
+       specific tree. This is the repo the obvious search finds, and AT THIS COMMIT ITS
+       versions.env STILL PINS base/base v1.2.0 while the client has shipped v1.4.2 and
+       the network has passed Cobalt. The packaging repo lags the client by three minor
+       releases and one live mainnet fork, which is why this row reads the client repo
+       and keeps node only as a pointer."}
 
 consensus:
   engine: OP Stack (sequencer) + fault proofs
@@ -41,7 +46,7 @@ consensus:
 baseline_fork: osaka
 
 forks:
-  src: crates/common/precompiles/src/spec.rs (BaseUpgrade), crates/infra/basectl
+  src: crates/common/genesis/src/chain/upgrade.rs, crates/common/chains/src/chain.rs, crates/common/chains/src/config.rs
   note: >-
     Base is ABSENT from the superchain-registry mainnet configs in this snapshot,
     unlike OP Mainnet and World Chain, so activation timestamps could not be read
@@ -51,8 +56,39 @@ forks:
   - {name: "bedrock..jovian", mainnet_equivalent: see_op_stack, status: active}
   - {name: azul,   mainnet_equivalent: null, note: Base-specific}
   - {name: beryl,  mainnet_equivalent: null, note: "installs the dynamic B-20 precompile lookup"}
-  - {name: cobalt, mainnet_equivalent: null, note: "gates EIP-8130 account abstraction"}
-  - {name: zombie, mainnet_equivalent: null}
+  - name: cobalt
+    activation_time: 1790791200
+    mainnet_equivalent: null
+    note: >-
+      LIVE ON MAINNET SINCE 2026-09-30 18:00 UTC (Sepolia 2026-09-23 18:00). At the
+      previous pin this was `ForkCondition::Never` on both networks. What it shipped
+      is not what it was for: Cobalt installs the two EIP-8130 support precompiles,
+      NonceManager at 0x8130..aa01 and TxContext at 0x8130..aa02, and enables
+      transaction extensions in the builder — but the EIP-8130 TRANSACTION TYPE moved
+      off Cobalt and onto Zenith before Cobalt activated. See the 0x79 entry.
+    src: crates/common/chains/src/config.rs:cobalt_timestamp
+  - name: denim
+    status: pending
+    mainnet_equivalent: null
+    note: >-
+      Fourth Base-specific upgrade, `ForkCondition::Never` on mainnet and Sepolia —
+      declared, not scheduled. It is the sub-second block upgrade: cadence goes from
+      the 2s `PRE_DENIM_BLOCK_INTERVAL_SECS` to a fixed
+      `NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS` of 200, with
+      `DENIM_GAS_PARAMETER_SCALING_FACTOR` of 10 for the ten Denim blocks that fit in
+      one legacy interval.
+    src: crates/common/genesis/src/rollup.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS
+  - name: zenith
+    status: pending
+    mainnet_equivalent: null
+    note: >-
+      REPLACES `zombie` AS THE NEVER-ACTIVATING GATE, and the rename came with a
+      promotion in what it holds. Zenith is not contract-backed and not signalable
+      via L1: it is excluded from both CONTRACT_VARIANTS and EXECUTION_VARIANTS, and
+      the tests assert that even a runtime registry override cannot activate it
+      (`set_activation_timestamp(.., Zenith, u64::MAX)` still leaves
+      `ForkCondition::Never`). Only a genesis-configured timestamp could.
+    src: crates/common/genesis/src/chain/upgrade.rs:Zenith
 
 eips:
   7702: {status: inherited, note: "present as a distinct tx type alongside EIP-8130",
@@ -82,13 +118,22 @@ tx_types:
       their evidence are on the rows below.
   "0x79":
     name: Eip8130Tx
-    status: added
+    status: pending
     spec: EIP-8130
-    fork: cobalt
-    src: crates/common/consensus/src/transaction/tx_type.rs:15
+    fork: zenith
+    severity: high
+    src: crates/common/consensus/src/transaction/tx_type.rs:EIP8130_REJECTION_MSG
     note: >-
-      Native account-abstraction transaction. Distinct from EIP-7702, which Base
-      also supports.
+      WAS `added` AND GATED ON COBALT; IT IS NOW GATED ON ZENITH, WHICH CANNOT BE
+      ACTIVATED AT RUNTIME. The rejection message says so in as many words:
+      "EIP-8130 (account abstraction) transactions are gated behind Zenith;
+      eth_sendRawTransaction does not accept transaction type 0x79 before Zenith" —
+      it read "Cobalt" at the previous pin. Cobalt then went live on 2026-09-30 and
+      brought the type's two support precompiles with it, so the infrastructure for
+      native account abstraction is callable on Base mainnet today while the
+      transaction type that would use it is not submittable. `pending` rather than
+      `added` because the type is merged and not live. Distinct from EIP-7702, which
+      Base does support.
   note: >-
     Inherits 0x00-0x04 and OP Stack's 0x7e deposit, and adds 0x79. Base therefore
     carries TWO non-mainnet type bytes.
@@ -170,19 +215,24 @@ tx_authorization:
       status: pending
       authorizes: protocol
       precompile: "0x0100"
-      activation_condition: "Cobalt fork"
+      activation_condition: "Zenith fork (was Cobalt; Zenith is not runtime-activatable)"
       note: >-
         Raw P-256. auth blob is r||s||x||y||pre_hash (129 bytes, the trailing byte
         required and ignored), actorId is keccak256(x||y) — so the account is
         identified by the KEY, and a P-256 key has no address of its own. Low-s
         enforced to match OpenZeppelin's P256.verify. Paired with 0x0100, which Base
-        has at both the Jovian and Azul (Osaka-priced) pricings.
+        has at both the Jovian and Azul (Osaka-priced) pricings. STILL `pending` AT
+        v1.4.2, FOR A DIFFERENT REASON THAN BEFORE: the earlier blocker was that the
+        authenticator contracts were undeployed on mainnet, but the binding constraint
+        now is that the only transaction type reaching AuthenticatorDispatch is 0x79,
+        which moved from the Cobalt gate to the Zenith gate. Cobalt going live on
+        2026-09-30 did not make a P-256 key able to move a wei on Base.
       src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:P256_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:p256_verify, crates/common/precompiles/src/provider.rs:P256VERIFY"
     secp256r1_webauthn:
       status: pending
       authorizes: protocol
       precompile: "0x0100"
-      activation_condition: "Cobalt fork"
+      activation_condition: "Zenith fork (was Cobalt; Zenith is not runtime-activatable)"
       note: >-
         The same curve under a WebAuthn envelope, so a passkey signs the transaction
         directly. The client parses clientDataJSON, asserts the type member and the
@@ -193,7 +243,7 @@ tx_authorization:
         is what differs, and that construction has no precompile: a contract must
         reassemble it from 0x02 and 0x0100 by hand. Not an unpaired scheme, since the
         signature itself is checkable at 0x0100.
-      src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:WEBAUTHN_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:webauthn, crates/execution/eip8130/src/schedule.rs:Eip8130GasSchedule"
+      src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:WEBAUTHN_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:webauthn, crates/common/eip8130/src/schedule.rs:Eip8130GasSchedule"
 
 precompiles:
   base_map:
@@ -209,33 +259,43 @@ precompiles:
   "0x8453000000000000000000000000000000000001":
     name: Activation
     status: added
-    src: crates/common/precompiles/src/activation/storage.rs:88
+    src: crates/common/precompiles/src/activation/storage.rs:ADDRESS
     note: "address prefix is Base's own chain ID (8453) — a placement convention unique in this dataset"
   "0x8453000000000000000000000000000000000002":
     name: Policy
     status: added
-    src: crates/common/precompiles/src/policy/storage.rs:77
+    src: crates/common/precompiles/src/policy/storage.rs:ADDRESS
   "0x813000000000000000000000000000000000aa01":
     name: Nonce
     status: added
-    src: crates/common/precompiles/src/nonce/storage.rs:51
-    note: "2D nonce support for EIP-8130"
+    fork: cobalt
+    src: crates/common/eip8130/src/nonce.rs:NonceManagerSlots, crates/common/precompiles/src/nonce/storage.rs:ADDRESS
+    note: >-
+      2D nonce support for EIP-8130, installed by `provider.rs:install_with_observer`
+      only once the upgrade is >= Cobalt. LIVE SINCE 2026-09-30: at the previous pin
+      Cobalt was `ForkCondition::Never`, so this address was in the client and not on
+      the network. It is now callable on mainnet even though the 0x79 transaction type
+      it supports is gated behind Zenith and is not.
   "0x813000000000000000000000000000000000aa02":
     name: TxContext
     status: added
-    src: crates/common/precompiles/src/tx_context/storage.rs:28
+    fork: cobalt
+    src: crates/common/precompiles/src/tx_context/storage.rs:ADDRESS
+    note: >-
+      Same Cobalt gate and same history as the Nonce precompile above: in the client
+      at the previous pin, on the network since 2026-09-30.
   "0xB20F000000000000000000000000000000000000":
     name: B20Factory
     status: added
     fork: beryl
-    src: crates/common/precompiles/src/b20_factory/storage.rs:46
+    src: crates/common/precompiles/src/b20_factory/storage.rs:ADDRESS
   dynamic_range:
     name: B-20 token precompiles
     status: added
     fork: beryl
     severity: high
     pattern: "byte[0] == 0xb2 AND bytes[1..10] == 0 AND byte[10] in {0x00 asset, 0x01 stablecoin}"
-    src: crates/common/precompiles/src/b20_factory/variant.rs:66-80, crates/common/precompiles/src/lookup.rs
+    src: crates/common/precompiles/src/b20_factory/variant.rs:has_b20_prefix, crates/common/precompiles/src/lookup.rs:BerylLookup
     note: >-
       NOT ENUMERABLE. Beryl installs a PrecompileLookup (BerylLookup) that resolves
       precompiles by PREDICATE over the address rather than from a fixed map. Every
@@ -300,7 +360,11 @@ block_metrics:
     mutability: config
     note: >-
       2s, the OP Stack `l2BlockTime` every descendant inherits unless it overrides it.
-      Changeable by the chain operator through the SystemConfig, not by a fork.
+      Changeable by the chain operator through the SystemConfig, not by a fork — with
+      one declared exception: the unscheduled Denim upgrade replaces it with a fixed
+      200ms cadence (`NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS`), ten blocks per legacy
+      interval, scaling the gas parameters by `DENIM_GAS_PARAMETER_SCALING_FACTOR` to
+      match. `ForkCondition::Never` on mainnet, so 2s is what runs.
 
 fee_model:
   metering: gas

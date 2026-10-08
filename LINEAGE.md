@@ -7,7 +7,7 @@ ethereum (baseline — go-ethereum v1.17.8, Osaka)
   └── Arbitrum One (v3.11.3, osaka)
   └── OP Stack (v1.101702.3, osaka) [stack, not a chain]
     └── OP Mainnet (v1.101702.3, osaka)
-    └── Base (v1.2.0, osaka)
+    └── Base (v1.4.2, osaka)
     └── Blast (v1.8.0, cancun)
     └── Celo (celo-v2.2.4, prague)
     └── Mantle (v1.6.1, osaka)

@@ -46,7 +46,7 @@ The envelope `0x00`–`0x04` (Legacy, 2930, 1559, 4844, 7702) is shown for every
 | `0x71` EIP-712 transaction (native account abstraction) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x76` EvNodeTransaction (batch calls + fee payer) / TempoTransaction (TT) |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕◐ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |
 | `0x78` ArbitrumLegacyTx / EthereumTxTypeEnvelope |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |
-| `0x79` Eip8130Tx |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `0x79` Eip8130Tx |  |  |  |  | ◌ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7b` CeloDynamicFeeTxV2 (CIP-64) |  |  |  |  |  |  | ➕ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7c` CeloDynamicFeeTx (legacy fee-currency tx) |  |  |  |  |  |  | ➖ |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `0x7d` PostExecTx |  |  | unrecorded | unrecorded | unrecorded | unrecorded | unrecorded | ➖ | unrecorded | unrecorded | unrecorded | unrecorded |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

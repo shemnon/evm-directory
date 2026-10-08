@@ -409,8 +409,10 @@
     base: >-
       On the same stack and the same client version as OP Mainnet, Base reimplements the
       EVM layer in Rust and adds five fixed precompiles, a dynamic precompile range,
-      native account abstraction (EIP-8130) with its own type byte `0x79`, and four
-      chain-specific forks.
+      native account abstraction (EIP-8130) with its own type byte `0x79` — declared
+      but NOT submittable, since the type sits behind the never-activating Zenith gate
+      while its two support precompiles went live with Cobalt — and four chain-specific
+      forks plus that gate.
     opbnb: >-
       opBNB carries BSC's precompiles rather than the stack's, and is pinned three fork
       generations back.
@@ -427,7 +429,8 @@
     OP Mainnet's delta file is empty. Base, on the same stack and client version,
     reimplements the EVM layer in Rust and adds five fixed precompiles, a dynamic
     precompile range, native account abstraction (EIP-8130) with its own type byte
-    `0x79`, and four chain-specific forks. opBNB carries BSC's precompiles and is
+    `0x79` (declared, not submittable: it is gated behind Base's never-activating
+    Zenith upgrade), and four chain-specific forks. opBNB carries BSC's precompiles and is
     pinned three fork generations back. Celo adds type `0x7b` (CIP-64, gas paid in an
     ERC-20), which accounts for 61% of transactions in the blocks sampled. Resolving
     `ethereum → op-stack → X` does not determine X's type-byte set.

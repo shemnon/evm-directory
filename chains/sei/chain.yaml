@@ -57,8 +57,6 @@ consensus:
     sei-tendermint — a fork of Tendermint v0.35 (NOT CometBFT 0.37/0.38),
     vendored in-tree, driving a Cosmos-SDK ABCI application
   finality: single-block instant finality (BFT); no reorgs, no uncles
-  block_time: ~0.48s
-  block_time_src_live: "eth_getBlockByNumber @ 226969278 vs 226959278 -> 4777s / 10000 blocks"
   abci: >-
     ABCI 0.17.0 (sei-tendermint/version/version.go:ABCISemVer), the Tendermint
     v0.35/v0.36-dev ABCI++ line. NOT ABCI 0.37 DeliverTx and NOT ABCI 0.38
@@ -844,6 +842,32 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p (sei fork), purpose: tx broadcast + consensus}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 12500000
+    observed_at_block: 235222491
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 235222491 -> gasLimit 0xbebc20"
+    note: >-
+      12,500,000 — among the three lowest block gas limits in the dataset, above only
+      Hyperliquid's small blocks and Rootstock. Its 480 ms cadence more than
+      compensates: 26 Mgas/s, five times mainnet's. A reader comparing single-block
+      capacity across these rows ranks Sei near the bottom and its throughput five
+      places above Ethereum, which is the whole argument for pairing capacity with
+      cadence on one axis.
+  block_time:
+    verdict: ~
+    observed: 480.1
+    observed_at_block: 235222491
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 235222491 vs 235212491 -> 4801s / 10000 blocks"
+    note: >-
+      ~0.48s, and the observed 480 ms matches. A prior hand measurement over a different
+      window found 4,777s across 10,000 blocks — 477.7 ms — agreeing to within 3 ms.
 
 proofs:
   state_transition:

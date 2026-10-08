@@ -31,7 +31,6 @@ client:
 consensus:
   engine: centralised sequencer + optimistic fraud proofs (BoLD)
   finality: inherits L1 after challenge window
-  block_time: ~250ms
 
 baseline_fork: osaka
 
@@ -379,6 +378,15 @@ p2p:
     stack:
       - {layer: execution, protocol: websocket, purpose: sequencer feed (ordered output)}
       - {layer: settlement, protocol: devp2p, purpose: batch posting to L1}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      ~250ms, paced by the centralised sequencer rather than by a consensus round —
+      there is no voting delay to hold it anywhere, so the figure is a service level
+      rather than a protocol parameter.
 
 proofs:
   state_transition:

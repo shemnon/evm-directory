@@ -75,7 +75,6 @@ live_probe:
 consensus:
   engine: PlasmaBFT (pipelined Fast HotStuff), closed source
   finality: BFT, deterministic; `finalized` trailed the head by ~2,662 blocks when probed
-  block_time: 1s
   src_doc: https://docs.plasma.org/docs/plasma-chain/network-information/differences-ethereum-and-plasma
   src_live: "eth_getBlockByNumber 30724096-30724107 @ 30724096 -> timestamps +1s each, exactly; eth_getBlockByNumber finalized @ 30724096 -> 0x1d4da66"
   note: >-
@@ -287,6 +286,33 @@ p2p:
       pool with a 1 MiB cap that INCLUDES the sidecar. So the two clients bound different
       quantities by different limits: reth ignores blob payload size entirely here, and
       geth's cap is dominated by it.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 36000000
+    observed_at_block: 33951768
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 33951768 -> gasLimit 0x2255100"
+  block_time:
+    verdict: ~
+    observed: 1000.0
+    observed_at_block: 33951768
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 33951768 vs 33941768 -> 10000s / 10000 blocks"
+    note: >-
+      1s, and the observed figure is 1000.0 ms exactly — PlasmaBFT holds the interval
+      rather than treating it as a floor.
+  blob_count:
+    verdict: ~
+    observed: 0
+    observed_at_block: 33951768
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_config @ 33951768 -> blobSchedule.max 0"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559, unmodified, base fee pinned at the 7-wei floor

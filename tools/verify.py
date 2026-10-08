@@ -740,7 +740,25 @@ def ex_txtypes(slug, chain=None):
     return out
 
 PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
-                 "non_evm_transactions", "system_transactions", "p2p", "proofs"]
+                 "non_evm_transactions", "system_transactions", "p2p", "proofs",
+                 "block_metrics"]
+
+
+def _asserts_nothing(sec, v):
+    """Entries that are exempt from the evidence rule because they make no claim.
+
+    `status: unrecorded` is the general form — SCHEMA.md defines it as "deliberately
+    not established". `block_metrics:` needs a second form with the same meaning in
+    different clothes: an entry carrying neither `verdict:` nor `observed:` states no
+    number, only prose about a cadence nobody could measure, and 13 rows are in that
+    position because no endpoint answers for them. Counting those as missing
+    citations would put a floor under the `none` bucket that no amount of work could
+    remove, which is the precise failure the unrecorded/none split was introduced to
+    prevent."""
+    if v.get("status") == "unrecorded":
+        return True
+    return (sec == "block_metrics"
+            and v.get("verdict") is None and v.get("observed") is None)
 
 def provenance(c):
     """Tally how each fact in this row is evidenced. The generated tables merge
@@ -763,7 +781,7 @@ def provenance(c):
             if not isinstance(v, dict): continue
             for k in ("src", "src_live", "src_doc"):
                 if k in v: t[k] += 1; break
-            else: t["unrecorded" if v.get("status") == "unrecorded" else "none"] += 1
+            else: t["unrecorded" if _asserts_nothing(sec, v) else "none"] += 1
     return t
 
 # An extension ALLOWLIST was the wrong design: every new chain brings a new language,
@@ -1075,6 +1093,109 @@ def check_proofs(c):
     return bad
 
 
+BM_KEYS = {"block_gas_limit", "tx_gas_limit", "gas_target", "block_time",
+           "blob_count", "blob_gas_limit", "extras"}
+BM_MUTABILITY = {"fixed", "adjustable", "governance", "config", "interleaved",
+                 "unbounded"}
+
+# Gas and counts are integers; only a measured cadence may be fractional, because
+# dividing a timestamp delta by a block count does not land on a whole millisecond.
+BM_INT_ONLY = {"block_gas_limit", "tx_gas_limit", "gas_target", "blob_count",
+               "blob_gas_limit"}
+
+
+def check_block_metrics(c):
+    """`block_metrics:` — how much fits in a block and how often one arrives.
+
+    Optional as a section, but every key present must use the axis vocabulary. Two
+    rules here are not shared with the other keyed-question axes:
+
+    EVIDENCE FOLLOWS THE NUMBER. An entry asserting a `verdict:` or an `observed:`
+    must say how it is known. An entry with neither asserts no number at all — it
+    carries only prose about a cadence nobody has measured — so there is nothing to
+    cite, exactly as `status: unrecorded` is exempt elsewhere. Thirteen rows are in
+    that position because no endpoint answers for them, and demanding a citation
+    for a number they do not state would make the gate unpassable by construction.
+
+    A NOTE IS REQUIRED ONLY WHERE THE NUMBERS SURPRISE. On most rows a note saying
+    "30,000,000 gas per block" adds nothing to a cell that says 30,000,000. It is
+    required in the three cases where the numbers mislead without it: the pair
+    disagrees, the limit is interleaved between block classes, or the value is a
+    sentinel rather than a capacity."""
+    bad = []
+    d = c.get("block_metrics")
+    if d is None:
+        return bad
+    if not isinstance(d, dict):
+        return ["BAD BLOCK_METRICS  block_metrics: must be a mapping"]
+    for k, v in d.items():
+        if k not in BM_KEYS:
+            bad.append(f"BAD BLOCK_METRICS  {k!r} is not a block-metrics question "
+                       f"(want one of {sorted(BM_KEYS - {'extras'})})")
+            continue
+        if k == "extras":
+            if not isinstance(v, list):
+                bad.append("BAD BLOCK_METRICS  extras: must be a list")
+            else:
+                for e in v:
+                    if not isinstance(e, dict) or not str(e.get("name") or "").strip():
+                        bad.append("BAD BLOCK_METRICS  every extras entry needs a `name:`")
+                    elif not str(e.get("note") or "").strip():
+                        bad.append(f"BAD BLOCK_METRICS  extras {e['name']!r} has no "
+                                   f"`note:` — an extra exists BECAUSE it needs "
+                                   f"explaining")
+            continue
+        if not isinstance(v, dict):
+            bad.append(f"BAD BLOCK_METRICS  block_metrics.{k} must be a mapping")
+            continue
+
+        mut = v.get("mutability")
+        if mut not in BM_MUTABILITY:
+            bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}.mutability: {mut!r} "
+                       f"not in {sorted(BM_MUTABILITY)}")
+
+        ver, obs = v.get("verdict"), v.get("observed")
+        for field, val in (("verdict", ver), ("observed", obs)):
+            if val is None:
+                continue
+            if not isinstance(val, (int, float)) or isinstance(val, bool):
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}.{field}: {val!r} must "
+                           f"be a number — a string cannot be compared across rows")
+            elif k in BM_INT_ONLY and not isinstance(val, int):
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}.{field}: {val!r} must "
+                           f"be an integer; only block_time may be fractional")
+            elif val < 0:
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}.{field}: {val!r} "
+                           f"is negative")
+
+        # an observation is unreproducible without the height it was taken at, the
+        # same rule SCHEMA.md's evidence section states for every src_live
+        if obs is not None:
+            if not isinstance(v.get("observed_at_block"), int):
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k} has `observed:` with "
+                           f"no `observed_at_block:` — an unpinned observation is not "
+                           f"evidence")
+            if not str(v.get("observed_at") or "").strip():
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k} has `observed:` with "
+                           f"no `observed_at:` date")
+
+        if (ver is not None or obs is not None) and not any(
+                v.get(x) for x in ("src", "src_live", "src_doc")):
+            bad.append(f"BAD BLOCK_METRICS  block_metrics.{k} states a number with no "
+                       f"src / src_live / src_doc")
+
+        note = str(v.get("note") or "").strip()
+        if not note:
+            if ver is not None and obs is not None and ver != obs:
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}: verdict {ver} and "
+                           f"observed {obs} disagree and no `note:` says why — the "
+                           f"disagreement IS the finding")
+            elif mut in ("interleaved", "unbounded"):
+                bad.append(f"BAD BLOCK_METRICS  block_metrics.{k}: mutability "
+                           f"{mut!r} needs a `note:` — the number alone misleads")
+    return bad
+
+
 ISA_KINDS = {"register", "stack", "wasm"}
 ISA_ROLES = {"primary", "beside-evm"}
 
@@ -1209,6 +1330,9 @@ def main():
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_proofs(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
+
+        for b in check_block_metrics(c):
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_instruction_sets(c):

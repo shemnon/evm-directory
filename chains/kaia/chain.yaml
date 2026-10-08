@@ -43,8 +43,6 @@ live_probe:
 consensus:
   engine: Istanbul BFT (PBFT variant), 22-node committee sampled per block
   finality: immediate BFT finality; no uncles, no reorgs
-  block_time: 1s
-  block_time_src_live: "eth_getBlockByNumber @ 224632605 vs 224622605 -> exactly 10000s / 10000 blocks"
 
 baseline_fork: osaka
 
@@ -672,6 +670,37 @@ p2p:
       `tx.SizeWithoutBlobTxSidecar() > MaxTxDataSize` — the sidecar is excluded from the
       measurement, where geth's legacy pool never sees a blob tx at all and its blob pool
       counts the sidecar in full. Identical constant, non-identical predicate.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 500000000
+    observed_at_block: 228691210
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 228691210 -> gasLimit 0x1dcd6500"
+    note: >-
+      500,000,000 at a measured 1000.0 ms — half a gigagas per second, and the cadence
+      is exact enough that the derived figure is trustworthy.
+  block_time:
+    verdict: ~
+    observed: 1000.0
+    observed_at_block: 228691210
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_getBlockByNumber @ 228691210 vs 228681210 -> 10000s / 10000 blocks"
+    note: >-
+      1s, and measured to exactly 1000.0 ms over 10,000 blocks — the tightest cadence in
+      the dataset. A prior hand measurement over a different 10,000-block window found
+      exactly 10,000s, agreeing to the millisecond.
+  blob_count:
+    verdict: ~
+    observed: 1
+    observed_at_block: 228691210
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_config @ 228691210 -> blobSchedule.max 1"
+
 fee_model:
   metering: "gas AND computation cost (two independent meters, both enforced)"
   fee_market: "KIP-71 bounded dynamic base fee from Magma; a FIXED governance price before it"

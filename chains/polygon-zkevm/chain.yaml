@@ -109,7 +109,6 @@ live_probe:
 consensus:
   engine: single trusted sequencer; batches sequenced and SNARK-verified on Ethereum L1
   finality: L1 verification of a batch proof
-  block_time: ~1-3s (when producing)
   note: >-
     `finalized` and `latest` are 5,703,250 blocks apart. At the pinned height
     eth_getBlockByNumber("finalized") returns block 27688640, timestamp 1764745758
@@ -696,6 +695,31 @@ p2p:
       enough for a transaction with 6 blobs" — sized to the same 6-blob target that geth
       reaches via `BlobTxMaxBlobs`, but expressed as a round decimal rather than a binary
       one. Two clients aiming at the same blob count land on caps 248,576 bytes apart.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 1125899906842624
+    observed_at_block: 33391890
+    observed_at: 2026-10-01
+    mutability: unbounded
+    src_live: "eth_getBlockByNumber @ 33391890 -> gasLimit 0x4000000000000"
+    note: >-
+      2^50, the same unbounded sentinel the zkStack rows report, on a row that has been
+      HALTED since 2026-07-03. The value describes a network that no longer produces
+      blocks, and nothing further will contradict it.
+  block_time:
+    verdict: ~
+    observed: 3218.0
+    observed_at_block: 33391890
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 33391890 vs 33381890 -> 32180s / 10000 blocks"
+    note: >-
+      ~1-3s when producing, and it is NOT producing: the row has been halted since
+      2026-07-03. The observed 3,218 ms describes the last 10,000 blocks the network
+      made before it stopped.
+
 proofs:
   state_transition:
     verdict: validity

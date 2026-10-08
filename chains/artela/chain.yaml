@@ -198,7 +198,6 @@ client:
 consensus:
   engine: CometBFT v0.37.2 (unforked), Cosmos SDK ABCI application
   finality: single-block instant finality; no reorgs, no uncles, NO PRECONFIRMATIONS
-  block_time: ~2s (CometBFT default timeout_commit; per-deployment)
   src: "artela-cosmos-sdk/baseapp/abci.go:DeliverTx, artela-cosmos-sdk/baseapp/baseapp.go:runTx"
   note: >-
     ORDERING COMMITS BEFORE EXECUTION, AND THIS IS ABCI 0.37, NOT 0.38. The
@@ -1040,6 +1039,14 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      ~2s, the CometBFT default `timeout_commit`, and per-deployment — a different
+      operator ships a different number with no fork.
 
 proofs:
   proof_root:

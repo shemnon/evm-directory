@@ -32,7 +32,6 @@ client:
 
 consensus:
   engine: OP Stack (sequencer), settles to BNB Smart Chain
-  block_time: 1s
 
 baseline_fork: cancun
 
@@ -154,6 +153,13 @@ opcodes:
   added: []
   removed: []
   modified: []
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      1s, overriding OP Stack's 2s default.
 
 fee_model:
   metering: gas

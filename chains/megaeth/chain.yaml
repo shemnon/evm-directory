@@ -99,7 +99,6 @@ consensus:
   finality: >-
     preconfirmation at the mini-block (~10ms), EVM block at ~1s, DA on EigenDA with the
     certificate batched to Ethereum L1, then OP fault-proof dispute window
-  block_time: 1s (EVM blocks) / ~10ms (mini-blocks)
   src: "stateless-validator/test_data/mainnet/genesis.json:blockTime"
   src_doc: https://docs.megaeth.com/mini-block
   src_live: "eth_blockNumber @ 24869120 -> +1 block/s; eth_getBlockByNumber 24869120-24869131 @ 24869120 -> timestamps 1787666131..1787666142, exactly +1s each; eth_subscribe miniBlocks @ 24869120 -> mini_block_timestamp deltas ~9.3ms (0x659df884e54d8 -> 0x659df884e7c21 = 9,537us)"
@@ -866,6 +865,31 @@ tx_lifecycle:
       published repository. See `## Not established here` in SUMMARY.md for the two probes
       that would settle it.
       the sealed list.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 10000000000
+    observed_at_block: 28095741
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 28095741 -> gasLimit 0x2540be400"
+    note: >-
+      10,000,000,000 is a REAL limit that real blocks fill, not a sentinel — which is
+      why tools/blockprobe.py carries an explicit sentinel set rather than flagging
+      anything above a magnitude threshold. At a 1s cadence it is 10 Ggas/s, the highest
+      in the dataset and three and a half times the next row.
+  block_time:
+    verdict: ~
+    observed: 1000.0
+    observed_at_block: 28095741
+    observed_at: 2026-10-01
+    mutability: interleaved
+    src_live: "eth_getBlockByNumber @ 28095741 vs 28085741 -> 10000s / 10000 blocks"
+    note: >-
+      1s (EVM blocks) / ~10ms (mini-blocks). Two cadences, and the one a user perceives
+      is the mini-block: 10ms preconfirmations inside a 1s EVM block. The observed
+      figure measures EVM blocks, because those are what `eth_blockNumber` counts.
 
 proofs:
   settlement:

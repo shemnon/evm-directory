@@ -53,7 +53,6 @@ consensus:
   engine: >-
     Satoshi (Parlia-derived PoSA) plus Satoshi Plus — Bitcoin miners delegate hash
     power and BTC holders stake to elect the validator set
-  block_time: 3s
   finality: fast finality via BLS vote attestations, as on BSC
 
 baseline_fork: prague
@@ -398,6 +397,25 @@ p2p:
       params.MaxMessageSize` rather than defining its own. A refactor rather than a
       divergence — recorded because the symbol moved, and a citation to the geth location
       would no longer resolve here.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 50000000
+    observed_at_block: 39194132
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 39194132 -> gasLimit 0x2faf080"
+  block_time:
+    verdict: ~
+    observed: 3000.1
+    observed_at_block: 39194132
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 39194132 vs 39184132 -> 30001s / 10000 blocks"
+    note: >-
+      3s, Satoshi Plus (delegated PoW + PoS).
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559 base fee, plus a contract-registered revenue share (Rev+)"

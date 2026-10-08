@@ -35,9 +35,6 @@ live_probe:
 
 consensus:
   engine: Parlia (Proof of Staked Authority)
-  block_time: 450ms
-  block_time_history: "3000ms default -> 1500ms Lorentz -> 750ms Maxwell -> 450ms Fermi"
-  block_time_src: consensus/parlia/parlia.go:61-64
 
 baseline_fork: osaka
 
@@ -386,6 +383,32 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip (eth, snap)}
       - {layer: consensus, protocol: devp2p, purpose: fast-finality votes (bsc/1)}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 70000000
+    observed_at_block: 125178367
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src_live: "eth_getBlockByNumber @ 125178367 -> gasLimit 0x42c1d80"
+    note: >-
+      70,000,000, walked there by producers rather than set in code — BSC uses the same
+      1/1024 bound divisor as mainnet, so this is `adjustable` and the observation
+      decays.
+  block_time:
+    verdict: 450
+    observed: 450.0
+    observed_at_block: 125178367
+    observed_at: 2026-10-01
+    mutability: fixed
+    src: "consensus/parlia/parlia.go:61-64"
+    src_live: "eth_getBlockByNumber @ 125178367 vs 125168367 -> 4500s / 10000 blocks"
+    note: >-
+      450ms, and it has been FOUR different numbers: 3000ms by default, then 1500ms at
+      Lorentz, 750ms at Maxwell, 450ms at Fermi. Each step was a hard fork, which is why
+      this row is `fixed` rather than `config` — the cadence is in the fork schedule,
+      not in an operator's flag.
 
 fee_model:
   metering: gas

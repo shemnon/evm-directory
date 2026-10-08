@@ -39,7 +39,6 @@ client:
 consensus:
   engine: derived from L1 (single sequencer + fault proofs)
   finality: inherits L1 finality after challenge window
-  block_time: 2s (typical)
 
 baseline_fork: osaka
 
@@ -439,6 +438,14 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx gossip}
       - {layer: consensus, protocol: libp2p, purpose: unsafe block gossip from sequencer}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      2s (typical) — the stack's `l2BlockTime` default. Descendants override it: opBNB
+      runs 1s. Changeable through the SystemConfig without a fork.
 
 proofs:
   state_transition:

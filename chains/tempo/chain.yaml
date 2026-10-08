@@ -66,7 +66,6 @@ live_probe:
 consensus:
   engine: Simplex BFT (Commonware), Ed25519 validator keys
   finality: single-slot deterministic (BFT), sub-second
-  block_time: ~200ms
   note: >-
     Header carries a `consensusContext` object (epoch, view, parentView,
     Ed25519 proposer key) and a millisecond timestamp component, both absent on
@@ -678,6 +677,40 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: Simplex, purpose: consensus messages (ed25519 identities)}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 500000000
+    observed_at_block: 42165507
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 42165507 -> gasLimit 0x1dcd6500"
+    note: >-
+      500,000,000, with a per-transaction cap of 30,000,000 — Tempo raised EIP-7825's
+      16,777,216 at its T1A fork, so the cap is 6% of the block rather than mainnet's
+      28%.
+  tx_gas_limit:
+    verdict: 30000000
+    mutability: fixed
+    src: "crates/hardfork/src/lib.rs:tx_gas_limit_cap"
+  block_time:
+    verdict: ~
+    observed: 556.6
+    observed_at_block: 42165507
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 42165507 vs 42155507 -> 5566s / 10000 blocks"
+    note: >-
+      ~200ms nominal; the observed 557 ms is nearly three times it.
+  blob_count:
+    verdict: ~
+    observed: 9
+    observed_at_block: 42165507
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_config @ 42165507 -> blobSchedule.max 9"
+
 proofs:
   state_transition:
     verdict: consensus

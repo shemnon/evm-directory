@@ -120,7 +120,6 @@ consensus:
     shred-level preconfirmation at 2-10 ms (sequencer's word, unsigned), L2 block at
     1 s, DA commitment posted to an AltDA server, batch inbox on Ethereum L1, then the
     OP fault-proof dispute window
-  block_time: 1s (L2 blocks) / 2-10ms (shreds)
   src: "chain/mainnet/rollup.json:block_time, docker-compose.yml:rise-op-node"
   src_doc: https://docs.risechain.com/rise-chain/shreds.html
   src_live: "eth_subscribe newHeads @ 20277529 -> blocks 20277529..20277548, exactly one per second, no gaps; eth_subscribe shreds @ 20277530 -> 98 shreds for block 20277530, shredIdx 0..97; @ 20277533 -> 478 shreds, shredIdx 0..477; mean inter-shred gap 5.1-18.3ms over three blocks @ 20277659"
@@ -408,10 +407,34 @@ tx_lifecycle:
       path.
       burned, receipt present (103 of 2,452 sampled shred receipts).
 
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 2250000000
+    observed_at_block: 23286994
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 23286994 -> gasLimit 0x861c4680"
+    note: >-
+      The row previously recorded 1,500,000,000, carried on an ad-hoc
+      `fee_model.block_gas_limit` key that nothing rendered. The network runs
+      2,250,000,000 — a 50% capacity increase that no source diff would ever have
+      surfaced, because no source changed. Found by the first run of
+      `tools/blockprobe.py`, which is the argument for the tool.
+  block_time:
+    verdict: ~
+    observed: 1000.0
+    observed_at_block: 23286994
+    observed_at: 2026-10-01
+    mutability: interleaved
+    src_live: "eth_getBlockByNumber @ 23286994 vs 23276994 -> 10000s / 10000 blocks"
+    note: >-
+      1s (L2 blocks) / 2-10ms (shreds). As with MegaETH the fast lane is what a user
+      feels and the slow lane is what the block number counts.
+
 fee_model:
   metering: "standard EVM gas, one dimension"
   fee_market: "EIP-1559 with elasticity 1 and denominator 1, floored by Jovian minBaseFee; base fee is constant at 415,300 wei in practice"
-  block_gas_limit: 1500000000
   extra_components:
   - name: L1 data fee
     status: removed

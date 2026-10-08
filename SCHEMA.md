@@ -783,12 +783,21 @@ theirs from prover constraints. The number is comparable across rows; the reason
 
 ### Why consensus limits are restated here rather than only in `eips:`
 
-`max_block_bytes` (EIP-7934) and the per-transaction gas cap (EIP-7825) are consensus facts
-with a home in `eips:`. They are **restated** here, tagged `tier: consensus`, because a
-reader asking "how big can this get" should get one table rather than three. The duplication
-is deliberate; `eips:` remains the authority on activation, and this axis on magnitude.
+`max_block_bytes` (EIP-7934) is a consensus fact with a home in `eips:`. It is
+**restated** here, tagged `tier: consensus`, because a reader asking "how big can this
+get" should get one table rather than two. The duplication is deliberate; `eips:` remains
+the authority on activation, and this axis on magnitude.
 
-EIP-7825 also implies a byte cap nobody writes down. With a per-tx limit of 16,777,216 gas
+An earlier draft of this paragraph also claimed the per-transaction gas cap (EIP-7825)
+was restated on this axis. It never was — no row ever carried such a key — and the gas
+cap now has a real home on the block-metrics axis as `tx_gas_limit`. **This axis measures
+bytes; `block_metrics:` measures gas, time and counts.** That is the boundary, and it is
+the one most likely to be crossed by accident: a reader who wants "how much fits in a
+block" wants both axes, and the two answer in units that cannot be converted into one
+another without knowing the calldata.
+
+EIP-7825 still implies a byte cap nobody writes down, which is why the arithmetic stays
+on this axis even though the gas number lives on the other. With a per-tx limit of 16,777,216 gas
 and EIP-7623's floor of 10 gas per token (4 tokens per non-zero byte), the largest
 transaction mainnet can contain is roughly **1.6 MB of zero bytes, or ~419 KB of non-zero
 bytes** — over twelve times what the mempool will carry. EIP-8037 moves intrinsic gas inside
@@ -800,6 +809,124 @@ Post-quantum readiness. Transport handshake KEX and peer-identity signatures are
 questions, but consensus and transaction signatures are not, and splitting one PQC story
 across two axes would serve neither. It belongs to the cryptography axis; this note exists
 so the next person does not add `pqc_*` keys here by default.
+
+## The block-metrics axis (`block_metrics:`)
+
+**How much fits in a block, and how often one arrives.** Capacity and cadence are one
+axis because neither is interpretable alone: 150,000,000 gas means nothing until you know
+whether it arrives every 300 ms or every 30 s, and the two chains in this dataset that
+share a gas limit differ by a factor of ten in throughput because of it.
+
+This is the only axis whose values are expected to move **while nobody touches the
+repo**. A precompile either exists or does not; a block gas limit is a number the
+network's own producers choose, and on mainnet they may change it every block. So every
+key here carries a **pair**:
+
+| field | the question it answers | evidence |
+|---|---|---|
+| `verdict:` | what the **code or config** sets | `src:` into the pinned clone |
+| `observed:` | what the **network actually ran** | `src_live:`, pinned to a height |
+
+Neither half is the "real" answer, and a disagreement between them is the most valuable
+cell on the page. Gnosis's chain spec sets `gasLimit` to 10,000,000 and its producers run
+17,000,000. Mainnet's code sets no block gas limit at all — only the 1/1024 bound on how
+fast one can move — so `verdict:` is legitimately absent there and `observed:` is the only
+answer that exists. A row with only `verdict:` describes a client; a row with only
+`observed:` describes a network; the axis wants both and says which it has.
+
+### `mutability:` — what it takes to change the number
+
+`tier:` is the p2p axis's load-bearing field because the question there is *who rejects*.
+Here the question is **what it would take for this number to be different tomorrow**,
+which is what decides whether an observation predicts anything at all.
+
+| mutability | meaning | `observed:` is |
+|---|---|---|
+| `fixed` | compiled in. Changing it needs a client release or a fork. | confirmation |
+| `adjustable` | producers move it within a bound, per block — mainnet's 1/1024. | the only real answer |
+| `governance` | an on-chain vote sets it. | current policy, not a constant |
+| `config` | node operator or genesis sets it; differs per deployment. | one deployment's choice |
+| `interleaved` | the chain runs **more than one class of block**, with different limits. | whichever class the probe landed on |
+| `unbounded` | there is no limit; the field carries a sentinel. | meaningless — see below |
+
+`interleaved` exists because of Hyperliquid, and a boolean or a single number would have
+lost the fact entirely. Over 150 consecutive blocks, 148 carried a 3,000,000 gas limit and
+2 carried 30,000,000 — small blocks every second, a large block every minute, in one
+chain. "The" gas limit is a category error there, and a single probe returns a coin flip
+weighted 60:1. MegaETH's mini-blocks and RISE's shreds are the same shape in the cadence
+column.
+
+### Sentinels are not capacities
+
+The zkStack rows report `gasLimit` = 2^50 (1,125,899,906,842,624). That is not a budget;
+it is "unbounded" spelled in the header's units, because an EraVM batch is bounded by
+prover circuits — recorded on the `proofs:` axis as `prover_constraints` — and by nothing
+in this field. Averaged into a throughput column it yields 350 Tgas/s and silently ruins
+every comparison on the page, so such a value is tagged `mutability: unbounded` and
+**excluded from the derived gas-per-second column**, which renders `n/a` rather than a
+number. `tools/blockprobe.py` carries the sentinel set explicitly rather than guessing
+from magnitude: MegaETH's 10,000,000,000 is a real limit that real blocks fill.
+
+### Throughput is derived, never stored
+
+`block_gas_limit / block_time` is the only figure comparable across a 200 ms chain and a
+30 s one, and it is computed at render time from the two keys above — never written into
+`chain.yaml`. Storing it would create a third number that can disagree with the two it
+comes from, and the first stale edit would make it a lie. Same reason `opcodes.prevrandao`
+records a derivation rather than a value.
+
+```yaml
+block_metrics:
+  block_gas_limit:
+    verdict: ~                       # mainnet's code locks no value, only the bound
+    observed: 60000000
+    observed_at_block: 26100348
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src: "params/protocol_params.go:GasLimitBoundDivisor"
+    src_live: "eth_getBlockByNumber @ 26100348 -> gasLimit 0x3938700"
+    note: >-
+      ...
+  tx_gas_limit:
+    verdict: 16777216                # EIP-7825, 1<<24
+    mutability: fixed
+    src: "params/protocol_params.go:MaxTxGas"
+  block_time:
+    verdict: 12000                   # ms, ALWAYS ms — never "12s"
+    observed: 12049.2
+    mutability: fixed
+  blob_count: {verdict: 21, observed: 21, mutability: fixed}
+  blob_gas_limit: {verdict: 2752512, mutability: fixed}
+  extras:                            # chain-specific, when no shared key fits
+    - name: pubdata per batch
+      value: 120000
+      note: ...
+```
+
+Keys: `block_gas_limit`, `tx_gas_limit`, `gas_target`, `block_time`, `blob_count`,
+`blob_gas_limit`, plus `extras:`. **Times are always integer milliseconds** and gas is
+always a raw integer — for the reason the p2p axis gives about bytes: `"12s"` and
+`"12000ms"` are the same fact and compare as different ones.
+
+### Why `block_time` moved here from `consensus:`
+
+It used to be `consensus.block_time`, as free text, on all 47 rows — `"2s"`, `"~0.48s"`,
+`"lambda-driven, 1500 ms at genesis"`, `"per deployment"`. Every one of those is true and
+not one of them is comparable, so the dataset could not answer "which chains produce
+blocks faster than a second" without a human reading 47 strings. The prose was not
+discarded: it is the `note:` on this axis's `block_time` key, where it explains the
+number instead of substituting for it. `consensus:` keeps `engine` and `finality`, which
+are genuinely consensus properties rather than block properties.
+
+### `extras:` and what counts as interesting
+
+A per-block limit earns a row when **exceeding it changes what happens to a user's
+transaction** — it waits, it costs more, or it cannot be included. That test admits
+pubdata caps, blob counts and per-tx gas caps, and excludes limits that bind only the
+node operator (cache sizes, peer counts) or the prover's internals, which `proofs:`
+already owns. `extras:` takes `{name, value, note}` and is the escape hatch for a limit
+real enough to matter and specific enough that no shared key would ever compare across
+rows.
 
 ## The proofs axis (`proofs:`)
 
@@ -1011,7 +1138,7 @@ lineage:      # upstream, ancestry, fork_of, sync_point
 client:       # reference client: repo, version tag, pinned commit, language
               # omitted entirely when chain.evidence is `documented`
 live_probe:   # endpoint, chain_id, observed_at_block — pins src_live claims
-consensus:    # engine, finality, block time
+consensus:    # engine, finality (block time lives on block_metrics:)
 baseline_fork: osaka      # the mainnet fork this chain claims equivalence to
 forks:        # src, note, timeline[] with activation_time / mainnet_equivalent
 eips:         # EIP number -> {status, note, src}. Mainnet-relative. THE core table.
@@ -1033,6 +1160,9 @@ non_evm_instruction_sets:  # VMs with no 256-entry byte table, keyed by set name
 tx_lifecycle: # ordering/execution answers, keyed by question, each with a verdict
 p2p:          # wire-level limits and transports, keyed by question; every size
               # carries a tier: consensus | policy | transport
+block_metrics: # how much fits in a block and how often one arrives, keyed by
+              # question; every key pairs verdict: (code) with observed: (network)
+              # and carries a mutability:. Gas, time and counts — bytes are p2p's.
 proofs:       # what can be proven about this chain and to whom, keyed by question:
               # state_transition / proving_live / settlement / prover_constraints
               # (half one) and state_proof / proof_root (half two)

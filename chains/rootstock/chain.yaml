@@ -58,7 +58,6 @@ consensus:
   engine: >-
     merge-mined Proof of Work (Bitcoin miners commit to RSK block hashes in their
     coinbase) plus the PowPeg federation for the two-way BTC peg
-  block_time: ~30s
   finality: probabilistic, following Bitcoin's hash power
 
 baseline_fork: petersburg
@@ -594,6 +593,31 @@ p2p:
       Absence of a found limit is not proof of no limit, so this is recorded as
       unestablished rather than as `unbounded` — the claim Besu's row makes only because
       its pool configuration could be enumerated in full.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 10000000
+    observed_at_block: 9288624
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src_live: "eth_getBlockByNumber @ 9288624 -> gasLimit 0x989680"
+    note: >-
+      10,000,000, merge-mined with Bitcoin at a ~30s interval, giving 328 kgas/s — the
+      lowest throughput in the dataset by a factor of nine.
+  block_time:
+    verdict: ~
+    observed: 30454.1
+    observed_at_block: 9288624
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 9288624 vs 9278624 -> 304541s / 10000 blocks"
+    note: >-
+      ~30s, the slowest cadence in the dataset by a factor of two. Merge-mined with
+      Bitcoin, so the block interval inherits Bitcoin's Poisson arrival process rather
+      than a configured target — which is why the observed 30,443 ms is close to but
+      never exactly 30,000.
+
 fee_model:
   metering: gas
   fee_market: >-

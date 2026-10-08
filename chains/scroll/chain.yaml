@@ -55,7 +55,6 @@ live_probe:
 consensus:
   engine: "Clique -> SystemContract (single sequencer, signer key read from L1 storage)"
   finality: inherits L1 finality once the validity proof is verified on Ethereum
-  block_time: 3s
   note: >-
     From EuclidV2 the engine is `system_contract`, which is Clique with the authorised
     signer taken not from an on-chain vote but from ONE STORAGE SLOT ON ETHEREUM
@@ -606,6 +605,26 @@ p2p:
       there is no second blob cap beneath it — the clone has no `core/txpool/` package at
       all. The absence of `max_blob_tx_bytes` on this row is a fact about the fork point,
       not a gap in the research.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 20000000
+    observed_at_block: 35242990
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 35242990 -> gasLimit 0x1312d00"
+  block_time:
+    verdict: ~
+    observed: 6210.4
+    observed_at_block: 35242990
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 35242990 vs 35232990 -> 62104s / 10000 blocks"
+    note: >-
+      3s nominal; the observed 6,184 ms is double it, so Scroll's sequencer is skipping
+      intervals rather than holding the documented cadence.
+
 proofs:
   state_transition:
     verdict: validity

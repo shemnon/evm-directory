@@ -28,7 +28,6 @@ client:
 
 consensus:
   engine: OP Stack (sequencer) + fault proofs
-  block_time: 2s
 
 baseline_fork: osaka
 
@@ -111,6 +110,14 @@ opcodes:
   added: []
   removed: []
   modified: []
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      2s, the OP Stack `l2BlockTime` default.
+
 proofs:
   proving_live:
     verdict: live

@@ -69,7 +69,6 @@ live_probe:
 consensus:
   engine: "Tree-Graph DAG + GHAST (PoW, adaptive weight) with a PoS finality chain (CIP-43)"
   finality: "PoS-finalised, ~200-240 epochs behind the tip; PoW blocks before that are reorgable"
-  block_time: "~0.5 s per DAG block, ~1 s per epoch (eSpace block.number advances ~1/s)"
   src: "crates/parameters/src/lib.rs:DEFERRED_STATE_EPOCH_COUNT, crates/cfxcore/core/src/consensus/consensus_graph/rpc_api/phantom_block_provider.rs:get_phantom_block_by_number"
   src_live: "cfx_getStatus @ 155333043 -> epochNumber 0x942318e-ish, blockNumber 0x166b396a, latestState = epochNumber-4, latestConfirmed = -46, latestFinalized = -183..-239"
   note: >-
@@ -981,6 +980,27 @@ p2p:
       knob — it sits beside the other protocol parameters the executor is versioned by, so
       it is a rule of the chain rather than a relay preference. Roughly 2.4x mainnet's
       mempool figure.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 30000000
+    observed_at_block: 158079941
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 158079941 -> gasLimit 0x1c9c380"
+  block_time:
+    verdict: ~
+    observed: 1105.2
+    observed_at_block: 158079941
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 158079941 vs 158069941 -> 11052s / 10000 blocks"
+    note: >-
+      ~0.5 s per DAG block, ~1 s per epoch. eSpace `block.number` advances with epochs
+      rather than DAG blocks, so the number an EVM caller sees moves at half the rate
+      the consensus layer does.
+
 proofs:
   state_transition:
     verdict: consensus

@@ -65,7 +65,6 @@ live_probe:
 
 consensus:
   engine: OP Stack (single sequencer), settles to Ethereum L1
-  block_time: 2s
   finality: L1 finality after batch submission
 
 baseline_fork: cancun
@@ -401,6 +400,24 @@ tx_lifecycle:
     verdict: unreachable
     note: "single OP Stack sequencer; inherited from op-stack with no change."
     src: "blast-optimism/op-node/rollup/chain_spec.go"
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 30000000
+    observed_at_block: 41041468
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 41041468 -> gasLimit 0x1c9c380"
+  block_time:
+    verdict: ~
+    observed: 2000.0
+    observed_at_block: 41041468
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 41041468 vs 41031468 -> 20000s / 10000 blocks"
+    note: >-
+      2s, inherited from OP Stack's `l2BlockTime`.
 
 proofs:
   state_proof:

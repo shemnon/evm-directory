@@ -32,7 +32,6 @@ client:
 
 consensus:
   engine: OP Stack (sequencer) + rollup-boost external block production
-  block_time: 2s
   note: >-
     rollup-boost multiplexes engine API calls to both the default EL and the World
     Chain builder, and falls back to the default EL block if the builder is late or
@@ -308,6 +307,13 @@ tx_lifecycle:
       RECEIPT is the question to settle before this ships; the WIP does not say, and no
       client implements it. NOTHING IS SCHEDULED — every parameter in WIP-1001 is TBD, and
       this entry is a spec reading, not an observation.
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      2s, inherited from OP Stack's `l2BlockTime`.
 
 fee_model:
   metering: gas

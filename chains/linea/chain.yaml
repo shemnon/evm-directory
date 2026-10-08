@@ -54,7 +54,6 @@ live_probe:
 consensus:
   engine: QBFT via Maru (single validator 0x9f31730181441beb67b10efaed5773767ea959bc)
   finality: inherits L1 finality after the zk proof is verified on Ethereum
-  block_time: 1s
   note: >-
     Genesis was Clique; the chain passed a terminal total difficulty of 49575263 and
     is now driven by Maru, Linea's consensus client, over the Engine API. The
@@ -429,6 +428,31 @@ p2p:
       `10 * ByteUnits.MEGABYTE`, and `MEGABYTE = 1 << 20`, so 10 MiB exactly — agreeing
       with geth. `TransactionsMessageHandler` enforces it on inbound transaction messages,
       which is what makes it the operative per-transaction ceiling on this client.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 2000000000
+    observed_at_block: 32205350
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 32205350 -> gasLimit 0x77359400"
+    note: >-
+      2,000,000,000, but blocks arrive only when there is work, so the derived
+      throughput figure is an artefact of the sampling window rather than a rate the
+      chain sustains.
+  block_time:
+    verdict: ~
+    observed: 8892.2
+    observed_at_block: 32205350
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 32205350 vs 32195350 -> 88922s / 10000 blocks"
+    note: >-
+      1s nominal, but the observed 8,895 ms is nine times that, because Linea's
+      sequencer produces a block only when there is something to put in it. The nominal
+      figure is a ceiling on latency, not a cadence.
+
 proofs:
   state_transition:
     verdict: validity

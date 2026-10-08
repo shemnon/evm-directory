@@ -78,9 +78,6 @@ consensus:
     by the L1 (a Move/Sui-derived, post-Rebased IOTA). The JSON-RPC does NOT wait for
     that: it serves `ActiveOrCommittedState`, defined in source as "the state the chain
     build next TX on, can be ahead of ConfirmedState" (sic).
-  block_time: >-
-    on demand; one ISC block per consensus round, floor 500 ms (`ConsensusDelay`
-    default). No fixed cadence and no empty-block production when idle.
   src: "packages/chain/cons/cons.go:uponVMInputsReceived, packages/chain/cons/bp/aggregated_batch_proposals.go:OrderedRequests, packages/chain/node.go:LatestState"
   src_live: "GET /v1/chain @ 12793600 -> isActive true, chainID 0x0dc448563a2c54778215b3d655b0d9f8f69f06cf80a4fc9eada72e96a49e409d"
   src_doc: https://docs.iota.org/developer/iota-evm/explanations/consensus
@@ -589,6 +586,32 @@ p2p:
     src: "go-ethereum/core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged in the embedded go-ethereum. The EVM runs as a chain inside Wasp, so this pool bounds what the embedded client accepts; the surrounding IOTA node has its own unrelated transport.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 1000000000
+    observed_at_block: 12979224
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 12979224 -> gasLimit 0x3b9aca00"
+    note: >-
+      1,000,000,000 per ISC block, but blocks are produced ON DEMAND rather than on a
+      cadence, so the per-second figure the derived column shows is an artefact of
+      whatever the sampling window happened to contain. See `block_time`.
+  block_time:
+    verdict: ~
+    observed: 20611.5
+    observed_at_block: 12979224
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 12979224 vs 12969224 -> 206115s / 10000 blocks"
+    note: >-
+      on demand; one ISC block per consensus round, floor 500 ms (`ConsensusDelay`
+      default). No fixed cadence and no empty-block production when idle, so the
+      observed 20,616 ms is a measure of how busy the chain was during the sampling
+      window and NOT a cadence. A quiet hour would read as a slower chain.
+
 proofs:
   state_proof:
     verdict: absent

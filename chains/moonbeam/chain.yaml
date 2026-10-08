@@ -172,7 +172,6 @@ live_probe:
 consensus:
   engine: Nimbus (parachain collators) + Polkadot relay-chain validation
   finality: relay-chain GRANDPA finality after backing/inclusion
-  block_time: 6s
   note: >-
     Not an Ethereum consensus engine at any layer. Blocks are Substrate blocks
     with a Substrate header (parent, number, state root, extrinsics root,
@@ -963,6 +962,36 @@ p2p:
       subprotocol, and no transaction pool with geth's slot arithmetic.
     stack:
       - {layer: consensus, protocol: libp2p, purpose: Substrate block + extrinsic gossip}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 60000000
+    observed_at_block: 16796699
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 16796699 -> gasLimit 0x3938700"
+    note: >-
+      60,000,000 on a HALTED chain. The value is a real observation of a network that
+      has stopped and nothing further will contradict it. Note the per-transaction cap
+      of 35,000,000 below: Moonbeam overrides EIP-7825 upward, so one transaction may
+      take 58% of a block.
+  tx_gas_limit:
+    verdict: 35000000
+    mutability: fixed
+    src: "runtime/common/src/lib.rs:TX_MAX_GAS_LIMIT"
+  block_time:
+    verdict: ~
+    observed: 6604.8
+    observed_at_block: 16796699
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_live: "eth_getBlockByNumber @ 16796699 vs 16786699 -> 66048s / 10000 blocks"
+    note: >-
+      6s. The row is HALTED: the observed figure is a real measurement of a network that
+      has stopped, taken across the last 10,000 blocks it produced, and nothing further
+      will contradict it.
+
 proofs:
   state_transition:
     verdict: consensus

@@ -24,10 +24,24 @@ client:
   language: go
   note: reference-by-consensus, not by fiat; cross-check against execution-specs
 
+live_probe:
+  endpoint: https://ethereum-rpc.publicnode.com
+  chain_id: 1
+  observed_at_block: 26100348
+  observed_at: 2026-10-01
+  note: >-
+    THE BASELINE ROW HAD NO ENDPOINT UNTIL THE BLOCK-METRICS AXIS NEEDED ONE, and
+    the reason it did not is worth stating: every other fact on this row comes from
+    source, because for mainnet the pinned client IS the specification's reference
+    implementation. The block gas limit is the exception. No constant in go-ethereum
+    sets it — the code bounds only how fast producers may move it — so the number
+    the network actually runs is unobtainable from any clone, and 60,000,000 is a
+    fact about validators rather than about a client. That is precisely the gap
+    SCHEMA.md's evidence rule says a live probe exists to catch.
+
 consensus:
   engine: proof-of-stake (gasper)
   finality: ~13 min (2 epochs)
-  block_time: 12s
 
 baseline_fork: osaka
 
@@ -462,6 +476,73 @@ p2p:
       - {layer: execution, protocol: devp2p, purpose: tx + block gossip}
       - {layer: consensus, protocol: libp2p, purpose: beacon block + blob sidecar gossip}
 
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 60000000
+    observed_at_block: 26100375
+    observed_at: 2026-10-01
+    mutability: adjustable
+    src: "params/protocol_params.go:GasLimitBoundDivisor"
+    src_live: "eth_getBlockByNumber @ 26100375 -> gasLimit 0x3938700"
+    note: >-
+      THE CODE SETS NO VALUE HERE, only the rate of change, and that is the whole reason
+      this axis stores a pair. `MaxGasLimit` is 2^63-1 and `MinGasLimit` is 5000 —
+      neither is a budget — so the only real limit is whatever the block producers have
+      walked the number to, 1/1024 at a time, under `GasLimitBoundDivisor`. A reader who
+      takes `verdict:` as "the" gas limit on a row like this one gets no answer at all;
+      `observed:` is the answer, and it is a snapshot that decays.
+  tx_gas_limit:
+    verdict: 16777216
+    mutability: fixed
+    src: "params/protocol_params.go:MaxTxGas"
+  gas_target:
+    verdict: ~
+    observed: 30000000
+    observed_at_block: 26100375
+    observed_at: 2026-10-01
+    mutability: fixed
+    src: "params/protocol_params.go:DefaultElasticityMultiplier"
+    src_live: "eth_getBlockByNumber @ 26100375 -> gasLimit 0x3938700 / elasticity 2"
+    note: >-
+      Derived, not configured: EIP-1559 sets the target at the limit divided by
+      `DefaultElasticityMultiplier` (2), so it moves whenever the limit does. Blocks
+      above target raise the base fee, below it lower it — which makes this the number
+      that decides what a user pays, while `block_gas_limit` only decides what is
+      possible.
+  block_time:
+    verdict: 12000
+    observed: 12049.2
+    observed_at_block: 26100375
+    observed_at: 2026-10-01
+    mutability: fixed
+    src_doc: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#time-parameters
+    src_live: "eth_getBlockByNumber @ 26100375 vs 26090375 -> 120492s / 10000 blocks"
+    note: >-
+      12s is SECONDS_PER_SLOT from the consensus specification, not a value any
+      execution client sets — which is why the citation here is a spec rather than the
+      pinned clone. The observed figure runs slightly above it (12,049 ms over 10,000
+      blocks) because missed slots add 12s gaps that no average can remove.
+  blob_count:
+    verdict: 21
+    observed: 21
+    observed_at_block: 26100375
+    observed_at: 2026-10-01
+    mutability: fixed
+    src: "params/config.go:DefaultBPO2BlobConfig"
+    src_live: "eth_config @ 26100375 -> blobSchedule.max 21"
+    note: >-
+      21 per block at BPO2, and SCHEDULED TO CHANGE AGAIN. The blob schedule is a fork
+      ladder of its own in `params/config.go`: Cancun 3/6, Prague 6/9, BPO1 10/15, BPO2
+      14/21 (live), BPO3 21/32. A per-block blob count is therefore a fork-dependent
+      fact, not a constant, and the pair on this row agrees only because the probe
+      happened after BPO2. Note the separate per-TRANSACTION cap of 6
+      (`BlobTxMaxBlobs`), which is what actually binds a single sender.
+  blob_gas_limit:
+    verdict: 2752512
+    mutability: fixed
+    src: "params/protocol_params.go:BlobTxBlobGasPerBlob"
+
 proofs:
   # The baseline, stated once, exactly as opcodes.baseline_set and tx_lifecycle are.
   # Every other row in this axis is a delta against these six answers.
@@ -514,7 +595,6 @@ fee_model:
   fee_market: EIP-1559 (base fee burned + priority tip)
   blob_fee_market: EIP-4844 independent 1559-style market, target 14 / max 21 (BPO2)
   extra_components: []
-  gas_limit: validator-adjustable, ~1/1024 per block
 
 header_fields:
   added: []

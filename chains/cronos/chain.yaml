@@ -83,7 +83,6 @@ live_probe:
 
 consensus:
   engine: CometBFT (Tendermint) BFT, Cosmos SDK v0.53 via crypto-org-chain's fork
-  block_time: ~5.6s
   finality: instant (single-block BFT finality)
 
 baseline_fork: prague
@@ -329,6 +328,26 @@ p2p:
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 60000000
+    observed_at_block: 97363617
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 97363617 -> gasLimit 0x3938700"
+  block_time:
+    verdict: ~
+    observed: 452.4
+    observed_at_block: 97363617
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 97363617 vs 97353617 -> 4524s / 10000 blocks"
+    note: >-
+      ~5.6s observed against a nominal ~5s — Tendermint's `timeout_commit` is a floor on
+      the commit step, not a target for the whole round, so the measured interval sits
+      above it whenever voting takes real time.
 
 fee_model:
   metering: gas

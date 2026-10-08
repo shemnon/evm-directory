@@ -33,7 +33,6 @@ client:
 consensus:
   engine: Snowman++ (Avalanche consensus)
   finality: sub-second, single-slot
-  block_time: ~2s
 
 baseline_fork: cancun
 
@@ -384,6 +383,15 @@ p2p:
       pull the gap, in place of mainnet's push-and-announce.
     stack:
       - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      ~2s. Snowman++ paces proposals, so the interval is a consequence of the proposer
+      window rather than a configured target.
+
 fee_model:
   metering: gas
   fee_market: ACP-176 dynamic fee (target gas excess), NOT mainnet's 1559 update rule

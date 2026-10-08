@@ -104,7 +104,6 @@ live_probe:
 consensus:
   engine: "hashgraph aBFT — gossip-about-gossip + virtual voting, no leader, no proposer, no block"
   finality: "single-round aBFT; a transaction is final the instant it receives a consensus timestamp. No reorgs, no forks, nothing to revert."
-  block_time: "2s, but a 'block' is a wall-clock BUCKET of consensus time, not a produced object"
   src: "platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusImpl.java:setIsConsensusTrue, platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusSorter.java:sort, hedera-node/hedera-app/src/main/java/com/hedera/node/app/records/impl/BlockRecordManagerImpl.java:willOpenNewBlock"
   src_live: "eth_getBlockByNumber finalized|safe|pending|latest @ 99380446 -> byte-identical objects; mirror /api/v1/blocks/99380446 @ 99380446 -> timestamp {from 1787954993.481359104, to 1787954995.583447104}, name 2026-08-28T22_09_53.481359104Z.rcd.gz"
   note: >-
@@ -517,6 +516,30 @@ p2p:
       cap (`nodeTransaction.maxBytes`, sized to carry uncompressed proofs). Three limits in
       one chain, each governing a different kind of payload, which is why a single
       "max transaction size" for Hedera is always wrong without saying whose transaction.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 150000000
+    observed_at_block: 100612165
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 100612165 -> gasLimit 0x8f0d180"
+    note: >-
+      150,000,000, though a 'block' here is a time bucket rather than a produced object
+      — see `block_time`.
+  block_time:
+    verdict: ~
+    observed: 2161.1
+    observed_at_block: 100612165
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 100612165 vs 100602165 -> 21611s / 10000 blocks"
+    note: >-
+      2s, but a 'block' here is a wall-clock BUCKET of consensus time rather than a
+      produced object — the cadence is an artefact of how records are grouped for the
+      EVM API, not a production interval.
+
 proofs:
   state_transition:
     verdict: consensus

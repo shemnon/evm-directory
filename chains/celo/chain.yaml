@@ -56,7 +56,6 @@ live_probe:
 consensus:
   engine: OP Stack (single sequencer) with alt-DA
   finality: inherits L1 finality after challenge window
-  block_time: 1s
   note: >-
     data_availability_type = "alt-da" with a GenericCommitment, not L1 blobs, in
     the registry entry embedded at superchain/superchain-configs.zip
@@ -480,6 +479,24 @@ opcodes:
     No opcode divergence beyond op-stack's (which is none). Celo's divergence is
     entirely in the transaction envelope, the fee path and the system-contract
     layer.
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 30000000
+    observed_at_block: 78991987
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 78991987 -> gasLimit 0x1c9c380"
+  block_time:
+    verdict: ~
+    observed: 1000.0
+    observed_at_block: 78991987
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 78991987 vs 78981987 -> 10000s / 10000 blocks"
+    note: >-
+      1s, since the migration from a standalone L1 to an OP Stack L2.
 
 fee_model:
   metering: gas

@@ -112,9 +112,6 @@ consensus:
     single-slot BFT finality on the PBFT block; the anchor it names retroactively
     finalizes every DAG block below it. There is no probabilistic phase and no
     reorg of finalized periods.
-  block_time: >-
-    lambda-driven, 1500 ms at genesis; Cacti makes lambda dynamic between 500 ms and
-    1500 ms (default 2000 ms, adjusted by 10 ms every 300 periods)
   src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
   note: >-
     TWO LAYERS, AND THE EXECUTED CHAIN IS NEITHER OF THEM. Twenty eligible proposers
@@ -826,6 +823,17 @@ p2p:
       `kMaxTransactionsInPacket` at 500 transactions, whichever binds first. Mainnet has no
       equivalent pairing: its `eth` message cap is a single ceiling with no count limit
       beside it.
+
+block_metrics:
+  block_time:
+    verdict: ~
+    mutability: config
+    note: >-
+      lambda-driven, 1500 ms at genesis; Cacti makes lambda dynamic between 500 ms and
+      1500 ms (default 2000 ms, adjusted by 10 ms every 300 periods). Unprobed: no
+      endpoint resolves, so the observed half of this row is unobtainable rather than
+      merely absent.
+
 proofs:
   state_transition:
     verdict: consensus

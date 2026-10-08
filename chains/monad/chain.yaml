@@ -53,7 +53,6 @@ live_probe:
 consensus:
   engine: MonadBFT (pipelined HotStuff-style BFT, BLS aggregate signatures)
   finality: single-slot, no reorg after commit
-  block_time: "vote_pace 300ms at chain params v0.12.0"
   src: monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0
   note: >-
     DEFERRED EXECUTION. Consensus commits a block's transaction LIST before any
@@ -604,6 +603,29 @@ p2p:
       chunk count, not a single message cap.
     stack:
       - {layer: consensus, protocol: RaptorCast, purpose: erasure-coded block + vote propagation}
+
+block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 150000000
+    observed_at_block: 109724071
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 109724071 -> gasLimit 0x8f0d180"
+    note: >-
+      150,000,000 at a 302 ms cadence. Execution is pipelined behind consensus, so the
+      limit bounds a block the network has already voted on.
+  block_time:
+    verdict: ~
+    observed: 301.9
+    observed_at_block: 109724071
+    observed_at: 2026-10-01
+    mutability: config
+    src_live: "eth_getBlockByNumber @ 109724071 vs 109714071 -> 3019s / 10000 blocks"
+    note: >-
+      `vote_pace` 300ms at chain params v0.12.0, and the observed 302 ms tracks it
+      almost exactly. MonadBFT pipelines consensus and execution, so this is the
+      consensus pace rather than an execution budget.
 
 proofs:
   state_transition:

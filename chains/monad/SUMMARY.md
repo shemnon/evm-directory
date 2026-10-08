@@ -1,9 +1,9 @@
 # Monad
 
 **Role:** `independent` · **Equivalence:** `behavioural` · **Chain ID:** 143 · **Baseline:** Osaka (opcode set only)
-**Client:** [`category-labs/monad`](https://github.com/category-labs/monad) `v0.16.0`
+**Client:** [`category-labs/monad`](https://github.com/category-labs/monad) `v0.16.4`
 (`e81ffe31cd30fe3455d1233e4ee6c9b3f017bad0`, C++) ·
-**Companion:** [`category-labs/monad-bft`](https://github.com/category-labs/monad-bft) `v0.16.0`
+**Companion:** [`category-labs/monad-bft`](https://github.com/category-labs/monad-bft) `v0.16.4`
 (`c616743d1358186605e1c1b74a3d6c4fdd9dd48c`, Rust)
 **Live probes:** `https://rpc.monad.xyz` @ block `96823552`
 
@@ -16,10 +16,10 @@ unconfirmed. Both are wrong now:
   `category-labs/monad` (its README still says "Monad Execution").
 - `monad-labs/*` → **404** for every candidate name.
 - `category-labs/monad-bft` exists and is on the **same release train** —
-  `v0.16.0`, committed the same day as the execution repo. An earlier pass at
+  `v0.16.4`, released the same day as the execution repo. An earlier pass at
   `v0.9.3` looked like the latest tag only because `git ls-remote` sorts
   lexicographically; it was fifteen months stale and carried a *constant* 50 gwei
-  base fee that no longer matches the chain. Both repos are pinned at `v0.16.0`.
+  base fee that no longer matches the chain. Both repos are pinned at `v0.16.4`.
 
 ## The headline: an EIP can be present and still not behave
 
@@ -231,8 +231,11 @@ coherent.
 ## Two fork ladders that do not line up
 
 - `monad_revision` (`MONAD_ZERO`…`MONAD_NEXT`) — **timestamp**-gated, in the C++ client.
-  Mainnet is on `MONAD_NINE` since 2026-03-19, and **skips `MONAD_FOUR` and
-  `MONAD_FIVE` entirely** (THREE → SIX).
+  Mainnet is on **`MONAD_TEN` since 2026-09-02 14:30 UTC** (it was `MONAD_NINE` at the
+  previous pin), and **skips `MONAD_FOUR` and `MONAD_FIVE` entirely** (THREE → SIX).
+  `MONAD_TEN` is what makes MIP-8's page-encoded SSTORE pricing live. `MONAD_NEXT` is
+  still unscheduled, but its Ethereum equivalence moved to **Amsterdam** at this pin —
+  the only declared Amsterdam equivalence in the dataset.
 - `MonadChainRevision` (`V_0_7_0`…`V_0_12_0`) — **consensus-round**-gated, in monad-bft.
   Mainnet reached `V_0_12_0` at round 89,758,000 (~2026-07-23): tx limit 3750, proposal
   gas limit 150M, vote pace 300 ms.

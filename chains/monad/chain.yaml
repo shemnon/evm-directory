@@ -31,8 +31,8 @@ lineage:
 client:
   name: monad (execution)
   repo: https://github.com/category-labs/monad
-  version: v0.16.0
-  commit: e81ffe31cd30fe3455d1233e4ee6c9b3f017bad0
+  version: v0.16.4
+  commit: f6a86a1a47dac61b4b34015f7112116c13d8bcce
   language: c++
   note: >-
     Formerly published as category-labs/monad-execution; that path 404s now.
@@ -41,7 +41,7 @@ client:
     pinned below at the SAME release train (v0.16.0, same-day commit).
   companion_repos:
   - {name: monad-bft, repo: "https://github.com/category-labs/monad-bft",
-     version: v0.16.0, commit: c616743d1358186605e1c1b74a3d6c4fdd9dd48c,
+     version: v0.16.4, commit: 2a2bcc04679b919db402dee2b13d4adce900098b,
      language: rust,
      provides: "consensus, deferred-execution delay, the Monad TFM base-fee rule, per-revision chain params"}
 
@@ -97,9 +97,27 @@ forks:
       2026-03-19. Current mainnet revision. Raises evm_rev to Osaka, activates
       MIP-3 (linear memory pricing + 8 MB cap) and the reserve-balance
       precompile at 0x1001.
-  - {name: MONAD_TEN, status: pending, activation_time: null,
-     note: "MIP-8 page-encoded storage: SSTORE repriced to 100 base + 2800 per first page write + 17000 per page growth"}
-  - {name: MONAD_NEXT, status: pending, activation_time: null, note: "MIP-12"}
+  - name: MONAD_TEN
+    activation_time: 1788359400
+    note: >-
+      LIVE SINCE 2026-09-02 14:30 UTC. `MonadMainnet::get_monad_revision` tops out at
+      MONAD_TEN from that timestamp; at the previous pin the ladder stopped at MONAD_NINE
+      and this entry was `pending` with no timestamp. So MIP-8's page-encoded storage IS
+      the live SSTORE pricing now: 100 base, +2800 on the first write to a page, +17000
+      when the state grows a page. Pricing stopped tracking the value's before/after state
+      and started tracking the physical database.
+    src: category/execution/monad/chain/monad_mainnet.cpp:get_monad_revision
+  - name: MONAD_NEXT
+    status: pending
+    activation_time: null
+    mainnet_equivalent: amsterdam
+    note: >-
+      MIP-12, still unscheduled — but its ETHEREUM EQUIVALENCE MOVED at this pin.
+      `traits.hpp:evm_rev()` now returns `MONAD_ETH_AMSTERDAM` for `Rev >= MONAD_NEXT`
+      where MONAD_NINE and later returned `MONAD_ETH_OSAKA`, so whenever MONAD_NEXT
+      activates it will take this row's baseline past Osaka. It is the only row in the
+      dataset with a declared Amsterdam equivalence.
+    src: category/vm/evm/traits.hpp:evm_rev
   - {name: "chain params V_0_12_0", activation_condition: "consensus round 89758000 (~2026-07-23)",
      note: "tx_limit 3750, proposal_gas_limit 150M, vote_pace 300ms — monad-bft ladder, not the EVM one"}
 
@@ -242,14 +260,14 @@ non_eip_specs:
       mainnet would happily execute for enough gas cannot run here at all.
   - id: MIP-8
     name: "Page-encoded storage and SSTORE repricing"
-    adoption: draft
+    adoption: live
     fork: MONAD_TEN
     src: category/vm/runtime/storage.cpp:sstore
     note: >-
-      Not live. Replaces EIP-2200 SSTORE pricing with a page model: 100 base,
-      +2800 on the first write to a page, +17000 when the state grows a page.
-      Pricing stops tracking the value's before/after state and starts tracking
-      the physical database.
+      LIVE SINCE 2026-09-02, where this entry read `adoption: draft` and "Not live".
+      Replaces EIP-2200 SSTORE pricing with a page model: 100 base, +2800 on the first
+      write to a page, +17000 when the state grows a page. Pricing stopped tracking the
+      value's before/after state and started tracking the physical database.
   - id: MIP-11
     name: "Priority fee distribution"
     adoption: draft
@@ -500,8 +518,8 @@ opcodes:
   added: []
   removed: []
   modified:
-    - {op: "0x55", name: SSTORE, fork: MONAD_TEN, status: pending,
-       note: "min_gas lowered to 100 under MIP-8; not live"}
+    - {op: "0x55", name: SSTORE, fork: MONAD_TEN, status: modified,
+       note: "min_gas lowered to 100 under MIP-8. LIVE since MONAD_TEN activated on 2026-09-02 14:30 UTC — this entry read `status: pending` and \"not live\" at the previous pin."}
   note: >-
     Zero opcode-set divergence — make_opcode_table for every Monad revision
     delegates to the Ethereum table for the matching evm_rev. This is the trap:

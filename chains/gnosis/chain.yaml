@@ -10,8 +10,8 @@ chain:
   note: >-
     `fork` overstates the distance, but less than it does for Linea. Gnosis maintains
     no execution client of its own for the client that actually produces its blocks:
-    the observed block was sealed by stock upstream Nethermind (extraData decodes to
-    the ASCII string "Nethermind v1.39.3"), and Nethermind carries Gnosis IN-TREE —
+    the observed block was sealed by stock upstream Nethermind, and Nethermind carries
+    Gnosis IN-TREE —
     the chainspec, a dedicated GnosisSpecProvider fork ladder, and the AuRa/merge
     consensus code all live in the upstream repo. So the delta is a config-and-
     upstream-support diff, not a source diff, and it can be read off a mainnet client.
@@ -47,8 +47,8 @@ lineage:
 client:
   name: Nethermind
   repo: https://github.com/NethermindEth/nethermind
-  version: 1.39.3
-  commit: 28cbe2a0ae28373f66abdc584f3eaf21516e84b3
+  version: 2.1.0
+  commit: b3e7e84c1695420e771326f73801b66fa0574871
   language: c#
   note: >-
     Chosen over the Gnosis-owned config repo because it is the client that produced
@@ -62,10 +62,10 @@ client:
      commit: 045d46d6db96a39b4d91485f9783474c13546ac9,
      provides: "the normative Gnosis-only specs: modified EIP-4895 withdrawals, POSDAO post-merge, Balancer recovery, and the per-upgrade diff-vs-mainnet tables"}
   - {name: reth_gnosis, repo: "https://github.com/gnosischain/reth_gnosis",
-     version: v2.0.0, commit: 5b236a06cfa29a29060fcb3355b73fef182e6e0c,
+     version: v2.2.0, commit: 3c783e97a030eb91e88aa91c149004aa07153f3a,
      provides: "second, independent implementation — every constant below appears twice, in C# and in Rust"}
   - {name: configs, repo: "https://github.com/gnosischain/configs",
-     commit: e542d132340e68fd7922149b145a0d361e1c87d4,
+     commit: 2dd5746292ca298ae0695f1ee221098074574e04,
      provides: "the Gnosis-owned config repo — pinned to DOCUMENT that its EL genesis is stale, not to source facts from it"}
 
 live_probe:
@@ -415,7 +415,8 @@ tx_authorization:
     ALLOWLIST in its chainspec: transactionPermissionContract
     0x7Dd7032AA75A37ea0b150f57F899119C7379A78b, live from block 9186425, consulted per
     transaction at block validation as well as production. It is DORMANT post-merge —
-    AuRaMergePlugin wraps every AuRa filter in AuRaMergeTxFilter, and
+    AuRaMergeTxFilter wraps every AuRa filter (its own file since Nethermind 2.x, where
+    it was a nested type in AuRaMergePlugin), and
     CreateTxPermissionFilter passes no post-merge fallback, so the post-merge branch
     is NullTxFilter. Corroborated by reth_gnosis, which does not implement transaction
     permissioning at all and could not follow the chain if it were live. Recorded
@@ -522,7 +523,7 @@ system_contracts:
       `removed`: the code is still there and still callable, it is simply no longer
       consulted by the state transition. reth_gnosis does not implement the mechanism
       at all.
-    src: "src/Nethermind/Chains/gnosis.json:transactionPermissionContract, src/Nethermind/Nethermind.Consensus.AuRa/InitializationSteps/TxAuRaFilterBuilders.cs:CreateTxPermissionFilter, src/Nethermind/Nethermind.Merge.AuRa/AuRaMergePlugin.cs:AuRaMergeTxFilter"
+    src: "src/Nethermind/Chains/gnosis.json:transactionPermissionContract, src/Nethermind/Nethermind.Consensus.AuRa/InitializationSteps/TxAuRaFilterBuilders.cs:CreateTxPermissionFilter, src/Nethermind/Nethermind.Merge.AuRa/AuRaMergeTxFilter.cs:AuRaMergeTxFilter"
     src_live: "eth_getCode @ 47884196 -> 1324 bytes (a proxy)"
   "0xB87BE9f7196F2AE084Ca1DE6af5264292976e013":
     name: ValidatorSetAuRa
@@ -763,13 +764,26 @@ header_fields:
         items in mainnet Osaka order, parentBeaconBlockRoot and requestsHash included.
         Gnosis is the row whose header shape CONVERGED; the hazard is entirely
         historical, and it covers 40 million blocks.
-      src: "src/Nethermind/Nethermind.Serialization.Rlp/HeaderDecoder.cs:AuRaSignature"
+      src: "src/Nethermind/Nethermind.Consensus.AuRa/AuRaBlockHeader.cs:AuRaSignature, src/Nethermind/Nethermind.Consensus.AuRa/AuRaHeaderDecoder.cs:DecodeSealAndCreateHeader"
+      src_note: >-
+        NETHERMIND 2.x MADE THE SEAL PLUGGABLE, so this citation moved out of the core
+        decoder. `HeaderDecoder` now exposes `DecodeSealAndCreateHeader` / `EncodeSeal` /
+        `GetSealLength` as virtual methods and says in a doc comment that "plugins with a
+        different seal shape override this"; AuRa's step-and-signature seal is one such
+        override — `AuRaHeaderDecoder`, registered by `AuRaHeaderModule` — and the fields live on
+        `AuRaBlockHeader`. The decoded bytes are unchanged — only where the code lives.
       src_live: "debug_getRawHeader(20000000) @ 47884196 -> 16 RLP items, items 14/15 = 4B step + 65B signature; debug_getRawHeader(47884196) @ 47884196 -> 21 items, mainnet Osaka layout"
   note: >-
     Checked explicitly for repurposing, because four rows in this dataset carry a
     consensus dimension in a field that was not meant for one. extraData is NOT
-    repurposed here: it is 18 bytes of ASCII client version ("Nethermind v1.39.3"),
-    within the chainspec's 32-byte maximumExtraDataSize, with no protocol meaning.
+    repurposed here: it is 18 bytes of ASCII client version, within the chainspec's
+    32-byte maximumExtraDataSize, with no protocol meaning. IT ALSO DATES THE PRODUCER,
+    AND THE PRODUCER IS BEHIND THIS PIN: at block 48,657,980 extraData still decoded to
+    "Nethermind v1.39.3" — the version this row pinned BEFORE this bump — while the pin
+    now names 2.1.0. Nothing recorded on this row depends on the difference (the Gnosis
+    fork schedule, the active precompile set and the header shape are identical across
+    the two), but it is exactly the pinned-tag-versus-validators gap SCHEMA.md says a
+    live probe exists to catch, and here the header itself reports it.
     blobGasUsed and excessBlobGas are NOT repurposed: they carry real blob gas for a
     real, if tiny, blob market. mixHash carries a real RANDAO from a real beacon
     chain. The only repurposed field is pre-merge difficulty, above.

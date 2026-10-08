@@ -2,7 +2,7 @@
 
 **Chain ID 10 · role: `fork` · upstream: [op-stack](../op-stack/SUMMARY.md) · baseline: Osaka**
 
-Reference: op-geth `v1.101702.2` @ `e8800cff` — the same client as the op-stack row.
+Reference: op-geth `v1.101702.3` @ `7da4560d` — the same client as the op-stack row.
 Fork times from the superchain registry.
 
 ## The point of this row is that it is empty

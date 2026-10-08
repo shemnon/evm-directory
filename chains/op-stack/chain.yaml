@@ -15,25 +15,29 @@ lineage:
   ancestry: [ethereum]
   fork_of: go-ethereum
   sync_point: >-
-    op-geth v1.101702.2 tracks go-ethereum through Osaka. Header struct is identical
-    to geth v1.17.5 except that op-geth lacks EIP-7928 BlockAccessListHash (an
-    unshipped Amsterdam field) and repurposes BlobGasUsed. Rebase, not divergence.
+    op-geth v1.101702.3 tracks go-ethereum through Osaka. The header struct is now
+    identical in shape to geth v1.17.8: v1.101702.3 ADDED both Amsterdam header
+    fields, BlockAccessListHash (EIP-7928) and SlotNumber (EIP-7843), stamped by
+    `miner/worker.go:prepareWork` under `IsAmsterdam`. No OP chain schedules
+    Amsterdam, so both sit dormant and the field this row used to list as absent is
+    no longer a divergence. The one real header divergence left is the repurposed
+    BlobGasUsed. Rebase, not divergence.
 
 client:
   name: op-geth
   repo: https://github.com/ethereum-optimism/op-geth
-  version: v1.101702.2
-  commit: e8800cffe53d459cde8a07c8e8f1de9d86e79e07
+  version: v1.101702.3
+  commit: 7da4560d1fb3045286b70a8dc23360d2626543f2
   language: go
   note: >-
     The EL only. Predeploy bytecode and per-chain fork schedules live in separate
     repos, both now cloned under this row and cited by descendants.
   companion_repos:
   - {name: optimism, repo: "https://github.com/ethereum-optimism/optimism",
-     version: op-contracts/v7.0.0, commit: a7c88c8d636ceb9944ea0edaf7d033da258778ab,
+     version: op-contracts/v8.0.0, commit: f45a5ccfebcdf6da3f5b09cbc512667c063730b7,
      provides: "predeploy definitions (Predeploys.sol)"}
   - {name: superchain-registry, repo: "https://github.com/ethereum-optimism/superchain-registry",
-     commit: bb104b09fcd60fc01c8f8daf0f534aee88ff26de,
+     commit: f868c1b219525fc28c6bd75e8e93b35699648094,
      provides: "per-chain fork activation timestamps"}
 
 consensus:
@@ -44,7 +48,7 @@ baseline_fork: osaka
 
 forks:
   src: params/config.go
-  mapping_src: params/config.go:1687-1694
+  mapping_src: params/config.go:CheckConfigForkOrder
   note: >-
     OP fork times are independent config fields, but CheckConfigForkOrder ENFORCES
     equality with their Ethereum counterparts — a config that violates this is
@@ -59,8 +63,18 @@ forks:
   - {name: holocene, mainnet_equivalent: null}
   - {name: isthmus,  mainnet_equivalent: prague,   enforced: "PragueTime == IsthmusTime"}
   - {name: jovian,   mainnet_equivalent: null,     note: capped BLS12-381 inputs; repurposed blobGasUsed for DA}
-  - {name: karst,    mainnet_equivalent: null,     note: newest predicate present in this tree}
-  - {name: interop,  mainnet_equivalent: null,     note: cross-L2 inbox at 0x42..22}
+  - {name: karst,    mainnet_equivalent: null,
+     note: "activated on OP Mainnet 2026-07-08 and, as of this registry pin, on World Chain mainnet at 1789992000 (2026-09-21 12:00 UTC)"}
+  - name: lagoon
+    mainnet_equivalent: null
+    note: >-
+      RENAMED FROM `interop` IN v1.101702.3: `InteropTime` is gone and `LagoonTime`
+      replaces it, with the same semantics and no enforced Ethereum counterpart. The
+      feature keeps the old name where it is addressed — the predeploy constant is
+      still `InteropCrossL2InboxAddress` at 0x42..22 — so a reader matching on
+      "interop" finds the contract but no longer finds the fork. Newest fork
+      predicate in this tree; scheduled on no mainnet.
+    src: params/config.go:LagoonTime
 
 eips:
   1559:
@@ -135,7 +149,11 @@ tx_types:
       fork gate, so nothing here shows it activating on any OP Stack chain. Recorded
       rather than omitted because an omitted entry would fall back to `inherited` and
       silently assert mainnet equivalence for a type mainnet does not have.
-    src: "core/types/post_exec_tx.go:PostExecTxType"
+      v1.101702.3 gave it its own hashing rule — the canonical encoding is
+      `0x7D || Data`, hashed directly rather than as RLP of the inner struct — so the
+      type is now more completely specified than it was, and still has no producer
+      and no fork gate.
+    src: "core/types/post_exec_tx.go:PostExecTxType, core/types/transaction.go:Hash"
 
   "0x7e":
     name: DepositTx
@@ -282,7 +300,9 @@ system_contracts:
   "0x420000000000000000000000000000000000001B":
     {name: OperatorFeeVault, status: added, src: "params/protocol_params.go:33"}
   "0x4200000000000000000000000000000000000022":
-    {name: CrossL2Inbox, status: added, fork: interop, src: "params/interop.go:5"}
+    {name: CrossL2Inbox, status: added, fork: lagoon,
+     src: "params/interop.go:InteropCrossL2InboxAddress",
+     note: "the fork was renamed interop -> lagoon in v1.101702.3; the address constant kept the old name"}
   "0x4200000000000000000000000000000000000000":
     {name: LegacyMessagePasser, status: added,
      src: "optimism/packages/contracts-bedrock/src/libraries/Predeploys.sol"}
@@ -502,9 +522,7 @@ fee_model:
 
 header_fields:
   added: []
-  removed:
-    - {name: BlockAccessListHash, spec: EIP-7928,
-       note: "present in geth v1.17.5 as optional; absent here. Unshipped on mainnet, so not yet a live divergence."}
+  removed: []
   modified:
     - name: blobGasUsed
       fork: jovian
@@ -516,6 +534,12 @@ header_fields:
         than an error. This is the single nastiest divergence found so far.
       src: core/types/block.go:24-26
   src: core/types/block.go
+  note: >-
+    `removed:` was non-empty until v1.101702.3, which added BlockAccessListHash
+    (EIP-7928) and SlotNumber (EIP-7843) to the header struct. op-geth now matches
+    geth's shape, both fields are `rlp:"optional"`, and neither is stamped because no
+    OP chain schedules Amsterdam. A field present-but-dormant in both trees is not a
+    divergence, so the entry was dropped rather than restated.
 
 gotchas:
   - >-

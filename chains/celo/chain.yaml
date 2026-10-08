@@ -21,7 +21,7 @@ lineage:
   sync_point: >-
     celo-v2.2.4 is a rebase of op-geth onto go-ethereum v1.16.9
     (version/version.go: Major 1, Minor 16, Patch 9), against op-stack's pinned
-    op-geth v1.101702.2 (geth v1.17.5). The OP fork ladder in this tree stops at
+    op-geth v1.101702.3 (geth v1.17.5). The OP fork ladder in this tree stops at
     JOVIAN: params/config.go declares JovianTime and IsOptimismJovian and has no
     Karst field, and the embedded superchain-registry schema (superchain/types.go
     HardForkConfiguration) likewise has no karst_time. Celo therefore has NONE of

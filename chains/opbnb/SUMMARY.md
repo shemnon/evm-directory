@@ -30,7 +30,7 @@ shared addresses.
 
 More consequential than the borrowed precompiles: opBNB is **far behind its own
 upstream**. This client's newest OP branch is `IsOptimismFjord`. The op-stack row pins
-op-geth `v1.101702.2`, which reaches Jovian and Karst.
+op-geth `v1.101702.3`, which reaches Jovian, Karst and Lagoon.
 
 opBNB therefore has **none** of OP Stack's Granite, Isthmus or Jovian changes — no
 BN256 pairing cap, no BLS12-381 input caps, no Isthmus BLS variants, no repurposed

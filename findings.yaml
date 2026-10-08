@@ -420,9 +420,9 @@
     worldchain: >-
       World Chain adds no type byte and no precompile, and diverges on the schedule
       instead: Isthmus landed 2025-11-25, over six months after mainnet Prague and after
-      OP Mainnet's own Isthmus, and there is no `karst_time` in the registry at all
-      while OP Mainnet activated Karst on 2026-07-08. Two chains on one stack are not on
-      one fork level.
+      OP Mainnet's own Isthmus, and Karst landed 2026-09-21 against OP Mainnet's
+      2026-07-08 — two and a half months apart on the same stack. Two chains on one
+      stack are not on one fork level.
   body: >-
     OP Mainnet's delta file is empty. Base, on the same stack and client version,
     reimplements the EVM layer in Rust and adds five fixed precompiles, a dynamic

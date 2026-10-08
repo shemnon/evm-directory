@@ -340,14 +340,25 @@ def ex_opbnb():
                           "var PrecompiledContractsFjord = "))
 def ex_base():
     """Rust: `pub const ADDRESS: Address = address!("..")`. The B-20 dynamic range is
-    a predicate, not an address, so it is deliberately not enumerated here."""
+    a predicate, not an address, so it is deliberately not enumerated here.
+
+    TWO DIRECTORIES, not one: v1.4.2 split the EIP-8130 code into a shared
+    `crates/common/eip8130` crate, and the NonceManager address literal went with it
+    while its precompile wrapper kept only an alias (`pub const ADDRESS:
+    Address = NonceManagerSlots::ADDRESS`). Scanning the precompiles crate alone
+    reported 0x8130..aa01 as MISSING even though it is both declared and live."""
     p = repo("base", {"client": {"repo": "https://github.com/base/base"}})
     out = set()
     if p:
-        for f in (p / "crates" / "common" / "precompiles" / "src").rglob("*.rs"):
-            for m in re.finditer(r'pub const ADDRESS: Address = address!\("(0x)?([0-9a-fA-F]{40})"\)',
-                                 f.read_text(errors="replace")):
-                out.add(int(m.group(2), 16))
+        roots = [p / "crates" / "common" / "precompiles" / "src",
+                 p / "crates" / "common" / "eip8130" / "src"]
+        for root in roots:
+            if not root.is_dir():
+                continue
+            for f in root.rglob("*.rs"):
+                for m in re.finditer(r'pub const ADDRESS: Address = address!\("(0x)?([0-9a-fA-F]{40})"\)',
+                                     f.read_text(errors="replace")):
+                    out.add(int(m.group(2), 16))
     return out
 
 # --- geth forks that keep their own fork ladder in core/vm/contracts.go -----

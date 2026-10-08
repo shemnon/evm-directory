@@ -2,7 +2,7 @@
 
 **Chain ID 8453 · role: `fork` · upstream: [op-stack](../op-stack/SUMMARY.md) · baseline: Osaka**
 
-Reference: [base/base `v1.2.0`](https://github.com/base/base) @ `8e28af24` — a
+Reference: [base/base `v1.4.2`](https://github.com/base/base) @ `5034ef80` — a
 reth/op-reth-based client in Rust.
 
 ## First: the repo trap
@@ -59,10 +59,21 @@ it, and BSC/Arbitrum/opBNB demonstrate that nobody has.
 `crates/execution/eip8130/` implements **EIP-8130, "Account Abstraction by Account
 Configuration"**. Its README is explicit: *"Enshrined, not a precompile."* It brings
 2D nonces, a **sender/payer split**, an intrinsic gas schedule (`Eip8130GasSchedule`),
-stateful actor authorization and config-change authorization — gated behind the
-**Cobalt** upgrade.
+stateful actor authorization and config-change authorization. At the previous pin
+this was gated behind the **Cobalt** upgrade. It is now gated behind **Zenith**, and
+that is the single most important fact on this row.
 
 It has its own transaction type: **`0x79`** (`EIP8130_TX_TYPE_ID = 121`).
+
+**Cobalt went live on mainnet on 2026-09-30 18:00 UTC and did not bring it.** Cobalt
+installs the two EIP-8130 support precompiles — NonceManager at `0x8130…aa01` and
+TxContext at `0x8130…aa02`, both gated `>= Cobalt` in
+`provider.rs:install_with_observer` — so the *infrastructure* for native account
+abstraction is live and callable on Base mainnet today. The transaction type that
+would use it is not submittable, because `EIP8130_REJECTION_MSG` now reads *"gated
+behind Zenith"* where it read *"gated behind Cobalt"*, and Zenith is excluded from
+both `CONTRACT_VARIANTS` and `EXECUTION_VARIANTS` with a test asserting that even a
+runtime registry override leaves it `ForkCondition::Never`.
 
 Base also supports EIP-7702, so **two distinct account-abstraction mechanisms coexist**
 on the same chain, with two different transaction types.
@@ -104,17 +115,27 @@ magic byte (`0x7A`), so a payer signature cannot be replayed under a different s
 The payer's blob takes the same `authenticator(20) || data` form, so a **sponsor may
 itself be a passkey**.
 
-**Not live on mainnet yet.** Probed at block 50098345: `ACCOUNT_CONFIG` and all three
-authenticator contracts return empty code on Base mainnet, and the repo's own module
-docs mark those CREATE2 addresses *"NOT final"*, describing them as the current Base
-Sepolia deployment. The P-256 schemes are therefore recorded `pending`, not `added`. A
-re-pin before Cobalt changes *which address* means P-256; it will not change that P-256
-authorizes.
+**Not live on mainnet yet**, and the reason changed under this re-pin. The earlier
+probe at block 50098345 found `ACCOUNT_CONFIG` and all three authenticator contracts
+returning empty code, with the module docs marking those CREATE2 addresses *"NOT
+final"*. That was a deployment gap. The binding constraint at v1.4.2 is a fork gate:
+the only transaction type that reaches `AuthenticatorDispatch` is `0x79`, and it now
+sits behind Zenith. The P-256 schemes stay `pending`, and Cobalt's activation did not
+change that — a P-256 key still cannot move a wei on Base mainnet.
 
 ## Its own fork line
 
 Beyond the OP Stack sequence (Bedrock → Jovian), Base has **Azul, Beryl, Cobalt,
-Zombie**. Beryl installs the dynamic precompile lookup; Cobalt gates EIP-8130.
+Denim** plus the **Zenith** gate. `zombie` is gone: Zenith replaced it as the
+never-activating gate, and Denim is a new fourth upgrade slot.
+
+| Upgrade | Mainnet | What it is |
+|---|---|---|
+| Azul | 2026-05-28 18:00 UTC | first Base-specific upgrade; Osaka pricing for MODEXP/P256VERIFY |
+| Beryl | 2026-06-25 18:00 UTC | installs the dynamic B-20 precompile lookup |
+| **Cobalt** | **2026-09-30 18:00 UTC** | NonceManager + TxContext precompiles, builder tx extensions. **Not** EIP-8130's type byte |
+| Denim | `Never` | sub-second blocks: 200ms cadence, gas parameters scaled 10× |
+| Zenith | `Never` | gate for future features; holds EIP-8130. Not runtime-activatable |
 
 Base is **absent from the superchain-registry mainnet configs** in this snapshot —
 unlike OP Mainnet and World Chain, whose activation timestamps are published there.
@@ -131,10 +152,10 @@ Stack" constrains a chain far less than it sounds like it does.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v1.2.0 https://github.com/base/base
+git clone --depth 1 --branch v1.4.2 https://github.com/base/base
 sed -n '60,80p' crates/common/precompiles/src/b20_factory/variant.rs   # the predicate
 sed -n '1,50p'  crates/common/precompiles/src/lookup.rs                # BerylLookup
 grep -rn "pub const ADDRESS: Address" crates/common/precompiles/src/*/storage.rs
 sed -n '1,20p'  crates/common/consensus/src/transaction/tx_type.rs     # 0x79
-head -20 crates/execution/eip8130/README.md                            # "enshrined"
+head -20 crates/common/eip8130/README.md                               # "enshrined"
 ```

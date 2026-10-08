@@ -35,16 +35,17 @@ lineage:
   sync_point: >-
     The pinned reth rev supplies the Ethereum baseline, and Tempo's own
     `From<TempoHardfork> for SpecId` maps EVERY Tempo hardfork — Genesis through
-    T11 — to `SpecId::OSAKA`. There is no Tempo fork that is "at Prague"; the
-    Ethereum revision is a constant and only Tempo's own T-forks move.
+    T14 at this pin, three more than at v1.13.1 — to `SpecId::OSAKA`. There is no Tempo
+    fork that is "at Prague"; the Ethereum revision is a constant and only Tempo's own
+    T-forks move.
 
 client:
   name: tempo (reth-based execution + Simplex consensus)
   repo: https://github.com/tempoxyz/tempo
-  version: v1.13.1
-  commit: 11b2eec62345a9a045d977255a5d93f66114e9e3
+  version: v1.16.0
+  commit: 74b69155ebaf6178bf7e3d59d18a2440164302d9
   language: rust
-  built_on: reth (git rev 10aa6a512ba7c4f5f01ff489b1f513da0745821f) / revm
+  built_on: reth (git rev 75da52807688bc07e279b83ccefedf4358de6b85) / revm
   note: >-
     The public mainnet RPC reports `tempo/v1.13.1-6d9d0d5/x86_64-unknown-linux-gnu`,
     i.e. the pinned tag is the tag the network is actually running — the usual
@@ -133,11 +134,50 @@ forks:
   - {name: T9, activation_time: 1786024800, mainnet_equivalent: osaka,
      src: "crates/hardfork/src/constants.rs:MAINNET_T9_TIMESTAMP"}
   - {name: T10, activation_time: 1787320800, mainnet_equivalent: osaka,
-     note: "CURRENT MAINNET FORK at the probe block. TIP-1091 zones: ZoneFactory/ZonePortal/ZoneVerifier/ZoneMessenger installed at a fork boundary.",
+     note: "TIP-1091 zones: the ZoneFactory is installed at this fork boundary, with the ZonePortal address family alongside it. NOT the ZoneVerifier — that precompile did not exist at v1.13.1 and enters the table at T13 (see below), so this note previously over-counted what T10 shipped.",
      src: "crates/evm/src/block.rs:deploy_zone_factory_at_boundary"}
-  - {name: T11, status: pending, mainnet_equivalent: osaka,
-     note: "declared in the enum with NO mainnet activation timestamp (`Self::T11 => None`). Raises the expiring-nonce replay set to 3,000,000 entries and the max expiry window to 300s.",
-     src: "crates/hardfork/src/lib.rs:expiring_nonce_set_capacity"}
+  - name: T11
+    activation_time: 1789048800
+    mainnet_equivalent: osaka
+    note: >-
+      LIVE SINCE 2026-09-10 14:00 UTC, AND IT IS A REPRICING. This entry said "declared in
+      the enum with NO mainnet activation timestamp (`Self::T11 => None`)"; the timestamp
+      exists now. Besides raising the expiring-nonce replay set from 300,000 to 3,000,000
+      entries and the max expiry window from 30s to 300s, T11 multiplies the precompile
+      calldata decode cost by FIVE — `input_cost` switches from
+      `PRE_T11_INPUT_PER_WORD_COST` 6 to `POST_T11_INPUT_PER_WORD_COST` 30 per 32-byte
+      word — turns on strict ABI decoding for precompile calldata
+      (`dispatch.rs:.strict(spec.is_t11())`), and sorts keychain selectors. Any caller that
+      sized gas for a precompile call against pre-T11 pricing is now short.
+    src: "crates/hardfork/src/constants.rs:MAINNET_T11_TIMESTAMP, crates/precompiles/src/lib.rs:POST_T11_INPUT_PER_WORD_COST, crates/hardfork/src/lib.rs:expiring_nonce_set_capacity"
+  - name: T12
+    activation_time: 1791900000
+    status: pending
+    mainnet_equivalent: osaka
+    note: >-
+      NEW IN THE ENUM AT v1.16.0 AND ALREADY SCHEDULED: 2026-10-13 14:00 UTC, the first
+      Tempo fork with a future-dated mainnet timestamp rather than a missing one. It
+      relaxes precompile calldata validation in the opposite direction from T11 —
+      `dispatch.rs:.validate_allow_trailing_bytes(spec.is_t12())`, so trailing bytes that
+      T11 made fatal are tolerated again — and changes consensus: the DKG manager and the
+      epoch manager both branch on `is_t12()` at an epoch boundary.
+    src: "crates/hardfork/src/constants.rs:MAINNET_T12_TIMESTAMP, crates/precompiles/src/dispatch.rs:validate_allow_trailing_bytes"
+  - name: T13
+    status: pending
+    mainnet_equivalent: osaka
+    note: >-
+      NEW IN THE ENUM AT v1.16.0, unscheduled (`Self::T13 => None` for both block and
+      timestamp). It installs ONE NEW PRECOMPILE: `ZONE_VERIFIER_ADDRESS` joins the
+      precompile table, the first entry added to that table since ZoneFactory at T10.
+    src: "crates/contracts/src/precompiles/mod.rs:ZONE_VERIFIER_ADDRESS"
+  - name: T14
+    status: pending
+    mainnet_equivalent: osaka
+    note: >-
+      NEW IN THE ENUM AT v1.16.0 and unscheduled, with no behaviour gated on it anywhere in
+      the tree yet — the slot exists and nothing reads it. Recorded so the next re-pin can
+      tell "declared and empty" from "declared and missed".
+    src: "crates/hardfork/src/lib.rs:T14"
 
 eips:
   1559:
@@ -432,7 +472,14 @@ non_evm_transactions:
       0x5b-prefixed partial validator key that binds them to that lane. The
       header's `sharedGasLimit` is the budget for the subblock section — and it
       is ZERO from T4 onward, so at the probe block the lane is allocated no gas.
-    src: crates/primitives/src/subblock.rs:SubBlock
+      v1.16.0 TOOK THE MACHINERY OUT TO MATCH: the `SubBlock` type is gone from
+      `crates/primitives/src/subblock.rs` (which lost ~340 lines), and the block
+      executor's `validate_shared_gas` — the per-subblock gas accounting that
+      enforced the budget — no longer exists anywhere in the tree. What survives is
+      `SubBlockMetadata`, still RLP-decoded by the block executor and still fed to a
+      system transaction, so the lane is not removed from the format, only from the
+      accounting. A budget of zero no longer needs enforcing.
+    src: crates/primitives/src/subblock.rs:SubBlockMetadata, crates/evm/src/block.rs:SubBlockMetadata
     src_live: "eth_getBlockByNumber(0x228a273) @ 36217459 -> sharedGasLimit 0x0"
 
 precompiles:
@@ -570,7 +617,7 @@ system_contracts:
     name: ZonePortal address family (TIP-1091)
     status: added
     activation_time: 1787320800
-    note: "addresses with the 12-byte prefix 0x5AD0...00 decode to a nonzero zone id. Installed at the T10 boundary along with ZoneFactory/ZoneVerifier/ZoneMessenger. Not probed live."
+    note: "addresses with the 12-byte prefix 0x5AD0...00 decode to a nonzero zone id. Installed at the T10 boundary along with the ZoneFactory; the ZoneVerifier is NOT part of T10 — it enters the precompile table at the unscheduled T13. Not probed live."
     src: crates/primitives/src/address.rs:ZONE_PORTAL_PREFIX
   note: >-
     Multicall3 (0xcA11bde05..), CreateX, Permit2 and a Safe deployer are shipped

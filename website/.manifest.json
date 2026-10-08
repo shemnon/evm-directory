@@ -3,7 +3,7 @@
   "axes/block-metrics.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -55,7 +55,7 @@
   "axes/cryptography.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -107,7 +107,7 @@
   "axes/eips.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -159,7 +159,7 @@
   "axes/fees-envelope.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -211,7 +211,7 @@
   "axes/lineage.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -263,7 +263,7 @@
   "axes/opcodes.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -315,7 +315,7 @@
   "axes/ordering.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -367,7 +367,7 @@
   "axes/p2p.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -419,7 +419,7 @@
   "axes/precompiles.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -471,7 +471,7 @@
   "axes/proofs.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -523,7 +523,7 @@
   "axes/system-contracts.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -575,7 +575,7 @@
   "axes/tx-types.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -634,8 +634,8 @@
   },
   "chains/arc.html": {
    "inputs": {
-    "chains/arc/SUMMARY.md": "654020f6164599a3",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/SUMMARY.md": "3b8b6ebd96d1ff08",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "findings.yaml": "2100c4e8f1c75b22",
     "operators.yaml": "3d8ffcc5ccd88228"
    }
@@ -790,7 +790,7 @@
   "chains/index.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -1064,7 +1064,7 @@
   "index.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",
@@ -1116,7 +1116,7 @@
   "silent-divergences.html": {
    "inputs": {
     "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
-    "chains/arc/chain.yaml": "ca509e0a21a17112",
+    "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
     "chains/avalanche-c/chain.yaml": "b304902dc8c3dae9",

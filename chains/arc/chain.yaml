@@ -46,7 +46,9 @@ lineage:
     BFT, Ed25519 validator keys), vendored as a git submodule and maintained by
     Circle. Apache-2.0.
   sync_point: >-
-    reth v1.11.3 is a released tag, not a floating rev — a stronger pin than
+    arc-node v0.8.1 moved the SDK pin from reth v1.11.3 to RETH v2.2.0, crossing the
+    same major-version boundary the plasma row faces. It is still a released tag, not
+    a floating rev — a stronger pin than
     tempo's. The Ethereum fork ladder is declared explicitly in `BASE_FORKS`
     (Frontier..Prague, all at block/timestamp 0) with Osaka inserted per network
     and PAIRED with the Arc Zero5 fork.
@@ -54,17 +56,17 @@ lineage:
 client:
   name: arc-node (reth execution + Malachite consensus)
   repo: https://github.com/circlefin/arc-node
-  version: v0.7.3
-  commit: 79b6fddf18345732007bb94b4af3add4c2efd12d
+  version: v0.8.1
+  commit: ab09dbfd9553a7ad48f9c134ec5e808c36512c74
   language: rust
-  built_on: reth v1.11.3 / revm
+  built_on: reth v2.2.0 / revm
   note: >-
     One repo, both halves: `crates/evm`, `crates/precompiles`,
     `crates/execution-*` are the EL; `crates/malachite-app`, `crates/quake`,
     `crates/types` are the CL. A `contracts/` Foundry tree ships the Solidity
     system contracts. The testnet RPC reports only `arc/v1`, so the running
     version CANNOT be matched to this tag — unlike tempo, where it could.
-    v0.7.3 is the newest release; a `test/v0.8.0` tag exists and is not a release.
+    v0.8.1 is the newest release (v0.8.0 preceded it by six weeks).
     The repo README calls this "alpha software currently undergoing audits".
 
 live_probe:
@@ -77,11 +79,14 @@ live_probe:
   chain_id_src_live: "eth_chainId @ 58728247 -> 0x4cef52 (5042002); web3_clientVersion -> arc/v1 (no version detail)"
   block_scan_range: 58728247-58728296
   caveat: >-
-    THIS IS THE TESTNET, NOT MAINNET — mainnet does not exist yet. Testnet runs
-    Zero7 (activated 1781791200); the mainnet schedule in this tag stops at
-    Zero6, so the CallFrom precompile and the Zero7 SELFDESTRUCT variant probed
-    here are NOT scheduled for mainnet genesis. Facts marked with a mainnet-only
-    or testnet-only qualifier say so explicitly.
+    THIS IS THE TESTNET, NOT MAINNET — mainnet still does not exist
+    (https://rpc.arc.network did not answer on 2026-10-08, while the testnet was at
+    block 66,197,188). Testnet runs Zero7 (1781791200) and Zero8 (1788447600). THE
+    MAINNET SCHEDULE NO LONGER STOPS AT ZERO6: at v0.8.1 it carries Zero7 and Zero8
+    at the same past timestamp 1789052400, so the CallFrom precompile and both later
+    SELFDESTRUCT variants probed here WILL be present from mainnet genesis — the
+    opposite of what this caveat said at v0.7.3. Facts marked with a mainnet-only or
+    testnet-only qualifier say so explicitly.
 
 consensus:
   engine: Malachite (Tendermint BFT, Rust), Ed25519 validator keys
@@ -141,13 +146,37 @@ forks:
      src: "crates/execution-validation/src/consensus.rs:arc_validate_extra_data_format"}
   - {name: Zero6, activation_block: 0, mainnet_equivalent: osaka,
      note: "PQ precompile (SLH-DSA) registered; stricter ABI-decode validation on precompile calldata. testnet: timestamp 1779894517.",
-     src: "crates/precompiles/src/precompile_provider.rs:ArcHardfork"}
-  - {name: Zero7, activation_time: 1781791200, status: pending, mainnet_equivalent: osaka,
-     note: "LIVE ON TESTNET, NOT IN THE MAINNET TABLE. Adds the CallFrom subcall precompile (callable only by the Memo and Multicall3From contracts) and a third SELFDESTRUCT variant.",
-     src: "crates/evm/src/evm.rs:build_subcall_registry"}
-  - {name: Zero8, status: pending, mainnet_equivalent: osaka,
-     note: "declared in the enum with no activation on ANY network table. Makes delegatecall rejections charge the uniform early-revert gas penalty.",
-     src: "crates/execution-config/src/hardforks.rs:Zero8"}
+     src: "crates/precompiles/src/precompile_provider.rs:ArcHardforkFlags"}
+  - name: Zero7
+    activation_time: 1781791200
+    status: pending
+    mainnet_equivalent: osaka
+    note: >-
+      IT IS IN THE MAINNET TABLE NOW. This entry read "LIVE ON TESTNET, NOT IN THE
+      MAINNET TABLE" at v0.7.3; v0.8.1 adds
+      ARC_ZERO7_HARDFORK_TIMESTAMP_ACTIVATION_MAINNET = 1789052400 (2026-09-10 15:00
+      UTC), a timestamp already in the past. Arc has still never produced a mainnet
+      block, so this is not an activation — it means Zero7 will be active from the
+      FIRST mainnet block rather than arriving later. `activation_time` stays the
+      testnet value (1781791200, 2026-06-18 14:00 UTC), the only time this fork has
+      actually taken effect anywhere. Adds the CallFrom subcall precompile (callable
+      only by the Memo and Multicall3From contracts) and a SELFDESTRUCT variant.
+    src: "crates/evm/src/evm.rs:build_subcall_registry, crates/execution-config/src/hardforks.rs:ARC_ZERO7_HARDFORK_TIMESTAMP_ACTIVATION_MAINNET"
+  - name: Zero8
+    activation_time: 1788447600
+    status: pending
+    mainnet_equivalent: osaka
+    note: >-
+      WENT FROM UNSCHEDULED EVERYWHERE TO SCHEDULED ON ALL THREE NETWORKS. At v0.7.3
+      this was "declared in the enum with no activation on ANY network table"; v0.8.1
+      gives it devnet 1787756400 (2026-08-26), testnet 1788447600 (2026-09-03) and
+      mainnet 1789052400 (2026-09-10 15:00 UTC) — the SAME mainnet constant as Zero7,
+      so on mainnet the two forks land together at genesis. `activation_time` is the
+      testnet value, the only one that has taken effect. It adds a FOURTH SELFDESTRUCT
+      handler (`arc_network_selfdestruct_zero8`, with transaction-warm target checks),
+      rejects the legacy gas credit earlier forks allowed, and makes delegatecall
+      rejections charge the uniform early-revert gas penalty.
+    src: "crates/execution-config/src/hardforks.rs:ARC_ZERO8_HARDFORK_TIMESTAMP_ACTIVATION_MAINNET, crates/evm/src/opcode.rs:arc_network_selfdestruct_zero8"
 
 eips:
   1559:
@@ -177,7 +206,7 @@ eips:
       log-based accounting still misses plain value transfers. Before Zero5 the
       same events were a Circle-specific `NativeCoinTransferred` log emitted from
       the NativeCoinAuthority address instead.
-    src: crates/evm/src/log.rs:create_eip7708_transfer_log, crates/evm/src/opcode.rs:Eip7708Transfer
+    src: crates/evm/src/log.rs:create_eip7708_transfer_log, crates/evm/src/opcode.rs:create_eip7708_transfer_log
     src_live: "eth_getTransactionReceipt(0x134f1abe…) @ 58728247 -> log[0] from 0xfffffffffffffffffffffffffffffffffffffffe, Transfer topic 0xddf252ad…, data 0x0117dd71f42e7000 (78,775,000,000,000,000)"
   4844:
     status: removed
@@ -234,7 +263,7 @@ eips:
   7702:
     status: inherited
     note: "delegation designators are resolved normally, including through the CallFrom precompile. No Arc-specific delegation mechanism."
-    src: crates/evm/src/evm.rs:Eip7702Bytecode
+    src: crates/evm/src/evm.rs:eip7702_address
   7623:
     status: unrecorded
     note: "not traced."
@@ -260,7 +289,7 @@ tx_types:
   "0x01": {name: EIP-2930, status: unrecorded, note: "not observed in the scanned range; nothing in the client excludes it"}
   "0x02": {name: EIP-1559, status: inherited, src_live: "blocks 58728247-58728296 @ 58728247 -> 231 of 586"}
   "0x03": {name: EIP-4844 blob, status: removed, note: "rejected by the txpool validator, not by the envelope — see eips.4844", src: "crates/execution-txpool/src/pool.rs:no_eip4844"}
-  "0x04": {name: EIP-7702 set-code, status: inherited, note: "supported; not observed in the scanned range", src: "crates/evm/src/evm.rs:Eip7702Bytecode"}
+  "0x04": {name: EIP-7702 set-code, status: inherited, note: "supported; not observed in the scanned range", src: "crates/evm/src/evm.rs:eip7702_address"}
   note: >-
     NO ARC-SPECIFIC TRANSACTION TYPE EXISTS. This is a real finding for a chain
     whose pitch is stablecoin payments: no fee-payer type, no sponsored type, no
@@ -295,7 +324,7 @@ tx_authorization:
     verifier in this dataset. It is `authorizes: never` — the ordinary state of a
     verifier precompile, and worth recording precisely because the tempo row shows
     the opposite pairing on the same axis.
-  src: crates/precompiles/src/call_from.rs:CALL_FROM_ADDRESS, crates/evm/src/evm.rs:AllowedCallers, crates/precompiles/src/pq.rs:PQ_ADDRESS
+  src: crates/precompiles/src/call_from.rs:CALL_FROM_ADDRESS, crates/evm/src/evm.rs:AllowedCallers, crates/pq-precompile/src/lib.rs:PQ_ADDRESS
   schemes:
     secp256k1:
       status: inherited
@@ -316,7 +345,7 @@ tx_authorization:
         Post-quantum hash-based signatures (FIPS 205), gated on Zero6. The
         precompile's own doc comment calls it experimental. Gas is priced against
         the hash count implied by the scheme rather than as a flat fee.
-      src: crates/precompiles/src/pq.rs:verifySlhDsaSha2128s
+      src: crates/pq-precompile/src/lib.rs:verifySlhDsaSha2128s
     ed25519:
       status: added
       authorizes: never
@@ -387,7 +416,7 @@ precompiles:
     availability: optional
     activation_condition: "ArcHardfork::Zero6"
     note: "FIPS 205 post-quantum signature verification. Reverts with an ABI-encoded string on malformed input rather than returning empty."
-    src: crates/precompiles/src/pq.rs:PQ_ADDRESS
+    src: crates/pq-precompile/src/lib.rs:PQ_ADDRESS
     src_live: "eth_call(0x1800…0004, empty calldata) @ 58728247 -> revert 'Input too short'; eth_getCode -> 0x01"
   "0x000000000000000000000000000000000000000a":
     name: KZG point evaluation
@@ -446,21 +475,26 @@ system_contracts:
     note: "the other permitted CallFrom caller — attaches a memo to a payment."
     src: crates/execution-config/src/call_from.rs:MEMO_ADDRESS
     src_live: "eth_getCode @ 58728247 -> deployed"
-  "0x36059b615370eB999e8eC0c9401835B407834221":
+  "0x3600000000000000000000000000000000000004":
     name: Denylist
     status: added
-    availability: optional
-    activation_condition: "node flag --arc.denylist.address + --arc.denylist.storage-slot; default address is the localdev genesis deployment"
     note: >-
-      A SECOND, INDEPENDENT BLOCKLIST, and it is NODE CONFIGURATION rather than
-      consensus. The mempool and a revm pre-flight read an ERC-7201 mapping slot
-      out of an arbitrary contract nominated on the command line and reject
-      transactions touching a listed address. Two nodes configured differently
-      disagree about which transactions are valid to accept — SCHEMA.md's
-      config-switchable warning, applied to censorship rather than to signatures.
-      Not deployed at the default address on testnet.
-    src: crates/execution-config/src/addresses_denylist.rs:DEFAULT_DENYLIST_ADDRESS, crates/execution-config/src/addresses_denylist.rs:compute_denylist_storage_slot
-    src_live: "eth_getCode(0x36059b615370eB999e8eC0c9401835B407834221) @ 58728247 -> 0x (not deployed on testnet)"
+      A SECOND, INDEPENDENT BLOCKLIST, AND IT STOPPED BEING NODE CONFIGURATION. At
+      v0.7.3 this was `availability: optional` behind `--arc.denylist.address` and
+      `--arc.denylist.storage-slot`, read out of a contract nominated on the command
+      line, and this row called it SCHEMA.md's config-switchable warning applied to
+      censorship. v0.8.1 removed the flag. `ArcChainSpec::denylist_address` now
+      resolves the address from the CHAIN ID against four hardcoded constants —
+      localdev, devnet, testnet 0x360b451bb0490637F52fa1794961455615777757, mainnet
+      0x3600000000000000000000000000000000000004 ("the next system-contract slot,
+      deployed in genesis") — and the doc comment says changing one takes "a change
+      and a rebuild, not a CLI flag". An unrecognised chain ID returns None, and the
+      caller is required to reject that chain spec at startup: there is no
+      denylist-free Arc node. The divergence did not go away, it became network-wide
+      and unavoidable instead of per-operator. This entry is therefore re-keyed from
+      the old localdev default to Arc's mainnet address.
+    src: crates/execution-config/src/chainspec.rs:denylist_address, crates/execution-config/src/addresses_denylist.rs:compute_denylist_storage_slot
+    src_live: "eth_getCode(0x360b451bb0490637F52fa1794961455615777757) @ 66193736 -> 1494 bytes (the TESTNET denylist is deployed; the mainnet address 0x36..04 is empty on testnet, as expected, and Arc mainnet does not exist yet)"
   "0x0000F90827F1C53a10cb7A02335B175320002935":
     name: EIP-2935 history storage
     status: inherited
@@ -511,8 +545,12 @@ opcodes:
       beneficiary (failing with "Blocked address"), a transfer log on any non-zero
       balance move (a Circle-specific `NativeCoinTransferred` before Zero5, an
       EIP-7708 `Transfer` from Zero5), and rejection of a self-targeted
-      selfdestruct that would increase the account's own balance. Three variants
-      across Zero5/Zero6/Zero7.
+      selfdestruct that would increase the account's own balance. THE VARIANT SET
+      CHANGED AT v0.8.1: the `zero4` and `zero5` handlers are gone, folded into the
+      unconditional base implementation now that Zero5 and Zero6 are active on every
+      network, and a `zero8` handler was added with transaction-warm target checks.
+      Dispatch is Zero8, else Zero7, else base — still three implementations, but not
+      the same three.
     src: crates/evm/src/opcode.rs:arc_network_selfdestruct_impl
   - op: "0xf1"
     name: CALL

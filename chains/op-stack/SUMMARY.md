@@ -2,7 +2,7 @@
 
 **role: `stack` · no chain ID · upstream: go-ethereum**
 
-Reference: [op-geth `v1.101702.2`](https://github.com/ethereum-optimism/op-geth) @ `e8800cff`.
+Reference: [op-geth `v1.101702.3`](https://github.com/ethereum-optimism/op-geth) @ `7da4560d`.
 Optimism, Base, World Chain and Zora inherit everything below; their own files carry
 only what they add on top.
 
@@ -51,7 +51,8 @@ config where:
 - `PragueTime != IsthmusTime`
 
 So Canyon≡Shanghai, Ecotone≡Cancun, Isthmus≡Prague are verified facts. Fjord,
-Granite, Holocene, Jovian, Karst and Interop have **no** Ethereum counterpart — they
+Granite, Holocene, Jovian, Karst and Lagoon (renamed from Interop in v1.101702.3)
+have **no** Ethereum counterpart — they
 are pure OP upgrades, and Fjord/Granite/Jovian are where all six precompile
 divergences were introduced.
 
@@ -146,7 +147,7 @@ whether it is reachable on any live chain is recorded as `unrecorded`.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v1.101702.2 https://github.com/ethereum-optimism/op-geth
+git clone --depth 1 --branch v1.101702.3 https://github.com/ethereum-optimism/op-geth
 sed -n '/PrecompiledContractsJovian = /,/^}/p' core/vm/contracts.go
 sed -n '300,320p' core/vm/contracts.go                  # OP-before-Osaka ordering
 sed -n '185,200p' params/protocol_params.go             # the input caps

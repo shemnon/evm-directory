@@ -20,7 +20,7 @@ lineage:
     non-standard `second_heritage` key records what the schema otherwise loses.
   sync_point: >-
     STALE relative to its upstream. This client is op-geth v0.5.10, whose newest OP
-    branch is IsOptimismFjord; the op-stack row pins v1.101702.2 (Jovian/Karst).
+    branch is IsOptimismFjord; the op-stack row pins v1.101702.3 (Jovian/Karst/Lagoon).
     opBNB therefore has NONE of OP Stack's Granite, Isthmus or Jovian changes.
 
 client:

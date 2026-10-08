@@ -22,7 +22,7 @@ lineage:
   fork_of: op-geth
   sync_point: >-
     op-geth v1.6.1 is a rebase onto go-ethereum v1.17.3 (version/version.go: Major
-    1, Minor 17, Patch 3) against the op-stack row's op-geth v1.101702.2 (geth
+    1, Minor 17, Patch 3) against the op-stack row's op-geth v1.101702.3 (geth
     v1.17.5) — two geth patch releases, not fork generations. Mantle therefore
     BREAKS the pattern opBNB and Celo established: it does not lag the stack row,
     it is level with it on the Ethereum axis and reaches OSAKA (confirmed live:

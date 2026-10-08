@@ -47,9 +47,10 @@ forks:
   src: crates/chainspec/src/hardfork.rs
   activation_src: "op-stack/repos/superchain-registry/superchain/configs/mainnet/worldchain.toml"
   note: >-
-    Inherits the OP Stack sequence Bedrock..Karst verbatim, then declares two
-    World-Chain-specific forks. Both are ForkCondition::Never in the shipped spec
-    (asserted at crates/chainspec/src/spec.rs:578-579) — declared, not scheduled.
+    Inherits the OP Stack sequence Bedrock..Karst verbatim — Karst itself activated on
+    2026-09-21 — then declares two World-Chain-specific forks. Both are
+    ForkCondition::Never in the shipped spec (asserted at
+    crates/chainspec/src/spec.rs:578-579) — declared, not scheduled.
   timeline:
   - {name: "canyon/delta/ecotone", activation_time: 0, mainnet_equivalent: "shanghai+cancun",
      note: "active from genesis (l2_time 1719335639)"}
@@ -58,10 +59,18 @@ forks:
   - {name: holocene, activation_time: 1738238400, mainnet_equivalent: null}
   - {name: isthmus,  activation_time: 1764072000, mainnet_equivalent: prague,
      note: "2025-11-25 — over six months after mainnet Prague, and after OP Mainnet's Isthmus"}
-  - {name: jovian,   activation_time: 1777593600, status: active,
-     note: "2026-05-01; current fork. hardfork.rs marks Jovian #[default]"}
-  - {name: karst,    activation_time: null, status: pending,
-     note: "no karst_time in the registry, unlike OP Mainnet which activated Karst 2026-07-08"}
+  - {name: jovian,   activation_time: 1777593600, mainnet_equivalent: null,
+     note: "2026-05-01. hardfork.rs marks Jovian #[default]"}
+  - name: karst
+    activation_time: 1789992000
+    mainnet_equivalent: null
+    note: >-
+      LIVE SINCE 2026-09-21 12:00 UTC. This entry read "no karst_time in the
+      registry" until the superchain-registry pin moved: the mainnet config now
+      carries `karst_time = 1789992000`, about two and a half months after OP
+      Mainnet's own Karst (2026-07-08). The client row still pins the v2.4.2
+      builder, so the activation is recorded from the registry it cites and the
+      builder's own axes are re-derived separately.
   - {name: tropo,  status: pending, activation_time: null, note: "ForkCondition::Never"}
   - {name: strato, status: pending, activation_time: null, note: "ForkCondition::Never"}
 

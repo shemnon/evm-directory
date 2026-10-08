@@ -41,7 +41,8 @@ EVM-difference column.
 `crates/chainspec/src/hardfork.rs` declares two World-Chain-specific hardforks past
 the OP sequence — **Tropo** and **Strato**. Both are `ForkCondition::Never` in the
 shipped spec (asserted at `crates/chainspec/src/spec.rs:578-579`). Declared, not
-scheduled. The chain currently defaults to **Jovian**.
+scheduled. The chain is on **Karst**, live since 2026-09-21 12:00 UTC — the
+`karst_time` the registry lacked when this row was first written.
 
 The WIP series (World Chain's EIP analogue) has eight proposals, **all Draft**:
 

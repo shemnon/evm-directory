@@ -18,8 +18,8 @@ lineage:
 client:
   name: op-geth
   repo: https://github.com/ethereum-optimism/op-geth
-  version: v1.101702.2
-  commit: e8800cffe53d459cde8a07c8e8f1de9d86e79e07
+  version: v1.101702.3
+  commit: 7da4560d1fb3045286b70a8dc23360d2626543f2
   language: go
   shared_with: op-stack
   note: >-

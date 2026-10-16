@@ -317,7 +317,7 @@ R=https://rpc.gnosischain.com; B=0x2daa7a4      # block 47884196
 # --- pins
 git -C nethermind  rev-parse HEAD    # b3e7e84c1695420e771326f73801b66fa0574871
 git -C specs       rev-parse HEAD    # 045d46d6db96a39b4d91485f9783474c13546ac9
-git -C reth_gnosis rev-parse HEAD    # 5b236a06cfa29a29060fcb3355b73fef182e6e0c
+git -C reth_gnosis rev-parse HEAD    # 3c783e97a030eb91e88aa91c149004aa07153f3a
 git -C configs     rev-parse HEAD    # e542d132340e68fd7922149b145a0d361e1c87d4
 
 # --- 1. the entire Gnosis release-spec delta: four fields, five small files

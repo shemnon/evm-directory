@@ -2,9 +2,9 @@
 
 **Role:** `independent` · **Equivalence:** `behavioural` · **Chain ID:** 143 · **Baseline:** Osaka (opcode set only)
 **Client:** [`category-labs/monad`](https://github.com/category-labs/monad) `v0.16.4`
-(`e81ffe31cd30fe3455d1233e4ee6c9b3f017bad0`, C++) ·
+(`f6a86a1a47dac61b4b34015f7112116c13d8bcce`, C++) ·
 **Companion:** [`category-labs/monad-bft`](https://github.com/category-labs/monad-bft) `v0.16.4`
-(`c616743d1358186605e1c1b74a3d6c4fdd9dd48c`, Rust)
+(`2a2bcc04679b919db402dee2b13d4adce900098b`, Rust)
 **Live probes:** `https://rpc.monad.xyz` @ block `96823552`
 
 ### Repo names, resolved

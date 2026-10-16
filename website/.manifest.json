@@ -2,7 +2,7 @@
  "pages": {
   "axes/block-metrics.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -54,7 +54,7 @@
   },
   "axes/cryptography.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -106,7 +106,7 @@
   },
   "axes/eips.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -158,7 +158,7 @@
   },
   "axes/fees-envelope.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -210,7 +210,7 @@
   },
   "axes/lineage.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -262,7 +262,7 @@
   },
   "axes/opcodes.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -314,7 +314,7 @@
   },
   "axes/ordering.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -366,7 +366,7 @@
   },
   "axes/p2p.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -418,7 +418,7 @@
   },
   "axes/precompiles.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -470,7 +470,7 @@
   },
   "axes/proofs.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -522,7 +522,7 @@
   },
   "axes/system-contracts.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -574,7 +574,7 @@
   },
   "axes/tx-types.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -626,8 +626,8 @@
   },
   "chains/arbitrum.html": {
    "inputs": {
-    "chains/arbitrum/SUMMARY.md": "75d61ed4ffe895f2",
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/SUMMARY.md": "1da3397f73f16ec4",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "findings.yaml": "2100c4e8f1c75b22",
     "operators.yaml": "3d8ffcc5ccd88228"
    }
@@ -789,7 +789,7 @@
   },
   "chains/index.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -1063,7 +1063,7 @@
   },
   "index.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",
@@ -1115,7 +1115,7 @@
   },
   "silent-divergences.html": {
    "inputs": {
-    "chains/arbitrum/chain.yaml": "db3d2f1c6278a907",
+    "chains/arbitrum/chain.yaml": "6c3aaa7e477af541",
     "chains/arc/chain.yaml": "4853c8693123a273",
     "chains/artela/chain.yaml": "5be7d1ece1c3bf5b",
     "chains/autonomys/chain.yaml": "76c38d735b5812d1",

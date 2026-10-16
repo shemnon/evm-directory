@@ -53,7 +53,18 @@ for f in sorted(pathlib.Path("chains").glob("*/chain.yaml")):
     # a second copy of the same tree costs hundreds of megabytes and proves nothing.
     if not c.get("shared_with"):
         repo = strip(c["repo"])
-        emit(slug, repo.split("/")[-1], repo, c.get("version"), c["commit"])
+        cname = repo.split("/")[-1]
+        emit(slug, cname, repo, c.get("version"), c["commit"])
+        # `client.submodule` is a gitlink INSIDE the client tree, and the row's
+        # citations are written relative to it (arbitrum reads
+        # go-ethereum/core/types/... out of the nitro clone). It was never emitted
+        # here, so that tree had to be fetched by hand — the unpinned evidence this
+        # script exists to prevent, and a re-clone of the client silently deleted it.
+        # Emitting it as `<client>/<name>` puts the checkout exactly where the
+        # citations expect, and the client line above is processed first.
+        sub = c.get("submodule")
+        if sub:
+            emit(slug, f"{cname}/{sub['name']}", strip(sub["repo"]), sub.get("version"), sub["commit"])
     # Companions supply facts the main client does not contain. They were NOT cloned
     # by this script before, so they had to be fetched by hand — which is exactly the
     # unpinned, unreproducible evidence the method exists to prevent.

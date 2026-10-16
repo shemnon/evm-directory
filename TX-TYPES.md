@@ -157,7 +157,7 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `EthereumXcm::transact_through_proxy` the same, executed as a LOCAL account that granted the XCM origin an Any proxy
   - `EthereumXcm::force_transact_as` the same, executed as ANY address, Root only, with an optional forced CREATE address
 
-**Sei** — Two distinct populations with no EIP-2718 type byte. (1) Sei's own EVM-module Cosmos messages, which change EVM-visible state without ever being an Ethereum transaction. (2) A synthetic receipt kind emitted for ordinary Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a third population, not enumerated here — it is standard Cosmos SDK and its EVM-visible effects are reachable through the 0x1001-0x100c precompiles.
+**Sei** — Two distinct populations with no EIP-2718 type byte. (1) Sei's own EVM-module Cosmos messages, which change EVM-visible state without ever being an Ethereum transaction. (2) A synthetic receipt kind emitted for ordinary Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a third population, not enumerated here — it is standard Cosmos SDK and its EVM-visible effects are reachable through the 0x1001-0x1015 precompiles (0x1001-0x100c before the v6.7 upgrade added seven more).
   - `evm/MsgEVMTransaction` MsgEVMTransaction
   - `evm/MsgEVMTransaction (AssociateTx)` AssociateTx
   - `evm/MsgAssociateContractAddress` MsgAssociateContractAddress

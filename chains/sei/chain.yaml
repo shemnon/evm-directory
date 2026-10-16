@@ -27,8 +27,8 @@ lineage:
 client:
   name: sei-chain
   repo: https://github.com/sei-protocol/sei-chain
-  version: v6.6.1
-  commit: 43d1152e06ed9020d39e10da706451718b66c804
+  version: v6.7.2
+  commit: 02df238d64de1e0ffd9e941f520c202c02f6b0f6
   language: go
   note: >-
     sei-chain holds the Cosmos modules, the custom precompiles and the whole
@@ -44,7 +44,7 @@ client:
     mempool all cite into this clone.
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/sei-protocol/go-ethereum",
-     version: v1.15.7-sei-17, commit: 929fc329f2a82d97c51a97233f394f8d66d9cfc5,
+     version: v1.15.7-sei-21, commit: 1ce50ea178f2bcba6e8d3a09e27808b5a83e7bbd,
      provides: "the EVM interpreter, precompile base set, gas table and params.ChainConfig"}
 
 live_probe:
@@ -117,7 +117,7 @@ consensus:
     and publishes at Commit. There is no MegaETH-style receipt for a block that
     does not exist yet, and no receipt or block ever changes after it is
     returned.
-  src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+  src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
   occ:
     note: >-
       OCC (optimistic concurrency control) IS SHIPPED AND ON BY DEFAULT, and it is
@@ -192,6 +192,22 @@ forks:
   timeline:
   - {name: prague, mainnet_equivalent: prague, activation_condition: "genesis (PragueTime = 0)",
      note: "x/evm/types/config.go:PragueTime is a package var defaulting to 0"}
+  - name: "v6.7"
+    activation_block: 236450000
+    note: >-
+      NOT AN ETHEREUM FORK — Sei's own mandatory Cosmos upgrade, and the first entry on
+      this row's timeline that is one. The on-chain plan name is `v6.7` (deliberately
+      different from the git tag `v6.7.2`), it was a coordinated halt at height
+      236450000 on pacific-1 around 2026-10-08 16:30 UTC, and the chain is past it —
+      head 237,990,196 at the time of this re-pin. It changed four things this row cares
+      about. (1) SEVEN NEW CUSTOM PRECOMPILES at 0x100d-0x100f and 0x1012-0x1015, taking
+      the custom set from thirteen to twenty. (2) The P256 precompile at 0x1011 was
+      repriced from per-byte to a flat 3450 gas. (3) IBC, capability and feegrant were
+      REMOVED as modules: a transaction with a fee granter other than the payer is now
+      rejected, and IBC queries are answered by a `retiredibc` shim. (4) The legacy
+      `sei_*` and `sei2_*` JSON-RPC namespaces were removed except `sei_getSeiAddress`,
+      `sei_getEVMAddress` and `sei_getCosmosTx`.
+    src: "precompiles/setup.go:GetCustomPrecompiles, app/retiredibc/query.go:QueryResponse"
   - {name: osaka, mainnet_equivalent: osaka, status: pending,
      note: "no OsakaTime field exists in Sei's ChainConfig; not schedulable without a client release"}
 
@@ -338,7 +354,8 @@ non_evm_transactions:
     Cosmos/CosmWasm transactions that produced EVM-shaped logs. The whole
     surrounding Cosmos-SDK message set (bank, staking, gov, IBC, wasm) is a
     third population, not enumerated here — it is standard Cosmos SDK and its
-    EVM-visible effects are reachable through the 0x1001-0x100c precompiles.
+    EVM-visible effects are reachable through the 0x1001-0x1015 precompiles (0x1001-0x100c
+    before the v6.7 upgrade added seven more).
   entries:
   - id: evm/MsgEVMTransaction
     name: MsgEVMTransaction
@@ -437,11 +454,15 @@ tx_authorization:
     so an sr25519 or ed25519 account can never associate and is permanently confined
     to its cast address.
 
-    signers_per_tx is 1. x/feegrant lets a granter pay without signing, and x/authz
-    lets a grantee's signature execute a granter's message, but neither adds a second
-    signature over the same transaction; both parties signed separately, through this
-    same gate. Sei explicitly blocks MsgEVMTransaction inside authz
-    (CheckAuthzContainsEvm) while leaving bank/staking/gov/wasm reachable.
+    signers_per_tx is 1. X/FEEGRANT IS GONE AS OF THE v6.7 UPGRADE — removed along with
+    IBC and capability, and a transaction whose fee granter differs from the payer is now
+    rejected outright, so the "granter pays without signing" path this row used to
+    describe no longer exists. x/authz remains: a grantee's signature can execute a
+    granter's message, but it does not add a second signature over the same transaction;
+    both parties signed separately, through this same gate. Sei explicitly blocks
+    MsgEVMTransaction inside authz (CheckAuthzContainsEvm) while leaving
+    bank/staking/gov/wasm reachable, and v6.7 additionally exposed x/authz itself as a
+    precompile at 0x100e.
   src: "app/ante.go:NewAnteHandler, app/app.go:SigGasConsumer, sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, x/evm/state/balance.go:GetBalance, x/evm/keeper/address.go:GetSeiAddressOrDefault, x/evm/keeper/address.go:GetEVMAddressOrDefault, x/evm/ante/preprocess.go:EVMAddressDecorator, precompiles/addr/addr.go:associatePublicKey, utils/helpers/address.go:PubkeyToEVMAddress"
   schemes:
     secp256k1:
@@ -585,7 +606,16 @@ precompiles:
   "0x0000000000000000000000000000000000001009":
     name: ibc
     status: added
-    note: "initiates IBC transfers from EVM bytecode — cross-chain value movement with no Ethereum-side transaction"
+    note: >-
+      initiates IBC transfers from EVM bytecode — cross-chain value movement with no
+      Ethereum-side transaction. THE MODULE BEHIND IT WAS RETIRED AT v6.7 AND THE
+      PRECOMPILE WAS NOT. IBC, capability and feegrant were removed as modules, ABCI
+      queries for IBC paths are now answered by an `app/retiredibc` shim instead of the
+      module, and historical IBC transactions need a v6.6 node in freeze mode to decode —
+      yet `ibc.IBCAddress` is still registered in `GetCustomPrecompiles`, so the address
+      is still a precompile rather than an empty account. Recorded as still `added` on
+      that basis; what it can actually do post-retirement is not established from source
+      alone.
     src: "precompiles/ibc/ibc.go:IBCAddress, precompiles/setup.go:GetCustomPrecompiles"
   "0x000000000000000000000000000000000000100a":
     name: pointerview
@@ -605,6 +635,56 @@ precompiles:
       absent from InitializePrecompiles (the ABI-harvest path) — the two lists
       in the same file disagree, which is why the live path is the one cited.
     src: "precompiles/solo/solo.go:SoloAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x000000000000000000000000000000000000100d":
+    name: auth
+    status: added
+    fork: "v6.7"
+    note: >-
+      NEW AT THE v6.7 MAINNET UPGRADE. One of SEVEN Cosmos-module precompiles added in a
+      single upgrade (0x100d-0x100f, 0x1012-0x1015), taking this row's custom set from
+      thirteen to twenty. The module behind it is standard Cosmos SDK x/auth; what is new
+      is that it is now callable from the EVM. `IAuth`.
+    src: "precompiles/auth/auth.go:AuthAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x000000000000000000000000000000000000100e":
+    name: authz
+    status: added
+    fork: "v6.7"
+    note: "NEW AT v6.7. Cosmos x/authz — grant-based authorisation — exposed to the EVM. `IAuthz`."
+    src: "precompiles/authz/authz.go:AuthzAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x000000000000000000000000000000000000100f":
+    name: evidence
+    status: added
+    fork: "v6.7"
+    note: "NEW AT v6.7. Cosmos x/evidence — misbehaviour submission — exposed to the EVM. `IEvidence`."
+    src: "precompiles/evidence/evidence.go:EvidenceAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x0000000000000000000000000000000000001012":
+    name: mint
+    status: added
+    fork: "v6.7"
+    note: "NEW AT v6.7. Cosmos x/mint — inflation parameters and the current provision — exposed to the EVM. `IMint`."
+    src: "precompiles/mint/mint.go:MintAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x0000000000000000000000000000000000001013":
+    name: params
+    status: added
+    fork: "v6.7"
+    severity: high
+    note: >-
+      NEW AT v6.7, and the one in this batch worth reading twice: the Cosmos x/params
+      module, which holds consensus-affecting chain parameters, is now reachable from
+      inside the EVM. `IParams`.
+    src: "precompiles/params/params.go:ParamsAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x0000000000000000000000000000000000001014":
+    name: slashing
+    status: added
+    fork: "v6.7"
+    note: "NEW AT v6.7. Cosmos x/slashing — validator signing info and jail state — exposed to the EVM. `ISlashing`."
+    src: "precompiles/slashing/slashing.go:SlashingAddress, precompiles/setup.go:GetCustomPrecompiles"
+  "0x0000000000000000000000000000000000001015":
+    name: upgrade
+    status: added
+    fork: "v6.7"
+    note: "NEW AT v6.7. Cosmos x/upgrade — the scheduled-upgrade plan — exposed to the EVM, so an EVM caller can read the very mechanism that installed this precompile. `IUpgrade`."
+    src: "precompiles/upgrade/upgrade.go:UpgradeAddress, precompiles/setup.go:GetCustomPrecompiles"
   "0x0000000000000000000000000000000000001011":
     name: P256VERIFY (secp256r1)
     status: added
@@ -618,9 +698,14 @@ precompiles:
       not a flat 3450 or 6900. DELEGATECALL is refused. A valid signature
       returns 32 bytes of 0x..01 inside the ABI wrapper; an invalid one returns
       EMPTY with no error, the same silent-failure shape as EIP-7951.
-      Note the address gap: 0x100d-0x1010 are unallocated, so this is not
-      contiguous with the module block.
-    src: "precompiles/p256/p256.go:P256VerifyAddress, precompiles/p256/p256.go:GasCostPerByte"
+      THE ADDRESS GAP MOSTLY CLOSED AT v6.7: 0x100d, 0x100e and 0x100f are now auth,
+      authz and evidence, so only 0x1010 is still unallocated and this address is one
+      slot off the module block rather than four. The GAS ALSO CHANGED SHAPE: v6.6.1
+      priced it per byte of input (`GasCostPerByte`), and v6.7 replaced that with a flat
+      `P256VerifyGas = 3450`, described in source as the right shape for a
+      "constant-work stateless operation". Mainnet's EIP-7951 charges 6900, so Sei's
+      verifier is now a flat charge at half mainnet's price.
+    src: "precompiles/p256/p256.go:P256VerifyAddress, precompiles/p256/p256.go:P256VerifyGas"
     src_live: "eth_call @ 226969278 to 0x0..1011 data=0x8e760afe+abi(bytes) of a valid vector -> 0x..0020 0020 ..0001; the same vector sent raw -> execution reverted"
   "0x0000000000000000000000000000000000000100":
     name: P256VERIFY
@@ -746,7 +831,7 @@ tx_lifecycle:
   ordered_then_invalid:
     verdict: split
     severity: high
-    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
     note: >-
       SPLIT, AND SEI TIES THE TWO ARMS TO THE NONCE. The EVM ante handler registers a
       `DeliverTxCallback` that bumps the sender's nonce even when the ante handler FAILS —
@@ -763,7 +848,7 @@ tx_lifecycle:
       gated on the same condition.
   nonce_on_failure:
     verdict: split
-    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    src: "app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
     note: >-
       Split on the same condition as the receipt: burned when the tx arrived at the correct
       nonce (and then a stub receipt exists), preserved when the nonce was wrong (and then
@@ -877,15 +962,15 @@ proofs:
       whose own validator set is the only attestation there is, and it is not a lesser
       one than `validity` or `fault` — it is a different security model, which is why
       the axis names it rather than leaving the cell empty.
-    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
   proving_live:
     verdict: n/a
     note: "nothing is being proven, so there is nothing that could be live or staged"
-    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
   settlement:
     verdict: self
     note: "settles itself; no external contract accepts or rejects its state transition"
-    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptUntraceable"
+    src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
 
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting

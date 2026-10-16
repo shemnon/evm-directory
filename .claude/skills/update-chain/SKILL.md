@@ -59,6 +59,32 @@ Triage by row kind before going further:
 Choose the **target**: the newest stable tag per pin. Companions move when the client
 does, or when their own schedule or definitions changed.
 
+### A companion pinned by commit is pinned by the CLIENT'S MANIFEST, not by its branch
+
+`pin_status.py` reports branch movement for any companion with no tag, because a branch
+head is the only thing it can compare against. **That report is not the target.** When the
+client declares the dependency, the client's manifest is the authority and a newer branch
+head is simply a different repository state the client does not build:
+
+| client | where the companion pin really lives |
+|---|---|
+| Go | `go.mod` — a `replace` directive, or a `require` with a pseudo-version (`v0.0.0-<date>-<12 hex>`, whose date matches the commit's committer date) |
+| Rust | `Cargo.toml` / `core/Cargo.toml` — `git = … tag =` or `rev =` |
+| Gradle | `gradle/libs.versions.toml` — e.g. linea's `besuCommit` |
+| git submodule | `git ls-tree <client pin> <path>` — the 160000 entry IS the pin |
+
+This refresh got it wrong on four rows before catching it: **sonic** (geth fork, tosca,
+carmen — and the geth branch head had lost every Sonic patch, so seven citations resolved
+to nothing), **linea** (besu, a month past `besuCommit`), **zksync-era** (an era-contracts
+submodule and a Cargo-tagged zksync-protocol, where the correct answer was "nothing to
+bump"), and **sei** (`-sei-21` on the branch, `-sei-20` in go.mod).
+
+The failure is quiet: the pins look newer, `clone.sh` fetches them happily, and only a
+`BAD SYM` storm or nothing at all tells you. So before moving any companion with no
+`version:`, grep the client clone's manifest for the companion's repo path and pin what it
+says. If the manifest names the current pin, that companion has **nothing to bump** even
+though `pin_status.py` says its branch moved.
+
 ## 3. Fetch the new code next to the old
 
 Keep the old tree so you can diff. If the row has no clone yet, run `tools/clone.sh <slug>`

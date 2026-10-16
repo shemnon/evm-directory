@@ -44,7 +44,7 @@ client:
     mempool all cite into this clone.
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/sei-protocol/go-ethereum",
-     version: v1.15.7-sei-21, commit: 1ce50ea178f2bcba6e8d3a09e27808b5a83e7bbd,
+     version: v1.15.7-sei-20, commit: 092edae5f1f57724d6bb52d8723f7903a6db2574,
      provides: "the EVM interpreter, precompile base set, gas table and params.ChainConfig"}
 
 live_probe:

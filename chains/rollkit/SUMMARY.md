@@ -3,7 +3,7 @@
 **Pinned evidence.**
 `evstack/ev-node` **v1.2.3**, commit `d76e0dfcb0ffa3384d875fa2538eeb9a5321b335`
 (Go; sequencing, DA, the Engine-API driver) and its companion
-`evstack/ev-reth` **v0.5.2**, commit `7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0`
+`evstack/ev-reth` **v0.6.0**, commit `9bcc1892fea827f2f8fdc80c605606a81eecb7f6`
 (Rust; the actual EVM). `github.com/rollkit/rollkit` 301-redirects to
 `github.com/evstack/ev-node` — the project renamed to **Evolve** and the org to
 **evstack**. `rollkit/go-execution-evm` likewise redirects; its code is now the
@@ -282,9 +282,9 @@ block number, plus a one-byte `0xfe` at `0x…F100`.
 git clone --depth 1 --branch v1.2.3 --single-branch \
     https://github.com/evstack/ev-node chains/rollkit/repos/ev-node
 git -C chains/rollkit/repos/ev-node rev-parse HEAD   # d76e0dfcb0ffa3384d875fa2538eeb9a5321b335
-git clone --depth 1 --branch v0.5.2 --single-branch \
+git clone --depth 1 --branch v0.6.0 --single-branch \
     https://github.com/evstack/ev-reth chains/rollkit/repos/ev-reth
-git -C chains/rollkit/repos/ev-reth rev-parse HEAD   # 7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0
+git -C chains/rollkit/repos/ev-reth rev-parse HEAD   # 9bcc1892fea827f2f8fdc80c605606a81eecb7f6
 
 # the rename
 curl -sI https://github.com/rollkit/rollkit | grep -i location

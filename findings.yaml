@@ -1274,3 +1274,40 @@
     nonce in both its failure modes while taking HBAR anyway. The portable lesson is that
     "no receipt" does not mean "nothing happened", and the sender cannot tell the two
     apart from the Ethereum RPC alone.
+
+- id: source-went-private
+  title: A public chain's client can stop being readable
+  axis: lineage
+  rank: 35
+  lede: >-
+    Every fact in this dataset rests on a pinned public tree, and that footing is not
+    permanent. A repository can stay public while its source stops being published — so
+    a row can hold facts that were true, verifiable and correctly cited, and still have
+    no way to check whether they are true any more.
+  chains:
+    injective: >-
+      **The instance.** `InjectiveFoundation/injective-core` is still a public
+      repository, and releases have continued — v1.20.4-1789748350, 2026-09-18, is the
+      newest. But the tree at that tag contains exactly ONE entry: an empty file named
+      `SOURCE_CODE_IS_PRIVATE`. The diff from the pinned v1.20.3 is 1450 files and
+      854,798 deletions with no insertions, and 42 of this row's cited paths are among
+      them — every custom precompile, the chain config, all four transaction types, both
+      `.proto` files. The pin still resolves and all 94 of its citations still confirm,
+      so this row's facts remain source-backed; what is gone is the ability to re-derive
+      them. Injective's next fork, precompile or fee change cannot be read out of any
+      public tree.
+  body: >-
+    This is a different failure from a dead chain and from a chain that never had a
+    client. `dead:` covers a network that stopped; `evidence: documented` covers one
+    with no public client to begin with, where facts rest on docs and probes. Injective
+    is neither: it is live, it had a public client, the pinned tree is intact, and the
+    road forward is closed. The pin is therefore frozen deliberately rather than bumped
+    or downgraded, and `evidence:` stays `source` because the evidence that exists IS
+    source.
+    The practical consequence is that this row's half-life is now set by the network
+    rather than by the repository. A live probe still says what the chain does; nothing
+    says why. Any claim here that depends on a code path — a gas schedule, a precompile's
+    behaviour, which transaction types decode — is as good as its last reading and cannot
+    be refreshed. A reader comparing rows should know that Injective's facts are pinned
+    to 2026-08 source and that later Injective behaviour is, from this dataset's
+    perspective, unobservable at the level that matters.

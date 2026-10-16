@@ -1,11 +1,11 @@
 # Tempo — the first chain in this dataset with no native token at all
 
-Client pinned: `tempoxyz/tempo` **v1.16.0**, commit `74b69155ebaf6178bf7e3d59d18a2440164302d9`,
-Rust, built on `paradigmxyz/reth` git rev `10aa6a512ba7c4f5f01ff489b1f513da0745821f`.
+Client pinned: `tempoxyz/tempo` **v1.16.1**, commit `acfc30e248d22092c6a14c1b4dd9cf515b88a10f`,
+Rust, built on `paradigmxyz/reth` git rev `75da52807688bc07e279b83ccefedf4358de6b85`.
 Live-probed at mainnet block **36217459** (`0x228a273`, `finalized` at probe time),
 chain id **4217**.
 
-The public RPC reports `tempo/v1.16.0-023f1d0/…`, matching this pin exactly. The tag we read is the tag the
+The public RPC reports `tempo/v1.16.1-acfc30e/…`, matching this pin exactly. The tag we read is the tag the
 network runs, so for once nothing below has to be hedged with "the pinned client
 says X, but validators may run Y".
 
@@ -272,11 +272,11 @@ the documents state them; every `status:` elsewhere in the row comes from source
   (`sstore_clearing_slot_refund = 0`); its replacement is a storage *credit* redeemable
   only against a future creation by the same account. That is a materially different
   economic object from a gas refund and it is not transferable to the fee.
-- **Thirteen mainnet hardforks and counting**, T0 through **T11** (live 2026-09-10
-  14:00 UTC), with **T12 scheduled for 2026-10-13 14:00 UTC** and T13/T14 declared and
+- **Fourteen mainnet hardforks and counting**, T0 through **T12** (live 2026-10-13
+  14:00 UTC, exactly as scheduled at the previous pin), with T13/T14 declared and
   unscheduled. Activation timestamps are hardcoded per chain id in the client rather than
-  read from genesis. Roughly one fork every two to three weeks, and T12 is the first with
-  a future-dated mainnet timestamp rather than a missing one.
+  read from genesis. Roughly one fork every two to three weeks. T11 tightened precompile
+  calldata decoding and T12 partially loosened it again three weeks later.
 - **Subblocks are not a transaction type, and v1.16.0 took the machinery out.** The
   lane was a signed validator-scoped bundle with no type byte, its contents ordinary
   `0x76` transactions whose `nonceKey` carries a `0x5b`-prefixed partial validator key,
@@ -327,8 +327,8 @@ Nothing directly, but two framings need widening:
 
 ```sh
 cd /Volumes/TendiesTown/EVM-Directory/chains/tempo/repos/tempo
-git rev-parse HEAD          # 11b2eec62345a9a045d977255a5d93f66114e9e3
-git describe --tags         # v1.16.0
+git rev-parse HEAD          # acfc30e248d22092c6a14c1b4dd9cf515b88a10f
+git describe --tags         # v1.16.1
 
 # 1. the RPC placeholder balance, in source
 grep -n -A3 'NATIVE_BALANCE_PLACEHOLDER' crates/node/src/rpc/mod.rs
@@ -385,7 +385,7 @@ call() { curl -s -X POST $RPC -H 'Content-Type: application/json' \
 
 # identity — the running client is the pinned tag
 call eth_chainId '[]'                # -> 0x1079 (4217)
-call web3_clientVersion '[]'         # -> tempo/v1.16.0-023f1d0/x86_64-unknown-linux-gnu
+call web3_clientVersion '[]'         # -> tempo/v1.16.1-acfc30e/x86_64-unknown-linux-gnu
 
 # THE headline: same absurd balance for two unrelated accounts, at a pinned block
 call eth_getBalance '["0x7a19d6086c5dc88f2755d82efda69d62bf2336e7","0x228a273"]'

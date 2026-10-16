@@ -36,8 +36,8 @@ lineage:
 client:
   name: op-geth (Celo fork)
   repo: https://github.com/celo-org/op-geth
-  version: celo-v2.2.4
-  commit: aee04e0b41af645723e1debc833469ca2a3ae54a
+  version: celo-v2.2.5
+  commit: 24a62352f5575f1843a1e25504bd594014bde24d
   language: go
   built_on: op-geth / go-ethereum v1.16.9
   note: >-
@@ -45,7 +45,7 @@ client:
     maintained rebase of ethereum-optimism/op-geth, not a snapshot.
   companion_repos:
   - {name: optimism, repo: "https://github.com/celo-org/optimism",
-     version: celo-v2.2.1, commit: a590fbdcfdf3b7132ef0f974ecc341a963343d07,
+     version: celo-v2.2.4, commit: db166f41814690ce2271e973607bf71cad3dc239,
      provides: "Celo predeploy definitions (CeloPredeploys.sol), FeeCurrencyDirectory.sol, AbstractFeeCurrency.sol"}
 
 live_probe:
@@ -511,6 +511,25 @@ fee_model:
         balanceOf, not the account balance: canPayFee splits the requirement into
         a native part (msg.Value) and an ERC-20 part (the gas fee). An account
         with zero native CELO can transact.
+    - name: CIP-64 max-fee exception list
+      severity: high
+      src: core/celo_fee_exceptions.go:feeCurrencyMaxFeeExceptions, core/celo_state_transition.go:isFeeCurrencyMaxFeeException
+      note: >-
+        NEW AT celo-v2.2.5, AND IT IS A HARDCODED LIST OF TRANSACTION HASHES IN CONSENSUS
+        CODE. The two Celo clients disagreed about CIP-64: op-geth's `canPayFee` required
+        the fee-currency balance to cover `gasLimit * maxFeePerGas`, while celo-reth
+        required only `gasLimit * effectiveGasPrice` — the amount `debitGasFees` actually
+        charges. A sender holding a balance between the two thresholds was therefore valid
+        for celo-reth and invalid for op-geth. ONE SUCH TRANSACTION IS CANONICAL: mainnet
+        block 75046581, tx index 29, needing 5,819,427,363,800,000 of
+        0x0E2A3e05bc9A16F5292A6170456A710cb89C6f72 against a held 5,295,000,000,000,000,
+        with the 12,161,345,100 effective price making the real debit affordable. op-geth
+        now carries that transaction's hash, keyed with (chainID, blockNumber) so the
+        exemption cannot apply anywhere else, purely so it can stay on the chain. The list
+        must stay byte-for-byte in sync with `CIP64_MAX_FEE_EXCEPTIONS` in celo-reth — the
+        source says a client exempting a transaction the other rejects "reintroduces the
+        divergence this list exists to paper over" — and it may still gain entries for
+        blocks between 75046581 and the celo-reth deployment that closed the rule.
     - name: per-currency intrinsic gas
       src: core/state_transition.go:IntrinsicGas
       note: "read from FeeCurrencyDirectory.getCurrencyConfig; on-chain state, changeable by governance"
@@ -552,6 +571,14 @@ header_fields:
   src: core/types/celo_block.go:BeforeGingerbreadHeader
 
 gotchas:
+  - >-
+    CELO'S CONSENSUS CONTAINS A LIST OF TRANSACTION HASHES. `celo_fee_exceptions.go`
+    exempts exactly one mainnet transaction from the CIP-64 fee-currency max-fee check,
+    because op-geth and celo-reth implemented that check differently and a transaction
+    valid only under the lenient reading made it into a canonical block. Any tool that
+    reasons about CIP-64 affordability from the rule alone gets block 75046581 wrong, and
+    any reimplementation of Celo needs the list as well as the rule. See
+    `fee_model.extra_components`.
   - >-
     CELO CARRIES A CUSTOM TRANSACTION TYPE ON TOP OF OP STACK, and it is the
     majority type on the chain. "OP Stack derivatives inherit the transaction

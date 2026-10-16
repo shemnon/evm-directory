@@ -1,10 +1,10 @@
 # Celo
 
 **Role:** `fork` · **Upstream:** `op-stack` · **Chain ID:** 42220 · **Baseline:** Prague
-**Client:** [`celo-org/op-geth`](https://github.com/celo-org/op-geth) `celo-v2.2.4`
-(`aee04e0b41af645723e1debc833469ca2a3ae54a`) ·
-**Companion:** [`celo-org/optimism`](https://github.com/celo-org/optimism) `celo-v2.2.1`
-(`a590fbdcfdf3b7132ef0f974ecc341a963343d07`)
+**Client:** [`celo-org/op-geth`](https://github.com/celo-org/op-geth) `celo-v2.2.5`
+(`24a62352f5575f1843a1e25504bd594014bde24d`) ·
+**Companion:** [`celo-org/optimism`](https://github.com/celo-org/optimism) `celo-v2.2.4`
+(`db166f41814690ce2271e973607bf71cad3dc239`)
 **Live probes:** `https://forno.celo.org` @ block `74884096`
 
 Celo was a standalone L1 until the **Cel2** transition on 2025-03-26 (L2 block

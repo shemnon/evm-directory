@@ -1,14 +1,14 @@
 # Sei
 
-**Client:** `sei-protocol/sei-chain` `v6.6.1` (`43d1152e`), Go
-**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-17` (`929fc329`) — the EVM itself
+**Client:** `sei-protocol/sei-chain` `v6.7.2` (`02df238d`), Go
+**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-21` (`1ce50ea1`) — the EVM itself
 **Chain ID:** 1329 (`pacific-1`) · **Baseline:** Prague · **Live probes:** block `226969278`
 
 Sei is a Cosmos-SDK chain whose EVM interpreter is a maintained fork of go-ethereum.
 The interpreter tracks upstream; nothing around it does. `role: fork` describes only
 the part of Sei that descends from geth by code.
 
-**One clone covers almost everything.** As of `v6.6.1` the forked SDK and the forked
+**One clone covers almost everything.** As of `v6.7.2` the forked SDK and the forked
 consensus engine are no longer separate Go modules: `sei-cosmos/`, `sei-tendermint/`,
 `sei-db/`, `sei-ibc-go/` and `sei-wasmd/` are directories *inside* the `sei-chain`
 module, imported as `github.com/sei-protocol/sei-chain/sei-tendermint/...`. `go.mod`
@@ -273,7 +273,7 @@ sequentially (`app/app.go:shouldProcessSingleRecipientEVMTransfersSynchronously`
 same versioned store as any other write and conflict-resolve the same way; there is no
 special casing of the association precompile in the scheduler, and nothing a contract
 author can observe. `EstimateWritesets` / `EstimatedWritesets` — the ante-handler-based
-write-set prediction the brief asked about — **does not exist in v6.6.1**. The only
+write-set prediction the brief asked about — **does not exist in v6.7.2 either**. The only
 estimates are the abort-time ones described above.
 
 ## The parallelism that *is* consensus-visible is not OCC
@@ -468,9 +468,9 @@ are called out rather than guessed:
 
 ```bash
 # 1. Re-fetch the pinned evidence (both repos)
-git clone --depth 1 --branch v6.6.1 \
+git clone --depth 1 --branch v6.7.2 \
   https://github.com/sei-protocol/sei-chain chains/sei/repos/sei-chain
-git -C chains/sei/repos/sei-chain rev-parse HEAD   # 43d1152e06ed9020d39e10da706451718b66c804
+git -C chains/sei/repos/sei-chain rev-parse HEAD   # 02df238d64de1e0ffd9e941f520c202c02f6b0f6
 
 git clone --depth 1 --branch v1.15.7-sei-17 \
   https://github.com/sei-protocol/go-ethereum chains/sei/repos/go-ethereum

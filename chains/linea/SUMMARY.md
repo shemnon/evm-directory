@@ -3,7 +3,7 @@
 **Chain ID 59144 · role: `fork` · baseline: Osaka · QBFT (Maru), 1s blocks**
 
 Reference: [LFDT-Lineth/lineth-monorepo `releases/linea-besu-package/v2.3.0`](https://github.com/LFDT-Lineth/lineth-monorepo)
-@ `8d016431`, with [besu-eth/besu](https://github.com/besu-eth/besu) @ `fa4bae71` — the
+@ `8d016431`, with [besu-eth/besu](https://github.com/besu-eth/besu) @ `efa817c5` — the
 exact commit that monorepo pins — cloned alongside as the EVM.
 
 ## The client is not what CANDIDATES.md said, and that is the first finding
@@ -258,7 +258,7 @@ git clone --depth 1 --branch releases/linea-besu-package/v2.3.0 \
   https://github.com/LFDT-Lineth/lineth-monorepo
 mkdir besu && cd besu && git init && \
   git remote add origin https://github.com/besu-eth/besu && \
-  git fetch --depth 1 origin fa4bae715808cea87bc36354fe8eb656bb932971 && \
+  git fetch --depth 1 origin efa817c5abc989ef8bb82de14920518ce2a41173 && \
   git checkout FETCH_HEAD && cd ..
 
 # the prover budget that is the whole story

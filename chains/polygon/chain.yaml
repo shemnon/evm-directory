@@ -19,8 +19,8 @@ lineage:
 client:
   name: bor
   repo: https://github.com/0xPolygon/bor
-  version: v2.10.0
-  commit: 82d3b610d48468462a504245b5839de66dc86272
+  version: v2.10.3
+  commit: a16f123d9b4f41a552a3a98d93a0340430838576
   language: go
   note: >-
     bor is the execution client; heimdall (consensus/checkpointing) is a separate
@@ -52,6 +52,23 @@ forks:
      note: "current precompile set; adds Osaka-era MODEXP and P256VERIFY without an Osaka fork"}
   - {name: valencia,     activation_time: null, activation_condition: "block 89531000", mainnet_equivalent: null}
   - {name: austin,       activation_time: null, activation_condition: "block 91949700", mainnet_equivalent: null}
+  - name: hampi
+    activation_time: null
+    status: pending
+    mainnet_equivalent: null
+    note: >-
+      NEW BOR FORK AT v2.10.3, declared and unscheduled — `HampiBlock: nil // unscheduled`
+      on both BorMainnetChainConfig (137) and AmoyChainConfig (80002); only the test
+      NonActivatedConfig sets it to 0. What it changes is unusually narrow and the source
+      says so outright: in SSTORE's gas path, from Hampi the storage slot is only READ
+      once the caller can pay for the access, because PIP-88's ColdSstoreCostPIP88 now
+      exceeds the EIP-2200 reentrancy sentry that was supposed to cover a cold access.
+      Every caller rejected by the new check would have failed the charge below it
+      anyway, so "gas and the ErrOutOfGas outcome are unchanged across the fork; only the
+      committed state read — and therefore witness composition — differs". A fork visible
+      to a stateless client and to nothing an EVM caller can observe, and a direct
+      consequence of PIP-88's repricing.
+    src: "params/config.go:IsHampi, core/vm/operations_acl.go:ColdSstoreCostPIP88"
   - {name: osaka,        activation_time: null, status: pending, note: "no OsakaBlock set for mainnet"}
 
 eips:

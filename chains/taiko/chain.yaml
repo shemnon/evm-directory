@@ -37,13 +37,13 @@ lineage:
 client:
   name: taiko-geth
   repo: https://github.com/taikoxyz/taiko-geth
-  version: v2.6.0
-  commit: ca164c06e00ceb2b1cc25ae2a141ee57b6a1cd18
+  version: v2.7.0
+  commit: 8e98046bfd6ae36b7047c6a593855425721e1cf5
   language: go
   built_on: go-ethereum (Osaka-era)
   companion_repos:
   - {name: taiko-mono, repo: "https://github.com/taikoxyz/taiko-mono",
-     version: taiko-alethia-client-v2.6.0, commit: c84c333e6a819062b9017f925882ca28b9969fe7,
+     version: taiko-alethia-client-v2.7.0, commit: d5132235b98ee2ddc5205e13a8e2b555d7eb18b6,
      provides: "the anchor transaction constructor and its fixed-k signer, the golden-touch private key, the Anchor.sol L2 predeploy, the derivation rules (gas-limit clamp, manifest constants), and an independent Rust reimplementation of all of it"}
 
 live_probe:
@@ -133,10 +133,19 @@ eips:
     status: modified
     severity: high
     note: >-
-      Header field present, contract absent, value always zero. Finalize writes a
-      ZERO parentBeaconRoot into every Unzen header when none is supplied, and
-      verifyUnzenHeaderFields only requires the field to be non-nil, never that it
-      means anything. The beacon-roots contract is NOT in the genesis alloc and is an
+      Header field present, contract absent, value always zero — AND v2.7.0 MADE THE
+      ZERO A CONSENSUS RULE. At v2.6.0 `Finalize` backfilled a zero parentBeaconRoot into
+      any Unzen header that lacked one, and `verifyUnzenHeaderFields` only required the
+      field to be non-nil, never that it meant anything. Both halves inverted: the
+      backfill is gone, because the root has to be on the header BEFORE execution for the
+      EIP-4788 system call's writes to land inside the committed state root, and the
+      validator now rejects any non-zero root outright. The client's own comment gives
+      the reason — the reference client rebuilds every Unzen payload header with the zero
+      root before checking its block hash, so accepting a non-zero one "would let geth
+      run the EIP-4788 system call with that root, agree with itself on the resulting
+      state root and make canonical a block the reference rejects". A one-client
+      divergence that would have been a chain split, closed by requiring the degenerate
+      value. The beacon-roots contract is NOT in the genesis alloc and is an
       empty account on mainnet, so the EIP-4788 system call is a call to an address
       with no code: it succeeds and writes nothing. The client says so itself, in a
       comment about witnesses needing "an EIP-4788 / EIP-2935 system call to a system

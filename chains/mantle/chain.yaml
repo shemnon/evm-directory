@@ -49,8 +49,8 @@ lineage:
 client:
   name: op-geth (Mantle fork)
   repo: https://github.com/mantle-xyz/op-geth
-  version: v1.6.1
-  commit: 11fa8109ad7eb177c05c4007f0bd410b93edcbdb
+  version: v1.6.3
+  commit: e33cd26cda583e42196b1be82a79b70258be49af
   language: go
   built_on: op-geth / go-ethereum v1.17.3
   note: >-
@@ -63,7 +63,7 @@ client:
     needs to be assumed.
   companion_repos:
   - {name: mantle-v2, repo: "https://github.com/mantle-xyz/mantle-v2",
-     version: v1.6.0, commit: 710dbc40b295a93e0c7eb474615faa1c3b8ae368,
+     version: v1.6.3, commit: 8df5df7b871e2a3b8f297221cb860852f343893e,
      provides: "op-node/op-batcher fork, Mantle fork registry (op-core/forks/mantle_forks.go), predeploy definitions (Predeploys.sol)"}
 
 live_probe:

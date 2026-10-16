@@ -1,8 +1,8 @@
 # Mantle — findings
 
-Chain id 5000. Client **`mantle-xyz/op-geth` v1.6.1** (`11fa8109…`), a rebase of
-op-geth onto go-ethereum **v1.17.3**, with **`mantle-xyz/mantle-v2` v1.6.0**
-(`710dbc40…`) as the companion for the consensus client, the fork registry and the
+Chain id 5000. Client **`mantle-xyz/op-geth` v1.6.3** (`e33cd26c…`), a rebase of
+op-geth onto go-ethereum **v1.17.3**, with **`mantle-xyz/mantle-v2` v1.6.3**
+(`8df5df7b…`) as the companion for the consensus client, the fork registry and the
 predeploy list. Baseline fork **osaka**. Live probes at block **99672064**
 (`0x5f16800`) on `https://rpc.mantle.xyz`.
 
@@ -235,11 +235,14 @@ registry says why in one line: `Interop → MantleNoSupport`.
   preconf deposit sources, a preconf miner config and a separate
   `miner/preconf_checker.go` that upstream op-geth does not have. Not exercised; its
   consensus effect is unrecorded.
-* **`v1.6.1` has no GitHub Release.** The newest published Release is `v1.5.5`
-  (2026-04-21). `v1.6.1` is pinned anyway because `web3_clientVersion` on the public
-  RPC returns `Geth/v1.17.3-stable-11fa8109/…` — the running network *is* this
-  build. That is a stronger pin than a release tag, but it is a deviation from the
-  method and is called out here rather than hidden.
+* **The release gap closed, and a smaller one opened.** This row used to note that
+  `v1.6.1` had no GitHub Release and the newest published one was `v1.5.5` (2026-04-21).
+  **`v1.6.3` is a published Release** (2026-09-21), so the pin is now an ordinary one.
+  But the running network is no longer exactly the pin: `web3_clientVersion` returns
+  `Geth/v1.17.3-stable-e5fa26ca/…`, and `e5fa26ca` (2026-09-16) is **6 commits behind
+  `v1.6.3`** and an ancestor of it — the `hotfix/failed-bvmeth-deposit-gas` merge. So
+  everything the network runs is in this pin, and the pin carries six commits the
+  network does not. Stated rather than hidden, as before.
 * **No precompile extractor** exists for this row, so `verify.py` reports
   `! NO EXTRACTOR` and the precompile list is taken on trust from
   `core/vm/contracts.go`.

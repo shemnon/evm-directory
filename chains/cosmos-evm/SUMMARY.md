@@ -2,8 +2,8 @@
 
 **Role:** `template` · **Upstream:** `ethereum` · **Chain ID:** *none — not a chain* ·
 **Baseline:** Prague
-**Client:** [`cosmos/evm`](https://github.com/cosmos/evm) `v0.7.2`
-(`ef11f63c087b4c859b1e8eddc823f7cf2113a50a`) ·
+**Client:** [`cosmos/evm`](https://github.com/cosmos/evm) `v0.7.3`
+(`c3ae9067a7eadcdea55a5192226916deb44c71c4`) ·
 **Companion:** [`cosmos/go-ethereum`](https://github.com/cosmos/go-ethereum)
 `v1.17.2-cosmos-0` (`d99d6fa2c8d98b7cd653de4a9386d2da3db8f25c`)
 **Live probes:** none. This row is not a chain, so it rests on `src:` alone.

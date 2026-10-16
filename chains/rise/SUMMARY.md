@@ -1,7 +1,7 @@
 # RISE — what this row teaches
 
 Pinned: `risechain/rise-node` **v0.6.0** (`27cd88b1`, released 2026-06-29), with
-`risechain/risechain` (`0f53132e`, **main, untagged**) and `risechain/pevm`
+`risechain/risechain` (`2c2c6f2b`, **main, untagged**) and `risechain/pevm`
 (`e94b0e3d`, **main, untagged**) as companions.
 Live probe: `https://rpc.risechain.com` / `wss://rpc.risechain.com/ws`, chain id
 **4153**, block **20239360** (timestamp 1787845119, 2026-08-27 15:38:39 UTC).
@@ -305,7 +305,7 @@ R=https://rpc.risechain.com; B=0x134d400          # 20239360
 # --- pins (rise-node is the only TAGGED repo in the org)
 git -C chains/rise/repos/rise-node  rev-parse HEAD   # 27cd88b171000a08a92d2c65358a2d3b84f423d8
 git -C chains/rise/repos/rise-node  describe --tags  # v0.6.0
-git -C chains/rise/repos/risechain  rev-parse HEAD   # 0f53132e...  (main, UNTAGGED)
+git -C chains/rise/repos/risechain  rev-parse HEAD   # 2c2c6f2b...  (main, UNTAGGED)
 git -C chains/rise/repos/pevm       rev-parse HEAD   # e94b0e3d...  (main, UNTAGGED)
 git ls-remote --tags https://github.com/risechain/pevm       # empty
 git ls-remote --tags https://github.com/risechain/risechain  # empty

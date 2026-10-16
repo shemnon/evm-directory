@@ -1,7 +1,7 @@
 # MegaETH — what this row teaches
 
-Pinned: `megaeth-labs/mega-evm` **v1.7.0** (`30ce038c`) — the EVM — with
-`megaeth-labs/stateless-validator` **v2.0.16** (`11078d7b`) as a companion, which
+Pinned: `megaeth-labs/mega-evm` **v1.7.2** (`faf6f2d7`) — the EVM — with
+`megaeth-labs/stateless-validator` **v2.0.20** (`b8e9553a`) as a companion, which
 supplies an independent re-execution client *and* the canonical mainnet genesis.
 Live probe: `https://mainnet.megaeth.com/rpc` / `wss://mainnet.megaeth.com/ws`,
 chain id **4326**, block **24869120** (timestamp 1787666131, 2026-08-25). Baseline
@@ -163,12 +163,16 @@ Jovian/Karst client, so inheriting it wholesale would credit MegaETH with Jovian
 
 ## 12. A pinned-genesis/live-network divergence, caught the day it opened
 
-The mainnet genesis shipped in stateless-validator v2.0.16 stops at `rex5Time`. Rex6
-activated on mainnet at 1787626800 — 03:00 UTC on the day this row was written, about
-11 hours before the pinned probe. mega-evm v1.7.0 implements Rex6 and the docs
-schedule it, but a validator started from the repo's own genesis file would have
-diverged from mainnet that morning. The row records Rex6's activation from the docs
-and says so.
+**Closed at this re-pin.** The mainnet genesis shipped in stateless-validator v2.0.16
+stopped at `rex5Time`, while mega-evm already implemented Rex6 and the docs scheduled
+it at 1787626800 — so a validator started from the repo's own genesis file would have
+diverged from mainnet on the morning this row was written, and the row had to take the
+activation from the docs.
+
+stateless-validator **v2.0.20** carries `"rex6Time": 1787626800` in
+`test_data/mainnet/genesis.json` — the same timestamp, now in source. The two repos
+agree, and Rex6's activation is a `src:` fact rather than a documented one. The
+divergence was real and lasted about seven weeks.
 
 ## 13. A mini-block is a *result*, not a plan — and the order it shows you is final
 

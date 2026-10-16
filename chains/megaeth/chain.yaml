@@ -43,8 +43,8 @@ lineage:
 client:
   name: mega-evm (MegaEVM)
   repo: https://github.com/megaeth-labs/mega-evm
-  version: v1.7.0
-  commit: 30ce038cfb0ec108e886ef48105a7ab367a99b33
+  version: v1.7.2
+  commit: faf6f2d7e26dfe7f32d1aa733339105d4de2e325
   language: rust
   built_on: revm 27.1.0 + op-revm
   note: >-
@@ -59,7 +59,7 @@ client:
     API — is `src_live:` or `src_doc:`.
   companion_repos:
   - {name: stateless-validator, repo: "https://github.com/megaeth-labs/stateless-validator",
-     version: v2.0.16, commit: 11078d7b54c0500710a9e7f08d2fc1d76e6ca609, language: rust,
+     version: v2.0.20, commit: b8e9553a62222544c8e5195ff8b7ec0285922b92, language: rust,
      provides: "an independent re-execution client (chain spec, block executor, withdrawals root) and the canonical mainnet genesis with the full hardfork schedule"}
   note_second_client: >-
     stateless-validator is a genuine second implementation — it depends on mega-evm at
@@ -167,11 +167,14 @@ forks:
     note: >-
       2026-08-25 03:00 UTC. Unified per-opcode metering order, system-originated
       transaction metering exemption, SequencerRegistry v2.0.0 rotation hardening.
-      NOT PRESENT in the pinned genesis (`rex6Time` is absent from
-      stateless-validator v2.0.16's mainnet genesis, whose newest entry is
-      `rex5Time`), while mega-evm v1.7.0 implements Rex6 and the docs schedule it —
-      so a validator started from the repo's own genesis file would have diverged from
-      mainnet the morning this row was written. Activation time is from the docs.
+      THE GENESIS GAP THIS ENTRY RECORDED IS CLOSED. At stateless-validator v2.0.16
+      `rex6Time` was absent from the mainnet genesis — whose newest entry was
+      `rex5Time` — while mega-evm already implemented Rex6, so a validator started
+      from the repo's own genesis would have diverged from mainnet. v2.0.20 carries
+      `"rex6Time": 1787626800` in `test_data/mainnet/genesis.json`, the same timestamp
+      this entry previously took from the docs, so the activation is a SOURCE fact now
+      rather than a documented one and the two repos agree.
+    src: test_data/mainnet/genesis.json
   - {name: Rex7, status: pending, mainnet_equivalent: null,
      note: "unstable spec, no behavioural change over Rex6, not scheduled on either network"}
 

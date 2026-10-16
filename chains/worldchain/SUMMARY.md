@@ -2,8 +2,8 @@
 
 **Chain ID 480 · role: `fork` · upstream: [op-stack](../op-stack/SUMMARY.md) → ethereum**
 
-Reference: [worldcoin/world-chain `v2.4.2`](https://github.com/worldcoin/world-chain)
-@ `33281430`. Note this repo is a **block builder, not an execution client** —
+Reference: [worldcoin/world-chain `v2.4.5`](https://github.com/worldcoin/world-chain)
+@ `ea6c894d`. Note this repo is a **block builder, not an execution client** —
 World Chain runs stock op-reth/op-geth.
 
 ## The finding is the absence
@@ -119,7 +119,7 @@ EdDSA precompile address that collides with P256VERIFY. Recorded `pending`.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v2.4.2 https://github.com/worldcoin/world-chain
+git clone --depth 1 --branch v2.4.5 https://github.com/worldcoin/world-chain
 cat crates/chainspec/src/hardfork.rs                 # Tropo / Strato
 sed -n '570,585p' crates/chainspec/src/spec.rs       # ForkCondition::Never
 sed -n '1,45p' specs/wips/wip-1001.md                # 0x1D

@@ -16,7 +16,7 @@
 <p class="lede">Not a client fork. World Chain runs stock OP Stack execution (op-reth / op-geth) and adds an external block BUILDER. The repo pinned here is the builder, not a node. All EVM semantics are inherited unchanged from op-stack; consult that file.</p>
 <div class="scroll"><table class="kv"><tbody><tr><td>Chain ID</td><td><code>480</code></td></tr><tr><td>Role</td><td><span class="pill">fork</span></td></tr><tr><td>Baseline fork</td><td><code>prague</code></td></tr><tr><td>Upstream</td><td><a href="op-stack.html">OP Stack</a></td></tr><tr><td>Ancestry</td><td>ethereum → op-stack</td></tr><tr><td>Sync point</td><td>Follows the OP Stack upgrade sequence through Karst, then diverges to its own schedule (crates/chainspec/src/hardfork.rs). Currently defaulted to Jovian.</td></tr><tr><td>Consensus</td><td>OP Stack (sequencer) + rollup-boost external block production</td></tr><tr><td>Lineage note</td><td><p>Not a client fork. World Chain runs stock OP Stack execution (op-reth / op-geth) and adds an external block BUILDER. The repo pinned here is the builder, not a node. All EVM semantics are inherited unchanged from op-stack; consult that file.</p></td></tr></tbody></table></div>
 <h2 id="evidence">Evidence<a class="anchor" href="#evidence">#</a></h2>
-<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/worldcoin/world-chain">world-chain (builder)</a> <code>v2.4.2</code></td></tr><tr><td>Pinned commit</td><td><code>33281430d5458697ef92ffba035bba245c5a0691</code></td></tr><tr><td>Language</td><td>rust</td></tr><tr><td>Built on</td><td>reth / op-reth</td></tr><tr><td>Client note</td><td><p>A block-building sidecar, not an execution client. Execution is stock OP Stack.</p></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 12 · <code>src_live:</code> 0 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
+<div class="scroll"><table class="kv"><tbody><tr><td>Client</td><td><a href="https://github.com/worldcoin/world-chain">world-chain (builder)</a> <code>v2.4.5</code></td></tr><tr><td>Pinned commit</td><td><code>ea6c894ddac4874a94d8230cb9fba8b69136e362</code></td></tr><tr><td>Language</td><td>rust</td></tr><tr><td>Built on</td><td>reth / op-reth</td></tr><tr><td>Client note</td><td><p>A block-building sidecar, not an execution client. Execution is stock OP Stack.</p></td></tr><tr><td>Fact provenance</td><td><code>src:</code> 12 · <code>src_live:</code> 0 · <code>src_doc:</code> 0</td></tr></tbody></table></div>
 <h2 id="notes">Notes <span class="pill">1</span><a class="anchor" href="#notes">#</a></h2>
 <div class="finding"><h3 id="f-op-stack-constrains-little">Variation among OP Stack descendants<a class="anchor" href="#f-op-stack-constrains-little">#</a></h3><p class="lede">Resolving <code>ethereum → op-stack → X</code> does not determine X's type-byte set, its precompiles, or even its fork schedule.</p><p>World Chain adds no type byte and no precompile, and diverges on the schedule instead: Isthmus landed 2025-11-25, over six months after mainnet Prague and after OP Mainnet's own Isthmus, and Karst landed 2026-09-21 against OP Mainnet's 2026-07-08 — two and a half months apart on the same stack. Two chains on one stack are not on one fork level.</p><p class="tags"><a href="../axes/lineage.html#f-op-stack-constrains-little">Full note · Lineage</a> · also on <a href="../chains/optimism.html#f-op-stack-constrains-little">OP Mainnet</a> · <a href="../chains/base.html#f-op-stack-constrains-little">Base</a> · <a href="../chains/opbnb.html#f-op-stack-constrains-little">opBNB</a> · <a href="../chains/celo.html#f-op-stack-constrains-little">Celo</a></p></div>
 <h2 id="forks">Forks<a class="anchor" href="#forks">#</a></h2>
@@ -59,8 +59,8 @@
 <ul class="tight"><li>World Chain has ZERO live EVM divergence from OP Stack. Its differentiator (PBH) is a block-ordering policy enforced by an external builder that cannot alter the state transition — rollup-boost falls back to the default EL block if the builder misbehaves. Anyone expecting &quot;the World ID chain&quot; to have custom precompiles or account types today is reading the roadmap, not the chain.</li><li>The entire WIP series (1001-1008) is Draft, and the two World-Chain-specific hardforks (Tropo, Strato) are ForkCondition::Never. This chain&#x27;s interesting deltas are all in the future tense.</li><li>WIP-1004 proposes EdDSA at 0x0100, already occupied by P256VERIFY. Draft-stage and explicitly revisable, but it shows how quickly the &quot;custom precompiles live far from mainnet&quot; convention erodes once 0x0100 itself became a mainnet address at Osaka.</li></ul>
 <h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
 <div class="prose"><p><strong>Chain ID 480 · role: <code>fork</code> · upstream: <a href="../chains/op-stack.html">op-stack</a> → ethereum</strong></p>
-<p>Reference: <a href="https://github.com/worldcoin/world-chain">worldcoin/world-chain <code>v2.4.2</code></a>
-@ <code>33281430</code>. Note this repo is a <strong>block builder, not an execution client</strong> —
+<p>Reference: <a href="https://github.com/worldcoin/world-chain">worldcoin/world-chain <code>v2.4.5</code></a>
+@ <code>ea6c894d</code>. Note this repo is a <strong>block builder, not an execution client</strong> —
 World Chain runs stock op-reth/op-geth.</p>
 <h2>The finding is the absence</h2>
 <p>Every EVM-level fact about World Chain today is inherited from OP Stack unchanged:
@@ -192,7 +192,7 @@ if it ever ships, World Chain's <code>key_binding</code> becomes <code>account_c
 <code>derived</code> for everything else. Every activation parameter is still TBD, including the
 EdDSA precompile address that collides with P256VERIFY. Recorded <code>pending</code>.</p>
 <h2>Re-verify</h2>
-<pre><code>git clone --depth 1 --branch v2.4.2 https://github.com/worldcoin/world-chain
+<pre><code>git clone --depth 1 --branch v2.4.5 https://github.com/worldcoin/world-chain
 cat crates/chainspec/src/hardfork.rs                 # Tropo / Strato
 sed -n '570,585p' crates/chainspec/src/spec.rs       # ForkCondition::Never
 sed -n '1,45p' specs/wips/wip-1001.md                # 0x1D
@@ -205,6 +205,6 @@ grep -rn &quot;precompile&quot; --include=&quot;*.rs&quot; crates/       # no cu
 tools/verify.py worldchain   # re-extract from source, diff against chain.yaml</code></pre>
 <p class="src">Source of record: <code>chains/worldchain/chain.yaml</code> · <code>chains/worldchain/SUMMARY.md</code></p>
 </main>
-<footer>Generated 2026-10-08 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=worldchain">Report an inaccuracy</a></footer>
+<footer>Generated 2026-10-16 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=worldchain">Report an inaccuracy</a></footer>
 <script src="../assets/site.js"></script>
 </body></html>

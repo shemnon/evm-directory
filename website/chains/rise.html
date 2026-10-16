@@ -65,7 +65,7 @@
 <ul class="tight"><li>shreds</li><li>shred_delivery</li><li>preconfirmed_receipt</li><li>two_sentinels</li><li>logs_subscription_repurposed</li><li>stale_deposit_shred</li><li>ordered_but_invalid</li><li>parallel_execution_is_not_consensus_visible</li><li>sync_submission</li><li>ipc_side_channel</li><li>alt_da</li><li>no_evm_divergence</li></ul>
 <h2 id="summary">Full write-up<a class="anchor" href="#summary">#</a></h2>
 <div class="prose"><p>Pinned: <code>risechain/rise-node</code> <strong>v0.6.0</strong> (<code>27cd88b1</code>, released 2026-06-29), with
-<code>risechain/risechain</code> (<code>0f53132e</code>, <strong>main, untagged</strong>) and <code>risechain/pevm</code>
+<code>risechain/risechain</code> (<code>2c2c6f2b</code>, <strong>main, untagged</strong>) and <code>risechain/pevm</code>
 (<code>e94b0e3d</code>, <strong>main, untagged</strong>) as companions.
 Live probe: <code>https://rpc.risechain.com</code> / <code>wss://rpc.risechain.com/ws</code>, chain id
 <strong>4153</strong>, block <strong>20239360</strong> (timestamp 1787845119, 2026-08-27 15:38:39 UTC).
@@ -380,7 +380,7 @@ R=https://rpc.risechain.com; B=0x134d400          # 20239360
 # --- pins (rise-node is the only TAGGED repo in the org)
 git -C chains/rise/repos/rise-node  rev-parse HEAD   # 27cd88b171000a08a92d2c65358a2d3b84f423d8
 git -C chains/rise/repos/rise-node  describe --tags  # v0.6.0
-git -C chains/rise/repos/risechain  rev-parse HEAD   # 0f53132e...  (main, UNTAGGED)
+git -C chains/rise/repos/risechain  rev-parse HEAD   # 2c2c6f2b...  (main, UNTAGGED)
 git -C chains/rise/repos/pevm       rev-parse HEAD   # e94b0e3d...  (main, UNTAGGED)
 git ls-remote --tags https://github.com/risechain/pevm       # empty
 git ls-remote --tags https://github.com/risechain/risechain  # empty
@@ -496,6 +496,6 @@ tools/.venv/bin/python tools/verify.py 2&gt;&amp;1 | sed -n '/^rise/,/^$/p'
 tools/verify.py rise   # re-extract from source, diff against chain.yaml</code></pre>
 <p class="src">Source of record: <code>chains/rise/chain.yaml</code> · <code>chains/rise/SUMMARY.md</code></p>
 </main>
-<footer>Generated 2026-10-08 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=rise">Report an inaccuracy</a></footer>
+<footer>Generated 2026-10-16 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=rise">Report an inaccuracy</a></footer>
 <script src="../assets/site.js"></script>
 </body></html>

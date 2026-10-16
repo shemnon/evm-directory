@@ -23,8 +23,8 @@ lineage:
 client:
   name: world-chain (builder)
   repo: https://github.com/worldcoin/world-chain
-  version: v2.4.2
-  commit: 33281430d5458697ef92ffba035bba245c5a0691
+  version: v2.4.5
+  commit: ea6c894ddac4874a94d8230cb9fba8b69136e362
   language: rust
   built_on: reth / op-reth
   note: >-

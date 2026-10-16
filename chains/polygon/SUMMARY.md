@@ -2,7 +2,7 @@
 
 **Chain ID 137 · role: `fork` · upstream: go-ethereum · baseline: Prague**
 
-Reference: [0xPolygon/bor `v2.10.0`](https://github.com/0xPolygon/bor) @ `82d3b610`.
+Reference: [0xPolygon/bor `v2.10.3`](https://github.com/0xPolygon/bor) @ `a16f123d`.
 Heimdall (consensus/checkpointing) is a separate component, not cloned.
 
 ## PIP-88: a systematic gas surcharge
@@ -103,7 +103,7 @@ attributing bridged L1 value to the zero address.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v2.10.0 https://github.com/0xPolygon/bor
+git clone --depth 1 --branch v2.10.3 https://github.com/0xPolygon/bor
 sed -n '274,295p' core/vm/contracts.go        # Chicago set; note no 0x0a
 sed -n '74,90p;190,206p' params/protocol_params.go   # PIP-88 multipliers
 sed -n '405,440p' params/config.go            # mainnet blocks + system contracts

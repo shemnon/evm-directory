@@ -1,7 +1,7 @@
 # Sei
 
 **Client:** `sei-protocol/sei-chain` `v6.7.2` (`02df238d`), Go
-**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-21` (`1ce50ea1`) — the EVM itself
+**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-20` (`092edae5`) — the EVM itself
 **Chain ID:** 1329 (`pacific-1`) · **Baseline:** Prague · **Live probes:** block `226969278`
 
 Sei is a Cosmos-SDK chain whose EVM interpreter is a maintained fork of go-ethereum.

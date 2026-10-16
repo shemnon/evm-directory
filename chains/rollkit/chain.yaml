@@ -73,8 +73,8 @@ client:
   companion_repos:
   - name: ev-reth
     repo: https://github.com/evstack/ev-reth
-    version: v0.5.2
-    commit: 7f3e25fe756c2cc2e4e56a423a11d2e8fe299fe0
+    version: v0.6.0
+    commit: 9bcc1892fea827f2f8fdc80c605606a81eecb7f6
     provides: "the actual EVM: reth fork with tx type 0x76, precompiles 0xF100/0xF101, EvolvePayloadBuilder, EvolveConsensus, base-fee redirect, configurable EIP-170 limit"
 
 live_probe:
@@ -457,6 +457,33 @@ precompiles:
       records what a deployment MAY have.
     src: crates/ev-precompiles/src/proposer.rs:PROPOSER_CONTROL_PRECOMPILE_ADDR
     src_live: "eth_getCode(0x..f101) @ 182440651 -> 0x; eth_call nextProposer() @ 182440651 -> 0x (absent on Eden)"
+  "0x000000000000000000000000000000000000f102":
+    name: Deployment permissions (IDeployPermissions)
+    status: added
+    severity: high
+    availability: optional
+    activation_condition: "a configured DeployAllowlistSettings with an activation height; absent settings leave deployment unrestricted"
+    note: >-
+      NEW IN ev-reth v0.6.0, AND IT IS A CONSENSUS RULE ON WHO MAY DEPLOY. The
+      precompile is stateful — `addDeployer`, `removeDeployer`, `setEnabled`, plus
+      `isDeployerAllowed`/`isEnabled`/`deployerCount`/`admin` views — capped at
+      MAX_DEPLOYERS 1024, and the EVM handler reads it during execution:
+      `check_deploy_allowed` rejects a transaction with `DeployCheckError::NotAllowed`
+      when the caller is not permitted.
+
+      Three details decide how much this matters. It gates TOP-LEVEL CREATE ONLY
+      (`if !is_top_level_create { return Ok(()) }`), so a contract deployed BY a
+      contract is unaffected and a factory is a complete bypass. With no settings
+      configured it returns Ok, so the default is unrestricted. And the permission read
+      is deliberately kept out of the journal — the tests assert that "consensus
+      permission reads must not warm or journal the precompile account" — so the check
+      is invisible to gas accounting and to access lists.
+
+      NOT ACTIVE on Eden: the address has no code and `isEnabled()` returns empty at
+      block 224,106,359, the same `availability: optional` shape as 0xF101. This row
+      records what a deployment MAY have.
+    src: crates/ev-precompiles/src/deploy_permissions.rs:DEPLOY_PERMISSIONS_PRECOMPILE_ADDR, crates/ev-revm/src/deploy.rs:check_deploy_allowed
+    src_live: "eth_getCode(0x..f102) @ 224106359 -> 0x; eth_call isEnabled() @ 224106359 -> 0x (absent on Eden)"
 
 system_contracts:
   "0x000000000000000000000000000000000000ad00":

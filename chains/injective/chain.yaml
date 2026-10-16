@@ -68,8 +68,22 @@ client:
     the framework row pins. Every major dependency is a fork: the SDK, CometBFT,
     ibc-go, wasmd, gogoproto and the block-sdk are all InjectiveLabs builds. That
     fork is not cloned here — the citations below are all inside injective-core.
-    v1.20.3 is the newest non-prerelease tag (published as
-    v1.20.3-1784976496; the two tags are the same commit).
+    THIS PIN IS FROZEN, AND NOT BECAUSE NOTHING SHIPPED. v1.20.3 was the newest
+    non-prerelease tag when this row was written (published as v1.20.3-1784976496; the
+    two tags are the same commit). Releases have continued — v1.20.4-1789748350 is the
+    newest, 2026-09-18 — but THE SOURCE IS GONE FROM THEM. The repository is still
+    public, yet the tree at that tag contains exactly one entry, an empty file named
+    `SOURCE_CODE_IS_PRIVATE`, and the diff from the pin is 1450 files and 854,798
+    deletions with no insertions. Forty-two of this row's cited paths do not exist
+    there, including every custom precompile (bank, exchange, oracle, staking),
+    `chain_config.go`, all four transaction types and both `.proto` files.
+    v1.20.3 still carries full source and the clone resolves all of its citations, so
+    every fact on this row remains a `src:` fact. What has been lost is the ability to
+    RE-DERIVE them: the next fork, precompile or fee change on Injective cannot be read
+    out of any public tree. `evidence:` deliberately stays `source` rather than moving
+    to `documented`, because `documented` means no public client ever existed and that
+    is not what happened here. A future re-pin has nowhere to go until the source
+    returns.
 
 live_probe:
   endpoint: https://sentry.evm-rpc.injective.network

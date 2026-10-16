@@ -28,14 +28,16 @@ lineage:
     upstream image, not a rebuild; (2) every mainnet block's `extraData` decodes to the
     ASCII string `reth/v1.11.3/linux`, which is exactly reth's `default_extra_data()`
     format `reth/v{version}/{OS}` with no operator override; (3) the public RPC reports
-    `reth/v1.8.3-4219741`, and `4219741` is the first seven hex digits of
-    42197415102b7a20be42e4fe919f024b81ceb55b — the commit that upstream tag v1.8.3
-    points at. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and NO
+    `reth/v1.11.3-d6324d6`, whose commit prefix is the pinned commit
+    d6324d63e27ef6b7c49cdc9b1977c1b808234c7b exactly. THAT THIRD PIECE USED TO
+    DISAGREE: at the previous probe the RPC said `reth/v1.8.3-4219741` while extraData
+    already said v1.11.3, and this row recorded the mismatch. The node has since been
+    upgraded and all three sources now name the same version and commit. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and NO
     releases, and none of its branches changes consensus: they are upstream syncs, an
     ExEx that posts XPL balance updates to a webhook (an observer, not a rule), and one
     `eth_feeHistory` fix.
   src: "node-templates/config/mainnet/.env:EXECUTION_IMAGE, reth/crates/node/core/src/version.rs:default_extra_data"
-  src_live: "eth_getBlockByNumber 30724096 @ 30724096 -> extraData 0x726574682f76312e31312e332f6c696e7578 = \"reth/v1.11.3/linux\"; web3_clientVersion @ 30724096 -> reth/v1.8.3-4219741/x86_64-unknown-linux-gnu"
+  src_live: "eth_getBlockByNumber @ 35247117 -> extraData 0x726574682f76312e31312e332f6c696e7578 = \"reth/v1.11.3/linux\"; web3_clientVersion @ 35247117 -> reth/v1.11.3-d6324d6/x86_64-unknown-linux-gnu — all three sources agree on v1.11.3 and the RPC's commit prefix matches the pin"
 
 client:
   name: reth (upstream, unmodified)
@@ -44,14 +46,20 @@ client:
   commit: d6324d63e27ef6b7c49cdc9b1977c1b808234c7b
   language: rust
   note: >-
-    Pinned at the tag Plasma's mainnet node template pins by digest. This row cites
-    upstream reth deliberately: the chain's execution client IS this repo at this tag,
+    Pinned at the tag Plasma's mainnet node template pins by digest — still
+    `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…` at the template repo's current head, and
+    UPSTREAM RETH HAS MEANWHILE RENUMBERED TO v2.x (v2.7.0 at the time of this check).
+    The pin does not follow it: this row tracks what the deployment pins, not what the
+    upstream publishes, and the deployment pins v1.11.3 by digest. Both live probes
+    agree. A re-pin here needs the template's EXECUTION_TAG to move first, not reth's
+    release page. This row cites upstream reth deliberately: the chain's execution
+    client IS this repo at this tag,
     and the delta against it is zero. The RPC endpoint probed was still on v1.8.3 while
     block producers were on v1.11.3 — both upstream tags, so the version skew changes
     nothing about the state transition.
   companion_repos:
   - {name: node-templates, repo: "https://github.com/PlasmaLaboratories/node-templates",
-     commit: 09df100756d63256991c88fd65947475c208f6cd, language: shell,
+     commit: 048042dd8b527794f4644faca1c6645f80001091, language: shell,
      provides: "mainnet genesis.json (chain config + full alloc), docker-compose stack, and the pinned EL/CL image digests"}
   consensus_client: >-
     NOT PUBLIC. The consensus layer ships only as the container image

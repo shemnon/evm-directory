@@ -42,8 +42,8 @@ lineage:
 client:
   name: tempo (reth-based execution + Simplex consensus)
   repo: https://github.com/tempoxyz/tempo
-  version: v1.16.0
-  commit: 74b69155ebaf6178bf7e3d59d18a2440164302d9
+  version: v1.16.1
+  commit: acfc30e248d22092c6a14c1b4dd9cf515b88a10f
   language: rust
   built_on: reth (git rev 75da52807688bc07e279b83ccefedf4358de6b85) / revm
   note: >-
@@ -152,15 +152,16 @@ forks:
     src: "crates/hardfork/src/constants.rs:MAINNET_T11_TIMESTAMP, crates/precompiles/src/lib.rs:POST_T11_INPUT_PER_WORD_COST, crates/hardfork/src/lib.rs:expiring_nonce_set_capacity"
   - name: T12
     activation_time: 1791900000
-    status: pending
     mainnet_equivalent: osaka
     note: >-
-      NEW IN THE ENUM AT v1.16.0 AND ALREADY SCHEDULED: 2026-10-13 14:00 UTC, the first
-      Tempo fork with a future-dated mainnet timestamp rather than a missing one. It
-      relaxes precompile calldata validation in the opposite direction from T11 —
+      LIVE SINCE 2026-10-13 14:00 UTC. It was recorded as `pending` with this exact
+      timestamp one re-pin ago — the first Tempo fork to carry a future-dated mainnet
+      time rather than a missing one — and it activated on schedule. It relaxes
+      precompile calldata validation in the opposite direction from T11:
       `dispatch.rs:.validate_allow_trailing_bytes(spec.is_t12())`, so trailing bytes that
-      T11 made fatal are tolerated again — and changes consensus: the DKG manager and the
-      epoch manager both branch on `is_t12()` at an epoch boundary.
+      T11 had made fatal are tolerated again. Three weeks of strictness, then a partial
+      reversal. It also changes consensus — the DKG manager and the epoch manager both
+      branch on `is_t12()` at an epoch boundary.
     src: "crates/hardfork/src/constants.rs:MAINNET_T12_TIMESTAMP, crates/precompiles/src/dispatch.rs:validate_allow_trailing_bytes"
   - name: T13
     status: pending

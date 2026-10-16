@@ -72,7 +72,7 @@ client:
   - name: risechain
     repo: https://github.com/risechain/risechain
     version: main (UNTAGGED)
-    commit: 0f53132e5a0d3589ecd3f8fb78fdd290c891a14d
+    commit: 2c2c6f2b343b7334b133851d848ccf556fdcc7dd
     language: rust
     provides: >-
       the only published RISE Rust code: `crates/primitives`, which defines the RPC and

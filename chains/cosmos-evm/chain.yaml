@@ -57,8 +57,8 @@ lineage:
 client:
   name: cosmos/evm (evmd reference node)
   repo: https://github.com/cosmos/evm
-  version: v0.7.2
-  commit: ef11f63c087b4c859b1e8eddc823f7cf2113a50a
+  version: v0.7.3
+  commit: c3ae9067a7eadcdea55a5192226916deb44c71c4
   language: go
   built_on: cosmos/go-ethereum v1.17.2-cosmos-0, Cosmos SDK, CometBFT, ibc-go v11
   note: >-

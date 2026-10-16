@@ -454,11 +454,11 @@ network does" and "what the RPC says" are separately citable and repeatedly disa
 git clone --depth 1 --branch v0.77.2 --single-branch \
   https://github.com/hiero-ledger/hiero-consensus-node chains/hedera/repos/hiero-consensus-node
 git -C chains/hedera/repos/hiero-consensus-node rev-parse HEAD
-#   -> cd5a2ad0946e1950c64f5a76754a6cd3ee29793e
+#   -> 74a11d913a948651132c282d93aa46662751aaa9
 git clone --depth 1 --branch v0.78.4 --single-branch \
   https://github.com/hiero-ledger/hiero-json-rpc-relay chains/hedera/repos/hiero-json-rpc-relay
 git -C chains/hedera/repos/hiero-json-rpc-relay rev-parse HEAD
-#   -> 1701d192333ca19c3cfd630a4e6ababcdf6cd001
+#   -> cc01872f1e290ba9701811840c8bfb9e7dd2419a
 
 # --- the org rename and the dead relay repo
 git ls-remote --tags https://github.com/hashgraph/hedera-services | head -3      # redirects, identical tags

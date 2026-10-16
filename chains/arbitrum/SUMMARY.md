@@ -2,8 +2,8 @@
 
 **Chain ID 42161 · role: `fork` · upstream: go-ethereum (OffchainLabs fork) · baseline: Osaka (ArbOS 50)**
 
-Reference: [OffchainLabs/nitro `v3.11.3`](https://github.com/OffchainLabs/nitro), with the
-pinned `go-ethereum` submodule at `f3a966e6`. EVM facts come from the submodule, ArbOS
+Reference: [OffchainLabs/nitro `v3.12.1`](https://github.com/OffchainLabs/nitro), with the
+pinned `go-ethereum` submodule at `5eee8f54`. EVM facts come from the submodule, ArbOS
 facts from nitro.
 
 ## The headline: a six-address collision with BSC
@@ -165,7 +165,7 @@ transactions".
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v3.11.3 https://github.com/OffchainLabs/nitro
+git clone --depth 1 --branch v3.12.1 https://github.com/OffchainLabs/nitro
 cd nitro && git submodule update --init --depth 1 go-ethereum
 grep "^var Arb" go-ethereum/core/types/arbitrum_signer.go     # 19 precompiles
 sed -n '48,54p' go-ethereum/core/types/transaction.go          # 7 tx types

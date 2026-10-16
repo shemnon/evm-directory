@@ -20,13 +20,13 @@ lineage:
 client:
   name: nitro
   repo: https://github.com/OffchainLabs/nitro
-  version: v3.11.3
-  commit: 4130f4c50d81209ff94aa63b51ed55d3739cdaba
+  version: v3.12.1
+  commit: 70fa99a6e711f09eedd96a907290c3df0f3bcf7d
   language: go + rust
   submodule:
     name: go-ethereum
     repo: https://github.com/OffchainLabs/go-ethereum
-    commit: f3a966e6c328fc4cf1762e38ff5ddd47724f70ba
+    commit: 5eee8f546e7602b7deeef7909f291bbebc77e233
 
 consensus:
   engine: centralised sequencer + optimistic fraud proofs (BoLD)
@@ -328,7 +328,7 @@ opcodes:
 tx_lifecycle:
   ordered_then_invalid:
     verdict: unreachable
-    src: "execution/gethexec/sequencer.go:preTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
+    src: "execution/gethexec/sequencer.go:PreTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
     note: >-
       The proposer executes each transaction as it appends it: an invalid one is popped out
       of the candidate set and never reaches the block, so the ordered-but-invalid state is
@@ -337,7 +337,7 @@ tx_lifecycle:
       against this row's own pinned client rather than assumed from the family.
   nonce_on_failure:
     verdict: preserved
-    src: "execution/gethexec/sequencer.go:preTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
+    src: "execution/gethexec/sequencer.go:PreTxFilter, execution/gethexec/sequencer.go:PublishTransaction"
     note: >-
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.

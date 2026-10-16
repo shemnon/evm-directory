@@ -40,7 +40,7 @@ ethereum (baseline — go-ethereum v1.17.8, Osaka)
   └── Polygon PoS (v2.10.3, prague)
   └── Rootstock (RSK) (VETIVER-9.0.4, petersburg)
   └── Sei (v6.7.2, prague)
-  └── Sonic (v2.2.1, prague)
+  └── Sonic (v2.2.5, prague)
   └── Taraxa (v1.14.1, constantinople)
   └── Tempo (v1.16.1, osaka)
 

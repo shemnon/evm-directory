@@ -47,8 +47,8 @@ lineage:
 client:
   name: sonic
   repo: https://github.com/0xsoniclabs/sonic
-  version: v2.2.1
-  commit: 83c8c38b7779c1bac7377ad0df592a65cde7894d
+  version: v2.2.5
+  commit: 32c7475420851baecaad03819d265c55b304390f
   language: go
   note: >-
     The pinned tag is what mainnet is actually running: `web3_clientVersion` returns
@@ -57,6 +57,17 @@ client:
     below do not live in this repo: the EVM interpreter is in tosca, the state
     database is in carmen, and the entire state transition, precompile set, signer
     and RLP header are in the geth fork.
+    ALL THREE COMPANION PINS COME FROM `go.mod`, NOT FROM A BRANCH HEAD, and on this row
+    that distinction is load-bearing. `go.mod` pins each by Go pseudo-version, so the
+    commit sonic actually builds against is whatever the replace directive and the
+    require lines name — at v2.2.5 that is geth e9dfccd4 and tosca 3f411928, both
+    UNCHANGED from the previous pin, and carmen 46335f35 (pseudo-version
+    v0.0.0-20260916125055-46335f35fa44). Following the repositories' default branches
+    instead would be wrong three times over, and in the geth fork's case
+    catastrophically: its branch head has moved to a tree with NONE of the Sonic patches
+    in it — zero occurrences of Sonic/Fantom/Opera in `core/state_transition.go`, and
+    seven of this row's citations resolve to nothing there. The branch is not the
+    dependency.
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/0xsoniclabs/go-ethereum",
      commit: e9dfccd41dbeaafc8489794ca8e01906929f24ab, language: go,
@@ -65,7 +76,7 @@ client:
      commit: 3f4119284c421a1840b5716ce19d6eaf67e56103, language: go,
      provides: "LFVM and SFVM — the bytecode interpreters that execute every Sonic transaction. BSL-1.1 licensed, not open source."}
   - {name: carmen, repo: "https://github.com/0xsoniclabs/carmen",
-     commit: 2d892af38ce4a293b0b19105a405ceffded5b903, language: go,
+     commit: 46335f35fa44eb31f676def37634a617df38e8e4, language: go,
      provides: "the state database (S5 MPT). Uses EthereumLikeHashing, so state roots stay mainnet-shaped."}
 
 live_probe:
@@ -724,10 +735,10 @@ block_metrics:
   block_gas_limit:
     verdict: 5000000000
     observed: 5000000000
-    observed_at_block: 80212074
-    observed_at: 2026-10-01
+    observed_at_block: 81152523
+    observed_at: 2026-10-16
     mutability: fixed
-    src_live: "eth_getBlockByNumber @ 80212074 -> gasLimit 0x12a05f200"
+    src_live: "eth_getBlockByNumber @ 81152523 -> gasLimit 0x12a05f200"
     note: >-
       5,000,000,000 IS IN THE HEADER AND BINDS NOTHING. It is a technical ceiling; real
       capacity is a per-second gas-power allocation shared among validators by stake,
@@ -737,11 +748,11 @@ block_metrics:
       believed.
   block_time:
     verdict: ~
-    observed: 1758.9
-    observed_at_block: 80212074
-    observed_at: 2026-10-01
+    observed: 1549.2
+    observed_at_block: 81152523
+    observed_at: 2026-10-16
     mutability: config
-    src_live: "eth_getBlockByNumber @ 80212074 vs 80202074 -> 17589s / 10000 blocks"
+    src_live: "eth_getBlockByNumber @ 81152523 vs 81142523 -> 15492s / 10000 blocks"
     note: >-
       sub-second; emitter interval 600 ms by default, block duration carried in
       extraData. The observed 1,753 ms is well above the emitter interval because the

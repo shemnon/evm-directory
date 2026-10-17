@@ -32,7 +32,12 @@ lineage:
     d6324d63e27ef6b7c49cdc9b1977c1b808234c7b exactly. THAT THIRD PIECE USED TO
     DISAGREE: at the previous probe the RPC said `reth/v1.8.3-4219741` while extraData
     already said v1.11.3, and this row recorded the mismatch. The node has since been
-    upgraded and all three sources now name the same version and commit. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and NO
+    upgraded and all three sources now name the same version and commit. (4) STRONGEST OF THE FOUR, and new at this pass: the digest
+    Plasma's template pins is the digest upstream publishes. `ghcr.io/paradigmxyz/reth:
+    v1.11.3` resolves to `sha256:523e5c6a...cd336`, and the template's `EXECUTION_TAG`
+    names that same hash — so the running image is upstream's own artifact rather than
+    a rebuild of upstream's source, which is a stronger claim than any source diff can
+    make. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and NO
     releases, and none of its branches changes consensus: they are upstream syncs, an
     ExEx that posts XPL balance updates to a webhook (an observer, not a rule), and one
     `eth_feeHistory` fix.
@@ -45,6 +50,16 @@ client:
   version: v1.11.3
   commit: d6324d63e27ef6b7c49cdc9b1977c1b808234c7b
   language: rust
+  upstream_unmodified:
+    verified_by: image-digest
+    evidence: >-
+      ghcr.io/paradigmxyz/reth:v1.11.3 resolves to manifest digest
+      sha256:523e5c6a7ce69e80dc004d9ba9d276e22c35f141671f9847709256bb411cd336 (an OCI
+      image index over 4 platform manifests), and that is BYTE FOR BYTE the digest
+      Plasma's own mainnet template pins as
+      EXECUTION_TAG=v1.11.3@sha256:523e5c6a...cd336. So the image this chain runs is not
+      merely built from upstream's source — it IS upstream's published artifact, by
+      content hash. Re-checkable in one request against ghcr.io/v2/paradigmxyz/reth.
   note: >-
     Pinned at the tag Plasma's mainnet node template pins by digest — still
     `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…` at the template repo's current head, and

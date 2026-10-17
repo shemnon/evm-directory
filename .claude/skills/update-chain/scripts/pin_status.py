@@ -54,11 +54,26 @@ def gh_repo(url):
 
 
 def family(tag):
-    """A tag's naming scheme with the version stripped: `v1.7.8` -> `v`,
-    `celo-v2.2.4` -> `celo-v`, `releases/linea-besu-package/v2.1.1` ->
-    `releases/linea-besu-package/v`. Two tags of one family are comparable."""
-    m = re.match(r"^(.*?)\d", tag)
-    return m.group(1) if m else tag
+    """A tag's SHAPE: the full string with every run of digits masked.
+    `v1.7.8` -> `v#.#.#`, `celo-v2.2.4` -> `celo-v#.#.#`,
+    `v1.15.5-wasp1` -> `v#.#.#-wasp#`, `v1.20.4-1789748350` -> `v#.#.#-#`.
+
+    Two tags are comparable ONLY if their full strings differ in nothing but the
+    numbers. The previous rule kept just the prefix before the first digit, which
+    collapsed every `v*` tag into one family and made these three wrong answers
+    look right:
+
+      pin `v1.15.5-wasp1`  ->  `v1.16.3`              a PLAIN UPSTREAM geth tag
+                               `v1.16.2-wasp`          a different suffix series
+      pin `v1.20.3`        ->  `v1.20.4-1789748350`    a tree holding one file,
+                                                       SOURCE_CODE_IS_PRIVATE
+
+    A fork that carries both its own suffixed tags and its upstream's — which is
+    most of the Go forks in this dataset — cannot be compared on the prefix alone.
+    A differing shape is not noise: it is the hint about parentage that
+    `other_families` reports, and it stays out of `newer_stable` where a target
+    would be taken from it."""
+    return re.sub(r"\d+", "#", tag)
 
 
 def vkey(tag):
@@ -93,24 +108,41 @@ def candidates(repo, current):
     rows = [{"tag": r["tagName"], "date": epoch(r["publishedAt"]),
              "unstable": r["isPrerelease"] or bool(UNSTABLE.search(r["tagName"]))}
             for r in rel]
-    if not any(r["tag"] == current for r in rows):
+    tag_only = not any(r["tag"] == current for r in rows)
+    if tag_only:
         # Tag-only repos, or a pin older than the last 50 releases: fall back to
-        # every tag, ordered by version number rather than publication date.
+        # every tag, ordered by version number rather than publication date. Keep
+        # ALL shapes here, not just the pin's — the other-shape tags are the
+        # parentage hint, and on a tag-only repo this is the only place to find it
+        # (iotaledger/go-ethereum publishes no releases at all).
         out = sh("git", "ls-remote", "--tags", "--refs", f"https://github.com/{repo}") or ""
         tags = [l.split("refs/tags/", 1)[1] for l in out.splitlines() if "refs/tags/" in l]
         rows = sorted(({"tag": t, "date": None, "unstable": bool(UNSTABLE.search(t))}
-                       for t in tags if family(t) == fam),
+                       for t in tags),
                       key=lambda r: vkey(r["tag"]), reverse=True)
     else:
         rows.sort(key=lambda r: r["date"] or 0, reverse=True)
     same = [r for r in rows if family(r["tag"]) == fam]
     idx = next((i for i, r in enumerate(same) if r["tag"] == current), len(same))
     newer = same[:idx]
-    # Only a family published AFTER the pin can be its successor. Rootstock renames
+    # Only a shape published AFTER the pin can be its successor. Rootstock renames
     # every release (REED -> VETIVER -> ...), and listing the older names is noise.
+    # With shape-based families this list also carries the upstream-parentage hint:
+    # a `-wasp` series next to a `-wasp1` pin, or a plain `v1.16.3` next to both.
     after = next((r["date"] for r in rows if r["tag"] == current), None)
-    other = [r for r in rows if family(r["tag"]) != fam and not r["unstable"]
-             and after and r["date"] and r["date"] > after][:3]
+    if tag_only:
+        # No dates to order by, and a tag-only repo is full of junk refs
+        # (`PoC6`, `buildbot-testing-tag-3`). Keep only shapes in the PIN'S OWN
+        # lineage — one shape a prefix of the other — which is exactly "same
+        # version scheme, different suffix depth": `v#.#.#` and `v#.#.#-wasp`
+        # next to a `v#.#.#-wasp#` pin. Then rank by version.
+        def related(sh):
+            return sh != fam and (sh.startswith(fam) or fam.startswith(sh))
+        other = [r for r in rows
+                 if related(family(r["tag"])) and not r["unstable"]][:3]
+    else:
+        other = [r for r in rows if family(r["tag"]) != fam and not r["unstable"]
+                 and after and r["date"] and r["date"] > after][:3]
     return newer, other
 
 
@@ -270,7 +302,8 @@ def render(r, now):
             for n in p["newer_unstable"]:
                 print(f"    unstable newer tag: {n['tag']}  [{d(n['date'])}]  (not a pin candidate; read its notes for forks)")
             if p["other_families"] and not t:
-                print("    other stable tag families (the naming may have changed): "
+                print("    other stable tag shapes — a rename, the upstream series, or a "
+                      "different suffix depth. A HINT ABOUT PARENTAGE, NOT A PIN CANDIDATE: "
                       + ", ".join(o["tag"] for o in p["other_families"]))
         elif p["kind"] == "prose":
             print("    prose pin — no ref to follow; read `version` and advance it by hand")

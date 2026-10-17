@@ -59,6 +59,13 @@ Triage by row kind before going further:
 Choose the **target**: the newest stable tag per pin. Companions move when the client
 does, or when their own schedule or definitions changed.
 
+A tag is only a candidate if it has the **same shape** as the pin — the full string with
+every run of digits masked, so `v1.15.5-wasp1` is `v#.#.#-wasp#` and a plain `v1.16.3`
+is `v#.#.#` and the two are NOT comparable. Most Go forks here carry both their own
+suffixed tags and their upstream's, so the suffix is part of the identity, not noise.
+`pin_status.py` reports differing shapes separately, as a hint about parentage rather
+than a pin candidate.
+
 ### A companion pinned by commit is pinned by the CLIENT'S MANIFEST, not by its branch
 
 `pin_status.py` reports branch movement for any companion with no tag, because a branch

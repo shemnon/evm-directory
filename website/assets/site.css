@@ -204,3 +204,15 @@ tr[id] { scroll-margin-top: 7.5rem; }   /* plus the table's own sticky thead */
 /* the "authorizes / verifies" qualifier on a cryptography row */
 .sub { color: var(--dim); font-family: var(--sans); font-size: 12px; }
 sup { font-size: .7em; }
+
+/* Sortable value columns. Readers rank chains on capacity, and these cells cannot be
+   ordered as text — the server sends the one comparable number in `data-sort`. */
+table.sortable thead th[data-sortable] { cursor: pointer; user-select: none; }
+table.sortable thead th[data-sortable]:hover { background: var(--hover, rgba(0,0,0,.04)); }
+table.sortable thead th[data-sortable]:focus-visible { outline: 2px solid var(--rm); outline-offset: -2px; }
+th .caret { display: inline-block; width: .8em; margin-left: .25em; opacity: .35; }
+th .caret::after { content: "\2195"; }                      /* idle: both ways */
+th[data-dir="desc"] .caret { opacity: 1; }
+th[data-dir="desc"] .caret::after { content: "\2193"; }
+th[data-dir="asc"] .caret { opacity: 1; }
+th[data-dir="asc"] .caret::after { content: "\2191"; }

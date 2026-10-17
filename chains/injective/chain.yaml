@@ -113,7 +113,14 @@ client:
 live_probe:
   endpoint: https://sentry.evm-rpc.injective.network
   chain_id: 1776
-  observed_at_block: 180071265      # 0xabbab61
+  observed_at_block: 180071265
+  observed_at: 2026-08-24
+  observed_at_note: >-
+    the date is the PROBED BLOCK'S OWN TIMESTAMP, not a note of when someone looked:
+    eth_getBlockByNumber(180071265) reports timestamp 1787603591 = 2026-08-24. Recorded
+    because a mothballed row's re-probe cadence is computed from this field (SCHEMA.md
+    sets a four-week floor), and deriving it from the block is checkable where a
+    remembered date would not be.      # 0xabbab61
 
 consensus:
   engine: CometBFT (InjectiveLabs fork) with skip-mev block-sdk lanes

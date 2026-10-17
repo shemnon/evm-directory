@@ -416,6 +416,14 @@ claim the row was always weaker than it is.
   is live, so `livecheck.py` still means something here — unlike on a dead row, where a
   frozen head is the expected answer. A mothballed row is the one kind that gets
   *more* valuable from re-probing and cannot be refreshed any other way.
+- **Re-probe no sooner than four weeks apart.** The floor is deliberate. Probing is the
+  only lever left on these rows, which makes it tempting to pull constantly, and a
+  weekly `observed_at` churns the row, the generated tables and the diff while telling a
+  reader nothing they did not already know — a mothballed row's facts move on the
+  network's timescale, not the maintainer's anxiety. Four weeks is also short enough
+  that a fork or a repricing is caught within a month of landing, which is the best this
+  evidence footing can offer. Compute it from `live_probe.observed_at`; `pin_status.py`
+  prints the earliest next probe date so nobody has to.
 - **The row is knowingly going stale, and says so.** Every `src:` fact is as good as
   its last reading. A fork, a repricing or a new precompile after the withdrawal date
   is unobservable at the level that matters, and a reader comparing rows has to know

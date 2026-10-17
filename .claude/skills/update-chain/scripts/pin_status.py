@@ -11,7 +11,7 @@ itself says fell between the day it was pinned and now, and which newer releases
 Needs `git` and an authenticated `gh`; network required.
 """
 import argparse, json, pathlib, re, subprocess, sys, time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import yaml
 
@@ -278,6 +278,19 @@ def render(r, now):
         state = (f"live, but MOTHBALLED ({mb.get('how', 'unrecorded')}) — the pin does not "
                  f"move: source was last published at {mb.get('last_source_tag', '?')} and the "
                  f"newer tags have none (SCHEMA.md). Only src_live: can still advance")
+        # Probing is the only lever left on a mothballed row, so say when it may next be
+        # pulled. SCHEMA.md sets a FOUR-WEEK FLOOR: a weekly observed_at churns the row
+        # and the generated tables without telling a reader anything new.
+        seen = (r.get("live_probe") or {}).get("observed_at")
+        if seen:
+            try:
+                d = seen if isinstance(seen, datetime) else datetime.fromisoformat(str(seen))
+                nxt = d.replace(tzinfo=d.tzinfo or timezone.utc) + timedelta(weeks=4)
+                ready = nxt.timestamp() <= now
+                state += (f"\n             last probed {str(seen)[:10]}; next probe allowed "
+                          f"{nxt.date()} — {'DUE NOW' if ready else 'not yet, hold off'}")
+            except (TypeError, ValueError):
+                pass
     print(f"  state      {state}")
     if r["upstream"]:
         print(f"  upstream   {r['upstream']}")

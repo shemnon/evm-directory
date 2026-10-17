@@ -995,10 +995,19 @@ def page_chain(chains, slug):
             "a block height. Such a row states what the network <em>did</em>, not what a client "
             "<em>would</em> do.</p>", "note", "documented row"))
     lp = c.get("live_probe") or {}
+    # A row that runs a RELEASE rather than a fork is the rarest shape in this
+    # dataset, and the one a reader assessing integration risk should see first on
+    # the Client line. It is credited only where the claim is earned: the pill names
+    # how it was established and the evidence line is quoted below it, so nobody has
+    # to take this file's word for it (SCHEMA.md, `client.upstream_unmodified:`).
+    uu = (c.get("client") or {}).get("upstream_unmodified") or {}
+    uu_pill = (f' <span class="pill">unmodified upstream · verified by '
+               f'{esc(uu.get("verified_by", "unrecorded"))}</span>') if uu else ""
     B.append(kv([
         ("Client", (f'<a href="{esc(client(c, "repo"))}">{esc(client(c, "name"))}</a> '
-                    f'<code>{esc(client(c, "version"))}</code>') if not doc and client(c, "repo") != "—"
+                    f'<code>{esc(client(c, "version"))}</code>{uu_pill}') if not doc and client(c, "repo") != "—"
                    else ("<em>none public</em>" if doc else esc(client(c, "name")))),
+        ("Unmodified upstream", markdown(flat(uu["evidence"])) if uu.get("evidence") else None),
         ("Pinned commit", f'<code>{esc(client(c, "commit"))}</code>' if not doc and client(c, "commit", None) else None),
         ("Language", esc(client(c, "language", None))),
         ("Built on", esc(client(c, "built_on", None))),

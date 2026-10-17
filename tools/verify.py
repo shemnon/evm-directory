@@ -883,6 +883,36 @@ LIVE_STATES = {"prelaunch", "halted", "unreachable"}
 DEAD_HOW = {"shutdown", "abandoned", "unrecorded"}
 RECOURSE = {"claims", "migration", "none", "unrecorded"}
 
+UPSTREAM_PROOFS = {"image-digest", "tag-identity", "source-diff"}
+
+
+def check_upstream_unmodified(c):
+    """Validate `client.upstream_unmodified:` against SCHEMA.md.
+
+    The claim is "this chain runs a release, not a fork", which is cheap to assert
+    and valuable only if it is earned — so the key must say HOW it was established,
+    and it cannot coexist with a declared fork."""
+    out = []
+    u = (c.get("client") or {}).get("upstream_unmodified")
+    if u is None:
+        return out
+    if not isinstance(u, dict):
+        return ["BAD UPSTREAM  client.upstream_unmodified: must be a mapping"]
+    by = u.get("verified_by")
+    if by not in UPSTREAM_PROOFS:
+        out.append(f"BAD UPSTREAM  verified_by: {by!r} is not one of "
+                   f"{'/'.join(sorted(UPSTREAM_PROOFS))}")
+    if not u.get("evidence"):
+        out.append("NO EVIDENCE  client.upstream_unmodified without `evidence:` — "
+                   "the claim has to be re-checkable without trusting this file")
+    fo = (c.get("lineage") or {}).get("fork_of")
+    if fo:
+        out.append(f"CONTRADICTION  client.upstream_unmodified with "
+                   f"lineage.fork_of: {fo!r} — a row cannot run an unmodified "
+                   f"upstream client and be a fork of one")
+    return out
+
+
 MOTHBALL_HOWS = {"source-withdrawn", "repo-gone", "unrecorded"}
 
 
@@ -1411,7 +1441,7 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
-            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c):
+            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c):
                 print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
@@ -1591,7 +1621,7 @@ def main():
         raw = f.read_text()
         bad, nsym, nline, nopath = check_citations(
             raw, None if no_clones else roots(slug, c))
-        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c)
+        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):

@@ -353,6 +353,32 @@ A `documented` row has no clone, so `clone.sh` skips it and `verify.py` reports 
 `SKIP (documented)` rather than a failure — a permanently-red build is a build nobody
 reads, which would degrade verification for the rows that *can* be checked.
 
+### `client.upstream_unmodified:` — this chain runs a release, not a fork
+
+Set on `client:`. Most rows in this dataset exist because a chain changed its client;
+this key is for the opposite, and it has to be **earned rather than asserted**.
+
+Saying "we run stock upstream" is cheap. The key therefore carries how it was
+established, from a closed vocabulary, and the strongest available form is not a source
+diff at all:
+
+| verified_by | what it establishes |
+|---|---|
+| `image-digest` | the deployment pins a container digest, and that digest is the one upstream publishes. The running artifact IS upstream's, by content hash — no rebuild, no patch, nothing to diff. |
+| `tag-identity` | the pinned repo and tag ARE upstream's, with no fork in between. |
+| `source-diff` | a fork exists and was diffed against upstream, and the delta changes no consensus rule. Weakest: it is a judgement about a diff. |
+
+`evidence:` is required and must say enough to re-check without trusting this file —
+quote the digest or name the diff.
+
+A row cannot claim this and also set `lineage.fork_of:`. "We run an unmodified upstream
+client" and "our client is a fork of one" are contradictory claims, and `verify.py`
+rejects the pair.
+
+The point of recording it is comparative. A reader scanning for integration risk learns
+more from one row that provably runs a release than from forty that say they are
+"equivalent", and the chain page credits it on the Client line for exactly that reason.
+
 ### `mothballed:` — the source went away and the chain did not
 
 Set on `chain:`. A row is mothballed when **its evidence base stops being readable

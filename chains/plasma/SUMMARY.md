@@ -25,9 +25,19 @@ no releases, and no consensus changes**.
   `0x726574682f76312e31312e332f6c696e7578` = the ASCII string `reth/v1.11.3/linux`.
   That is exactly `default_extra_data()` in `crates/node/core/src/version.rs`
   (`format!("reth/v{}/{}", CARGO_PKG_VERSION, OS)`), unaltered by the block producer.
-- **The RPC's self-report.** `web3_clientVersion` returns `reth/v1.8.3-4219741`, and
-  `4219741` is the prefix of `42197415102b7a20be42e4fe919f024b81ceb55b`, which is
-  precisely the commit upstream's `v1.8.3` tag points at.
+- **The RPC's self-report.** `web3_clientVersion` now returns `reth/v1.11.3-d6324d6`,
+  whose commit prefix is the pinned commit exactly. It used to answer `reth/v1.8.3-4219741`
+  while `extraData` already said v1.11.3; the RPC node has since been upgraded, so the
+  skew this row recorded is closed and all sources name one version.
+- **The image digest, and this is the strongest of the four.**
+  `ghcr.io/paradigmxyz/reth:v1.11.3` resolves to manifest digest
+  `sha256:523e5c6a7ce69e80dc004d9ba9d276e22c35f141671f9847709256bb411cd336` — an OCI
+  image index over four platform manifests — and that is **byte for byte** the digest
+  Plasma's own mainnet template pins as `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…cd336`.
+  The image this chain runs is therefore not merely *built from* upstream's source; it
+  **is** upstream's published artifact, by content hash. No rebuild, no patch, and
+  nothing to diff — a stronger claim than any source comparison can make, and
+  re-checkable in one request against `ghcr.io/v2/paradigmxyz/reth`.
 
 The `PlasmaLaboratories/reth` fork's branches are upstream syncs, an **ExEx** that
 posts XPL balance updates to a webhook (an observer, not a state-transition rule), and
@@ -117,10 +127,9 @@ deposit requests cannot be established from the EL alone. Left `unrecorded`.
   committee formation, slashing, and the fork-choice fed to the EL are all outside
   reach; the docs are the only account of them.
 - **EIP-6110 deposit handling** (finding 6).
-- **Whether the reth version skew matters.** Producers are on v1.11.3 (per extraData)
-  while the public RPC answers as v1.8.3. Both are upstream tags and neither carries a
-  Plasma patch, so the state transition is the same; but the row is pinned at v1.11.3
-  because that is what the mainnet node template pins.
+- ~~**Whether the reth version skew matters.**~~ **Closed.** The RPC was on v1.8.3
+  while producers were on v1.11.3; it now reports v1.11.3 with the pinned commit prefix,
+  so there is no skew left to assess.
 - **Future paymaster semantics.** If Plasma later ships protocol-level custom gas
   tokens, they cannot ship in an unmodified reth — the appearance of a Plasma-patched
   EL image in `config/mainnet/.env` is the signal to re-open this row.

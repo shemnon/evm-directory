@@ -917,6 +917,39 @@ def contributions_line(c):
             f'data: {refs}.')
 
 
+def mothball_banner(c):
+    """The row is frozen because its source went away, and the chain did not.
+
+    This sits beside the liveness banner and says the opposite kind of thing: the
+    network is fine, the EVIDENCE is what stopped. A reader deciding whether to
+    trust a code-path claim here has to know it cannot be refreshed before they
+    read the claim. Chain page only — it is fact provenance, not a chain attribute,
+    so it stays off the aggregate surfaces (SCHEMA.md, `mothballed:`)."""
+    mb = c["chain"].get("mothballed")
+    if not mb: return None
+    how = mb.get("how", "unrecorded")
+    gone = {"source-withdrawn": "stopped publishing source",
+            "repo-gone": "stopped resolving at all",
+            "unrecorded": "became unreadable"}[how]
+    pin = (c.get("client") or {}).get("version") or "the pin"
+    B = [f'<p><b>This row is mothballed.</b> The chain is still running — that is not '
+         f'what changed. Its client repository {esc(gone)}, so every fact below is a '
+         f'fact about <b>{esc(pin)}</b> and nothing newer can be read.</p>']
+    since = mb.get("since")
+    if since:
+        B.append(f'<p>Source was last published at <b>{esc(pin)}</b>; the first tag '
+                 f'without it is <b>{esc(since)}</b>.</p>')
+    B.append('<p>What that means for these facts: they are <b>still source facts</b>, '
+             'read from a tree that is still pinned and still checked on every run — '
+             'this is not a trust-me row. But they are as good as their last reading. '
+             'A fork, a repricing or a new precompile after that date is invisible '
+             'here, and <code>src_live:</code> is the only evidence on this page that '
+             'can still advance.</p>')
+    for k in ("evidence_at_newer_tag", "source_at_other_shapes", "note"):
+        if mb.get(k): B.append(f'<p>{esc(mb[k])}</p>')
+    return note("".join(B), "hot", f"mothballed · {how}")
+
+
 def page_chain(chains, slug):
     c = chains[slug]
     B = []
@@ -925,6 +958,8 @@ def page_chain(chains, slug):
 
     banner = liveness_banner(c)
     if banner: B.append(banner)
+    mothball = mothball_banner(c)
+    if mothball: B.append(mothball)
 
     # --- identity -------------------------------------------------------
     up = ln.get("upstream")

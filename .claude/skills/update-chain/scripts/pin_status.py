@@ -202,6 +202,7 @@ def main():
          "live_state": ch.get("live_state"), "dead": ch.get("dead"),
          "baseline_fork": y.get("baseline_fork"), "upstream": lin.get("upstream"),
          "shared_with": cl.get("shared_with"), "live_probe": y.get("live_probe"),
+         "mothballed": ch.get("mothballed"),
          "forks_src": (y.get("forks") or {}).get("src"),
          "stale_after": y.get("stale_after"), "pins": []}
 
@@ -272,6 +273,11 @@ def render(r, now):
     state = "live" if r["live"] else (r["live_state"] or "not live")
     if r["dead"]:
         state = f"DEAD ({r['dead'].get('how', 'unrecorded')}) — the pin does not move (SCHEMA.md)"
+    elif r.get("mothballed"):
+        mb = r["mothballed"]
+        state = (f"live, but MOTHBALLED ({mb.get('how', 'unrecorded')}) — the pin does not "
+                 f"move: source was last published at {mb.get('last_source_tag', '?')} and the "
+                 f"newer tags have none (SCHEMA.md). Only src_live: can still advance")
     print(f"  state      {state}")
     if r["upstream"]:
         print(f"  upstream   {r['upstream']}")

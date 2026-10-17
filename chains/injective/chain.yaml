@@ -7,6 +7,31 @@ chain:
   role: fork
   live: true
   evidence: source
+  mothballed:
+    how: source-withdrawn
+    since: v1.20.4-beta-1789319937
+    last_source_tag: v1.20.3
+    source_at_other_shapes: >-
+      NOT EVERY NEWER TAG IS EMPTY, and the exception is worth stating. The
+      `v1.20.3-safeharbor.1` / `.2` tags (2026-08-31 and 2026-09-02) still carry full
+      source, 29 entries each — they postdate the pin and predate the withdrawal. They
+      are a different tag shape (`v#.#.#-safeharbor.#` against the pin's `v#.#.#`), so
+      they are not pin candidates and `pin_status.py` does not offer them, but a reader
+      looking for the last readable Injective tree should know they exist.
+    evidence_at_newer_tag: >-
+      the tree at v1.20.4-1789748350, the newest release, holds exactly one entry: an
+      empty file named SOURCE_CODE_IS_PRIVATE. The diff from the pin is 1450 files and
+      854,798 deletions with no insertions, and 42 of this row's cited paths are among
+      them — every custom precompile, the chain config, all four transaction types and
+      both .proto files.
+    note: >-
+      The repository is still PUBLIC and releases have continued; what stopped is the
+      publishing of source in them. `evidence:` stays `source` because this row's facts
+      are source facts, read from v1.20.3, whose tree is intact and whose 94 citations
+      verify.py still confirms on every run. What is lost is the ability to DERIVE a new
+      one: Injective's next fork, precompile or fee change cannot be read out of any
+      public tree. So `src_live:` is the only evidence here that can still advance, and
+      the live probe is now the only thing that can tell this row anything.
   chain_id_src: injective-chain/modules/evm/types/chain_config.go:DefaultEIP155ChainID
   note: >-
     A Cosmos SDK L1 whose EVM module descends from the same Ethermint lineage as

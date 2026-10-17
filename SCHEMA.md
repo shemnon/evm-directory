@@ -353,6 +353,67 @@ A `documented` row has no clone, so `clone.sh` skips it and `verify.py` reports 
 `SKIP (documented)` rather than a failure — a permanently-red build is a build nobody
 reads, which would degrade verification for the rows that *can* be checked.
 
+### `mothballed:` — the source went away and the chain did not
+
+Set on `chain:`. A row is mothballed when **its evidence base stops being readable
+while the network keeps running**: the client's repository withdraws its source, so
+every existing fact stays true and cited and no future fact can be derived.
+
+This is the word `dead:` deliberately gave up. The note above says `mothballed` "named
+what the maintainer did to the row instead of what happened to the network", and for a
+chain that stopped that was the wrong emphasis. Here it is the right one. Nothing
+happened to the network — it is still producing blocks. What happened is to the row.
+
+Three states look adjacent and are not:
+
+| | network | public client | what can still move |
+|---|---|---|---|
+| `dead:` | stopped | pinned at its last | nothing; facts are permanently final |
+| `evidence: documented` | running | **never existed** | `src_doc:` and `src_live:` |
+| `mothballed:` | running | existed, then withdrawn | `src_live:` only |
+
+So `mothballed:` does NOT imply `evidence: documented`. The distinction matters: a
+`documented` row's facts never had source behind them, while a mothballed row's facts
+*are* source facts, read from a tree that is still pinned, still cloneable and still
+verified by `verify.py` on every run. Downgrading `evidence:` would throw that away and
+claim the row was always weaker than it is.
+
+#### The maintenance contract
+
+- **Nothing is deleted, and nothing is weakened.** Every fact keeps its `src:`. The
+  frozen clone still resolves them, so this row is checked exactly as strictly as any
+  other — it does not become a trust-me row.
+- **The client pin stops moving.** Not as policy but because there is nowhere to move
+  it to: the newer tags have no source in them. `pin_status.py` reports
+  `MOTHBALLED` and stops, the way it does for `DEAD`.
+- **`src_live:` is the only evidence that can still advance**, and it should. The chain
+  is live, so `livecheck.py` still means something here — unlike on a dead row, where a
+  frozen head is the expected answer. A mothballed row is the one kind that gets
+  *more* valuable from re-probing and cannot be refreshed any other way.
+- **The row is knowingly going stale, and says so.** Every `src:` fact is as good as
+  its last reading. A fork, a repricing or a new precompile after the withdrawal date
+  is unobservable at the level that matters, and a reader comparing rows has to know
+  that before trusting a code-path claim.
+- **It renders on the chain page only.** Mothballing is a statement about fact
+  provenance, not about the chain — `liveness()` still answers `live`, correctly. By
+  the same rule that keeps `src:` off the aggregate surfaces, this stays off them too.
+  Putting it in the Liveness column would say the chain stopped, which is false.
+
+#### `mothballed.how:`
+
+| how | meaning | requires |
+|---|---|---|
+| `source-withdrawn` | the repository is still reachable but publishes no source at the newer tags. | `since:`, `last_source_tag:`, `evidence:` naming what is at the newer tag |
+| `repo-gone` | the repository itself stopped resolving. | `since:`, `last_source_tag:` |
+| `unrecorded` | the source became unreadable; which of the two is deliberately not established. | — |
+
+`since:` is the first tag that lost the source, not the date anyone noticed.
+`last_source_tag:` is the newest tag **of the pin's shape** that still carries it, and
+it must equal `client.version` — the pin and the last readable tree are the same thing
+by definition. Tags of other shapes may still have source and be newer; say so in a
+`source_at_other_shapes:` note rather than moving the pin across a shape boundary,
+because a differing shape is a different series and not a successor.
+
 ### Mixing in the aggregate tables
 
 The generated tables **merge all three kinds without distinction.** A cell in

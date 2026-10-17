@@ -13,6 +13,10 @@ The steps run in order. Steps 4 and 5 can stop the run.
 - Facts come from the pinned source. Every fact you add or change carries a `src:`
   resolving in the **new** clone, a `src_live:` with an `@ <block>`, or at worst a
   `src_doc:`. If you cannot re-establish a fact, mark it `status: unrecorded` with a `note`.
+- **If a newer tag has no source in it, the row gets mothballed, not bumped.** A client
+  repository that stays public while publishing an empty tree is a real and recurring
+  thing; SCHEMA.md `mothballed:` is the standard answer, and injective is the worked
+  example. Check the newest tag's tree before trusting a target.
 - Never hand-edit `website/` or the generated tables (`MATRIX.md`, `PRECOMPILES.md`,
   `TX-TYPES.md`, `LINEAGE.md`). Regenerate them.
 - Provenance (`src`, `†`, `via` pills) renders only on chain pages. This skill edits data,
@@ -50,6 +54,7 @@ Triage by row kind before going further:
 |---|---|
 | `DEAD` | Stop. A dead row's pin does not move (SCHEMA.md `dead:`). Tell the user. Proceed only if they report the chain restarted, and then run `tools/livecheck.py <slug>` first. |
 | `DOCUMENTED` | There is no pin. Tell the user that only `src_doc:`/`src_live:` facts can move. Offer to re-probe and re-read the docs instead. |
+| `MOTHBALLED` | The chain is LIVE but its source was withdrawn, so the pin does not move either (SCHEMA.md `mothballed:`). Do not bump it and do not downgrade `evidence:` — the pinned tree still verifies. The useful work is the opposite of a bump: re-probe, because `src_live:` is the only evidence that can still advance. If the newer tags have regained source, say so — that un-mothballs the row. |
 | `SHARED` | The pin belongs to the named row. Run this skill on that row. This row only mirrors `client.version`/`commit` and keeps its own `forks.timeline`. |
 | role `stack` / `template` | Not a network. The "associated mainnet" is its flagship or reference deployment (`FLAGSHIP` in `tools/model.py`, e.g. op-stack → optimism) plus each descendant's own schedule (OP: the superchain-registry companion). Check forks there. |
 | `prelaunch` | There is no mainnet, so every fork is testnet-only and that is expected. Check `live_probe.awaiting_endpoint` and follow the Arc conventions already in its row. |

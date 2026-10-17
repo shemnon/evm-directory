@@ -883,6 +883,54 @@ LIVE_STATES = {"prelaunch", "halted", "unreachable"}
 DEAD_HOW = {"shutdown", "abandoned", "unrecorded"}
 RECOURSE = {"claims", "migration", "none", "unrecorded"}
 
+MOTHBALL_HOWS = {"source-withdrawn", "repo-gone", "unrecorded"}
+
+
+def check_mothballed(c):
+    """Validate `mothballed:` against SCHEMA.md.
+
+    Runs in CI: chain.yaml alone, no clone and no network. The rules exist because
+    each one is a way to make this key mean less than it says.
+
+    - It is NOT a liveness word. A mothballed row describes a RUNNING chain whose
+      source stopped being published, so `live: false` with `mothballed:` is two
+      different claims wearing one key — use `dead:` for a chain that stopped.
+    - `last_source_tag:` must equal `client.version`. The pin IS the last readable
+      tree; if they differ, one of them is wrong and the row cannot say which.
+    - It must not be paired with `evidence: documented`. `documented` means no
+      public client ever existed; mothballed means one existed and was withdrawn.
+      Claiming both says the facts were never source-backed, which throws away the
+      pinned tree that still verifies them.
+    - `source-withdrawn` and `repo-gone` both have to say WHEN, because without a
+      `since:` the row cannot tell a reader which of its facts predate the loss."""
+    ch, out = c["chain"], []
+    mb = ch.get("mothballed")
+    if mb is None:
+        return out
+    if not isinstance(mb, dict):
+        return ["BAD MOTHBALL  mothballed: must be a mapping"]
+    how = mb.get("how", "unrecorded")
+    if how not in MOTHBALL_HOWS:
+        out.append(f"BAD MOTHBALL  mothballed.how: {how!r} is not one of "
+                   f"{'/'.join(sorted(MOTHBALL_HOWS))}")
+    if ch.get("live") is False:
+        out.append("CONTRADICTION  mothballed: with live: false — mothballing is "
+                   "about the ROW's evidence, not the chain; a chain that stopped "
+                   "takes `dead:` instead")
+    if ch.get("evidence") == "documented":
+        out.append("CONTRADICTION  mothballed: with evidence: documented — "
+                   "`documented` means no public client ever existed, mothballed "
+                   "means one existed and was withdrawn")
+    if how in ("source-withdrawn", "repo-gone") and not mb.get("since"):
+        out.append(f"NO SINCE  mothballed.how: {how} without `since:` — a reader "
+                   f"cannot tell which facts predate the loss")
+    lst, pin = mb.get("last_source_tag"), (c.get("client") or {}).get("version")
+    if lst and pin and lst != pin:
+        out.append(f"MOTHBALL MISMATCH  last_source_tag: {lst!r} but "
+                   f"client.version: {pin!r} — the pin is the last readable tree")
+    return out
+
+
 def check_liveness(c):
     """Validate `live_state:` and `dead:` against SCHEMA.md.
 
@@ -1363,7 +1411,7 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
-            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c):
+            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c):
                 print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
@@ -1543,7 +1591,7 @@ def main():
         raw = f.read_text()
         bad, nsym, nline, nopath = check_citations(
             raw, None if no_clones else roots(slug, c))
-        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c)
+        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):

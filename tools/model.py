@@ -129,6 +129,17 @@ def is_chain(c):    return c["chain"].get("role") not in ("stack", "template")
 def dead(c):        return c["chain"].get("dead") or None
 
 
+def mothballed(c):
+    """The row's evidence base stopped being readable while the chain kept running.
+
+    NOT a liveness attribute — `liveness()` still answers `live` for a mothballed
+    row, correctly, because the network is producing blocks. This is a statement
+    about fact provenance, so by the same rule that keeps `src:` out of the
+    aggregate surfaces it renders on the chain page only (SCHEMA.md,
+    `mothballed:`). Putting it in the Liveness column would say the chain stopped."""
+    return c["chain"].get("mothballed") or None
+
+
 def liveness(c):
     """One word for whether this row describes a running network.
 

@@ -383,7 +383,7 @@ def h3(text, anchor=None):
 
 
 def table(headers, rows, cls="", tid=None, pin=False, row_attrs=None, col_chains=None,
-          row_chains=None):
+          row_chains=None, sortable=False):
     """rows: list of lists of already-escaped HTML cells.
 
     col_chains, if given, is a list of slugs (or None) parallel to `headers`, tagging
@@ -391,17 +391,35 @@ def table(headers, rows, cls="", tid=None, pin=False, row_attrs=None, col_chains
 
     row_chains is the same idea for the flipped orientation — chains as ROWS — where the
     picker has to hide a `<tr>` instead of a column. `.col-off` is `display: none`, which
-    works on either, so one CSS rule and one JS pass serve both."""
-    c = " ".join(x for x in [cls, "pin" if pin else ""] if x)
+    works on either, so one CSS rule and one JS pass serve both.
+
+    A cell may be a plain HTML string, or a `(html, sort_key)` pair. The pair form puts
+    the key in `data-sort` on the `<td>`, which is what lets a column be ordered by the
+    NUMBER it carries rather than by the string a reader sees — `1.5 Ggas` and
+    `150 Mgas` do not compare as text, and a cell whose value is a pair of numbers plus
+    a mutability word has no single string to compare at all. `sort_key=None` means "no
+    comparable value here", and such rows are parked at the bottom in both directions
+    rather than pretending to be zero."""
+    c = " ".join(x for x in [cls, "pin" if pin else "", "sortable" if sortable else ""] if x)
     cc = col_chains or [None] * len(headers)
-    th = "".join(f'<th{f" data-chain=\"{esc(s)}\"" if s else ""}>{x}</th>'
+    th = "".join(f'<th{f" data-chain=\"{esc(s)}\"" if s else ""}'
+                 f'{" data-sortable=\"1\"" if sortable else ""}>{x}'
+                 f'{chr(60) + "span class=\"caret\" aria-hidden=\"true\">" + chr(60) + "/span>" if sortable else ""}</th>'
                  for x, s in zip(headers, cc))
     ra = row_attrs or [""] * len(rows)
     rc = row_chains or [None] * len(rows)
+
+    def td(x, s):
+        key = None
+        if isinstance(x, (tuple, list)) and len(x) == 2:
+            x, key = x
+        ch = f' data-chain="{esc(s)}"' if s else ""
+        sk = "" if key is None else f' data-sort="{esc(key)}"'
+        return f"<td{ch}{sk}>{x}</td>"
+
     tb = "".join(
         f"<tr{a}{f' data-chain=\"{esc(rs)}\"' if rs else ''}>"
-        + "".join(f'<td{f" data-chain=\"{esc(s)}\"" if s else ""}>{x}</td>'
-                  for x, s in zip(r, cc)) + "</tr>"
+        + "".join(td(x, s) for x, s in zip(r, cc)) + "</tr>"
         for r, a, rs in zip(rows, ra, rc))
     i = f' id="{esc(tid)}"' if tid else ""
     return (f'<div class="scroll"><table class="{c}"{i}>'
@@ -571,7 +589,7 @@ def uniform_attr(cells):
     return ' data-uniform="1"' if len(set(cells)) <= 1 else ""
 
 
-def chain_grid(chains, slugs, cols, cell_fn, tid):
+def chain_grid(chains, slugs, cols, cell_fn, tid, sortable=False):
     """Chains as ROWS, metrics as COLUMNS.
 
     This is the orientation for any grid whose cells carry VALUES — a size, a verdict, a
@@ -584,7 +602,8 @@ def chain_grid(chains, slugs, cols, cell_fn, tid):
     typing in that box usually wants.
 
     Symbol grids (header fields, opcodes, the address sections) deliberately keep the
-    other orientation. `cell_fn(slug, key)` returns the finished HTML for one cell."""
+    other orientation. `cell_fn(slug, key)` returns the finished HTML for one cell, or a
+    `(html, sort_key)` pair when the column is meant to be ordered by its value."""
     head = ["Chain"] + [f'<span title="{esc(b)}">{esc(l)}</span>' for _, l, b in cols]
     rows, attrs = [], []
     for s in slugs:
@@ -594,7 +613,7 @@ def chain_grid(chains, slugs, cols, cell_fn, tid):
         # to find it without knowing the slug.
         attrs.append(' data-baseline="1"' if s == "ethereum" else "")
     return table(head, rows, cls="flip", tid=tid, pin=True,
-                 row_attrs=attrs, row_chains=slugs)
+                 row_attrs=attrs, row_chains=slugs, sortable=sortable)
 
 
 # --------------------------------------------------------------------------
@@ -2224,13 +2243,41 @@ def page_block_metrics(chains):
                          "Derived: gas limit ÷ block time. The only figure "
                          "comparable across a 300 ms chain and a 30 s one.")]
 
+    def principal(s, key):
+        """The one number a column should be ORDERED by.
+
+        Readers rank themselves on these — block size, blob count, gas per second — so
+        the sort has to follow the capacity, not the presentation. Three rules:
+
+        - the OBSERVED value wins over the code value when both exist. It is what the
+          network actually ran, and on mainnet it is the only gas-limit figure that
+          exists at all.
+        - `mutability` is ignored. `config` and `unbounded` describe what it would take
+          to change the number, not how big it is, and sorting by the word would put a
+          2.25 Ggas chain below a 17 Mgas one.
+        - a SENTINEL is not a capacity. The zkStack rows' 2^50 would top every gas
+          column with a number that means "no limit expressed", so it sorts as
+          unknown — the same answer the throughput column already gives it."""
+        if key == "_gps":
+            return gas_per_second(flat_[s])
+        d = flat_[s].get(key) or {}
+        v = d.get("observed")
+        if v is None:
+            v = d.get("verdict")
+        if not isinstance(v, (int, float)) or isinstance(v, bool):
+            return None
+        if v in GAS_SENTINELS:
+            return None
+        return v
+
     def dispatch(s, key):
-        return throughput(s, key) if key == "_gps" else cell(s, key)
+        html = throughput(s, key) if key == "_gps" else cell(s, key)
+        return (html, principal(s, key))
 
     B = [h2(f'Capacity &amp; cadence <span class="pill">{len(cols)} questions</span>',
             "metrics"),
          filter_box("bm-grid", uniform="hide chains that match mainnet exactly"),
-         chain_grid(chains, slugs, grid_cols, dispatch, "bm-grid"),
+         chain_grid(chains, slugs, grid_cols, dispatch, "bm-grid", sortable=True),
          '<p class="legend">Each cell carries a <b>pair</b>: the '
          '<span class="pill">code</span> value the client or chain spec sets, then the '
          '<span class="obs">observed</span> value the network actually ran, shown only '
@@ -2243,7 +2290,16 @@ def page_block_metrics(chains):
          'derived and never stored; it reads <code>n/a</code> where the gas limit is a '
          'sentinel rather than a capacity. A <code>—</code> means the question is not '
          'established for that chain. Hover any value for the finding; follow it for the '
-         'cited source.</p>']
+         'cited source.</p>',
+         '<p class="legend"><b>Every column sorts.</b> Click a heading to rank by that '
+         'column — biggest first, then smallest, then back to the reading order. The sort '
+         'follows the <b>number</b>, not the presentation: the observed value where there '
+         'is one, because that is what the network ran; the code value otherwise. The '
+         '<code>mutability</code> tag is ignored, since <code>config</code> and '
+         '<code>unbounded</code> say what it would take to change the figure rather than '
+         'how big it is. Rows with no comparable value park at the bottom in both '
+         'directions — a chain that does not state a limit has not thereby got a small '
+         'one, and a sentinel is not a capacity.</p>']
 
     # Chain-specific limits that no shared column could compare. They are the reason
     # `extras:` exists, so they get their own table rather than a footnote.

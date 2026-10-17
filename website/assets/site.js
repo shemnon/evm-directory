@@ -151,4 +151,85 @@
   }
   window.addEventListener("hashchange", revealTarget);
   revealTarget();
+
+  // ---- sortable value columns -------------------------------------------------
+  // Readers rank themselves on capacity — block size, blob count, gas per second —
+  // and these cells cannot be ordered as text: "1.5 Ggas" and "150 Mgas" do not
+  // compare, and a cell carrying a code value, an observed value and a mutability
+  // word has no single string to compare at all. The server therefore puts the one
+  // number a column should be ordered by in `data-sort`, and this reads that.
+  Array.prototype.slice.call(document.querySelectorAll("table.sortable"))
+    .forEach(function (t) {
+      var tb = t.querySelector("tbody");
+      if (!tb) return;
+      var ths = Array.prototype.slice.call(t.querySelectorAll("thead th[data-sortable]"));
+      var rows = Array.prototype.slice.call(tb.querySelectorAll("tr"));
+      var original = rows.slice();
+      var idx = -1, dir = 0;            // dir: -1 desc, 1 asc, 0 the page's own order
+
+      // A column is numeric if ANY cell in it carries data-sort. The chain-name
+      // column carries none, so it falls through to a text compare.
+      function numericCol(i) {
+        return rows.some(function (r) {
+          return r.children[i] && r.children[i].hasAttribute("data-sort");
+        });
+      }
+      function keyOf(r, i, numeric) {
+        var td = r.children[i];
+        if (!td) return null;
+        if (!numeric) return td.textContent.trim().toLowerCase();
+        var raw = td.getAttribute("data-sort");
+        if (raw === null || raw === "") return null;
+        var n = parseFloat(raw);
+        return isNaN(n) ? null : n;
+      }
+      function paint() {
+        ths.forEach(function (th, j) {
+          var on = dir !== 0 && j === idx;
+          th.setAttribute("aria-sort", on ? (dir === 1 ? "ascending" : "descending") : "none");
+          if (on) { th.dataset.dir = dir === 1 ? "asc" : "desc"; }
+          else { delete th.dataset.dir; }
+        });
+      }
+      function apply() {
+        var frag = document.createDocumentFragment();
+        if (dir === 0) {
+          original.forEach(function (r) { frag.appendChild(r); });
+        } else {
+          var numeric = numericCol(idx);
+          rows.slice().sort(function (a, b) {
+            var ka = keyOf(a, idx, numeric), kb = keyOf(b, idx, numeric);
+            // No comparable value parks at the BOTTOM in both directions. A chain
+            // that does not state a limit has not thereby got a small one, and a
+            // sentinel is not a capacity — the server sends both as absent.
+            if (ka === null && kb === null) return 0;
+            if (ka === null) return 1;
+            if (kb === null) return -1;
+            if (ka === kb) return 0;
+            return (ka < kb ? -1 : 1) * dir;
+          }).forEach(function (r) { frag.appendChild(r); });
+        }
+        tb.appendChild(frag);
+        paint();
+      }
+      ths.forEach(function (th, j) {
+        th.tabIndex = 0;
+        th.setAttribute("role", "button");
+        th.setAttribute("aria-sort", "none");
+        function cycle() {
+          // Biggest first on the first click: for a capacity column that is the
+          // question being asked. Then ascending, then back to the page's order.
+          if (idx !== j) { idx = j; dir = -1; }
+          else if (dir === -1) { dir = 1; }
+          else if (dir === 1) { dir = 0; idx = -1; }
+          else { dir = -1; }
+          apply();
+        }
+        th.addEventListener("click", cycle);
+        th.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); }
+        });
+      });
+      paint();
+    });
 })();

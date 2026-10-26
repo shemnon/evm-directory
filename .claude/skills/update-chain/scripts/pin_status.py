@@ -99,6 +99,75 @@ def commit_date(repo, sha):
                     "--jq", ".commit.committer.date"))
 
 
+def gh_file(repo, ref, path):
+    """One file's text at a ref, or None. `gh api contents` also answers for a
+    gitlink, where it returns type `submodule` and the sha it points at."""
+    out = sh("gh", "api", f"repos/{repo}/contents/{path}?ref={ref}",
+             "--jq", 'if .type == "submodule" then "SUBMODULE " + .sha else .content end')
+    if not out:
+        return None
+    if out.startswith("SUBMODULE "):
+        return out
+    import base64
+    try:
+        return base64.b64decode(out).decode("utf-8", "replace")
+    except Exception:
+        return None
+
+
+def manifest_key(line):
+    """The left-hand side of a manifest line: `besuCommit` from `besuCommit = "..."`,
+    `github.com/0xsoniclabs/tosca` from a go.mod require. Used to find the SAME entry
+    at another ref instead of every line that happens to name the repo."""
+    l = line.strip().lstrip("-").strip()
+    if "=" in l and not l.startswith("github.com/"):
+        return l.split("=", 1)[0].strip()
+    parts = l.replace("replace ", "").split()
+    return parts[0] if parts else None
+
+
+def manifest_hits(repo, ref, path, sha, name, version=None):
+    """What `path` at `ref` says about this companion.
+
+    The question is exact — "does the client still name THIS commit?" — so the needle
+    is the PINNED SHA, not the repo name. A repo name is far too loose to decide on:
+    `besu` matches `besuPluginLibrary` and `besuShomeiPluginVersion` in Linea's Gradle
+    catalog, neither of which is the pin, and a version bump in either would read as
+    the companion moving. The sha cannot be confused with anything.
+
+    Go pseudo-versions carry only the first 12 hex, so match that prefix too.
+
+    Returns (sha_lines, name_lines, found) — `found` is whether the pinned sha is
+    present at all. When it is not, `name_lines` is what the reader needs to see
+    instead, and the caller says plainly that it is a guess rather than the pin.
+    This stays a lookup, not a parser: four manifest formats say the same thing in
+    four syntaxes, and the line itself is checkable by eye."""
+    txt = gh_file(repo, ref, path)
+    if txt is None:
+        return None
+    if txt.startswith("SUBMODULE "):
+        got = txt.split(" ", 1)[1]
+        return ([got], [got], got.startswith(sha[:12]))
+    # A manifest may name the commit OR the tag: go.mod replace directives and
+    # Cargo `tag = "..."` deps carry a version and no sha, which is why nine
+    # companions reported "sha not located" before the version was a needle too.
+    keys = [sha.lower(), sha.lower()[:12]]
+    vkeys = []
+    if version and not re.search(r"\((?:branch|UNTAGGED)\)|^(rev|submodule) ", version):
+        # A version alone is ambiguous: artela pins artela-evm AND aspect-runtime at
+        # v0.4.8-rc8, so the version must be paired with the repo name to pick a line.
+        vkeys.append(version.lower())
+    shal, namel = [], []
+    for l in txt.splitlines():
+        ls, low = l.strip(), l.lower()
+        named = name.lower() in low
+        if any(k in low for k in keys) or (named and any(k in low for k in vkeys)):
+            shal.append(ls)
+        elif named:
+            namel.append(ls)
+    return (shal, namel, bool(shal))
+
+
 def candidates(repo, current):
     """Stable tags of the pin's family, newest first, plus the unstable ones newer
     than the pin (a testnet or alpha tag is often the first sign of a fork)."""
@@ -146,15 +215,31 @@ def candidates(repo, current):
     return newer, other
 
 
-def pin_report(label, repo_url, version, commit, clone_dir):
+# `pinned_by.how` values whose COMPANION REPO IS NOT THE AUTHORITY. For these, a newer
+# tag and a moved branch head are both noise: the commit is whatever the client's own
+# manifest or gitlink names, so nothing in the companion's repo can advance the pin.
+# Reporting them as targets is what produced #50, #51, #53 and the full revert in #52.
+GOVERNED = {"manifest", "submodule"}
+
+
+def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
     repo = gh_repo(repo_url)
+    pb = pinned_by or {}
+    how = pb.get("how")
     p = {"label": label, "repo": repo, "version": version, "commit": commit,
-         "pinned_commit_date": None, "clone": None, "kind": None,
-         "target": None, "newer_stable": [], "newer_unstable": [], "other_families": []}
+         "pinned_by": pb or None, "pinned_commit_date": None, "clone": None,
+         "kind": None, "target": None, "newer_stable": [], "newer_unstable": [],
+         "other_families": []}
     if clone_dir.is_dir():
         p["clone"] = {"path": str(clone_dir.relative_to(ROOT)),
                       "head": sh("git", "-C", str(clone_dir), "rev-parse", "HEAD")}
     p["pinned_commit_date"] = commit_date(repo, commit)
+    if how in GOVERNED:
+        # Deliberately no lookup at all. Not "look and then suppress": the tag list
+        # and the branch head are not evidence about this pin, and printing them
+        # under a caveat still invites the edit.
+        p["kind"] = "governed"
+        return p
     if is_tag(version):
         p["kind"] = "tag"
         newer, other = candidates(repo, version)
@@ -224,7 +309,62 @@ def main():
         for k in cl.get("companion_repos") or []:
             r["pins"].append(pin_report(f"companion:{k['name']}", k["repo"],
                                         k.get("version"), k["commit"],
-                                        CHAINS / owner / "repos" / k["name"]))
+                                        CHAINS / owner / "repos" / k["name"],
+                                        k.get("pinned_by")))
+        if cl.get("submodule"):
+            sm = cl["submodule"]
+            r["pins"].append(pin_report(f"submodule:{sm['name']}", sm["repo"],
+                                        sm.get("version"), sm["commit"],
+                                        CHAINS / owner / "repos" / sm["name"],
+                                        sm.get("pinned_by")))
+
+    # A governed companion's only possible mover is the CLIENT tag. Resolve that here,
+    # where the client pin's target is already known, and read the authority file at
+    # both refs so the report can say whether the pin would actually change.
+    cpin = next((p for p in r["pins"] if p["label"] == "client"), None)
+    # `authority` runs the other way: a companion governs the CLIENT pin, so the
+    # client's own release list is not a candidate list. Plasma is the live trap —
+    # reth has shipped 13 tags past the pin and the chain runs none of them, because
+    # the template's EXECUTION_TAG decides. Mark it on the client pin, where the
+    # mistaken edit would be made.
+    governor = next((p for p in r["pins"]
+                     if (p.get("pinned_by") or {}).get("how") == "authority"), None)
+    if cpin and governor:
+        cpin["governed_by_companion"] = governor["label"]
+    ctag = (cpin or {}).get("version")
+    ctarget = ((cpin or {}).get("target") or {}).get("tag")
+    for p in r["pins"]:
+        if p["kind"] != "governed":
+            continue
+        pb = p["pinned_by"] or {}
+        path, nm = pb.get("path"), p["repo"].split("/")[-1]
+        p["authority"] = {"repo": (cpin or {}).get("repo"), "path": path,
+                          "client_tag": ctag, "client_target": ctarget,
+                          "at_pin": None, "at_target": None, "moved": None,
+                          "located": None}
+        if not (cpin and path and ctag):
+            continue
+        au = p["authority"]            # NOT `a`: that is the argparse namespace
+        h = manifest_hits(cpin["repo"], ctag, path, p["commit"], nm, p.get("version"))
+        if h is not None:
+            au["at_pin"], au["located"] = (h[0] or h[1]), h[2]
+        if ctarget:
+            h2 = manifest_hits(cpin["repo"], ctarget, path, p["commit"], nm,
+                               p.get("version"))
+            if h2 is not None:
+                # The pin moved iff the client no longer names this sha. When it is
+                # gone, show the line under the SAME KEY rather than every line that
+                # merely mentions the repo: Linea's pin is `besuCommit = "<sha>"`, and
+                # the repo-name lines there are three unrelated plugin versions.
+                au["moved"] = not h2[2]
+                if not au["moved"]:
+                    au["at_target"] = h2[0]
+                else:
+                    keys = [manifest_key(l) for l in (au["at_pin"] or [])]
+                    keys = [k for k in keys if k]
+                    same = [l for l in h2[1] if any(manifest_key(l) == k for k in keys)]
+                    au["at_target"] = same or h2[1]
+                    au["at_target_exact"] = bool(same)
 
     since = r["pinned_on"] or r["chain_yaml_last_commit"] or 0
     r["forks"] = {"activated_since_pin": [], "overdue_pending": [], "upcoming": [],
@@ -313,7 +453,41 @@ def render(r, now):
         print(f"  {p['label']:<30} {p['repo']}  {p['version'] or '(commit)'} @ {p['commit'][:8]}"
               f"  [{d(p['pinned_commit_date'])}]  {cstate}")
         t = p["target"]
-        if p["kind"] == "tag":
+        if p.get("governed_by_companion"):
+            print(f"    GOVERNED by {p['governed_by_companion']} — the tags below are "
+                  f"upstream's releases, NOT candidates: that companion decides which "
+                  f"one this chain runs")
+        if p["kind"] == "governed":
+            pb = p["pinned_by"] or {}
+            a = p.get("authority") or {}
+            print(f"    GOVERNED by the client's {pb.get('path')} ({pb.get('how')}) — "
+                  f"this companion's own tags and branch head CANNOT advance it")
+            at_pin, at_tgt, ct = a.get("at_pin"), a.get("at_target"), a.get("client_target")
+            if at_pin is None:
+                print(f"      could not read {pb.get('path')} at {a.get('client_tag')} "
+                      f"— check it by hand")
+            else:
+                if not a.get("located"):
+                    print(f"      NOTE the pinned sha {p['commit'][:12]} is not in "
+                          f"{pb.get('path')} at {a.get('client_tag')} — lines below name "
+                          f"the repo but are NOT confirmed to be the pin")
+                for ln in at_pin[:3]:
+                    print(f"      at client {a.get('client_tag')}:  {ln[:110]}")
+            if not ct:
+                print("      the client tag is current, so this pin cannot move")
+            elif at_tgt is None:
+                print(f"      client target {ct} exists; could not read the file there")
+            elif a.get("moved"):
+                print(f"      CHANGED at client target {ct} — THIS PIN MOVES:")
+                for ln in at_tgt[:3]:
+                    print(f"        {ln[:110]}")
+                if not a.get("at_target_exact"):
+                    print("        (same-key line not found; the above merely name the "
+                          "repo — read the file to confirm the new pin)")
+            else:
+                print(f"      unchanged at client target {ct} — bump the client, "
+                      f"leave this pin alone")
+        elif p["kind"] == "tag":
             if t:
                 print(f"    NEWER  → {t['tag']} @ {(t['commit'] or '?')[:12]}  [{d(t['date'])}]")
                 for n in p["newer_stable"][1:]:
@@ -333,6 +507,16 @@ def render(r, now):
                   f"({t.get('ahead_by') or '?'} commits ahead)  [{d(t['date'])}]")
         else:
             print(f"    branch pin — {p['ref']} is still at the pin")
+        pb = p["pinned_by"] or {}
+        if pb.get("how") == "authority" and t:
+            print("    ^ THIS IS THE AUTHORITY over the client pin: its movement is the "
+                  "trigger to re-pin the client, not the other way round (SCHEMA.md)")
+        elif pb.get("how") == "reference" and t:
+            print("    ^ `reference` — cited to document a fact about this repo, not to "
+                  "source facts from it. Movement here is not drift for this row")
+        elif pb.get("how") == "unrecorded":
+            print("    ^ `pinned_by: unrecorded` — nothing here distinguishes drift from "
+                  "noise; establish the authority before editing any pin")
 
     f = r["forks"]
     print(f"\nforks  (schedule: {r['forks_src'] or 'no forks.src'})")

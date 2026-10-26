@@ -64,6 +64,7 @@ client:
   companion_repos:
   - {name: mantle-v2, repo: "https://github.com/mantle-xyz/mantle-v2",
      version: v1.6.3, commit: 8df5df7b871e2a3b8f297221cb860852f343893e,
+     pinned_by: {how: release-pair},
      provides: "op-node/op-batcher fork, Mantle fork registry (op-core/forks/mantle_forks.go), predeploy definitions (Predeploys.sol)"}
 
 live_probe:

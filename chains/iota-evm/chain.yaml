@@ -57,6 +57,7 @@ client:
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/iotaledger/go-ethereum",
      version: v1.15.5-wasp1, commit: 30f95dc4161e7ea893f93e00f4ffce15585fbcea, language: go,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "the EVM itself: interpreter, jump table, precompile set, params.ChainConfig, core.ApplyMessage, and the ISC-only `vm.Config.MagicContracts` native-dispatch hook that upstream geth does not have"}
 
 live_probe:

@@ -75,6 +75,7 @@ client:
     repo: https://github.com/evstack/ev-reth
     version: v0.6.0
     commit: 9bcc1892fea827f2f8fdc80c605606a81eecb7f6
+    pinned_by: {how: release-pair}
     provides: "the actual EVM: reth fork with tx type 0x76, precompiles 0xF100/0xF101, EvolvePayloadBuilder, EvolveConsensus, base-fee redirect, configurable EIP-170 limit"
 
 live_probe:

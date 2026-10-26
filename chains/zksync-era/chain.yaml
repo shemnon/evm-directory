@@ -44,9 +44,11 @@ client:
   companion_repos:
   - {name: era-contracts, repo: "https://github.com/matter-labs/era-contracts",
      commit: 101ab952b2c7b03e7648e30842f081042afc2d9a,
+     pinned_by: {how: submodule, path: "contracts"},
      provides: "system contracts, EvmEmulator.yul, CREATE/CREATE2 derivation; pinned as the `contracts` git submodule of this tag"}
   - {name: zksync-protocol, repo: "https://github.com/matter-labs/zksync-protocol",
      version: v0.153.14, commit: 4b2c1e618c6df65e9cdf656172a60fee6c91a2d4,
+     pinned_by: {how: manifest, path: "core/Cargo.toml"},
      provides: "EraVM opcode set, kernel address space, ergs constants; pinned as zk_evm_1_5_2 in core/Cargo.toml"}
 
 live_probe:

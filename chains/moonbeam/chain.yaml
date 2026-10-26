@@ -150,11 +150,22 @@ client:
   - {name: frontier, repo: "https://github.com/moonbeam-foundation/frontier",
      version: "moonbeam-polkadot-stable2512 (branch)",
      commit: 0d6d5b8fed14f70216ddd8dd7823c30510460f47,
+     pinned_by: {how: manifest, path: "Cargo.lock"},
      provides: "pallet-evm, pallet-ethereum, fp-evm (the EVM config), and precompile-utils (the PrecompileSet/checks framework). Moonbeam's OWN fork of Frontier, not polkadot-evm/frontier; the revision is the one Cargo.lock resolves the branch to."}
-  - {name: moonkit, repo: "https://github.com/Moonsong-Labs/moonkit",
-     version: "moonbeam-polkadot-stable2512 (branch)",
-     commit: 8fae4417637f8e55ea04b3548809d7f1c22daf64,
-     provides: "pallet-evm-precompile-xcm — the precompile installed at 0x081a"}
+  - name: moonkit
+    repo: "https://github.com/Moonsong-Labs/moonkit"
+    version: "moonbeam-polkadot-stable2512 (branch)"
+    commit: 1d7d4ad69b7c4494259f4f04066e4db4148abf0b
+    pinned_by: {how: manifest, path: "Cargo.lock"}
+    note: >-
+      CORRECTED: this was pinned at 8fae4417, which is the BRANCH HEAD of
+      moonbeam-polkadot-stable2512 and not the revision moonbeam builds against.
+      moonbeam's own Cargo.lock at runtime-4401 resolves the dependency to
+      1d7d4ad6, and that is the tree whose facts this row states. The sibling
+      frontier pin was taken from the lock correctly; this one was not. Found by
+      the `pinned_by:` check on its first run, which is the whole reason that
+      key exists.
+    provides: "pallet-evm-precompile-xcm — the precompile installed at 0x081a"
 
 live_probe:
   endpoint: https://moonbeam.api.onfinality.io/public

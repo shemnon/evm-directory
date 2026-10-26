@@ -82,6 +82,7 @@ client:
   - {name: taraxa-evm, repo: "https://github.com/Taraxa-Project/taraxa-evm",
      version: "submodule @ v1.14.1 (git describe: v1.8.21-1195-g6c7e5338)",
      commit: 6c7e5338b22d5e596cc2365a88d1f94840e1ee1b, language: go,
+     pinned_by: {how: submodule, path: "submodules/taraxa-evm"},
      provides: "the entire state transition: instruction set, gas schedule, precompiles, the DPoS and slashing contracts, the Cornus predeploy installer"}
   submodule_pin_src: "taraxa-node/.gitmodules:taraxa-evm"
 

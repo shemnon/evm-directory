@@ -42,6 +42,7 @@ client:
   companion_repos:
   - {name: monad-bft, repo: "https://github.com/category-labs/monad-bft",
      version: v0.16.4, commit: 2a2bcc04679b919db402dee2b13d4adce900098b,
+     pinned_by: {how: release-pair},
      language: rust,
      provides: "consensus, deferred-execution delay, the Monad TFM base-fee rule, per-revision chain params"}
 

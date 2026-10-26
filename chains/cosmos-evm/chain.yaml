@@ -67,6 +67,7 @@ client:
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/cosmos/go-ethereum",
      version: v1.17.2-cosmos-0, commit: d99d6fa2c8d98b7cd653de4a9386d2da3db8f25c,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "the EVM interpreter, the 0x01-0x11 precompiles, the jump table, params.ChainConfig and the EIP-2935 history contract's address and bytecode"}
 
 consensus:

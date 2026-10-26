@@ -692,6 +692,47 @@ client, so opBNB has none of OP Stack's later changes. Record this in
 - `client.companion_repos[]` — additional pinned repos supplying facts the main client
   does not contain (OP Stack's predeploy definitions and per-chain fork schedules).
 
+### `pinned_by:` — what decides a companion's commit
+
+Required on every `companion_repos[]` entry and on `client.submodule`. It answers one
+question: **when this companion's repository moves, is that drift in this row, or noise?**
+
+The question is not academic. Before this key existed, `pin_status.py` had no way to tell
+the two apart, so it reported every companion's branch head and newest tag as a target.
+Four pin edits were made on that basis and had to be undone — #50, #51, #53, and #52,
+which was a full revert of #42. Sonic alone generated three false targets at up to 100
+commits "ahead" of pins that had not moved at all. The cost of the missing key was paid
+four times before it was written down.
+
+`how:` is closed. The first two mean **the companion's own repository is not the
+authority** and its movement is not drift:
+
+| `how:` | what sets the commit | what movement means |
+|---|---|---|
+| `manifest` | a dependency file in the **client's** tree (`path:` required) | nothing, until the client tag moves |
+| `submodule` | a `160000` gitlink in the client (`path:` required) | nothing, until the client tag moves |
+| `release-pair` | the companion's own release train, read as tags | a newer tag of the pin's shape is a real target |
+| `branch` | a branch head this row deliberately follows | movement is a real target: re-read it |
+| `reference` | nothing — it is cited to document a fact *about* it | not drift; interesting only if it changes what is documented |
+| `authority` | the companion **governs the client's** pin, inverting the usual direction | movement is the trigger for re-pinning the client |
+| `unrecorded` | not yet determined | treat every signal as unverified |
+
+`path:` is the file **inside the client clone**, exactly as the client spells it, and
+`verify.py` requires it to exist there — which is the whole point: a `pinned_by:` that
+names a file nobody can open would restore the guessing this key exists to end.
+
+Two distinctions worth stating, because both were got wrong in practice:
+
+- **`Cargo.toml` and `Cargo.lock` are not interchangeable.** A `rev = "9d49…"` dependency
+  is exact in `Cargo.toml` (autonomys/frontier), but a `branch = "v0.x"` dependency is
+  exact only in `Cargo.lock` (autonomys/rust-evm, moonbeam/frontier). Name the file that
+  actually contains the sha.
+- **`authority` is not `release-pair` reversed.** Plasma's `node-templates` is the only
+  instance: the row's reth pin is whatever the template's `EXECUTION_TAG` says, so reth's
+  own releases are noise and the template's movement is the one signal that matters. The
+  row said so in prose at `chains/plasma/chain.yaml` and the sweep still had to re-derive
+  it by hand. This key makes it machine-readable.
+
 ## Stack nodes and inheritance
 
 A chain whose `lineage.upstream` names a `stack` row states **only its own deltas**.

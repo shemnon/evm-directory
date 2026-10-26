@@ -92,10 +92,40 @@ submodule and a Cargo-tagged zksync-protocol, where the correct answer was "noth
 bump"), and **sei** (`-sei-21` on the branch, `-sei-20` in go.mod).
 
 The failure is quiet: the pins look newer, `clone.sh` fetches them happily, and only a
-`BAD SYM` storm or nothing at all tells you. So before moving any companion with no
-`version:`, grep the client clone's manifest for the companion's repo path and pin what it
-says. If the manifest names the current pin, that companion has **nothing to bump** even
-though `pin_status.py` says its branch moved.
+`BAD SYM` storm or nothing at all tells you.
+
+**`pin_status.py` now knows this, so you no longer grep by hand.** Every companion carries
+`pinned_by:` (SCHEMA.md), and for `how: manifest` / `how: submodule` the script makes no
+tag or branch lookup at all — it reads the authority file at the pinned client tag, and at
+the client's target tag when there is one, and prints one of:
+
+```
+GOVERNED by the client's go.mod (manifest) — this companion's own tags and branch head CANNOT advance it
+  at client v2.2.5:  github.com/0xsoniclabs/carmen/go v0.0.0-20260916125055-46335f35fa44
+  the client tag is current, so this pin cannot move
+```
+
+```
+  CHANGED at client target v1.8.1 — THIS PIN MOVES:
+    github.com/evmos/ethermint => github.com/crypto-org-chain/ethermint v0.24.1-0.20261026040228-e874216e33c8
+```
+
+So the rule is now mechanical: **a governed companion moves only when the client tag moves,
+and the script tells you whether it actually did.** The needle is the pinned sha (or the
+pinned version), never the repo name — `besu` matches three unrelated plugin versions in
+Linea's Gradle catalog, and matching those would read as the companion moving.
+
+Three other `how:` values mean the signal IS real and should be chased: `release-pair`
+(its own tags), `branch` (deliberately follows a head — re-read it when it moves), and
+`authority`, which inverts the direction: plasma's `node-templates` decides which reth
+release the chain runs, so reth's own 13 newer tags are noise and the template's movement
+is the trigger. `reference` means the repo is cited to document a fact *about* it, so
+movement there is not drift. `unrecorded` means establish the authority first.
+
+On its first real run this check found a pin that was already wrong: **moonbeam's moonkit**
+was pinned at the branch head `8fae4417` while moonbeam's own `Cargo.lock` resolves the
+dependency to `1d7d4ad6`. The sibling frontier pin had been taken from the lock correctly.
+That is the damage this key exists to prevent, sitting in the dataset.
 
 ## 3. Fetch the new code next to the old
 

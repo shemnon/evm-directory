@@ -46,6 +46,7 @@ client:
   companion_repos:
   - {name: optimism, repo: "https://github.com/celo-org/optimism",
      version: celo-v2.2.4, commit: db166f41814690ce2271e973607bf71cad3dc239,
+     pinned_by: {how: release-pair},
      provides: "Celo predeploy definitions (CeloPredeploys.sol), FeeCurrencyDirectory.sol, AbstractFeeCurrency.sol"}
 
 live_probe:

@@ -69,6 +69,7 @@ client:
   companion_repos:
   - {name: ethermint, repo: "https://github.com/crypto-org-chain/ethermint",
      commit: 2593e6edcfff02679cac491c69d0166436b7501d,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "x/evm, x/feemarket, the ante chain and the EVM keeper (go.mod replace target)"}
 
 live_probe:

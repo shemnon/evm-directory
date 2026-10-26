@@ -60,12 +60,15 @@ client:
   companion_repos:
   - {name: specs, repo: "https://github.com/gnosischain/specs",
      commit: 045d46d6db96a39b4d91485f9783474c13546ac9,
+     pinned_by: {how: branch},
      provides: "the normative Gnosis-only specs: modified EIP-4895 withdrawals, POSDAO post-merge, Balancer recovery, and the per-upgrade diff-vs-mainnet tables"}
   - {name: reth_gnosis, repo: "https://github.com/gnosischain/reth_gnosis",
      version: v2.2.0, commit: 3c783e97a030eb91e88aa91c149004aa07153f3a,
+     pinned_by: {how: release-pair},
      provides: "second, independent implementation — every constant below appears twice, in C# and in Rust"}
   - {name: configs, repo: "https://github.com/gnosischain/configs",
      commit: 2dd5746292ca298ae0695f1ee221098074574e04,
+     pinned_by: {how: reference},
      provides: "the Gnosis-owned config repo — pinned to DOCUMENT that its EL genesis is stale, not to source facts from it"}
 
 live_probe:

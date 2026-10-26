@@ -284,8 +284,10 @@ def render(r, now):
         seen = (r.get("live_probe") or {}).get("observed_at")
         if seen:
             try:
-                d = seen if isinstance(seen, datetime) else datetime.fromisoformat(str(seen))
-                nxt = d.replace(tzinfo=d.tzinfo or timezone.utc) + timedelta(weeks=4)
+                probed = (seen if isinstance(seen, datetime)
+                          else datetime.fromisoformat(str(seen)))
+                nxt = (probed.replace(tzinfo=probed.tzinfo or timezone.utc)
+                       + timedelta(weeks=4))
                 ready = nxt.timestamp() <= now
                 state += (f"\n             last probed {str(seen)[:10]}; next probe allowed "
                           f"{nxt.date()} — {'DUE NOW' if ready else 'not yet, hold off'}")

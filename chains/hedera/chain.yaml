@@ -83,6 +83,7 @@ client:
   companion_repos:
   - {name: hiero-json-rpc-relay, repo: "https://github.com/hiero-ledger/hiero-json-rpc-relay",
      version: v0.79.0, commit: cc01872f1e290ba9701811840c8bfb9e7dd2419a, language: typescript,
+     pinned_by: {how: release-pair},
      provides: "the entire eth_* JSON-RPC surface: block synthesis, header field fabrication, tag resolution, eth_getCode overrides, gas price conversion, receipt assembly. NOT part of the state transition, and versioned independently of the node."}
   note_relay_is_not_consensus: >-
     THE RELAY IS NOT A NODE. It holds no state, executes nothing, and reaches consensus data

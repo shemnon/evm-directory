@@ -45,6 +45,7 @@ client:
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/sei-protocol/go-ethereum",
      version: v1.15.7-sei-20, commit: 092edae5f1f57724d6bb52d8723f7903a6db2574,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "the EVM interpreter, precompile base set, gas table and params.ChainConfig"}
 
 live_probe:

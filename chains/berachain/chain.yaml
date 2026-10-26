@@ -56,9 +56,11 @@ client:
   companion_repos:
   - {name: beacon-kit, repo: "https://github.com/berachain/beacon-kit",
      version: v1.4.1, commit: 0a91d178147821bb41b7e1de092b0a501236b4ee,
+     pinned_by: {how: release-pair},
      provides: "consensus layer: EVM inflation withdrawal, deposit/withdrawal-request processing, the object parentBeaconBlockRoot commits to"}
   - {name: bera-geth, repo: "https://github.com/berachain/bera-geth",
      version: v1.011608.0, commit: e8f8f9681fc2e5fdbc0684e605bf88b35c5d1fbc,
+     pinned_by: {how: release-pair},
      provides: "second EL implementation of the same rules in Go; the PoL tx type, the Prague1-4 config and the 22nd header field are declared here too. Stops at Prague4."}
 
 live_probe:

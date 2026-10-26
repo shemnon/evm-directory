@@ -75,6 +75,7 @@ client:
   companion_repos:
   - {name: node-templates, repo: "https://github.com/PlasmaLaboratories/node-templates",
      commit: 048042dd8b527794f4644faca1c6645f80001091, language: shell,
+     pinned_by: {how: authority},
      provides: "mainnet genesis.json (chain config + full alloc), docker-compose stack, and the pinned EL/CL image digests"}
   consensus_client: >-
     NOT PUBLIC. The consensus layer ships only as the container image

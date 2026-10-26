@@ -73,6 +73,7 @@ client:
     repo: https://github.com/risechain/risechain
     version: main (UNTAGGED)
     commit: 2c2c6f2b343b7334b133851d848ccf556fdcc7dd
+    pinned_by: {how: branch}
     language: rust
     provides: >-
       the only published RISE Rust code: `crates/primitives`, which defines the RPC and
@@ -84,6 +85,7 @@ client:
     repo: https://github.com/risechain/pevm
     version: main (UNTAGGED)
     commit: e94b0e3df9c0c1b983ed3e4d78b3aefb0b5b7cc0
+    pinned_by: {how: branch}
     language: rust
     provides: >-
       the parallel EVM engine RISE intends to run, and the design statement that

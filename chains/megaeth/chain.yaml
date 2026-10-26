@@ -60,6 +60,7 @@ client:
   companion_repos:
   - {name: stateless-validator, repo: "https://github.com/megaeth-labs/stateless-validator",
      version: v2.0.20, commit: b8e9553a62222544c8e5195ff8b7ec0285922b92, language: rust,
+     pinned_by: {how: release-pair},
      provides: "an independent re-execution client (chain spec, block executor, withdrawals root) and the canonical mainnet genesis with the full hardfork schedule"}
   note_second_client: >-
     stateless-validator is a genuine second implementation — it depends on mega-evm at

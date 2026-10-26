@@ -71,12 +71,15 @@ client:
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/0xsoniclabs/go-ethereum",
      commit: e9dfccd41dbeaafc8489794ca8e01906929f24ab, language: go,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "state transition, precompiles, tx types, signer, RLP header — a patch fork of upstream geth 1.17.2-dev"}
   - {name: tosca, repo: "https://github.com/0xsoniclabs/tosca",
      commit: 3f4119284c421a1840b5716ce19d6eaf67e56103, language: go,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "LFVM and SFVM — the bytecode interpreters that execute every Sonic transaction. BSL-1.1 licensed, not open source."}
   - {name: carmen, repo: "https://github.com/0xsoniclabs/carmen",
      commit: 46335f35fa44eb31f676def37634a617df38e8e4, language: go,
+     pinned_by: {how: manifest, path: "go.mod"},
      provides: "the state database (S5 MPT). Uses EthereumLikeHashing, so state roots stay mainnet-shaped."}
 
 live_probe:

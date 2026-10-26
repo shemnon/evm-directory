@@ -35,9 +35,11 @@ client:
   companion_repos:
   - {name: optimism, repo: "https://github.com/ethereum-optimism/optimism",
      version: op-contracts/v8.0.0, commit: f45a5ccfebcdf6da3f5b09cbc512667c063730b7,
+     pinned_by: {how: release-pair},
      provides: "predeploy definitions (Predeploys.sol)"}
   - {name: superchain-registry, repo: "https://github.com/ethereum-optimism/superchain-registry",
      commit: f868c1b219525fc28c6bd75e8e93b35699648094,
+     pinned_by: {how: branch},
      provides: "per-chain fork activation timestamps"}
 
 consensus:

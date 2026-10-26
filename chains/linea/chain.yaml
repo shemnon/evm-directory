@@ -57,6 +57,7 @@ client:
   companion_repos:
   - {name: besu, repo: "https://github.com/besu-eth/besu",
      commit: efa817c5abc989ef8bb82de14920518ce2a41173,
+     pinned_by: {how: manifest, path: "gradle/libs.versions.toml"},
      provides: "the EVM itself, and the built-in linea-mainnet genesis/fork schedule"}
 
 live_probe:

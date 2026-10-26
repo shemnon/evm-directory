@@ -20,9 +20,19 @@ Exit 1 on any drift. Run after `tools/clone.sh`.
 chain.yaml alone. That is what CI runs, because the clones are 6.1 GiB; it is a
 weaker gate by definition, and says so in its output. See SITE.md.
 """
-import argparse, json, pathlib, re, sys, yaml
+import argparse, json, pathlib, re, subprocess, sys, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def sh_out(*cmd):
+    """stdout of a command, or None if it failed. Only used by checks that have
+    already established a clone exists; CI's --no-clones never reaches them."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
 MAINNET_STD = set(range(0x01, 0x12)) | {0x100}   # 0x01-0x11 plus P256VERIFY
 
 # Chains whose BASE precompiles come from a dependency rather than this repo:
@@ -913,6 +923,77 @@ def check_upstream_unmodified(c):
     return out
 
 
+# How a companion's commit gets decided. The first two mean the companion's OWN repo is
+# not the authority, which is the whole reason this vocabulary exists — see SCHEMA.md.
+PINNED_BY_HOWS = {"manifest", "submodule", "release-pair", "branch",
+                  "reference", "authority", "unrecorded"}
+PINNED_BY_NEEDS_PATH = {"manifest", "submodule"}
+
+
+def check_pinned_by(slug, c, no_clones):
+    """Validate `pinned_by:` on every companion and on `client.submodule`.
+
+    The key answers "is this companion's movement drift, or noise?" and it is only
+    worth anything if it cannot be hand-waved. So: `how:` is closed, `manifest` and
+    `submodule` must name a `path:`, and — when a clone is present — THAT PATH MUST
+    EXIST IN THE CLIENT TREE. A `pinned_by:` naming a file nobody can open would
+    restore exactly the guessing the key was added to end (#50-#53).
+    """
+    out = []
+    cl = c.get("client") or {}
+    if not cl or (c.get("chain") or {}).get("evidence") == "documented":
+        return out
+    entries = [(k.get("name", "?"), k) for k in (cl.get("companion_repos") or [])]
+    if cl.get("submodule"):
+        entries.append((f"submodule:{cl['submodule'].get('name','?')}", cl["submodule"]))
+    if not entries:
+        return out
+
+    croot = None
+    if not no_clones:
+        owner = cl.get("shared_with") or slug
+        name = cl["repo"].rstrip("/").split("/")[-1]
+        d = ROOT / "chains" / owner / "repos" / name
+        croot = d if d.is_dir() else None
+
+    for label, k in entries:
+        pb = k.get("pinned_by")
+        if pb is None:
+            out.append(f"NO PINNED_BY  companion {label}: `pinned_by:` is required — "
+                       f"without it nothing can tell drift from noise (SCHEMA.md)")
+            continue
+        if not isinstance(pb, dict):
+            out.append(f"BAD PINNED_BY companion {label}: must be a mapping with `how:`")
+            continue
+        how = pb.get("how")
+        if how not in PINNED_BY_HOWS:
+            out.append(f"BAD PINNED_BY companion {label}: how: {how!r} is not one of "
+                       f"{'/'.join(sorted(PINNED_BY_HOWS))}")
+            continue
+        path = pb.get("path")
+        if how in PINNED_BY_NEEDS_PATH:
+            if not path:
+                out.append(f"NO PATH       companion {label}: how: {how} must name the "
+                           f"`path:` in the client tree that sets the commit")
+                continue
+            if croot is not None:
+                target = croot / path
+                if how == "submodule":
+                    # A gitlink is not a file on disk when the submodule is uncloned,
+                    # so ask the index, which is where a 160000 entry actually lives.
+                    ls = sh_out("git", "-C", str(croot), "ls-files", "-s", path)
+                    if not (ls or "").startswith("160000"):
+                        out.append(f"NO GITLINK    companion {label}: {path} is not a "
+                                   f"160000 submodule entry in {croot.name}")
+                elif not target.is_file():
+                    out.append(f"NO MANIFEST   companion {label}: {path} does not exist "
+                               f"in the {croot.name} clone")
+        elif path:
+            out.append(f"STRAY PATH    companion {label}: how: {how} takes no `path:` — "
+                       f"a path here implies an authority this `how:` denies")
+    return out
+
+
 MOTHBALL_HOWS = {"source-withdrawn", "repo-gone", "unrecorded"}
 
 
@@ -1448,7 +1529,7 @@ def main():
             # reads, which would degrade verification for the rows that CAN be checked.
             lp = c.get("live_probe") or {}
             at = lp.get("observed_at_block")
-            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c):
+            for b in check_live(f.read_text()) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c) + check_pinned_by(slug, c, no_clones):
                 print(f"  {b}"); problems += 1
             print(f"\n{slug}  (documented — no public client)")
             print(f"  SKIP    nothing to re-extract"
@@ -1628,7 +1709,7 @@ def main():
         raw = f.read_text()
         bad, nsym, nline, nopath = check_citations(
             raw, None if no_clones else roots(slug, c))
-        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c)
+        bad += check_live(raw) + check_tx_auth(c) + check_liveness(c) + check_mothballed(c) + check_upstream_unmodified(c) + check_pinned_by(slug, c, no_clones)
         for b in bad:
             print(f"  {b}"); problems += 1
         if not bad and (nsym or nline):

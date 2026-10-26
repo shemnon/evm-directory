@@ -172,6 +172,7 @@ client:
     repo: https://github.com/artela-network/artela-evm
     version: v0.4.8-rc8
     commit: 93316786d69d0c6ab34e97e6c172ece2905c0e42
+    pinned_by: {how: manifest, path: "go.mod"}
     provides: >-
       the interpreter, the jump tables, the 0x01-0x09 precompiles, and the
       PreContractCall / PostContractCall join points inside EVM.Call
@@ -179,6 +180,7 @@ client:
     repo: https://github.com/artela-network/aspect-core
     version: v0.4.9-rc9
     commit: 1e5d97e5fe6dedb64287d12c0d22fd2e3d2a7a03
+    pinned_by: {how: manifest, path: "go.mod"}
     provides: >-
       the five join points, the AspectCore address and ABI, the unsigned-
       transaction verification path, and the built-in ERC-4337 EntryPoint address
@@ -186,11 +188,13 @@ client:
     repo: https://github.com/artela-network/aspect-runtime
     version: v0.4.8-rc8
     commit: 9ae423f1ec4060b53a193e0fbb584c8689b9c080
+    pinned_by: {how: manifest, path: "go.mod"}
     provides: the wasmtime-based WASM runtime and validator that executes Aspects
   - name: artela-cosmos-sdk
     repo: https://github.com/artela-network/artela-cosmos-sdk
     version: v0.47.4-artela-rc9
     commit: be1d73d660f2ee6af81182479854b2496423b27b
+    pinned_by: {how: manifest, path: "go.mod"}
     provides: >-
       baseapp — DeliverTx, runTx and the panic-recovery middleware that decide
       what an ordered-but-invalid transaction becomes

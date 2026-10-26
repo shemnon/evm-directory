@@ -33,6 +33,7 @@ client:
   companion_repos:
   - {name: node, repo: "https://github.com/base/node",
      commit: 36cedd9185512d8664721ab3fd89381ddd0fcd97,
+     pinned_by: {how: reference},
      provides: "nothing this row states — pinned only so the rejection above names a
        specific tree. This is the repo the obvious search finds, and AT THIS COMMIT ITS
        versions.env STILL PINS base/base v1.2.0 while the client has shipped v1.4.2 and

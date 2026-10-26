@@ -27,6 +27,7 @@ client:
     name: go-ethereum
     repo: https://github.com/OffchainLabs/go-ethereum
     commit: 5eee8f546e7602b7deeef7909f291bbebc77e233
+    pinned_by: {how: submodule, path: "go-ethereum"}
 
 consensus:
   engine: centralised sequencer + optimistic fraud proofs (BoLD)

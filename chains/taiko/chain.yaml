@@ -44,6 +44,7 @@ client:
   companion_repos:
   - {name: taiko-mono, repo: "https://github.com/taikoxyz/taiko-mono",
      version: taiko-alethia-client-v2.7.0, commit: d5132235b98ee2ddc5205e13a8e2b555d7eb18b6,
+     pinned_by: {how: release-pair},
      provides: "the anchor transaction constructor and its fixed-k signer, the golden-touch private key, the Anchor.sol L2 predeploy, the derivation rules (gas-limit clamp, manifest constants), and an independent Rust reimplementation of all of it"}
 
 live_probe:

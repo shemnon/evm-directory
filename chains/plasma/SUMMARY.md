@@ -1,9 +1,18 @@
 # Plasma — what this row teaches
 
 Pinned: `paradigmxyz/reth` **v1.11.3** (`d6324d63`) — upstream, unmodified — with
-`PlasmaLaboratories/node-templates` (`09df1007`) as a companion for the mainnet
+`PlasmaLaboratories/node-templates` (`940c8e9d`) as a companion for the mainnet
 genesis and the pinned image digests. Live probe: `https://rpc.plasma.to`, chain id
-**9745**, block **30724096** (0x1d4d000), 2026-08-25. Baseline fork **prague**.
+**9745**, block **30724096** (0x1d4d000), 2026-08-25; version and block-metric claims
+re-probed at **36109000**, 2026-10-26. Baseline fork **prague**.
+
+**This pass: the template moved to reth v2.7.0 and the chain did not.** The companion
+is the authority over this row's client pin, and its `EXECUTION_TAG` went
+`v1.11.3@sha256:523e5c6a…` -> `v2.7.0@sha256:a7f059d4…`. That is the condition the
+previous pass named for a re-pin — and it was necessary but not sufficient: a 60-block
+census found `reth/v1.11.3/linux` in **60 of 60** `extraData` fields. **The pin stays
+at v1.11.3**, because this row reads its facts from the tree the chain executes. See
+§1 and the gotchas.
 
 **Evidence path taken: (a), source — but not the source anyone expected.** The gate
 question was whether a public execution client exists. It does, and it is
@@ -16,11 +25,16 @@ no releases, and no consensus changes**.
 
 ---
 
-## 1. The execution layer is bit-for-bit upstream reth — three independent proofs
+## 1. The execution layer is bit-for-bit upstream reth — four independent proofs
+
+Three of the four agree on **v1.11.3**; the first now names v2.7.0, which is the whole
+story of this pass. All four still say *unmodified upstream*, which is the claim that
+matters — the disagreement is about which upstream build, not about whether it is one.
 
 - **The operator config.** `config/mainnet/.env` sets
-  `EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth`, `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…`
-  — an upstream image referenced by digest, not a Plasma rebuild.
+  `EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth` and, at the pinned companion commit,
+  `EXECUTION_TAG=v2.7.0@sha256:a7f059d4…` — an upstream image referenced by digest,
+  not a Plasma rebuild. It read `v1.11.3@sha256:523e5c6a…` at the previous pin.
 - **The blocks themselves.** Every mainnet block's `extraData` is
   `0x726574682f76312e31312e332f6c696e7578` = the ASCII string `reth/v1.11.3/linux`.
   That is exactly `default_extra_data()` in `crates/node/core/src/version.rs`
@@ -32,12 +46,14 @@ no releases, and no consensus changes**.
 - **The image digest, and this is the strongest of the four.**
   `ghcr.io/paradigmxyz/reth:v1.11.3` resolves to manifest digest
   `sha256:523e5c6a7ce69e80dc004d9ba9d276e22c35f141671f9847709256bb411cd336` — an OCI
-  image index over four platform manifests — and that is **byte for byte** the digest
-  Plasma's own mainnet template pins as `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…cd336`.
-  The image this chain runs is therefore not merely *built from* upstream's source; it
-  **is** upstream's published artifact, by content hash. No rebuild, no patch, and
-  nothing to diff — a stronger claim than any source comparison can make, and
-  re-checkable in one request against `ghcr.io/v2/paradigmxyz/reth`.
+  image index over four platform manifests — and `:v2.7.0` resolves to
+  `sha256:a7f059d470878a5a59f3c575f3fc81b536d0d2d56d7a1cbed73e717a4f766336`. **Both
+  were verified upstream at this pass, and the template has named each in turn, byte
+  for byte.** So whichever of the two is deployed, the image is not merely *built from*
+  upstream's source; it **is** upstream's published artifact, by content hash. No
+  rebuild, no patch, and nothing to diff — a stronger claim than any source comparison
+  can make, and the one proof that the version disagreement leaves completely intact.
+  Re-checkable in one request each against `ghcr.io/v2/paradigmxyz/reth`.
 
 The `PlasmaLaboratories/reth` fork's branches are upstream syncs, an **ExEx** that
 posts XPL balance updates to a webhook (an observer, not a state-transition rule), and
@@ -96,16 +112,22 @@ chain's mainnet-relative EIP delta.
 
 Everything distinctive about Plasma — PlasmaBFT (a pipelined Fast HotStuff),
 sub-second deterministic finality, the validator/observer split — is in
-`ghcr.io/plasmalaboratories/plasma-consensus-public:1.0.0`, a container image with no
+`ghcr.io/plasmalaboratories/plasma-consensus-public` (`1.2.0` at the pinned companion
+commit, up from `1.1.0`), a container image with no
 source repo. The EL is a plain Engine-API follower, which is exactly why an unmodified
 reth works. This makes Plasma the dataset's cleanest instance of a chain whose
 consensus layer is novel and whose execution layer is *literally* Ethereum's — a
 sharper version of the "gas token is the only delta" control case that Gnosis provides,
 because here even the gas token is native.
 
-Two live oddities came out of that split. `finalized` trailed the head by ~2,662 blocks
-(~44 minutes) despite BFT finality, so whatever sets the finalized tag over the Engine
-API lags the consensus commit badly. And the block `miner` is not a validator key: it
+Two live oddities came out of that split, and **one of them has since been fixed.**
+`finalized` used to trail the head by ~2,662 blocks (~44 minutes) despite BFT finality.
+Re-measured at this pass over four samples it trails by **1-2 blocks (~1-2s)**, with
+`safe` tracking `finalized` — whatever sets the tag over the Engine API has caught up.
+The CONSENSUS_TAG moved 1.1.0 -> 1.2.0 in the same window, which is a plausible cause
+and not a demonstrated one, since that component has no public source. The old figure
+is kept here because it is the one in circulation. The second oddity stands: the block
+`miner` is not a validator key: it
 is one of five **Gnosis Safe proxies** allocated at `0x…0a11b001`–`005` in genesis
 (172-byte Safe proxy bytecode, eleven storage slots each), four of which hold the entire
 initial XPL supply. Blocks alternate between `…0a11b004` and `…0a11b005`, so the

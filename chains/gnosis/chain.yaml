@@ -30,10 +30,17 @@ lineage:
   ancestry: [ethereum]
   fork_of: null
   sync_point: >-
-    Fully caught up at Osaka/Fusaka (activated 1776168380). Nethermind also ships an
-    AmsterdamGnosis spec class and the header decoder already has BlockAccessListHash
-    and SlotNumber slots, but no Amsterdam timestamp is set for chain 100 and
-    gnosischain/specs' glamsterdam.md carries an empty schedule table.
+    Fully caught up at Osaka/Fusaka (activated 1776168380). AMSTERDAM SUPPORT DEEPENED
+    SUBSTANTIALLY IN THIS BUMP WITHOUT GNOSIS ACTIVATING ANYTHING: at 2.1.0 Nethermind
+    shipped an AmsterdamGnosis spec class and header slots for BlockAccessListHash and
+    SlotNumber; at 2.2.2 the header also carries `GasUsedPerDimension` (EIP-8037 two-
+    dimensional gas), `HeaderDecoder` accepts a ZERO-LENGTH logs bloom where EIP-7668
+    is active, `PayFees` has an EIP-8037 branch that always credits the coinbase, and
+    the block-production picker reserves execution gas and state gas separately. Nine
+    new `IsEip*Enabled` flags appeared on IReleaseSpec between the two tags (3298,
+    7906, 7979, 8131, 8141, 8250, 8253, 8272, 8279). ALL OF IT IS GATED OFF HERE: no
+    Amsterdam timestamp is set for chain 100 in GnosisSpecProvider or gnosis.json, and
+    gnosischain/specs' glamsterdam.md still carries an empty schedule table.
   note: >-
     Gnosis descends from the OpenEthereum/Parity AuRa lineage (xDai, 2018), not from
     go-ethereum, which is why its chainspec is still in Parity format and why POSDAO
@@ -47,8 +54,8 @@ lineage:
 client:
   name: Nethermind
   repo: https://github.com/NethermindEth/nethermind
-  version: 2.1.0
-  commit: b3e7e84c1695420e771326f73801b66fa0574871
+  version: 2.2.2
+  commit: be201120899ea9cdaab1444b89878c56d1a5a4ad
   language: c#
   note: >-
     Chosen over the Gnosis-owned config repo because it is the client that produced
@@ -65,7 +72,7 @@ client:
   - {name: reth_gnosis, repo: "https://github.com/gnosischain/reth_gnosis",
      version: v2.2.0, commit: 3c783e97a030eb91e88aa91c149004aa07153f3a,
      pinned_by: {how: release-pair},
-     provides: "second, independent implementation — every constant below appears twice, in C# and in Rust"}
+     provides: "second, independent implementation — every constant below appears twice, in C# and in Rust. NOT A PAPER CROSS-CHECK: reth_gnosis seals real mainnet blocks, 3 of 40 in this pass's extraData census, at exactly this pinned version (see header_fields.extraData)"}
   - {name: configs, repo: "https://github.com/gnosischain/configs",
      commit: 2dd5746292ca298ae0695f1ee221098074574e04,
      pinned_by: {how: reference},
@@ -127,7 +134,7 @@ forks:
   - {name: fusaka, activation_time: 1776168380, mainnet_equivalent: osaka,
      note: "2026-04-14, 131.6 days AFTER mainnet Osaka (1764798551). Current fork."}
   - {name: glamsterdam, activation_time: null, status: pending, mainnet_equivalent: amsterdam,
-     note: "AmsterdamGnosis spec class exists in Nethermind; no timestamp for chain 100, empty schedule table in specs/network-upgrades/glamsterdam.md"}
+     note: "AmsterdamGnosis spec class exists in Nethermind and its Amsterdam machinery grew considerably at 2.2.2 (2-D gas on the header, zero-length logs bloom, nine new EIP flags — see lineage.sync_point), but STILL no timestamp for chain 100 in either GnosisSpecProvider.cs or Chains/gnosis.json, and an empty schedule table in specs/network-upgrades/glamsterdam.md. Code presence is not activation."}
 
 eips:
   170:
@@ -775,18 +782,28 @@ header_fields:
         different seal shape override this"; AuRa's step-and-signature seal is one such
         override — `AuRaHeaderDecoder`, registered by `AuRaHeaderModule` — and the fields live on
         `AuRaBlockHeader`. The decoded bytes are unchanged — only where the code lives.
-      src_live: "debug_getRawHeader(20000000) @ 47884196 -> 16 RLP items, items 14/15 = 4B step + 65B signature; debug_getRawHeader(47884196) @ 47884196 -> 21 items, mainnet Osaka layout"
+      src_live: "debug_getRawHeader(20000000) @ 47884196 -> 16 RLP items, items 14/15 = 4B step + 65B signature; debug_getRawHeader(47884196) @ 47884196 -> 21 items, mainnet Osaka layout; extraData census over 40 blocks ending 48993055 @ 48993060 -> {Nethermind v1.39.3: 29, reth_gnosis/v2.2.0: 3, Nethermind v2.2.0: 2, reth_gnosis/v2.0.0: 2, Nethermind v1.36.2: 2, erigon-3.4.3-c045521f: 1, geth go1.26.5 RLP-packed: 1}"
   note: >-
     Checked explicitly for repurposing, because four rows in this dataset carry a
     consensus dimension in a field that was not meant for one. extraData is NOT
-    repurposed here: it is 18 bytes of ASCII client version, within the chainspec's
-    32-byte maximumExtraDataSize, with no protocol meaning. IT ALSO DATES THE PRODUCER,
-    AND THE PRODUCER IS BEHIND THIS PIN: at block 48,657,980 extraData still decoded to
-    "Nethermind v1.39.3" — the version this row pinned BEFORE this bump — while the pin
-    now names 2.1.0. Nothing recorded on this row depends on the difference (the Gnosis
-    fork schedule, the active precompile set and the header shape are identical across
-    the two), but it is exactly the pinned-tag-versus-validators gap SCHEMA.md says a
-    live probe exists to catch, and here the header itself reports it.
+    repurposed here: it is ASCII client version, within the chainspec's 32-byte
+    maximumExtraDataSize, with no protocol meaning. WHAT IT DOES IS ENUMERATE THE
+    VALIDATOR SET'S CLIENTS, AND ON THAT MEASURE THIS IS THE MOST GENUINELY
+    MULTI-CLIENT ROW IN THE DATASET. A 40-block census found FOUR independent
+    implementations sealing mainnet blocks: Nethermind (29 blocks at v1.39.3, 2 at
+    v2.2.0, 2 at v1.36.2), reth_gnosis (3 at v2.2.0, 2 at v2.0.0), Erigon (1,
+    erigon-3.4.3-c045521f) and a geth-family client (1, packed as RLP
+    `[1,17,3] "geth" "go1.26.5" "linux"` in geth's own extraData format rather than
+    ASCII — almost certainly gnosischain/go-ethereum, whose v1.17.5-gc tag this row
+    notes but does not pin). So the second implementation this row cross-checks against
+    is not a paper exercise: reth_gnosis seals real blocks, at exactly the version
+    pinned as a companion here. THE PRODUCERS ALSO LAG THE PIN, as at the previous
+    pass: v1.39.3 is still the plurality under Nethermind's old numbering, and the
+    newest producer observed is v2.2.0 against a pin of v2.2.2. Nothing recorded on
+    this row depends on the difference — the Gnosis fork schedule, the active
+    precompile set and the header shape are identical across all of them, which is
+    the point of checking — but it is exactly the pinned-tag-versus-validators gap
+    SCHEMA.md says a live probe exists to catch, and here the header itself reports it.
     blobGasUsed and excessBlobGas are NOT repurposed: they carry real blob gas for a
     real, if tiny, blob market. mixHash carries a real RANDAO from a real beacon
     chain. The only repurposed field is pre-merge difficulty, above.

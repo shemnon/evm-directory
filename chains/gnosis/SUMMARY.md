@@ -2,8 +2,8 @@
 
 **Chain ID 100 · role: `fork` · upstream: ethereum · baseline: Osaka (Fusaka, 2026-04-14)**
 
-Reference: [NethermindEth/nethermind `2.1.0`](https://github.com/NethermindEth/nethermind)
-@ `b3e7e84c`, cross-checked against [gnosischain/reth_gnosis `v2.2.0`](https://github.com/gnosischain/reth_gnosis)
+Reference: [NethermindEth/nethermind `2.2.2`](https://github.com/NethermindEth/nethermind)
+@ `be201120`, cross-checked against [gnosischain/reth_gnosis `v2.2.0`](https://github.com/gnosischain/reth_gnosis)
 @ `5b236a06` and the normative [gnosischain/specs](https://github.com/gnosischain/specs)
 @ `045d46d6`. Live probes at block **47884196**.
 
@@ -268,6 +268,35 @@ neither a fork nor a plugin layer, but upstream first-class support. Beside it,
 
 ---
 
+## 11. Four client implementations seal this chain, and extraData names them
+
+Most rows in this dataset describe a network with one production client. Gnosis does
+not. A 40-block `extraData` census at head 48993060 found **four independent
+implementations** proposing mainnet blocks:
+
+| producer | blocks | note |
+|---|---|---|
+| Nethermind v1.39.3 | 29 | still the plurality, on the pre-2.x numbering |
+| reth_gnosis v2.2.0 | 3 | **this row's Rust companion, at exactly the pinned version** |
+| Nethermind v2.2.0 | 2 | the new numbering has reached mainnet |
+| reth_gnosis v2.0.0 | 2 | |
+| Nethermind v1.36.2 | 2 | |
+| erigon-3.4.3-c045521f | 1 | |
+| geth, go1.26.5 | 1 | RLP-packed `[1,17,3] "geth" "go1.26.5" "linux"`, not ASCII |
+
+Two things follow. First, **the cross-check in this row is not a paper exercise.** The
+C#-versus-Rust comparison every constant here gets is a comparison between two clients
+that both seal real Gnosis blocks — and the Rust one is pinned at the very version
+observed producing them. Second, the geth-family producer packs `extraData` in geth's
+own RLP format rather than the ASCII string every other client uses, so a reader
+decoding this field as text gets a mojibake row and may conclude the field is
+repurposed. It is not; it is just a different client's convention.
+
+**The producers lag the pin**, as at the previous pass: the newest version observed is
+v2.2.0 against a pin of v2.2.2. Nothing on this row depends on the gap — fork schedule,
+active precompile set and header shape are identical across all four — which is
+precisely what checking it establishes.
+
 ## What the control case actually taught
 
 The EVM half of the prediction is confirmed, and confirmed *positively* rather than
@@ -315,7 +344,7 @@ cd chains/gnosis/repos
 R=https://rpc.gnosischain.com; B=0x2daa7a4      # block 47884196
 
 # --- pins
-git -C nethermind  rev-parse HEAD    # b3e7e84c1695420e771326f73801b66fa0574871
+git -C nethermind  rev-parse HEAD    # be201120899ea9cdaab1444b89878c56d1a5a4ad
 git -C specs       rev-parse HEAD    # 045d46d6db96a39b4d91485f9783474c13546ac9
 git -C reth_gnosis rev-parse HEAD    # 3c783e97a030eb91e88aa91c149004aa07153f3a
 git -C configs     rev-parse HEAD    # e542d132340e68fd7922149b145a0d361e1c87d4

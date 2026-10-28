@@ -22,27 +22,29 @@ lineage:
   ancestry: [ethereum]
   fork_of: null
   note: >-
-    NOT A FORK OF A CLIENT, IT IS A CLIENT. Three independent pieces of evidence say
-    the EL is stock upstream reth: (1) Plasma's own node-templates repo pins
-    `EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth` at `v1.11.3` BY DIGEST for mainnet — an
-    upstream image, not a rebuild; (2) every mainnet block's `extraData` decodes to the
-    ASCII string `reth/v1.11.3/linux`, which is exactly reth's `default_extra_data()`
-    format `reth/v{version}/{OS}` with no operator override; (3) the public RPC reports
+    NOT A FORK OF A CLIENT, IT IS A CLIENT. Four independent pieces of evidence say
+    the EL is stock upstream reth, and at this pass the first one DISAGREES WITH THE
+    OTHER THREE about the version — see the note on `client:` and the gotcha. (1) the
+    template pins `EXECUTION_IMAGE=ghcr.io/paradigmxyz/reth` BY DIGEST for mainnet, an
+    upstream image rather than a rebuild — at the pinned commit that digest is
+    v2.7.0's; (2) every mainnet block's `extraData` decodes to the ASCII string
+    `reth/v1.11.3/linux`, which is exactly reth's `default_extra_data()` format
+    `reth/v{version}/{OS}` with no operator override; (3) the public RPC reports
     `reth/v1.11.3-d6324d6`, whose commit prefix is the pinned commit
-    d6324d63e27ef6b7c49cdc9b1977c1b808234c7b exactly. THAT THIRD PIECE USED TO
-    DISAGREE: at the previous probe the RPC said `reth/v1.8.3-4219741` while extraData
-    already said v1.11.3, and this row recorded the mismatch. The node has since been
-    upgraded and all three sources now name the same version and commit. (4) STRONGEST OF THE FOUR, and new at this pass: the digest
-    Plasma's template pins is the digest upstream publishes. `ghcr.io/paradigmxyz/reth:
-    v1.11.3` resolves to `sha256:523e5c6a...cd336`, and the template's `EXECUTION_TAG`
-    names that same hash — so the running image is upstream's own artifact rather than
-    a rebuild of upstream's source, which is a stronger claim than any source diff can
-    make. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and NO
-    releases, and none of its branches changes consensus: they are upstream syncs, an
-    ExEx that posts XPL balance updates to a webhook (an observer, not a rule), and one
-    `eth_feeHistory` fix.
+    d6324d63e27ef6b7c49cdc9b1977c1b808234c7b exactly. (4) STRONGEST OF THE FOUR: the
+    digest the template pins is a digest upstream publishes, verified both ways —
+    `ghcr.io/paradigmxyz/reth:v1.11.3` resolves to `sha256:523e5c6a…cd336` and
+    `:v2.7.0` to `sha256:a7f059d4…766336`, and the template has named each in turn. So
+    whichever of the two the chain runs, it runs upstream's own artifact rather than a
+    rebuild of upstream's source — which is a stronger claim than any source diff can
+    make, and it is the claim that survives the version disagreement intact.
+    WHAT THE DISAGREEMENT IS NOT is a fork: strands 2-4 all still name an unmodified
+    upstream build. The org's own fork, `PlasmaLaboratories/reth`, carries NO tags and
+    NO releases, and none of its branches changes consensus: they are upstream syncs,
+    an ExEx that posts XPL balance updates to a webhook (an observer, not a rule), and
+    one `eth_feeHistory` fix.
   src: "node-templates/config/mainnet/.env:EXECUTION_IMAGE, reth/crates/node/core/src/version.rs:default_extra_data"
-  src_live: "eth_getBlockByNumber @ 35247117 -> extraData 0x726574682f76312e31312e332f6c696e7578 = \"reth/v1.11.3/linux\"; web3_clientVersion @ 35247117 -> reth/v1.11.3-d6324d6/x86_64-unknown-linux-gnu — all three sources agree on v1.11.3 and the RPC's commit prefix matches the pin"
+  src_live: "eth_getBlockByNumber @ 36109000 -> extraData 0x726574682f76312e31312e332f6c696e7578 = \"reth/v1.11.3/linux\"; web3_clientVersion @ 36109000 -> reth/v1.11.3-d6324d6/x86_64-unknown-linux-gnu; extraData census over 60 consecutive blocks ending 36109175 -> 60/60 \"reth/v1.11.3/linux\", no producer on v2.x. The RPC's commit prefix matches the pin; the template does NOT"
 
 client:
   name: reth (upstream, unmodified)
@@ -56,31 +58,46 @@ client:
       ghcr.io/paradigmxyz/reth:v1.11.3 resolves to manifest digest
       sha256:523e5c6a7ce69e80dc004d9ba9d276e22c35f141671f9847709256bb411cd336 (an OCI
       image index over 4 platform manifests), and that is BYTE FOR BYTE the digest
-      Plasma's own mainnet template pins as
-      EXECUTION_TAG=v1.11.3@sha256:523e5c6a...cd336. So the image this chain runs is not
-      merely built from upstream's source — it IS upstream's published artifact, by
-      content hash. Re-checkable in one request against ghcr.io/v2/paradigmxyz/reth.
+      Plasma's mainnet template pinned as EXECUTION_TAG while the network was brought to
+      the version it still runs. The template has since moved to
+      EXECUTION_TAG=v2.7.0@sha256:a7f059d470878a5a59f3c575f3fc81b536d0d2d56d7a1cbed73e717a4f766336,
+      which is likewise byte for byte ghcr.io/paradigmxyz/reth:v2.7.0 — BOTH digests
+      verified upstream at this pass. The claim this key makes is therefore unaffected by
+      which of the two is deployed: in both cases the image is not merely built from
+      upstream's source, it IS upstream's published artifact, by content hash. Blocks say
+      v1.11.3, so that is the tree this row's facts are read from. Re-checkable in one
+      request each against ghcr.io/v2/paradigmxyz/reth.
   note: >-
-    Pinned at the tag Plasma's mainnet node template pins by digest — still
-    `EXECUTION_TAG=v1.11.3@sha256:523e5c6a…` at the template repo's current head, and
-    UPSTREAM RETH HAS MEANWHILE RENUMBERED TO v2.x (v2.7.0 at the time of this check).
-    The pin does not follow it: this row tracks what the deployment pins, not what the
-    upstream publishes, and the deployment pins v1.11.3 by digest. Both live probes
-    agree. A re-pin here needs the template's EXECUTION_TAG to move first, not reth's
-    release page. This row cites upstream reth deliberately: the chain's execution
-    client IS this repo at this tag,
-    and the delta against it is zero. The RPC endpoint probed was still on v1.8.3 while
-    block producers were on v1.11.3 — both upstream tags, so the version skew changes
-    nothing about the state transition.
+    THE TEMPLATE HAS MOVED AND THE NETWORK HAS NOT, SO THIS PIN DOES NOT MOVE EITHER.
+    At the previous pass this row said a re-pin "needs the template's EXECUTION_TAG to
+    move first, not reth's release page". The template's EXECUTION_TAG duly moved —
+    `v1.11.3@sha256:523e5c6a…` became `v2.7.0@sha256:a7f059d4…` in node-templates
+    commit 940c8e9d (`feat: Update examples to use consensus 1.2.0 and reth 2.7.0`),
+    alongside CONSENSUS_TAG 1.1.0 -> 1.2.0. That turned out to be the necessary
+    condition and not a sufficient one: the chain itself is still producing blocks on
+    v1.11.3. A 60-block census taken at this pass found `reth/v1.11.3/linux` in 60 of
+    60 `extraData` fields, with a single block producer throughout, and
+    `web3_clientVersion` still answers `reth/v1.11.3-d6324d6` whose commit prefix is
+    this pin exactly. The template is an operator reference, not a deployment record;
+    what the chain executes is what the blocks say. SO THE RULE NEEDS ITS SECOND HALF
+    STATED: a re-pin here needs the template's EXECUTION_TAG to move AND the blocks to
+    show the new version. Note also that the reth v2.0.0 boundary carries a storage
+    migration (`reth db migrate-v2`, per the template's UPGRADING.md), which is a
+    plausible reason for operators to lag and is an operational matter, not a
+    consensus one. This row cites upstream reth deliberately: the chain's execution
+    client IS this repo at this tag, and the delta against it is zero.
   companion_repos:
   - {name: node-templates, repo: "https://github.com/PlasmaLaboratories/node-templates",
-     commit: 048042dd8b527794f4644faca1c6645f80001091, language: shell,
+     commit: 940c8e9deaba5d10edb855cf1674ceab7859bc2d, language: shell,
      pinned_by: {how: authority},
      provides: "mainnet genesis.json (chain config + full alloc), docker-compose stack, and the pinned EL/CL image digests"}
   consensus_client: >-
     NOT PUBLIC. The consensus layer ships only as the container image
-    `ghcr.io/plasmalaboratories/plasma-consensus-public:1.0.0` (pinned by digest in
-    the same .env). There is no source repo for PlasmaBFT, so every consensus-layer
+    `ghcr.io/plasmalaboratories/plasma-consensus-public`, pinned by digest in the same
+    .env, and at the pinned template commit that is `1.2.0@sha256:1044b476…`. (This
+    row previously said 1.0.0; the template read 1.1.0 at the old pin and 1.2.0 at
+    this one, so the version was already stale and is now re-read from the pin rather
+    than from memory.) There is no source repo for PlasmaBFT, so every consensus-layer
     claim in this row is `src_doc:` or `src_live:` — and the consensus layer is where
     all of Plasma's actual divergence lives.
 
@@ -145,11 +162,16 @@ eips:
   1559:
     status: inherited
     note: >-
-      Stock EIP-1559, with a 36,000,000 gas limit and blocks running at ~5% of it, so
-      the base fee sits permanently at reth's 7-wei floor. Observed 7 wei in twelve
-      consecutive blocks with tips of 1-2 wei. Cheap is not the same as modified: the
-      rule is mainnet's and the fee is paid, in XPL, by the transaction sender.
-    src_live: "eth_getBlockByNumber 30724096-30724107 @ 30724096 -> baseFeePerGas 0x7 in 12/12, gasLimit 0x2255100 (36,000,000)"
+      Stock EIP-1559, with a 36,000,000 gas limit and blocks far below the 50% target,
+      so the base fee sits at the bottom of its range and stays there. RE-MEASURED at
+      this pass: 8 wei in 24 of 24 consecutive blocks, with usage averaging 13.4% of
+      the limit (min 5.3%, max 37.0%) — up from the ~5% recorded at the previous pass,
+      when the fee read 7 wei in 12 of 12. Both readings are the same mechanism: at
+      this magnitude the integer base-fee decrement (`baseFee / 8` scaled by how far
+      usage sits below target) truncates to zero, so the fee parks one wei above the
+      7-wei floor rather than reaching it. Cheap is not the same as modified: the rule
+      is mainnet's and the fee is paid, in XPL, by the transaction sender.
+    src_live: "eth_getBlockByNumber 36108977-36109000 @ 36109000 -> baseFeePerGas 0x8 in 24/24, gasUsed/gasLimit mean 0.1342, gasLimit 0x2255100 (36,000,000); previous pass 30724096-30724107 -> 0x7 in 12/12"
   7702:
     status: inherited
     note: >-
@@ -315,27 +337,28 @@ block_metrics:
   block_gas_limit:
     verdict: ~
     observed: 36000000
-    observed_at_block: 33951768
-    observed_at: 2026-10-01
+    observed_at_block: 36109000
+    observed_at: 2026-10-26
     mutability: config
-    src_live: "eth_getBlockByNumber @ 33951768 -> gasLimit 0x2255100"
+    src_live: "eth_getBlockByNumber @ 36109000 -> gasLimit 0x2255100"
   block_time:
     verdict: ~
     observed: 1000.0
-    observed_at_block: 33951768
-    observed_at: 2026-10-01
+    observed_at_block: 36109000
+    observed_at: 2026-10-26
     mutability: config
-    src_live: "eth_getBlockByNumber @ 33951768 vs 33941768 -> 10000s / 10000 blocks"
+    src_live: "eth_getBlockByNumber @ 36109000 vs 36099000 -> 10000s / 10000 blocks"
     note: >-
       1s, and the observed figure is 1000.0 ms exactly — PlasmaBFT holds the interval
-      rather than treating it as a floor.
+      rather than treating it as a floor. Re-measured at this pass over the same
+      10,000-block window and still exactly 1000.0.
   blob_count:
     verdict: ~
     observed: 0
-    observed_at_block: 33951768
-    observed_at: 2026-10-01
+    observed_at_block: 36109000
+    observed_at: 2026-10-26
     mutability: fixed
-    src_live: "eth_config @ 33951768 -> blobSchedule.max 0"
+    src_live: "eth_config @ 36109000 -> blobSchedule.max 0"
 
 fee_model:
   metering: gas
@@ -391,6 +414,16 @@ header_fields:
 
 gotchas:
   - >-
+    THE PUBLISHED NODE TEMPLATE IS A MAJOR RETH VERSION AHEAD OF THE RUNNING CHAIN.
+    node-templates pins `EXECUTION_TAG=v2.7.0` for mainnet, while every block is still
+    produced by `reth/v1.11.3/linux` (60/60 sampled) and the public RPC still reports
+    v1.11.3. Anyone standing up a node from the template therefore runs a different
+    execution client version than the block producers do, across the reth v2.0.0
+    boundary that also changes the database format. Both versions are unmodified
+    upstream reth, so this is not a consensus divergence — but "what the template
+    pins" and "what the chain runs" are two different facts here, and the directory
+    reads its facts from the second.
+  - >-
     ZERO-FEE USDT IS NOT A CONSENSUS FEATURE HERE. Every sampled transaction paid a
     fee, the only live fee token is XPL, and the execution client has no code that
     could implement a fee exemption. Anything that looks free to a user is an ERC-4337
@@ -403,10 +436,13 @@ gotchas:
     count is 0. Tooling that assumes a Prague chain takes type-0x03 will fail at
     submission, not at signing.
   - >-
-    `finalized` trailed the head by ~2,662 blocks (~44 minutes) when probed, despite
-    BFT consensus advertising deterministic finality. Whichever component sets the
-    finalized tag over the Engine API is lagging far behind the consensus commit, and
-    that component is closed source.
+    FIXED SINCE THE LAST PASS, and recorded because the old reading is the one in
+    circulation: `finalized` used to trail the head by ~2,662 blocks (~44 minutes)
+    despite BFT consensus advertising deterministic finality. Re-measured at this pass
+    over four samples it trails by 1-2 BLOCKS (~1-2s), with `safe` tracking
+    `finalized`. Whichever closed-source component sets the tag over the Engine API has
+    caught up; the CONSENSUS_TAG moved 1.1.0 -> 1.2.0 in the same window, which is a
+    plausible cause and not a demonstrated one.
   - >-
     The block `miner` is a Gnosis Safe from the genesis alloc, not a validator key.
     Attribution of blocks to validators is not possible from the header.

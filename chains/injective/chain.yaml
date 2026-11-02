@@ -32,8 +32,8 @@ chain:
       are source facts, read from v1.20.3, whose tree is intact and whose 94 citations
       verify.py still confirms on every run. What is lost is the ability to DERIVE a new
       one: Injective's next fork, precompile or fee change cannot be read out of any
-      public tree. So `src_live:` is the only evidence here that can still advance, and
-      the live probe is now the only thing that can tell this row anything.
+      public tree. So the live probe is now the only thing that can show what this chain
+      does, with the publisher's release notes as `src_doc:` for what it says changed.
       THE WITHDRAWAL IS DELIBERATE AND ANNOUNCED: the v1.20.4 release notes say "Starting
       from 09-09-2026 source code will no longer be published". AND THE FEAR HAS NOW
       HAPPENED: the network upgraded past the last readable tree on 2026-09-24 (see

@@ -961,9 +961,9 @@ def mothball_banner(c):
     B.append('<p>What that means for these facts: they are <b>still source facts</b>, '
              'read from a tree that is still pinned and still checked on every run — '
              'this is not a trust-me row. But they are as good as their last reading. '
-             'A fork, a repricing or a new precompile after that date is invisible '
-             'here, and <code>src_live:</code> is the only evidence on this page that '
-             'can still advance.</p>')
+             'A fork, a repricing or a new precompile after that date shows up here '
+             'only if a live probe or the publisher\'s own notes caught it, and '
+             '<code>src_live:</code> is the only evidence of what the chain now does.</p>')
     for k in ("evidence_at_newer_tag", "source_at_other_shapes", "note"):
         if mb.get(k): B.append(f'<p>{esc(mb[k])}</p>')
     return note("".join(B), "hot", f"mothballed · {how}")

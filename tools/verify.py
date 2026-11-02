@@ -1035,12 +1035,12 @@ def check_mothballed(c):
     if how in ("source-withdrawn", "repo-gone") and not mb.get("since"):
         out.append(f"NO SINCE  mothballed.how: {how} without `since:` — a reader "
                    f"cannot tell which facts predate the loss")
-    # Probing is the ONLY evidence that can still advance on a mothballed row, and
+    # Probing is the ONLY evidence of what a mothballed chain now does, and
     # SCHEMA.md paces it at a four-week floor computed from this field. Without it
     # the cadence is unknowable and the row quietly stops being re-probed at all.
     if not (c.get("live_probe") or {}).get("observed_at"):
         out.append("NO PROBE DATE  mothballed: without live_probe.observed_at — "
-                   "`src_live:` is the only evidence that can still move here, and "
+                   "`src_live:` is the only evidence of what this chain now does, and "
                    "its four-week cadence is computed from that date")
     lst, pin = mb.get("last_source_tag"), (c.get("client") or {}).get("version")
     if lst and pin and lst != pin:

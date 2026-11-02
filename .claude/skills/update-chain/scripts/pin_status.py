@@ -444,7 +444,9 @@ def render(r, now):
         mb = r["mothballed"]
         state = (f"live, but MOTHBALLED ({mb.get('how', 'unrecorded')}) — the pin does not "
                  f"move: source was last published at {mb.get('last_source_tag', '?')} and the "
-                 f"newer tags have none (SCHEMA.md). Only src_live: can still advance")
+                 f"newer tags have none (SCHEMA.md). Only a probe can show what the chain now does, "
+                 f"and a replay alone can miss it: scan for unlisted precompiles and read the "
+                 f"release notes")
         # Probing is the only lever left on a mothballed row, so say when it may next be
         # pulled. SCHEMA.md sets a FOUR-WEEK FLOOR: a weekly observed_at churns the row
         # and the generated tables without telling a reader anything new.

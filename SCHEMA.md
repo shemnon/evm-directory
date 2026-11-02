@@ -396,7 +396,7 @@ Three states look adjacent and are not:
 |---|---|---|---|
 | `dead:` | stopped | pinned at its last | nothing; facts are permanently final |
 | `evidence: documented` | running | **never existed** | `src_doc:` and `src_live:` |
-| `mothballed:` | running | existed, then withdrawn | `src_live:` only |
+| `mothballed:` | running | existed, then withdrawn | `src_live:`, plus `src_doc:` for what the publisher says changed |
 
 So `mothballed:` does NOT imply `evidence: documented`. The distinction matters: a
 `documented` row's facts never had source behind them, while a mothballed row's facts
@@ -412,10 +412,33 @@ claim the row was always weaker than it is.
 - **The client pin stops moving.** Not as policy but because there is nowhere to move
   it to: the newer tags have no source in them. `pin_status.py` reports
   `MOTHBALLED` and stops, the way it does for `DEAD`.
-- **`src_live:` is the only evidence that can still advance**, and it should. The chain
-  is live, so `livecheck.py` still means something here — unlike on a dead row, where a
-  frozen head is the expected answer. A mothballed row is the one kind that gets
-  *more* valuable from re-probing and cannot be refreshed any other way.
+- **`src_live:` is the only evidence of what the chain now does**, and it should advance.
+  The chain is live, so `livecheck.py` still means something here — unlike on a dead row,
+  where a frozen head is the expected answer. A mothballed row is the one kind that gets
+  *more* valuable from re-probing and cannot be refreshed any other way. A withdrawn
+  source often leaves release notes and docs behind. Those are admissible as `src_doc:`
+  for what the publisher says changed, and only a probe can confirm it happened.
+- **A probe pass must look for what the row does not list.** Replaying every `src_live:`
+  only tests what the row already knows, and a replay can pass cleanly while the network
+  has changed underneath it. Injective's re-probe of 2026-11-02 is the worked example: every
+  replay held, and the chain had a fifth precompile at `0x68` with no public source. A pass
+  has four parts:
+  1. **Replay** every `src_live:` at one fresh height.
+  2. **Scan beyond the row's addresses.** Call the addresses around each custom precompile
+     with a bogus selector, and keep an empty neighbour as the control. `eth_getCode` cannot
+     do this: a native precompile returns `0x`, the same as an empty account. An ABI-dispatch
+     revert from an unlisted address is the signal. A scan only finds what it tries, so
+     state which range was covered.
+  3. **Read what is still published.** Release notes and changelog assets for every release
+     since the last probe, and the chain's upgrade docs.
+  4. **Establish what the network runs.** Where the chain exposes it, read the node's version
+     and applied upgrades (on Cosmos chains, LCD `node_info` and `applied_plan`), record each
+     upgrade in `forks.timeline`, and re-check any `Not established` item that live module
+     parameters can now answer.
+- **An old height does not show what ran then.** A historical `eth_call` may be served by
+  today's binary against old state: Injective's `0x68` answers from a block weeks before the
+  upgrade that added it. Take an activation height from an applied plan or the publisher,
+  and record a contradicting boundary rather than treating it as the activation.
 - **Re-probe no sooner than four weeks apart.** The floor is deliberate. Probing is the
   only lever left on these rows, which makes it tempting to pull constantly, and a
   weekly `observed_at` churns the row, the generated tables and the diff while telling a

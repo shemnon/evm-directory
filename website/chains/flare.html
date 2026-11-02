@@ -86,7 +86,7 @@ inheritance across it; the shared entries are restated in <code>chain.yaml</code
 and marked as coreth's.)</p>
 <h2>1. The prediction was wrong, and the way it was wrong is the finding</h2>
 <p><code>CANDIDATES.md</code> promoted Flare on the expectation of <em>"FTSO and State Connector
-</em><em>precompiles</em><em> at addresses like <code>0x1000…0002</code> — far outside the mainnet or <code>0x0100</code>
+<strong>precompiles</strong> at addresses like <code>0x1000…0002</code> — far outside the mainnet or <code>0x0100</code>
 ranges."</em></p>
 <p><strong>Flare adds zero precompile addresses.</strong> Its precompile map is coreth's, unmodified:
 <code>coreth/params/hooks_libevm.go:PrecompiledContractsGranite</code> is three tombstoned
@@ -521,6 +521,6 @@ git -C $C grep -n 'ShanghaiTime = utils.NewUint64\|CancunTime = utils.NewUint64\
 tools/verify.py flare   # re-extract from source, diff against chain.yaml</code></pre>
 <p class="src">Source of record: <code>chains/flare/chain.yaml</code> · <code>chains/flare/SUMMARY.md</code></p>
 </main>
-<footer>Generated 2026-10-17 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=flare">Report an inaccuracy</a></footer>
+<footer>Generated 2026-11-02 · Data <a href="https://github.com/shemnon/evm-directory/blob/main/LICENSE-DATA">CC0</a> (a <a href="https://github.com/shemnon/evm-directory">link back</a> is appreciated) · <a href="https://github.com/shemnon/evm-directory/issues/new?template=correction.yml&amp;chain=flare">Report an inaccuracy</a></footer>
 <script src="../assets/site.js"></script>
 </body></html>

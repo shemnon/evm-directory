@@ -3,7 +3,10 @@
 **Role:** `fork` · **Upstream:** `cosmos-evm` · **Chain ID:** 1776 · **Baseline:** Prague
 **Client:** [`InjectiveFoundation/injective-core`](https://github.com/InjectiveFoundation/injective-core)
 `v1.20.3` (`5c3143ed621ed4e4a5d74d64ea952f5a8cda4c1f`)
-**Live probes:** `https://sentry.evm-rpc.injective.network` @ block `180071265` (`0xabbab61`)
+**Live probes:** `https://sentry.evm-rpc.injective.network` @ block `190068384` (`0xb5436a0`), 2026-11-02
+
+> **Mothballed.** Source publication stopped on 2026-09-09, and the network has since moved
+> past this pin. Facts cited to `src:` read `v1.20.3`; see [§0](#0-the-network-has-moved-past-the-pin).
 
 A Cosmos SDK L1 whose EVM runs beside a frequent-batch-auction derivatives exchange
 that shares its account space and its balances. This file records only Injective's own
@@ -15,6 +18,69 @@ block, the CometBFT-derived opcodes, the module-account fee sink — resolves th
 `InjectiveFoundation/injective-core`, while `go.mod` still replaces the Cosmos SDK,
 CometBFT, ibc-go, wasmd, gogoproto and go-ethereum with `InjectiveLabs/*` forks — the
 module paths point at one org and the code at another.
+
+## 0. The network has moved past the pin
+
+The re-probe of 2026-11-02 found the thing the mothball rule was written to catch. The
+release notes for `v1.20.4` state: *"Starting from 09-09-2026 source code will no longer be
+published."* Mainnet then applied two upgrades after the last pin:
+
+| upgrade | height | date | evidence |
+|---|---|---|---|
+| `v1.20.3-safeharbor.2` | 181295000 | 2026-09-02 | applied plan; source published, nothing under `modules/evm` changed |
+| `v1.20.4` (Meridian) | 184394000 | 2026-09-24 | applied plan, changelog, docs; **no source** |
+
+The public sentry reports `v1.20.4-bl.2` at commit `1ffa252`. That version matches no
+published tag, and neither that commit nor the release's own `17f701a` resolves publicly.
+
+**What moved, as far as anyone outside can tell:**
+
+- **A fifth precompile, swap, at `0x68`** — see below.
+- **Post-transfer hooks backed by writable EVM calls**, per the changelog. The pinned hook
+  runs before the transfer and through `EthCall`. If the text means what it says, a Cosmos
+  transfer can now change EVM state with no EVM transaction. Not exercised here.
+- **A Ledger fix in the ante handler**, per the changelog, in the same EIP-712 path §6
+  describes. So §6's chain-id finding is a statement about `v1.20.3`, and whether it
+  survived is not established.
+
+**What did not move, replayed at `190068384`:** no Ethereum fork level changed, and Osaka is still
+not active (`CLZ` is an invalid opcode, a modexp over EIP-7823's bound still executes, and
+`chain_config` has no Osaka time). `BASEFEE`, `PREVRANDAO`, `BLOBBASEFEE` and `GASLIMIT` under
+`eth_call`, P256VERIFY's absence, the 21-key header, the constant `receiptsRoot`, and the
+`0x64`-`0x67` dispatch all held.
+
+**Open questions this pass closed**, from live module params read with the
+`x-cosmos-block-height` header (the endpoint does not echo the height back, so the pinning is
+as requested rather than confirmed): `mempool1559_enabled` is **true**
+on mainnet with a fixed floor of 160000000, which is the `0x9896800` the header reports;
+`allow_unprotected_txs` is **true**; `extra_eips` is **empty**.
+
+**One claim that did not hold up:** `COINBASE` under `eth_call` is not reproducible. Seven
+asks at one height returned two addresses, neither of them that block's `miner`. `DoCall` does
+pass the proposer, so the cause is not established.
+
+### `0x68` swap: found by probing, confirmed by the changelog
+
+```
+eth_getCode 0x…68                     -> 0x
+eth_call    0x…68 selector 0xdeadbeef -> revert "no method with id: 0xdeadbeef"
+eth_call    0x…69 selector 0xdeadbeef -> 0x
+eth_call    0x…68 empty calldata      -> revert "precompile panic"
+STATICCALL  0x…68 swapExactInputV1    -> revert "the method is not readonly"
+```
+
+It exposes `quoteExactInputV1`, `quoteExactOutputV1` and `swapExactInputV1`, filling against
+the orderbook from the caller's **default subaccount** and paying out as a bank balance. That
+is §1's settlement path, now reachable from one contract call. **The market list is not
+governed**: per the docs, `MsgUpdateSwapParams` from any `exchange_admins` address takes effect
+immediately with no vote and replaces the whole set. Three markets and one admin are configured.
+
+`0x68` makes the collision zone worse in a new place: three-way with Arbitrum's
+`ArbFunctionTable` and BSC's `verifyDoubleSignEvidence`.
+
+**Not an activation height.** `eth_call` answers from block 181027005 upward, which is before
+the upgrade, and the source of that era has no such precompile. That boundary describes how the
+public endpoint serves old heights today, not what the network executed then.
 
 ## 1. Yes: the exchange moves balances the EVM observes, every block
 
@@ -51,7 +117,7 @@ So `address.balance` and `SELFBALANCE` change between two EVM transactions with 
 EVM transaction, no receipt, no log and no trace frame in between** — and, because most
 Injective blocks contain no EVM transactions at all, usually with no Ethereum-visible
 artifact of the block whatsoever. Same class as Blast's rebasing yield, Flare's treasury
-sweeps and Gnosis's withdrawal credits, and larger than any of them in volume: 54 of 60
+sweeps and Gnosis's withdrawal credits, and larger than any of them in volume: 57 of 60
 consecutive probed blocks had zero EVM transactions and millions of gas used.
 
 Recorded in `system_transactions.fba_settlement_to_bank`. One honest limit: it bites
@@ -67,7 +133,9 @@ unlocks*: `address.balance` rises between blocks with no transaction of any kind
 Cosmos, and nothing emits an event. The framework's `GetBalance` has no such
 subtraction.
 
-## 2. Four precompiles, on the worst four addresses in the dataset
+## 2. Four precompiles at the pin, on the worst four addresses in the dataset
+
+A fifth arrived after the pin; see [§0](#0x68-swap-found-by-probing-confirmed-by-the-changelog).
 
 ```go
 bankContractAddress     = common.BytesToAddress([]byte{100})   // 0x64
@@ -170,7 +238,7 @@ Injective cannot reach (there is no `OsakaTime` field anywhere in the repo).
 Proven live with geth's own `CallP256Verify` fixture — a **known-valid** vector, not an
 absence test — against a control on the same batch:
 
-| call @ 180071265 | result |
+| call @ 190068384 | result |
 |---|---|
 | `0x…0100` with the valid RIP-7212 vector | `0x` (empty) |
 | `0x…02` (sha256) with empty input | `0xe3b0c442…b855` — correct |
@@ -278,8 +346,8 @@ constants — and fabricates two of the remaining fields worse:
   transaction, and the empty trie root otherwise — a commitment to *all* transactions in
   the CometBFT block, overwhelmingly Cosmos ones. Never a trie over the transactions
   listed beside it.
-- **`gasUsed` counts Cosmos gas.** Live: 54 of 60 consecutive blocks report **zero EVM
-  transactions and non-zero gasUsed**; the probed block reports `0xac4551` (11,289,937)
+- **`gasUsed` counts Cosmos gas.** Live: 57 of 60 consecutive blocks report **zero EVM
+  transactions and non-zero gasUsed**; the probed block reports `0x1081f8a` (17,309,578)
   with an empty transactions array. A receipt's `cumulativeGasUsed` (`0xa75259`) was two
   hundred times its own `gasUsed` (`0xd715`). Utilisation metrics computed from these
   fields are measuring the exchange.
@@ -295,11 +363,11 @@ an inverted condition — it assigns `TxHash` from `DataHash` only
 `NoBaseFee: true`. There is **no EIP-1559 base fee inside the EVM at all** — Injective
 has no `x/feemarket`; it uses its own `txfees` module, an Osmosis *Mempool1559* port,
 which is a **node-local mempool admission floor** and is `Mempool1559Enabled: false` by
-default. The RPC backend fills `baseFeePerGas` from that subsystem anyway.
+default, though mainnet's live params set it **true** with a fixed floor. The RPC backend fills `baseFeePerGas` from that subsystem anyway.
 
 Confirmed live by `eth_call` over state-overridden bytecode:
 
-| probe @ 180071265 | opcode result | header field |
+| probe @ 190068384 | opcode result | header field |
 |---|---|---|
 | `0x48 5f 52 60 20 5f f3` (BASEFEE) | `0x00…00` | `baseFeePerGas` `0x9896800` |
 | `0x45 …` (GASLIMIT) | `0x00…00` | `gasLimit` `0x8f0d180` |
@@ -361,7 +429,7 @@ Two more inherited-mechanism absences worth stating: Injective has **no preinsta
 mechanism** and **no EIP-2935 history storage** (`eth_getCode` at `0x0000F908…2935` is
 `0x`), so the framework's 8191/8192 ring-buffer mismatch does not apply here at all. The
 ecosystem contracts are nonetheless present — Create2 deployer, Multicall3 and Permit2
-all carry their canonical bytecode at block 180071265 — deployed by ordinary
+all carry their canonical bytecode at block 190068384 — deployed by ordinary
 transactions rather than by genesis. **An address-and-code probe cannot distinguish the
 two; only the absence of the mechanism in source shows it.**
 
@@ -399,16 +467,21 @@ row is **absent** on Injective.
   read.
 - **Live ed25519 accounts.** The code path is open; no census of ed25519 accounts on
   `injective-1` was taken, so the hazard is demonstrated as reachable, not as used.
-- **`eips.2200` / `ExtraEIPs` on mainnet.** `DefaultExtraEIPs` is empty by design;
-  whether live module params add any jump-table mutators is state that was not queried.
+- **The swap precompile's gas schedule, and a successful quote.** Every token tried reverted
+  with "is not registered as a bank token pair", so the quote path was reached but never
+  completed. No swap was submitted.
+- **Post-transfer EVM hooks in practice.** Changelog text only.
+- **Why `COINBASE` varies under `eth_call`.** Observed, not explained.
 - **Auction and insurance-fund flows.** Recorded as `system_transactions` so the
   category is not understated, but not read in depth.
 - **The `InjectiveLabs/go-ethereum v1.16.3-inj.2` fork is not cloned.** Every citation
   here is inside `injective-core`; what Injective changed inside its geth fork relative
   to upstream 1.16.3 is unmeasured.
-- **State probes are not replayable at the pinned height.** The public sentry is not an
-  archive node — it prunes within minutes, and a state query at `180071265` now returns
-  "version does not exist". The block itself and the header fields remain readable. The
+- **State probes are not reliably replayable at the pinned height.** The public sentry's
+  retention is uneven: heights a little behind the head return "version does not exist",
+  while much older ones, including the previous pin `180071265`, answer. So `190068384` stops
+  answering minutes after it was probed and may or may not answer later, and `livecheck
+  --deep` reports `skip` meanwhile. The block itself and the header fields remain readable. The
   Re-verify block below therefore re-derives a fresh height for state-dependent probes
   and pins only the block-level ones.
 
@@ -471,11 +544,11 @@ git -C $I grep -n 'NoBaseFee: true' -- injective-chain/modules/evm/keeper/config
 git -C $I grep -n '"receiptsRoot":' -- injective-chain/modules/evm/rpc/types/utils.go
 git -C $I grep -n 'if len(header.DataHash) == 0' -- injective-chain/modules/evm/rpc/types/utils.go
 
-# --- LIVE. Block-level facts, pinned at 180071265 (0xabbab61) and at 0xabbaa3e.
+# --- LIVE. Block-level facts, pinned at 190068384 (0xb5436a0) and at 0xabbaa3e.
 curl -s -X POST $R -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["0xabbab61",true]}' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["0xb5436a0",true]}' \
   | python3 -c 'import json,sys; b=json.load(sys.stdin)["result"]; print("ntx",len(b["transactions"]),"gasUsed",b["gasUsed"],"baseFeePerGas",b["baseFeePerGas"],"gasLimit",b["gasLimit"]); print("keys",len(b))'
-# -> ntx 0  gasUsed 0xac4551  baseFeePerGas 0x9896800  gasLimit 0x8f0d180  keys 21
+# -> ntx 0  gasUsed 0x1081f8a  baseFeePerGas 0x9896800  gasLimit 0x8f0d180  keys 21
 
 curl -s -X POST $R -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBlockByNumber","params":["0xabbaa3e",true]}' \
@@ -483,7 +556,7 @@ curl -s -X POST $R -H 'content-type: application/json' \
 # -> ntx 1; receiptsRoot 0x56e81f17...b421 (the EMPTY trie root, with a real receipt in the block)
 
 # --- LIVE state probes. The sentry PRUNES: re-derive a fresh height rather than
-#     replaying 180071265, which now returns "version does not exist".
+#     replaying 190068384, which can return "version does not exist".
 H=$(curl -s -X POST $R -H 'content-type: application/json' \
       -d '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' \
     | python3 -c 'import json,sys; print(hex(int(json.load(sys.stdin)["result"],16)-3))')
@@ -505,10 +578,21 @@ for A in 0064 0065 0066 0067 0068 0100 0800 0803; do
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getCode\",\"params\":[\"0x00000000000000000000000000000000000$A\",\"$H\"]}"
   echo
 done
-# -> all 0x  (native, or empty — the source map distinguishes them)
+# -> all 0x  (native, or empty — dispatch below or the source map distinguishes them)
 curl -s -X POST $R -H 'content-type: application/json' \
   -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000000000000000000000000000000000000064\",\"data\":\"0xdeadbeef\"},\"$H\"]}"
 # -> revert "no method with id: 0xdeadbeef"  (0x64 is live and ABI-dispatched)
+curl -s -X POST $R -H 'content-type: application/json' \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000000000000000000000000000000000000068\",\"data\":\"0xdeadbeef\"},\"$H\"]}"
+# -> the same revert: swap, added by v1.20.4, with no public source
+
+# --- what the network runs, and the upgrades past the pin
+L=https://sentry.lcd.injective.network
+curl -s $L/cosmos/base/tendermint/v1beta1/node_info | python3 -c 'import json,sys; print(json.load(sys.stdin)["application_version"]["version"])'
+curl -s $L/cosmos/upgrade/v1beta1/applied_plan/v1.20.4          # -> {"height":"184394000"}
+curl -s $L/injective/exchange/v2/exchangeParams | python3 -c 'import json,sys; p=json.load(sys.stdin)["params"]; print(p["swap_params"], p["exchange_admins"])'
+curl -s $L/injective/txfees/v1beta1/params      # -> mempool1559_enabled true, min_gas_price 160000000
+curl -s $L/injective/evm/v1/params              # -> extra_eips [], allow_unprotected_txs true
 curl -s -X POST $R -H 'content-type: application/json' \
   -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[{\"to\":\"0x0000000000000000000000000000000000000803\",\"data\":\"0xdeadbeef\"},\"$H\"]}"
 # -> {"result":"0x"}  empty account: Injective does NOT inherit cosmos-evm's 0x803 panic
@@ -539,5 +623,5 @@ for r in res:
     if not b["transactions"] and int(b["gasUsed"],16)>0: empty+=1
 print("tx types over 60 blocks:", dict(c), "| blocks with 0 tx and non-zero gasUsed:", empty, "/60")
 PY
-# -> e.g. {'0x2': 4, '0x0': 1} | 54/60
+# -> e.g. {'0x0': 1} | 57/60
 ```

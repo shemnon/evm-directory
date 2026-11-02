@@ -1295,7 +1295,12 @@
       `.proto` files. The pin still resolves and all 94 of its citations still confirm,
       so this row's facts remain source-backed; what is gone is the ability to re-derive
       them. Injective's next fork, precompile or fee change cannot be read out of any
-      public tree.
+      public tree. **That has now happened.** The v1.20.4 upgrade of 2026-09-24 added a swap
+      precompile at `0x68` with no public source. A live probe surfaced it because the
+      address answers with ABI dispatch while `eth_getCode` returns `0x`, and the release
+      changelog names it, but its code path is unreadable. The upgrade also lists writable
+      post-transfer EVM hooks and a change in the EIP-712 ante path, neither of which a
+      probe can settle.
   body: >-
     This is a different failure from a dead chain and from a chain that never had a
     client. `dead:` covers a network that stopped; `evidence: documented` covers one
@@ -1310,4 +1315,6 @@
     behaviour, which transaction types decode — is as good as its last reading and cannot
     be refreshed. A reader comparing rows should know that Injective's facts are pinned
     to 2026-08 source and that later Injective behaviour is, from this dataset's
-    perspective, unobservable at the level that matters.
+    perspective, observable only from outside. A probe can show that a precompile exists
+    and how it dispatches; it cannot show what it does on the paths nobody called, and
+    a probe of known addresses finds nothing at an address it did not think to try.

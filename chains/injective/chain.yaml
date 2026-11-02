@@ -17,7 +17,9 @@ chain:
       source, 29 entries each — they postdate the pin and predate the withdrawal. They
       are a different tag shape (`v#.#.#-safeharbor.#` against the pin's `v#.#.#`), so
       they are not pin candidates and `pin_status.py` does not offer them, but a reader
-      looking for the last readable Injective tree should know they exist.
+      looking for the last readable Injective tree should know they exist. So does
+      `v1.20.3-evmhook` (a side tag dated 2026-07-23), which carries a post-send hook the
+      pin does not. Neither tree contains a swap precompile.
     evidence_at_newer_tag: >-
       the tree at v1.20.4-1789748350, the newest release, holds exactly one entry: an
       empty file named SOURCE_CODE_IS_PRIVATE. The diff from the pin is 1450 files and
@@ -32,6 +34,11 @@ chain:
       one: Injective's next fork, precompile or fee change cannot be read out of any
       public tree. So `src_live:` is the only evidence here that can still advance, and
       the live probe is now the only thing that can tell this row anything.
+      THE WITHDRAWAL IS DELIBERATE AND ANNOUNCED: the v1.20.4 release notes say "Starting
+      from 09-09-2026 source code will no longer be published". AND THE FEAR HAS NOW
+      HAPPENED: the network upgraded past the last readable tree on 2026-09-24 (see
+      forks.timeline) and gained a fifth precompile no public source describes. See
+      precompiles 0x68 and client.note.
   chain_id_src: injective-chain/modules/evm/types/chain_config.go:DefaultEIP155ChainID
   note: >-
     A Cosmos SDK L1 whose EVM module descends from the same Ethermint lineage as
@@ -64,8 +71,8 @@ lineage:
 
     (3) NO ACTIVE-PRECOMPILE PARAM AND NO 0x0800 BLOCK. The framework's
     two-step registration (build the map, then list the address in
-    ActiveStaticPrecompiles) does not exist here; Injective hard-wires four
-    CustomContractFn closures at app construction. Its precompile set is therefore
+    ActiveStaticPrecompiles) does not exist here; Injective hard-wires
+    CustomContractFn closures at app construction, four of them at the pin. Its precompile set is therefore
     NOT per-deployment optional, and the framework's 0x0100/0x0400/0x0800-0x0807
     addresses are all empty on Injective — verified live.
 
@@ -109,18 +116,25 @@ client:
     to `documented`, because `documented` means no public client ever existed and that
     is not what happened here. A future re-pin has nowhere to go until the source
     returns.
+    THE NETWORK NO LONGER RUNS THIS PIN. Every `src:` on this row reads v1.20.3; mainnet
+    applied the v1.20.3-safeharbor.2 and v1.20.4 upgrade plans after it, and the public
+    sentry reports `v1.20.4-bl.2` at commit `1ffa252`. That version string matches no
+    published tag and neither that commit nor the release's own `17f701a` resolves in the
+    public repository. Code-path claims here are therefore claims about v1.20.3. Those a
+    live probe can reach were replayed at 190068384 and held; the rest are as good as
+    their last reading.
 
 live_probe:
   endpoint: https://sentry.evm-rpc.injective.network
   chain_id: 1776
-  observed_at_block: 180071265
-  observed_at: 2026-08-24
+  observed_at_block: 190068384
+  observed_at: 2026-11-02
   observed_at_note: >-
     the date is the PROBED BLOCK'S OWN TIMESTAMP, not a note of when someone looked:
-    eth_getBlockByNumber(180071265) reports timestamp 1787603591 = 2026-08-24. Recorded
+    eth_getBlockByNumber(190068384) reports timestamp 1793656421 = 2026-11-02. Recorded
     because a mothballed row's re-probe cadence is computed from this field (SCHEMA.md
     sets a four-week floor), and deriving it from the block is checkable where a
-    remembered date would not be.      # 0xabbab61
+    remembered date would not be.      # 0xb5436a0
 
 consensus:
   engine: CometBFT (InjectiveLabs fork) with skip-mev block-sdk lanes
@@ -144,15 +158,26 @@ forks:
   note: >-
     As on the framework, the Ethereum fork level is x/evm module state rather than
     client constants, and the real upgrade axis is Cosmos governance-scheduled
-    named upgrades. Injective's delta is the missing Osaka field.
+    named upgrades. Injective's delta is the missing Osaka field. The named upgrades
+    below postdate the pin, so they rest on the chain's own applied plans and documents
+    rather than on source.
   timeline:
   - {name: "homestead..prague", activation_time: 0, mainnet_equivalent: prague,
      activation_condition: "genesis ChainConfig — all block forks 0, Shanghai/Cancun/PragueTime 0",
      src: injective-chain/modules/evm/types/chain_config.go:DefaultChainConfig,
-     src_live: "eth_call @ 180071265 to 0x0b with empty input -> 'invalid input length' (Prague precompile present)"}
+     src_live: "eth_call @ 190068384 to 0x0b with empty input -> 'invalid input length' (Prague precompile present)"}
   - {name: osaka, status: pending, mainnet_equivalent: osaka,
-     note: "NOT EXPRESSIBLE — there is no OsakaTime field anywhere in injective-core; grep -r OsakaTime returns nothing",
-     src: injective-chain/modules/evm/types/chain_config.go:DefaultChainConfig}
+     note: "NOT EXPRESSIBLE at the pin — there is no OsakaTime field anywhere in injective-core; grep -r OsakaTime returns nothing. STILL NOT ACTIVE after v1.20.4: CLZ is an invalid opcode, a modexp over EIP-7823's 1024-byte bound still executes, and the live chain_config has shanghai, cancun and prague times and no osaka time (its blob schedule does carry an `osaka` entry, which activates nothing)",
+     src: injective-chain/modules/evm/types/chain_config.go:DefaultChainConfig,
+     src_live: "eth_call with state-override code 0x60011e5f5260205ff3 @ 190068384 -> 'invalid opcode: CLZ'; eth_call to 0x05 with a 1025-byte base @ 190068384 -> 0x00; LCD /injective/evm/v1/params @ 190069031 -> chain_config time keys shanghai_time, cancun_time, prague_time"}
+  - {name: "v1.20.3-safeharbor.2", activation_time: 1788371021, activation_block: 181295000, mainnet_equivalent: null,
+     note: "a recovery upgrade with published source. Its 19 changed files are in the exchange, insurance and oracle modules plus the upgrade handler; none is under modules/evm",
+     src_live: "LCD /cosmos/upgrade/v1beta1/applied_plan/v1.20.3-safeharbor.2 @ 190069031 -> height 181295000",
+     src_doc: "https://github.com/InjectiveFoundation/injective-core/releases/tag/v1.20.3-safeharbor.2-1788352700"}
+  - {name: "v1.20.4 (Meridian)", activation_time: 1790266008, activation_block: 184394000, mainnet_equivalent: null,
+     note: "THE FIRST UPGRADE WITH NO PUBLIC SOURCE, and it changed the EVM surface: a swap precompile at 0x68 and post-transfer hooks that make writable EVM calls. Also moves the SDK to v0.50.15-inj.1, against the v0.50.14-inj.11 in client.built_on. No Ethereum fork level moved",
+     src_live: "LCD /cosmos/upgrade/v1beta1/applied_plan/v1.20.4 @ 190069031 -> height 184394000; eth_getBlockByNumber 184394000 -> timestamp 2026-09-24T16:06:48Z",
+     src_doc: "https://docs.injective.network/infra/validator-mainnet/canonical-chain-upgrade-v1.20.4"}
 
 eips:
   1559:
@@ -166,14 +191,18 @@ eips:
       because the RPC backend fills that field from the txfees module's
       Mempool1559 gas price — a MEMPOOL ADMISSION FLOOR, not a consensus base fee,
       and one that is disabled by default (Mempool1559Enabled: false).
+      MAINNET RUNS IT ENABLED, overriding that default: txfees params read
+      mempool1559_enabled true and min_gas_price 160000000, which IS the 0x9896800 the
+      header reports. With max_block_change_rate 0 the floor does not move, which is why
+      the same value appears at both probed heights.
       Header and opcode therefore disagree by construction. Verified live at
-      block 180071265: baseFeePerGas = 0x9896800 while an eth_call over bytecode
+      block 190068384: baseFeePerGas = 0x9896800 while an eth_call over bytecode
       `48 5f 52 60 20 5f f3` (BASEFEE; MSTORE; RETURN) returns 32 zero bytes.
       A contract that prices anything off `block.basefee` reads zero; a wallet
       that reads `baseFeePerGas` reads 0.16 gwei; both are looking at the same
       block.
     src: "injective-chain/modules/evm/keeper/state_transition.go:NewEVM, injective-chain/modules/evm/keeper/config.go:VMConfig, injective-chain/modules/evm/rpc/backend/chain_info.go:BaseFee, injective-chain/modules/txfees/types/params.go:DefaultParams"
-    src_live: "eth_getBlockByNumber @ 180071265 -> baseFeePerGas 0x9896800; eth_call with state-override code 0x485f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_getBlockByNumber @ 190068384 -> baseFeePerGas 0x9896800; eth_call with state-override code 0x485f5260205ff3 @ 190068384 -> 0x00..00; LCD /injective/txfees/v1beta1/params @ 190069031 -> mempool1559_enabled true, min_gas_price 160000000, max_block_change_rate 0"
   3529:
     status: removed
     severity: high
@@ -212,7 +241,7 @@ eips:
       deployed value. As with 0x04, there is no type gate on the raw envelope, and
       AsMessage never copies BlobHashes, so BLOBHASH would read an empty list.
     src: injective-chain/modules/evm/keeper/state_transition.go:NewEVM
-    src_live: "eth_call with state-override code 0x4a5f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_call with state-override code 0x4a5f5260205ff3 @ 190068384 -> 0x00..00"
   4399:
     status: modified
     severity: high
@@ -226,7 +255,7 @@ eips:
       chain. Note mixHash in the RPC block is also zero, so on Injective the two
       happen to agree — by coincidence, not by design.
     src: injective-chain/modules/evm/keeper/config.go:EVMBlockConfig
-    src_live: "eth_call with state-override code 0x445f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_call with state-override code 0x445f5260205ff3 @ 190068384 -> 0x00..00"
   155:
     status: modified
     severity: high
@@ -236,9 +265,9 @@ eips:
       unprotected transaction when the parameter is turned off. A signature with
       no chain id in its digest is valid on every chain that accepts one, so a
       transaction signed for Injective can be replayed elsewhere and vice versa.
-      Whether mainnet currently runs the default is live module state and was not
-      probed.
+      Mainnet runs the default: the live evm params read allow_unprotected_txs true.
     src: "injective-chain/modules/evm/types/params.go:DefaultAllowUnprotectedTxs, injective-chain/modules/evm/ante/eth_ante.go:ValidateEthBasic"
+    src_live: "LCD /injective/evm/v1/params @ 190069031 -> allow_unprotected_txs true"
   7951:
     status: removed
     severity: high
@@ -257,7 +286,7 @@ eips:
       silent-P256 class (see findings.yaml:p256-silent-invalid), by a cause of
       its own: the fork level cannot reach Osaka at all.
     src: "injective-chain/modules/evm/keeper/state_transition.go:NewEVM, injective-chain/modules/evm/types/chain_config.go:DefaultChainConfig"
-    src_live: "eth_call @ 180071265 to 0x0..0100 with geth's CallP256Verify valid vector -> 0x; control eth_call to 0x0..02 -> 0xe3b0c442...b855; eth_getCode 0x0..0100 -> 0x"
+    src_live: "eth_call @ 190068384 to 0x0..0100 with geth's CallP256Verify valid vector -> 0x; control eth_call to 0x0..02 -> 0xe3b0c442...b855; eth_getCode 0x0..0100 -> 0x"
   2935:
     status: removed
     severity: high
@@ -270,12 +299,12 @@ eips:
       and a contract that calls the history contract to read deep block hashes
       gets an empty return from an empty account.
     src: injective-chain/modules/evm/keeper/state_transition.go:GetHashFn
-    src_live: "eth_getCode @ 180071265 0x0000F90827F1C53a10cb7A02335B175320002935 -> 0x"
+    src_live: "eth_getCode @ 190068384 0x0000F90827F1C53a10cb7A02335B175320002935 -> 0x"
   7685:
     status: removed
     note: "no requestsHash key is emitted at all — FormatBlock has no such field, unlike the framework's MakeHeader which emits the constant EmptyRequestsHash"
     src: injective-chain/modules/evm/rpc/types/utils.go:FormatBlock
-    src_live: "eth_getBlockByNumber @ 180071265 -> the header has 21 keys and none of requestsHash, withdrawalsRoot, blobGasUsed, excessBlobGas, parentBeaconBlockRoot"
+    src_live: "eth_getBlockByNumber @ 190068384 -> the header has 21 keys and none of requestsHash, withdrawalsRoot, blobGasUsed, excessBlobGas, parentBeaconBlockRoot"
   4895:
     status: removed
     note: "no withdrawalsRoot key emitted (the framework emits the constant EmptyWithdrawalsHash)"
@@ -290,9 +319,9 @@ eips:
       DefaultExtraEIPs is empty, with an in-source comment that it is kept empty
       "to prevent overriding the latest hard fork instruction set". The
       framework's jump-table-mutator mechanism exists here too and is unused by
-      default; whether mainnet's live params add any is module state, not
-      established.
+      default, and mainnet adds none: the live evm params read extra_eips [].
     src: injective-chain/modules/evm/types/params.go:DefaultParams
+    src_live: "LCD /injective/evm/v1/params @ 190069031 -> extra_eips []"
 
 non_eip_specs:
   - id: "EIP-712 (Web3Tx extension)"
@@ -350,8 +379,9 @@ tx_types:
       is not refused, it just does not do what it says.
     src: injective-chain/modules/evm/types/msg.go:AsMessage
   note: >-
-    Live census over 60 consecutive blocks ending at 180071265: 5 EVM
-    transactions, 4 of type 0x02 and 1 of type 0x00. Injective adds no type byte
+    Live census over 60 consecutive blocks ending at 190068384: 1 EVM
+    transaction, of type 0x00 (the 60 blocks ending at 180071265 held 4 of type 0x02
+    and 1 of type 0x00). Injective adds no type byte
     of its own — but see non_evm_transactions, and note that the protobuf TxData
     interface still registers only LegacyTx, AccessListTx and DynamicFeeTx, so the
     legacy decoding path cannot represent 0x03 or 0x04 at all.
@@ -429,8 +459,8 @@ tx_authorization:
     ErrInvalidPubKey("ED25519 public keys are unsupported"); Sei's does the same.
     Injective's copy of the same function has the same case and it
     `return nil`s — accepted. There is no ed25519 verifier at any address on this
-    chain: the built-in map is Prague's 0x01-0x11, and Injective's own four
-    precompiles are bank, exchange, staking and oracle. So `authorizes: protocol`
+    chain: the built-in map is Prague's 0x01-0x11, and Injective's own precompiles
+    are bank, exchange, staking, oracle and swap. So `authorizes: protocol`
     with `precompile: none`: the protocol will authorize a state change that no
     contract on the same chain can audit. And the state change is EVM-visible,
     because Injective has one account space — an ed25519 account's Cosmos address
@@ -516,10 +546,14 @@ tx_authorization:
         "for Ethereum mainnet" and have the result executed on Injective. Paired
         with 0x01 in the trivial sense that the curve is secp256k1, but no
         contract can reconstruct which domain the user believed they were signing
-        for. This is also the path that carries the second signer.
+        for. This is also the path that carries the second signer. CANNOT BE RE-READ:
+        the v1.20.4 changelog lists "Fix Ledger signature verification in ante handler by
+        enforcing payload to be in EIP712 payload", so this code moved after the pin, in
+        source nobody can see. Whether the chain-id acceptance survived it is not established.
       availability: optional
       activation_condition: 'environment variable DEVNET_NO_SIGNATURE_VERIFICATION unset (if set, this decorator and the Cosmos signature decorator are both replaced with a no-op)'
       src: "injective-chain/app/ante/eip712.go:GetWeb3ExtensionOptions, injective-chain/app/ante/ante.go:NewAnteHandler, injective-chain/app/ante/ante.go:noopAnteDecorator"
+      src_doc: https://github.com/InjectiveFoundation/injective-core/releases/download/v1.20.4-1789748350/CHANGELOG.md
     multisig:
       status: inherited
       authorizes: protocol
@@ -540,14 +574,14 @@ precompiles:
       `NewEVM` seeds the contract map from `vm.DefaultPrecompiles(cfg.Rules)` — the
       dependency's Prague set. The base 0x01-0x11 range is that Prague set: BLS12-381
       present, no Osaka MODEXP bounds. No P256VERIFY: 0x0100 is not in Injective's
-      active precompile set (see the 0x0100 row). Injective's four custom precompiles
-      are at 0x64-0x67, the dataset's worst collision zone — see the section note.
+      active precompile set (see the 0x0100 row). Injective's custom precompiles are at
+      0x64-0x68, the dataset's worst collision zone — see the section note.
   "0x0000000000000000000000000000000000000064":
     name: bank (Injective)
     status: added
     severity: high
     src: "injective-chain/modules/evm/precompiles/bank/bank.go:bankContractAddress, injective-chain/app/app.go:NewInjectiveApp"
-    src_live: "eth_getCode @ 180071265 -> 0x (native, no code stub); eth_call with selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef' (live ABI dispatch)"
+    src_live: "eth_getCode @ 190068384 -> 0x (native, no code stub); eth_call with selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef' (live ABI dispatch)"
     note: >-
       A PRECOMPILE THAT MOVES MONEY, WHICH THE FRAMEWORK'S BANK PRECOMPILE CANNOT.
       cosmos/evm's bank precompile at 0x0804 is query-only. Injective's, at a
@@ -567,7 +601,7 @@ precompiles:
     status: added
     severity: high
     src: "injective-chain/modules/evm/precompiles/exchange/exchange.go:exchangeContractAddress, injective-chain/app/app.go:NewInjectiveApp"
-    src_live: "eth_getCode @ 180071265 -> 0x; eth_call selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef'"
+    src_live: "eth_getCode @ 190068384 -> 0x; eth_call selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef'"
     note: >-
       THE MOST POWERFUL PRECOMPILE IN THIS DATASET. From EVM bytecode it can
       deposit and withdraw against the exchange, transfer between subaccounts,
@@ -587,7 +621,7 @@ precompiles:
     status: added
     severity: high
     src: "injective-chain/modules/evm/precompiles/staking/staking.go:stakingContractAddress, injective-chain/app/app.go:NewInjectiveApp"
-    src_live: "eth_getCode @ 180071265 -> 0x; eth_call with EMPTY calldata -> revert 'precompile panic'"
+    src_live: "eth_getCode @ 190068384 -> 0x; eth_call with EMPTY calldata -> revert 'precompile panic'"
     note: >-
       delegate, undelegate, redelegate, withdrawDelegatorRewards, plus a
       delegation query. Writers are readonly-guarded. Note the live behaviour on
@@ -601,7 +635,7 @@ precompiles:
     status: added
     severity: high
     src: "injective-chain/modules/evm/precompiles/oracle/oracle.go:oracleContractAddress, injective-chain/app/app.go:NewInjectiveApp"
-    src_live: "eth_getCode @ 180071265 -> 0x; eth_call selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef'"
+    src_live: "eth_getCode @ 190068384 -> 0x; eth_call selector 0xdeadbeef -> revert 'no method with id: 0xdeadbeef'"
     note: >-
       Query-only — oraclePrice, oraclePricePairState, oraclePricePairStateScaled
       — but the answers come from validator- and provider-submitted price feeds
@@ -610,13 +644,44 @@ precompiles:
       call returns different values in consecutive blocks with no EVM transaction
       in between. Same class as the Flare row's oracle precompile.
       Gas: 15000 for oraclePrice, 20000 for the pair-state methods.
+  "0x0000000000000000000000000000000000000068":
+    name: swap
+    status: added
+    severity: high
+    src_live: "eth_getCode @ 190068384 -> 0x; eth_call selector 0xdeadbeef @ 190068384 -> revert 'no method with id: 0xdeadbeef', while 0x69 -> 0x; empty calldata -> revert 'precompile panic'; STATICCALL of swapExactInputV1 from a state-override wrapper @ 190068568 -> revert 'the method is not readonly'; LCD /injective/exchange/v2/exchangeParams @ 190069031 -> swap_params enabled true, 3 allowed_markets, 1 exchange_admin"
+    src_doc: https://docs.injective.network/developers-evm/swap-precompile
+    note: >-
+      A PRECOMPILE WITH NO PUBLIC SOURCE, the first fact on this row that cannot be
+      cited to a tree. It arrived with v1.20.4 (Meridian): the changelog says "Add native
+      exact-input spot swaps for EVM callers via a new swap precompile (0x68)", and neither
+      the pin nor any later readable tag contains it. The docs give the interface as
+      quoteExactInputV1, quoteExactOutputV1 and swapExactInputV1, filling against the
+      orderbook from the caller's DEFAULT subaccount, with output landing as a bank balance
+      the EVM reads. That is the same path as system_transactions.fba_settlement_to_bank,
+      now reachable by a single contract call.
+      THE MARKET LIST IS NOT GOVERNED. The docs say MsgUpdateSwapParams is callable by any
+      exchange_admins address, takes effect immediately with no vote, and fully replaces
+      the set, so omitting a market removes it and omitting `enabled` pauses all swaps. A
+      contract relying on this precompile can stop working on one admin's transaction.
+      Three markets and one admin are configured today, and the docs describe the rollout
+      as still being tested, with some directions reverting.
+      Live, it behaves like its siblings: `0x` from eth_getCode, ABI dispatch, a readonly
+      guard, and the same panic path as 0x66 on empty calldata. NOT ESTABLISHED: its gas
+      schedule, and any successful quote, because every token tried reverted with "is not
+      registered as a bank token pair".
+      NOT AN ACTIVATION HEIGHT: eth_call answers here from 181027005 upward and is empty at
+      181027004, but that is before the 184394000 upgrade and the safeharbor source of that
+      era has no such precompile. It shows how the public endpoint serves old heights today,
+      not what the network executed then. 184394000 is the height the docs and the changelog
+      support. ADDRESS HAZARD: three-way with Arbitrum's ArbFunctionTable and BSC's
+      verifyDoubleSignEvidence.
   "0x0000000000000000000000000000000000000100":
     name: P256VERIFY
     status: removed
     severity: high
     inherited_from: cosmos-evm
     src: injective-chain/modules/evm/keeper/state_transition.go:NewEVM
-    src_live: "eth_getCode @ 180071265 -> 0x; eth_call with geth's valid CallP256Verify vector -> 0x (empty), while 0x02 on the same batch returns the correct sha256"
+    src_live: "eth_getCode @ 190068384 -> 0x; eth_call with geth's valid CallP256Verify vector -> 0x (empty), while 0x02 on the same batch returns the correct sha256"
     note: >-
       OVERRIDE of the framework's optional-added entry. Absent, and absent in the
       way that fails silently — see eips.7951.
@@ -625,16 +690,18 @@ precompiles:
     status: removed
     inherited_from: cosmos-evm
     src: injective-chain/app/app.go:NewInjectiveApp
-    src_live: "eth_getCode @ 180071265 0x0..0800 -> 0x; 0x0..0803 -> 0x and eth_call to it returns 0x (empty success), NOT the framework's panic"
+    src_live: "eth_getCode @ 190068384 0x0..0800 -> 0x; 0x0..0803 -> 0x and eth_call to it returns 0x (empty success), NOT the framework's panic"
     note: >-
       OVERRIDE covering the framework's whole 0x0800-0x0807 range plus 0x0400.
-      None of it exists here: Injective registers four CustomContractFn closures
-      and nothing else. Worth stating explicitly because the framework's
+      None of it exists here: at the pin Injective registers four CustomContractFn
+      closures and nothing else, and a live scan of 0x0801-0x0807 still finds no code. Worth stating explicitly because the framework's
       0x0803 vesting entry is a panic trigger in evmd's genesis — INJECTIVE DOES
       NOT INHERIT THAT FAULT. Probed live: 0x0803 is an ordinary empty account
       that returns empty output on any call.
   note: >-
-    FOUR ADDRESSES, AND THEY LAND ON THE DATASET'S WORST COLLISION ZONE.
+    FIVE ADDRESSES NOW, FOUR OF THEM FROM THE PIN, ALL IN THE DATASET'S WORST COLLISION
+    ZONE. The fifth, 0x68, arrived with v1.20.4 and has its own entry above; the rest of
+    this note describes the four the pinned source shows.
     0x64, 0x65, 0x66 and 0x67 are `common.BytesToAddress([]byte{100..103})` —
     exactly the range README.md already flags: Arbitrum's ArbSys, ArbInfo,
     ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest occupy 0x64-0x69, and
@@ -650,9 +717,11 @@ precompiles:
     mainnet; Injective went to the lowest custom block anyone in this dataset
     uses, 0x53 addresses above mainnet's 0x11 frontier.
 
-    Probe discipline, since the Flare and Sonic rows made this necessary: all four
+    Probe discipline, since the Flare and Sonic rows made this necessary: all five
     return `0x` from eth_getCode — no 1-byte stub, no impersonating bytecode — AND
-    the source map was read. Both tests agree.
+    the source map was read for the four it covers. Both tests agree on those. The fifth
+    was FOUND BY THIS PROBE: scanning the neighbouring addresses for ABI dispatch is what
+    surfaced it, so eth_getCode alone would have missed it.
 
     Category note: like the framework's and Sei's, all four are ABI-dispatched
     Solidity interfaces implemented in Go, not raw-input precompiles. Unlike the
@@ -666,14 +735,14 @@ system_contracts:
     status: removed
     inherited_from: cosmos-evm
     src: injective-chain/modules/evm/keeper/state_transition.go:GetHashFn
-    src_live: "eth_getCode @ 180071265 -> 0x"
+    src_live: "eth_getCode @ 190068384 -> 0x"
     note: "OVERRIDE — Injective has no preinstall mechanism, so the framework's five predeploys are all absent from the client. See the section note."
   note: >-
     NO PREINSTALL MECHANISM. The framework's MsgRegisterPreinstalls and its
     DefaultPreinstalls list have no counterpart in Injective's vendored module, so
     none of the five predeploys is installed by the client. THE ECOSYSTEM
     CONTRACTS ARE STILL THERE, deployed by ordinary transactions rather than by
-    genesis: at block 180071265 the Create2 deterministic deployer
+    genesis: at block 190068384 the Create2 deterministic deployer
     (0x4e59b448…4956c, 140 hex chars), Multicall3 (0xcA11bde0…76CA11) and Permit2
     (0x00000000…c78BA3) all have their canonical bytecode. So the observable end
     state matches a Cosmos EVM chain that DID preinstall them, while the mechanism
@@ -736,6 +805,20 @@ system_transactions:
       Validator-attested Ethereum deposits mint bank denominations to the
       recipient's 20-byte address, which is that account's EVM address. Value
       arrives from Ethereum with no Injective-side EVM transaction and no EVM log.
+  permissions_post_transfer_hooks:
+    name: "a bank transfer can run writable EVM code"
+    status: added
+    severity: high
+    src: "injective-chain/modules/permissions/keeper/send_restriction.go:SendRestrictionFn, injective-chain/modules/permissions/keeper/evm_hook.go"
+    src_doc: https://github.com/InjectiveFoundation/injective-core/releases/download/v1.20.4-1789748350/CHANGELOG.md
+    note: >-
+      The v1.20.4 changelog adds "namespace-configurable post-transfer hooks backed by
+      writable EVM calls, for MTS tokens". If that means what it says, moving a token by
+      a Cosmos message can execute EVM state changes with no EVM transaction to point at,
+      which is the reverse direction of this section's other entries. The pinned tree's
+      hook runs before the transfer, from SendRestrictionFn, through EthCall, so "writable"
+      and "post-transfer" are both new. Changelog text only: no source can be read and no
+      such hook was exercised, so its gas and failure behaviour are not established.
   auction_and_insurance_flows:
     name: "auction settlement and insurance-fund payouts"
     status: added
@@ -759,7 +842,7 @@ opcodes:
       is also what an uninitialised field, a missing header and a failed decode all look
       like. `block.prevrandao` is 0 in every block.
     src: injective-chain/modules/evm/keeper/config.go:75
-    src_live: "eth_call with state-override code 0x445f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_call with state-override code 0x445f5260205ff3 @ 190068384 -> 0x00..00"
   added: []
   removed: []
   modified:
@@ -768,7 +851,7 @@ opcodes:
     severity: high
     note: "the ZERO hash, overriding the framework's common.MaxHash — see eips.4399"
     src: injective-chain/modules/evm/keeper/config.go:EVMBlockConfig
-    src_live: "eth_call state-override 0x445f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_call state-override 0x445f5260205ff3 @ 190068384 -> 0x00..00"
   - op: "0x48"
     name: BASEFEE
     severity: high
@@ -777,12 +860,12 @@ opcodes:
       different subsystem. Overrides the framework, where BASEFEE carries the
       x/feemarket value. See eips.1559.
     src: injective-chain/modules/evm/keeper/state_transition.go:NewEVM
-    src_live: "eth_call state-override 0x485f5260205ff3 @ 180071265 -> 0x00..00 while header baseFeePerGas = 0x9896800"
+    src_live: "eth_call state-override 0x485f5260205ff3 @ 190068384 -> 0x00..00 while header baseFeePerGas = 0x9896800"
   - op: "0x4a"
     name: BLOBBASEFEE
     note: "hard-coded 0 — the deployed answer to the framework row's `unrecorded` for this opcode"
     src: injective-chain/modules/evm/keeper/state_transition.go:NewEVM
-    src_live: "eth_call state-override 0x4a5f5260205ff3 @ 180071265 -> 0x00..00"
+    src_live: "eth_call state-override 0x4a5f5260205ff3 @ 190068384 -> 0x00..00"
   - op: "0x45"
     name: GASLIMIT
     severity: high
@@ -796,12 +879,18 @@ opcodes:
       is the failure mode static analysis is least likely to catch. Observed under
       eth_call only; the in-block value was not separately measured.
     src: "injective-chain/modules/evm/keeper/state_transition.go:NewEVM, injective-chain/types/block.go:BlockGasLimit"
-    src_live: "eth_call state-override 0x455f5260205ff3 @ 180071265 -> 0x00..00 while header gasLimit = 0x8f0d180"
+    src_live: "eth_call state-override 0x455f5260205ff3 @ 190068384 -> 0x00..00 while header gasLimit = 0x8f0d180"
   - op: "0x41"
     name: COINBASE
-    note: "the block proposer's validator address; observed live as 0x455b..a636, an account that received no fees — fees go to the FeeCollector module account"
-    src: injective-chain/modules/evm/keeper/config.go:EVMBlockConfig
-    src_live: "eth_call state-override 0x415f5260205ff3 @ 180070934 -> 0x..455ba6ed930a3cef138826ac1fcda1f4829da636"
+    note: >-
+      In source, the block proposer's validator address, and fees go to the FeeCollector
+      module account rather than to it. UNDER eth_call IT IS NOT REPRODUCIBLE: seven asks
+      at one fixed height returned two different addresses and neither was that block's
+      header `miner`, which stayed stable. DoCall does pass the block's proposer, so the
+      cause is not established. A public endpoint may be balancing across nodes, but that
+      was not shown. Do not treat a simulated `block.coinbase` here as that block's proposer.
+    src: "injective-chain/modules/evm/keeper/config.go:EVMBlockConfig, injective-chain/modules/evm/rpc/backend/call_tx.go:DoCall"
+    src_live: "eth_call state-override 0x415f5260205ff3 @ 190068568, 7 times -> 0x455ba6ed..a636 and 0x9980fa01.. while eth_getBlockByNumber @ 190068568 -> miner 0x6087607e..104c"
   note: >-
     No opcode added or removed. Every entry is a value fed into an unmodified
     opcode, as on the framework — but three of the five are Injective's own
@@ -888,20 +977,20 @@ block_metrics:
   block_gas_limit:
     verdict: ~
     observed: 150000000
-    observed_at_block: 185441585
-    observed_at: 2026-10-01
+    observed_at_block: 190068837
+    observed_at: 2026-11-02
     mutability: config
-    src_live: "eth_getBlockByNumber @ 185441585 -> gasLimit 0x8f0d180"
+    src_live: "eth_getBlockByNumber @ 190068837 -> gasLimit 0x8f0d180"
     note: >-
       150,000,000 at a 593 ms cadence — 253 Mgas/s, eighth in the dataset, and the same
       gas limit Monad and Hedera carry at three very different cadences.
   block_time:
     verdict: ~
-    observed: 593.4
-    observed_at_block: 185441585
-    observed_at: 2026-10-01
+    observed: 592.6
+    observed_at_block: 190068837
+    observed_at: 2026-11-02
     mutability: config
-    src_live: "eth_getBlockByNumber @ 185441585 vs 185431585 -> 5934s / 10000 blocks"
+    src_live: "eth_getBlockByNumber @ 190068837 vs 190058837 -> 5926s / 10000 blocks"
     note: >-
       ~0.65s, CometBFT. The observed 593 ms runs under the nominal figure.
 
@@ -923,7 +1012,7 @@ fee_model:
       A port of Osmosis's Mempool1559: a per-node gas-price floor that rises
       toward a TargetBlockSpacePercentRate (0.625) of block gas and is bounded by
       DefaultBaseFeeMultiplier / MaxBaseFeeMultiplier. Mempool1559Enabled defaults
-      to FALSE. It is not consensus: two validators with different settings admit
+      to FALSE, and mainnet's params set it TRUE with a fixed floor of 160000000. It is not consensus: two validators with different settings admit
       different transactions rather than disagreeing on state. The RPC reports its
       value as `baseFeePerGas` anyway.
   - name: fees are not burned
@@ -947,7 +1036,7 @@ header_fields:
     fabricates a NARROWER header — 21 keys, with no withdrawalsRoot, blobGasUsed,
     excessBlobGas, parentBeaconBlockRoot or requestsHash at all, where the
     framework emits all five as constants from the corresponding fork — and it
-    fabricates two of the remaining fields WORSE. Verified live at 180071265.
+    fabricates two of the remaining fields WORSE. Verified live at 190068384.
   added: []
   removed:
   - {name: withdrawalsRoot, note: "key not emitted at all (framework emits EmptyWithdrawalsHash)"}
@@ -969,7 +1058,7 @@ header_fields:
       Injective block. The framework at least recomputes a real root over the
       receipts it exposes; this does not.
     src: injective-chain/modules/evm/rpc/types/utils.go:FormatBlock
-    src_live: "eth_getBlockByNumber @ 0xabbaa3e (1 tx) -> receiptsRoot = EmptyRootHash; same value at 180071265 (0 txs)"
+    src_live: "eth_getBlockByNumber @ 0xabbaa3e (1 tx) -> receiptsRoot = EmptyRootHash; same at 190068296 (1 tx, receipt status 0x0) and at 190068384 (0 txs)"
   - name: transactionsRoot
     severity: high
     note: >-
@@ -986,12 +1075,12 @@ header_fields:
     note: >-
       COUNTS COSMOS GAS. The field is the CometBFT block's total gas consumed, so
       it is dominated by exchange, bank and wasm traffic that has nothing to do
-      with the EVM. Live: 54 of 60 consecutive blocks ending at 180071265 report
+      with the EVM. Live: 57 of 60 consecutive blocks ending at 190068384 report
       ZERO EVM transactions and a NON-ZERO gasUsed; the probed block reports
-      0xac4551 (11,289,937) gas used with an empty transactions array. Any metric
+      0x1081f8a (17,309,578) gas used with an empty transactions array. Any metric
       that treats gasUsed/gasLimit as EVM utilisation is measuring the exchange.
     src: injective-chain/modules/evm/rpc/backend/blocks.go
-    src_live: "eth_getBlockByNumber @ 180071265 -> gasUsed 0xac4551, transactions []; 54/60 blocks in 180071206-180071265 have 0 txs and non-zero gasUsed"
+    src_live: "eth_getBlockByNumber @ 190068384 -> gasUsed 0x1081f8a, transactions []; 57/60 blocks in 190068325-190068384 have 0 txs and non-zero gasUsed"
   - name: stateRoot
     severity: high
     inherited_from: cosmos-evm
@@ -1071,7 +1160,7 @@ gotchas:
   BASEFEE RETURNS 0 WHILE THE BLOCK REPORTS A BASE FEE. The EVM hard-codes
   BlockContext.BaseFee to zero and sets NoBaseFee; the JSON-RPC `baseFeePerGas`
   comes from the txfees mempool floor, a node-local admission price that is
-  disabled by default. GASLIMIT likewise returns 0 under eth_call while the header
+  disabled by default and enabled on mainnet. GASLIMIT likewise returns 0 under eth_call while the header
   reports 150,000,000 — so a contract simulates differently from how it executes.
 - >-
   receiptsRoot IS A CONSTANT. FormatBlock hard-codes it to the empty trie root on
@@ -1079,11 +1168,15 @@ gotchas:
   CometBFT DataHash over ALL Cosmos transactions, not a trie over the EVM
   transactions listed beside it. No receipt or log inclusion proof can work.
 - >-
-  gasUsed COUNTS THE EXCHANGE. It is the CometBFT block's total gas. 54 of 60
+  gasUsed COUNTS THE EXCHANGE. It is the CometBFT block's total gas. 57 of 60
   consecutive probed blocks had zero EVM transactions and millions of gas used,
   and a receipt's cumulativeGasUsed (0xa75259) was two hundred times its own
   gasUsed (0xd715). Utilisation metrics computed from these fields measure Cosmos
   traffic.
+- >-
+  A FIFTH PRECOMPILE, SWAP AT 0x68, ARRIVED WITH NO PUBLIC SOURCE. It is live on mainnet
+  from the v1.20.4 upgrade, and its market list changes on one admin's transaction with
+  no vote. Nothing in the pinned tree describes it.
 - >-
   FOUR PRECOMPILES AT 0x64-0x67 — THE WORST ADDRESSES AVAILABLE. Exactly where
   Arbitrum puts ArbSys/ArbInfo/ArbAddressTable/ArbBLS and BSC puts its

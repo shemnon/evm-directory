@@ -42,8 +42,8 @@ does not exist, list `chains/` and ask.
 tools/.venv/bin/python .claude/skills/update-chain/scripts/pin_status.py <slug>
 ```
 
-It reports every pin (client and companions) against upstream: the newest stable tag
-of the same naming family and its peeled commit, newer unstable tags, how far a branch
+It reports every pin (client and companions) against upstream: the highest-versioned
+stable tag of the same naming family and its peeled commit, newer unstable tags, how far a branch
 pin's default branch has moved, when the row was pinned, and which of the row's own
 declared forks fall between that date and now. It also lists the rows the change
 reaches. Use `--json` if you want to parse it.
@@ -61,8 +61,12 @@ Triage by row kind before going further:
 | no newer stable tag, branch pins current | Nothing to bump. Still check the fork steps below: an **overdue pending** fork is a data update even at the same pin. |
 | newest release is unstable only | Do not pin it. If a mainnet fork *requires* it (release notes say "mandatory for mainnet"), ask the user. |
 
-Choose the **target**: the newest stable tag per pin. Companions move when the client
-does, or when their own schedule or definitions changed.
+Choose the **target**: the highest-versioned stable tag per pin, which is not always the
+last one published, because a repo patching two lines publishes `v6.6.4` after `v6.7.0`.
+`pin_status.py` ranks by version and flags the rest: `PUBLISHED AFTER THE TARGET` on a
+lower candidate, and `older line` on a backport below the pin. Neither is a target, but
+read their notes, since a backport can carry a fork. Companions move when the client does,
+or when their own schedule or definitions changed.
 
 A tag is only a candidate if it has the **same shape** as the pin — the full string with
 every run of digits masked, so `v1.15.5-wasp1` is `v#.#.#-wasp#` and a plain `v1.16.3`

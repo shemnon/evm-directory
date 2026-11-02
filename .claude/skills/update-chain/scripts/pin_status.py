@@ -168,9 +168,37 @@ def manifest_hits(repo, ref, path, sha, name, version=None):
     return (shal, namel, bool(shal))
 
 
+def rank(rows, current):
+    """Split the pin's own family by VERSION NUMBER, highest first. Returns
+    (newer, older_line): tags above the pin, and stable tags below it that were
+    published after it.
+
+    Publish date cannot answer "newer than the pin" in a repo that patches more than
+    one line. It got all three of these wrong:
+
+      pin `v6.6.1`   ->  `v6.6.4` [10-06] over `v6.7.0` [10-05]    the wrong target
+      pin `v0.78.1`  ->  `v0.78.0` [10-23]                         a downgrade as drift
+      pin `v6.6.4`   ->  nothing, `v6.7.0` predates it             a real upgrade hidden
+
+    Comparing numbers is sound here only because a family is a tag's SHAPE: two tags
+    of one family differ in nothing but their digit runs, so their keys line up.
+
+    `older_line` is not a candidate. It is reported because a backport can carry a
+    fork the higher line also needs, and a date is the only sign of it."""
+    fam, cur = family(current), vkey(current)
+    same = [r for r in rows if family(r["tag"]) == fam]
+    pinned = next((r["date"] for r in same if r["tag"] == current), None)
+    newer = sorted((r for r in same if vkey(r["tag"]) > cur),
+                   key=lambda r: vkey(r["tag"]), reverse=True)
+    older_line = sorted((r for r in same if vkey(r["tag"]) < cur and not r["unstable"]
+                         and pinned and r["date"] and r["date"] > pinned),
+                        key=lambda r: vkey(r["tag"]), reverse=True)
+    return newer, older_line
+
+
 def candidates(repo, current):
-    """Stable tags of the pin's family, newest first, plus the unstable ones newer
-    than the pin (a testnet or alpha tag is often the first sign of a fork)."""
+    """Stable tags of the pin's family, highest version first, plus the unstable ones
+    above the pin (a testnet or alpha tag is often the first sign of a fork)."""
     fam = family(current)
     rel = gh_json("release", "list", "-R", repo, "--limit", "50", "--exclude-drafts",
                   "--json", "tagName,publishedAt,isPrerelease") or []
@@ -191,9 +219,7 @@ def candidates(repo, current):
                       key=lambda r: vkey(r["tag"]), reverse=True)
     else:
         rows.sort(key=lambda r: r["date"] or 0, reverse=True)
-    same = [r for r in rows if family(r["tag"]) == fam]
-    idx = next((i for i, r in enumerate(same) if r["tag"] == current), len(same))
-    newer = same[:idx]
+    newer, older_line = rank(rows, current)
     # Only a shape published AFTER the pin can be its successor. Rootstock renames
     # every release (REED -> VETIVER -> ...), and listing the older names is noise.
     # With shape-based families this list also carries the upstream-parentage hint:
@@ -212,7 +238,7 @@ def candidates(repo, current):
     else:
         other = [r for r in rows if family(r["tag"]) != fam and not r["unstable"]
                  and after and r["date"] and r["date"] > after][:3]
-    return newer, other
+    return newer, other, older_line
 
 
 # `pinned_by.how` values whose COMPANION REPO IS NOT THE AUTHORITY. For these, a newer
@@ -229,7 +255,7 @@ def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
     p = {"label": label, "repo": repo, "version": version, "commit": commit,
          "pinned_by": pb or None, "pinned_commit_date": None, "clone": None,
          "kind": None, "target": None, "newer_stable": [], "newer_unstable": [],
-         "other_families": []}
+         "other_families": [], "older_line": []}
     if clone_dir.is_dir():
         p["clone"] = {"path": str(clone_dir.relative_to(ROOT)),
                       "head": sh("git", "-C", str(clone_dir), "rev-parse", "HEAD")}
@@ -242,10 +268,11 @@ def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
         return p
     if is_tag(version):
         p["kind"] = "tag"
-        newer, other = candidates(repo, version)
+        newer, other, older_line = candidates(repo, version)
         p["newer_stable"] = [r for r in newer if not r["unstable"]]
         p["newer_unstable"] = [r for r in newer if r["unstable"]]
         p["other_families"] = other
+        p["older_line"] = older_line
         if p["newer_stable"]:
             t = p["newer_stable"][0]
             p["target"] = {"tag": t["tag"], "commit": tag_commit(repo, t["tag"]),
@@ -491,9 +518,14 @@ def render(r, now):
             if t:
                 print(f"    NEWER  → {t['tag']} @ {(t['commit'] or '?')[:12]}  [{d(t['date'])}]")
                 for n in p["newer_stable"][1:]:
-                    print(f"             also newer: {n['tag']}  [{d(n['date'])}]")
+                    late = ("  PUBLISHED AFTER THE TARGET, but a lower version"
+                            if n["date"] and t["date"] and n["date"] > t["date"] else "")
+                    print(f"             also newer: {n['tag']}  [{d(n['date'])}]{late}")
             else:
                 print("    current — no newer stable tag of this family")
+            for n in p["older_line"][:3]:
+                print(f"    older line, published after the pin: {n['tag']}  [{d(n['date'])}]  "
+                      f"(a lower version, not a target; read its notes for backported forks)")
             for n in p["newer_unstable"]:
                 print(f"    unstable newer tag: {n['tag']}  [{d(n['date'])}]  (not a pin candidate; read its notes for forks)")
             if p["other_families"] and not t:

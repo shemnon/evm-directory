@@ -79,8 +79,21 @@ forks:
   - {name: theseusFix,   activation_time: 1753948800, mainnet_equivalent: null,
      note: "fixed the fee market's revert snapshot, which had been rolling back the nonce increment"}
   - {name: "prague + luban + plato + bohr + pascal + hermes", activation_time: 1764057600, mainnet_equivalent: prague}
-  - {name: coreRewardFix, activation_time: 1788440400, mainnet_equivalent: null,
-     note: "2026-09-03; closed an EIP-7702 interaction with the block-reward path — see eips.7702"}
+  - name: coreRewardFix
+    activation_time: 1788440400
+    mainnet_equivalent: null
+    severity: high
+    note: >-
+      2026-09-03, first applied at block 38376795. Closed an EIP-7702 interaction with the
+      block-reward path (see eips.7702), AND REMOVED 152,778,693.32 CORE FROM STATE WITH NO
+      RECIPIENT, which this row did not record until now. `ApplyCoreRecovery` zeroes a list of
+      eight accounts (94,725,624.69 CORE, four of them holding nothing) and claws 58,053,068.63
+      CORE back from seventeen others, down to a floor per account. No transaction, log or
+      trace frame. The client's comments call the amounts an "anomalous reward" from an
+      "attack". Fermi later moved balances; this one reduced them.
+    src: "consensus/misc/core_recovery.go:ApplyCoreRecovery, consensus/misc/core_recovery.go:coreRecoveryExcess, consensus/misc/core_recovery.go:coreRecoveryFloor, core/state_processor.go:ApplyCoreRecovery"
+    src_live: "eth_getBalance across all 25 listed accounts (rpc.ankr.com/core archive) @ 38376794 vs 38376795 -> total decrease 152778693.31745481; 0x1c58..6361 46206985.55 -> 0; 0x88ff..9581 36404444.46 -> 0; 0x555b..BDe2 12000000 -> 0"
+    src_doc: "https://cointelegraph.com/news/core-dao-emergency-hard-fork-excess-validator-rewards"
   - name: fermi
     activation_time: 1793592000
     mainnet_equivalent: null
@@ -512,10 +525,11 @@ gotchas:
     transactions not addressed to system contracts. Any analysis of Core's reward
     path from before that date describes a different chain.
   - >-
-    A BALANCE CAN CHANGE WITH NO TRANSACTION. Fermi set three accounts to zero and credited
-    a fourth at block 40093117 with no transaction, log or trace frame. An indexer that
-    builds balances from transfers disagrees with `eth_getBalance` from that block on, by
-    68,146,177.22 CORE, until it special-cases the fork.
+    BALANCES HAVE CHANGED TWICE WITH NO TRANSACTION. CoreRewardFix removed 152,778,693.32
+    CORE from 25 listed accounts at block 38376795, and Fermi moved 68,146,177.22 CORE at block
+    40093117. Neither leaves a transaction, log or trace frame. An indexer that builds
+    balances from transfers disagrees with `eth_getBalance`, and a supply computed from
+    issuance overstates by the first amount, until both are special-cased.
   - >-
     "FERMI" MEANS TWO DIFFERENT FORKS. On BSC it is the 450ms block-time step. On Core it is
     the balance move above, and Core's block time is still 3s. The shared name implies

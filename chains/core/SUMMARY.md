@@ -9,7 +9,25 @@ Baseline fork **prague**. Live probes at block **40135869** (`0x2646cbd`) on
 
 ---
 
-## 0. Fermi moved 68.1M CORE with no transaction
+## 0. The client has changed balances twice with no transaction
+
+| fork | block | what the client did | amount |
+|---|---|---|---|
+| CoreRewardFix, 2026-09-03 | 38376795 | removed from 25 listed accounts, no recipient | 152,778,693.32 CORE |
+| Fermi, 2026-11-02 | 40093117 | moved from three accounts to one | 68,146,177.22 CORE |
+
+**CoreRewardFix.** This row recorded that fork's EIP-7702 fix (§6) and missed that it also runs
+`ApplyCoreRecovery`. That zeroes eight accounts, four of which held nothing (94,725,624.69 CORE
+in total), and claws back from seventeen others down to a per-account floor (58,053,068.63
+CORE). Nothing is credited anywhere, so supply falls. The largest removals are `0x1c58…6361`
+at 46,206,985.55 and `0x88ff…9581` at 36,404,444.46. Measured across all 25 accounts at blocks
+38376794 and 38376795 on the `rpc.ankr.com/core` archive.
+
+The client's comments call the amounts an "anomalous reward" from an "attack". Coverage at the
+time reported an emergency fork after validators drew excess rewards. An unconfirmed repost of a
+post-mortem gives about 186M CORE burned, which does not match the amount measured here.
+
+**Fermi.**
 
 v1.0.27 has an empty changelog, and the only code it adds beyond the version bump is one
 fork. At the first block at or after `FermiTime` (2026-11-02 04:00 UTC, block 40093117),

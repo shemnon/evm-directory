@@ -1318,3 +1318,53 @@
     perspective, observable only from outside. A probe can show that a precompile exists
     and how it dispatches; it cannot show what it does on the paths nobody called, and
     a probe of known addresses finds nothing at an address it did not think to try.
+
+- id: client-applied-balance-moves
+  title: A client can change balances without a transaction
+  axis: system-contracts
+  rank: 31
+  lede: >-
+    A fork can carry a list of addresses and amounts and apply it directly to state at the
+    transition block. There is no transaction, log or trace frame, so the change is visible only
+    in the client's source and by comparing balances across that block. Anything that derives
+    balances or supply from transfers is wrong from then on, until it special-cases the fork.
+  chains:
+    core: >-
+      **Two in nine weeks, of different kinds.** CoreRewardFix (block 38376795, 2026-09-03)
+      removed 152,778,693.32 CORE from 25 listed accounts with no recipient, so supply fell. Fermi
+      (block 40093117, 2026-11-02) moved 68,146,177.22 CORE from three accounts to a 2-of-4 Safe,
+      conserving the sum, in a release whose changelog is empty. Both are gated on chain 1116.
+      Measured from an archive node on either side of each block.
+    berachain: >-
+      **In the consensus client, not the EVM.** `processElectra1Fixes` adds a validator from a
+      hard-coded deposit and forces another to exit, on mainnet only. Read from source, not
+      measured live.
+    ethereum: >-
+      **The precedent.** `ApplyDAOHardFork` moved a listed set of balances to a refund contract at
+      block 1920000 in 2016, and the code is still in the client because a full sync must replay it.
+  body: >-
+    A fork can carry a list of addresses and amounts and apply it directly to state at the
+    transition block, with no transaction, log or trace frame.
+
+
+    Core has done this twice. CoreRewardFix (2026-09-03) removed 152,778,693.32 CORE with no
+    recipient, and Fermi (2026-11-02) moved 68,146,177.22 CORE to one Safe; both were measured
+    from source and archive balances. Berachain's consensus client added a validator from a
+    hard-coded deposit and forced another to exit at Electra1, and Ethereum's 2016 DAO fork moved
+    listed balances to a refund contract; those two are from source only.
+
+
+    **What differs is what the sum does.** Ethereum's and Core's Fermi conserve it, and Core's
+    CoreRewardFix does not, so its supply can no longer be computed from issuance alone.
+
+
+    **Release notes did not reveal Fermi.** Core's v1.0.27 changelog is empty, and this dataset
+    recorded CoreRewardFix's consensus rules for two months without noticing the balance removal
+    in the same fork. The check that finds these is a search of the client for direct balance
+    writes, followed by archive reads either side of the transition block.
+
+
+    **This is not a complete list.** The search covered Go clients for a set of function names and
+    hard-coded address patterns. A chain missing from this table has not been shown to be free of
+    these. Upgrades that only install code, such as OP Stack's Canyon create2 deployer, are a
+    related mechanism and are not counted here.

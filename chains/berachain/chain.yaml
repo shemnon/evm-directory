@@ -1035,6 +1035,12 @@ header_fields:
 
 gotchas:
   - >-
+    THE CONSENSUS CLIENT HAS WRITTEN VALIDATOR STATE DIRECTLY. `processElectra1Fixes`, on mainnet
+    only, adds a validator from a hard-coded deposit of 901,393.69 Gwei and forces another to
+    exit, with the comment "fixes made necessary by accidents or wrong validator choices in
+    mainnet". Neither has a corresponding deposit or exit transaction. Read from source;
+    not measured live.
+  - >-
     CometBFT DOES NOT ORDER THE TRANSACTIONS. The intuitive reading of a
     CometBFT-plus-EVM chain — consensus picks the transaction list in
     PrepareProposal, the execution layer runs what it is handed — is false here.

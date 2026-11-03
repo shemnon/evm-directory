@@ -43,13 +43,13 @@ lineage:
 client:
   name: conflux-rust
   repo: https://github.com/Conflux-Chain/conflux-rust
-  version: v3.1.0
-  commit: 6e2e837c8271695b139e491f50e586ebd8ed10c8
+  version: v3.1.1
+  commit: f98f6c5e41605288e41d1aa6c02504583c280309
   language: rust
   note: >-
-    The pinned tag is EXACTLY what mainnet runs: `web3_clientVersion` answers
-    `conflux-rust/v3.1.0-6e2e837-20260810/x86_64-linux-gnu/rustc1.94.1`, and
-    `6e2e837` is the short form of this commit. Core Space and eSpace are the same
+    Mainnet runs a build 13 commits past this tag: `web3_clientVersion` answers
+    `conflux-rust/v3.1.1-55385e2-20261028/x86_64-linux-gnu/rustc1.94.1`, and `55385e2` is ahead
+    of the v3.1.1 tag. The version string matches and the commit does not. Core Space and eSpace are the same
     binary; `cfx_clientVersion` on https://main.confluxrpc.com returns the same
     string. No companion repo: the whole state transition, consensus, tx pool and
     RPC live in this tree.
@@ -1173,6 +1173,10 @@ header_fields:
     silently-misleading header fields in the dataset.
 
 gotchas:
+  - >-
+    v3.1.1 ADDED BLOCK-BODY AND HEADER CHECKS DURING CATCH-UP, including a minimum difficulty and a
+    maximum PoW height. The release is labelled a security and bug-fix release with no fork; nodes
+    below it did not apply these checks while syncing.
   - >-
     `eth_getBlockByNumber(N).stateRoot` IS THE STATE ROOT OF EPOCH N-5. Conflux
     defers execution by DEFERRED_STATE_EPOCH_COUNT = 5 epochs and the eSpace RPC

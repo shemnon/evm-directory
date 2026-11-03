@@ -1,6 +1,6 @@
 # Conflux eSpace — what this row teaches
 
-Pinned: `Conflux-Chain/conflux-rust` **v3.1.0** (`6e2e837c8271695b139e491f50e586ebd8ed10c8`).
+Pinned: `Conflux-Chain/conflux-rust` **v3.1.1** (`f98f6c5e41605288e41d1aa6c02504583c280309`).
 No companion repo — consensus, the two-space state transition, the EVM, the transaction
 pool and the RPC layer are all in this one tree. Live probe:
 `https://evm.confluxrpc.com`, chain id **1030**, block **155333000** (timestamp
@@ -10,10 +10,9 @@ Space** RPC `https://main.confluxrpc.com` (chain id **1029**) — the same node,
 ledger, the other space. Baseline fork **osaka**, reached **two days before this row was
 written** (V3.1 at epoch 155,140,000 = 2026-08-25 02:20:38 UTC).
 
-**Evidence path taken: source, and the pin is exact.** Mainnet answers
-`web3_clientVersion` with `conflux-rust/v3.1.0-6e2e837-20260810/x86_64-linux-gnu/rustc1.94.1`
-and `6e2e837` is this commit's short hash — so for once "the pinned tag" and "what
-validators run" are provably the same thing. Every gas number below that could be
+**Evidence path taken: source, and the pin is close but not exact.** Mainnet answers
+`web3_clientVersion` with `conflux-rust/v3.1.1-55385e2-20261028/x86_64-linux-gnu/rustc1.94.1`,
+and `55385e2` is 13 commits past the v3.1.1 tag. Every gas number below that could be
 measured was measured live as well as read, by binary search over `eth_call` gas limits.
 
 ---
@@ -410,9 +409,9 @@ rpc(){ curl -s -X POST -H 'content-type: application/json' \
        -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}" "${3:-$R}"; }
 
 # --- pin: the tag IS what mainnet runs
-git -C chains/conflux/repos/conflux-rust describe --tags     # v3.1.0
-git -C chains/conflux/repos/conflux-rust rev-parse HEAD      # 6e2e837c8271695b...
-rpc web3_clientVersion '[]'   # conflux-rust/v3.1.0-6e2e837-20260810/...
+git -C chains/conflux/repos/conflux-rust describe --tags     # v3.1.1
+git -C chains/conflux/repos/conflux-rust rev-parse HEAD      # f98f6c5e41605288...
+rpc web3_clientVersion '[]'   # conflux-rust/v3.1.1-55385e2-20261028/...
 rpc eth_chainId '[]'          # 0x406 = 1030
 
 # --- source: deferred execution, the 1-in-5 rule, the space gas shares, the burn

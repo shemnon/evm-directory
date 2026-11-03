@@ -2,7 +2,7 @@
 
 **Chain ID 8453 · role: `fork` · upstream: [op-stack](../op-stack/SUMMARY.md) · baseline: Osaka**
 
-Reference: [base/base `v1.4.2`](https://github.com/base/base) @ `5034ef80` — a
+Reference: [base/base `v1.5.1`](https://github.com/base/base) @ `5476069f` — a
 reth/op-reth-based client in Rust.
 
 ## First: the repo trap
@@ -60,8 +60,8 @@ it, and BSC/Arbitrum/opBNB demonstrate that nobody has.
 Configuration"**. Its README is explicit: *"Enshrined, not a precompile."* It brings
 2D nonces, a **sender/payer split**, an intrinsic gas schedule (`Eip8130GasSchedule`),
 stateful actor authorization and config-change authorization. At the previous pin
-this was gated behind the **Cobalt** upgrade. It is now gated behind **Zenith**, and
-that is the single most important fact on this row.
+this was gated behind the **Cobalt** upgrade, then **Zenith**. At v1.5.1 it is gated
+behind **Everest**, and that is the single most important fact on this row.
 
 It has its own transaction type: **`0x79`** (`EIP8130_TX_TYPE_ID = 121`).
 
@@ -71,9 +71,11 @@ TxContext at `0x8130…aa02`, both gated `>= Cobalt` in
 `provider.rs:install_with_observer` — so the *infrastructure* for native account
 abstraction is live and callable on Base mainnet today. The transaction type that
 would use it is not submittable, because `EIP8130_REJECTION_MSG` now reads *"gated
-behind Zenith"* where it read *"gated behind Cobalt"*, and Zenith is excluded from
-both `CONTRACT_VARIANTS` and `EXECUTION_VARIANTS` with a test asserting that even a
-runtime registry override leaves it `ForkCondition::Never`.
+behind Everest"*. The earlier reading of this row was that the type sat behind a gate
+no runtime override could open. That no longer holds: Everest is contract-backed and in
+the execution ladder, though unscheduled on every network. Zenith, which is still
+`ForkCondition::Never`, now holds only the Keystore, so until it activates a `0x79`
+transaction may use only delegation and native secp256k1 keys.
 
 Base also supports EIP-7702, so **two distinct account-abstraction mechanisms coexist**
 on the same chain, with two different transaction types.
@@ -118,29 +120,49 @@ itself be a passkey**.
 **Not live on mainnet yet**, and the reason changed under this re-pin. The earlier
 probe at block 50098345 found `ACCOUNT_CONFIG` and all three authenticator contracts
 returning empty code, with the module docs marking those CREATE2 addresses *"NOT
-final"*. That was a deployment gap. The binding constraint at v1.4.2 is a fork gate:
-the only transaction type that reaches `AuthenticatorDispatch` is `0x79`, and it now
-sits behind Zenith. The P-256 schemes stay `pending`, and Cobalt's activation did not
+final"*. That was a deployment gap. The binding constraint at v1.5.1 is two fork gates:
+the only transaction type that reaches `AuthenticatorDispatch` is `0x79`, which sits
+behind Everest, and non-secp256k1 keys also need Zenith's Keystore. The P-256 schemes stay `pending`, and Cobalt's activation did not
 change that — a P-256 key still cannot move a wei on Base mainnet.
 
 ## Its own fork line
 
-Beyond the OP Stack sequence (Bedrock → Jovian), Base has **Azul, Beryl, Cobalt,
-Denim** plus the **Zenith** gate. `zombie` is gone: Zenith replaced it as the
-never-activating gate, and Denim is a new fourth upgrade slot.
+Beyond the OP Stack sequence (Bedrock → Jovian), Base has **Azul, Beryl, Cobalt, Denim,
+Everest** plus the **Zenith** gate. `zombie` is gone: Zenith replaced it as the
+never-activating gate.
 
 | Upgrade | Mainnet | What it is |
 |---|---|---|
 | Azul | 2026-05-28 18:00 UTC | first Base-specific upgrade; Osaka pricing for MODEXP/P256VERIFY |
 | Beryl | 2026-06-25 18:00 UTC | installs the dynamic B-20 precompile lookup |
 | **Cobalt** | **2026-09-30 18:00 UTC** | NonceManager + TxContext precompiles, builder tx extensions. **Not** EIP-8130's type byte |
-| Denim | `Never` | sub-second blocks: 200ms cadence, gas parameters scaled 10× |
-| Zenith | `Never` | gate for future features; holds EIP-8130. Not runtime-activatable |
+| **Denim** | **2026-11-05 18:00 UTC, pending** (Sepolia since 2026-10-21) | 200ms blocks, gas parameters scaled 10×, `BaseTime` predeploy, B-20 V3 |
+| Everest | `None` on every network | declared at v1.5.1, not scheduled; holds the EIP-8130 type |
+| Zenith | `Never` | gate for future features; holds the Keystore. Not runtime-activatable |
 
 Base is **absent from the superchain-registry mainnet configs** in this snapshot —
 unlike OP Mainnet and World Chain, whose activation timestamps are published there.
 So fork *order* is verified from the `BaseUpgrade` enum, but timestamps are runtime
 configuration and are not recorded rather than guessed.
+
+## Denim: 200ms blocks and a clock that stays in seconds
+
+Not active on mainnet at this pin. It is here because it activates two days after the row
+was written, and this row must be re-probed once it has.
+
+`block.timestamp` does not gain precision. On Base Sepolia, where Denim is live, blocks
+53994016 to 53994020 all report timestamp 1793720672. Three things follow:
+
+- **Time is not block count.** Five blocks share one timestamp, and code holding block-count
+  constants written for 2s blocks runs ten times faster.
+- **`tx[1]` is now a system deposit.** Every block calls `setTimestampMillisPart` on
+  `BaseTime` at `0x4200…0030`, ahead of user transactions.
+- **`BaseTime` is wrong during `tx[0]`.** The client says so: 200ms behind within a second,
+  800ms ahead at rollover.
+
+At the first Denim block the gas limit is divided by 10 and the EIP-1559 denominator
+multiplied by 10. Mainnet's gas limit is 400,000,000 today, so that formula gives 40,000,000
+per block, unconfirmed until it runs.
 
 ## Contrast with OP Mainnet
 
@@ -152,7 +174,7 @@ Stack" constrains a chain far less than it sounds like it does.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v1.4.2 https://github.com/base/base
+git clone --depth 1 --branch v1.5.1 https://github.com/base/base
 sed -n '60,80p' crates/common/precompiles/src/b20_factory/variant.rs   # the predicate
 sed -n '1,50p'  crates/common/precompiles/src/lookup.rs                # BerylLookup
 grep -rn "pub const ADDRESS: Address" crates/common/precompiles/src/*/storage.rs

@@ -64,8 +64,8 @@ lineage:
 client:
   name: hiero-consensus-node (Hedera Services)
   repo: https://github.com/hiero-ledger/hiero-consensus-node
-  version: v0.77.2
-  commit: 74a11d913a948651132c282d93aa46662751aaa9
+  version: v0.78.1
+  commit: ba7a27b6fbc0f0646bc95cb17013efecd4ec491d
   language: java
   built_on: "org.hyperledger.besu:evm:25.2.2 (library, not a fork)"
   note: >-
@@ -75,14 +75,12 @@ client:
     `hiero-ledger/hiero-json-rpc-relay`. Any tooling still pointing at the `hashgraph`
     coordinates resolves for the node and 404s for the relay.
     MAINNET RUNS A VERSION THAT WAS NEVER RELEASED: the newest
-    `vX.Y.Z` RELEASE is `v0.77.2`, which is what this row pins. The gap is now three patch
-    versions, and its shape has changed: at v0.76.1 no `v0.76.2` tag existed at all,
-    whereas `v0.77.3`, `v0.77.4` and `v0.77.5` DO exist as tags — they were never published
-    as GitHub releases, so `pin_status.py`, which reads releases, does not offer them. The
-    mirror node reported `hapi_version: 0.77.5` at block 100,888,823.
+    `vX.Y.Z` tag is `v0.78.1`, which is what this row pins. The mirror node reported
+    `hapi_version: 0.78.2` at block 101,904,489, with no such tag. The gap recurs: `v0.77.5`
+    ran on mainnet earlier the same way, one patch beyond what this row had pinned.
   companion_repos:
   - {name: hiero-json-rpc-relay, repo: "https://github.com/hiero-ledger/hiero-json-rpc-relay",
-     version: v0.79.0, commit: cc01872f1e290ba9701811840c8bfb9e7dd2419a, language: typescript,
+     version: v0.80.3, commit: 5879eeb39189553a7a6e53b4186400563daab65f, language: typescript,
      pinned_by: {how: release-pair},
      provides: "the entire eth_* JSON-RPC surface: block synthesis, header field fabrication, tag resolution, eth_getCode overrides, gas price conversion, receipt assembly. NOT part of the state transition, and versioned independently of the node."}
   note_relay_is_not_consensus: >-
@@ -306,7 +304,7 @@ tx_types:
     name: "relay-fabricated 'transactions' with no signature and no sender"
     status: added
     severity: high
-    src: "hiero-json-rpc-relay/src/relay/lib/services/ethService/blockService/blockWorker.ts:syntheticTransactions, hiero-json-rpc-relay/src/relay/lib/factories/transactionFactory.ts:createTransactionFromLog"
+    src: "hiero-json-rpc-relay/src/relay/lib/services/ethService/blockService/blockWorker.ts:isSyntheticContractRecord, hiero-json-rpc-relay/src/relay/lib/factories/transactionFactory.ts:createTransactionFromLog"
     src_live: "mirror /api/v1/blocks/99380446 @ 99380446 -> count 7 (seven HAPI transactions in the record file) while eth_getBlockByNumber 0x5ec6cde @ 99380446 returned exactly ONE transaction"
     note: >-
       NOT A CONSENSUS TRANSACTION TYPE — a relay fabrication, recorded here because it
@@ -767,6 +765,30 @@ system_contracts:
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HtsSystemContract.java:HTS_16C_EVM_ADDRESS"
     src_live: "eth_getCode 0x...16c @ 99380446 -> 0x"
     note: "A second HTS entry point. The relay's getCode short-circuit knows only about 0x167, so this one reports as a plain EOA."
+  "0x000000000000000000000000000000000000016e":
+    name: CLPR system contract
+    status: pending
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/ClprSystemContract.java, hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/ClprConfig.java:enabled"
+    note: >-
+      New at v0.78.1, with verifier siblings at 0x16f (Besu QBFT), 0x170 (Sei) and 0x171
+      (Ethereum), all in the system contract map. All four halt with CLPR_NOT_ENABLED unless
+      `clpr.enabled` is set; it defaults to false and the mainnet property files do not set it.
+      `eth_getCode` returns 0x for all four at the relay, so that does not identify them.
+  "0x000000000000000000000000000000000000016f":
+    name: CLPR Besu QBFT verifier
+    status: pending
+    src: hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/BesuQBFTVerifierSystemContract.java:BESU_QBFT_VERIFIER_EVM_ADDRESS
+    note: "see 0x16e; off unless clpr.enabled is set"
+  "0x0000000000000000000000000000000000000170":
+    name: CLPR Sei verifier
+    status: pending
+    src: hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/SeiVerifierSystemContract.java:SEI_VERIFIER_EVM_ADDRESS
+    note: "see 0x16e; off unless clpr.enabled is set"
+  "0x0000000000000000000000000000000000000171":
+    name: CLPR Ethereum verifier
+    status: pending
+    src: hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/EthereumVerifierSystemContract.java:ETHEREUM_VERIFIER_EVM_ADDRESS
+    note: "see 0x16e; off unless clpr.enabled is set"
   "0x0000000000000000000000000000000000000168":
     name: Exchange rate
     status: added

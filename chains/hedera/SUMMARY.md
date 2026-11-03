@@ -1,16 +1,17 @@
 # Hedera — what this row teaches
 
 **Client (consensus):** `hiero-ledger/hiero-consensus-node` — the org rename is real, and
-`hashgraph/hedera-services` now redirects here. Pinned at `v0.77.2`, commit
-`74a11d913a948651132c282d93aa46662751aaa9`. **Mainnet runs a version that was never
-released, still:** at block 100,888,823 the mirror node reported `hapi_version: 0.77.5`.
-The shape of the gap changed, though — `v0.77.3`, `v0.77.4` and `v0.77.5` all exist as
-**tags**, they were simply never published as GitHub **releases**. The newest release is
-`v0.77.2`, which is what this row pins, per its own convention of pinning the newest
-released `vX.Y.Z`.
+`hashgraph/hedera-services` now redirects here. Pinned at `v0.78.1`, commit
+`ba7a27b6fbc0f0646bc95cb17013efecd4ec491d`. **Mainnet runs a version with no tag:** at block
+101,904,489 the mirror node reported `hapi_version: 0.78.2`. The row pins the newest
+`vX.Y.Z` tag, per its own convention.
 
-**Companion (the entire `eth_*` API):** `hiero-ledger/hiero-json-rpc-relay` at `v0.79.0`,
-commit `cc01872f1e290ba9701811840c8bfb9e7dd2419a`. The old
+v0.78.1 adds four system contracts for CLPR at `0x16e`–`0x171`, recorded as `pending`. They halt
+with `CLPR_NOT_ENABLED` unless `clpr.enabled` is set, which defaults to false, and the mainnet
+property files do not set it.
+
+**Companion (the entire `eth_*` API):** `hiero-ledger/hiero-json-rpc-relay` at `v0.80.3`,
+commit `5879eeb39189553a7a6e53b4186400563daab65f`. The old
 `hashgraph/hedera-json-rpc-relay` is a 404. This is a **separate process in a separate
 repository, versioned independently**, that synthesises Ethereum JSON-RPC out of Hedera
 record data fetched over HTTP from a third component (the mirror node). The live endpoint
@@ -451,14 +452,14 @@ network does" and "what the RPC says" are separately citable and repeatedly disa
 ```bash
 # =====================================================================
 # --- pins
-git clone --depth 1 --branch v0.77.2 --single-branch \
+git clone --depth 1 --branch v0.78.1 --single-branch \
   https://github.com/hiero-ledger/hiero-consensus-node chains/hedera/repos/hiero-consensus-node
 git -C chains/hedera/repos/hiero-consensus-node rev-parse HEAD
-#   -> 74a11d913a948651132c282d93aa46662751aaa9
-git clone --depth 1 --branch v0.78.4 --single-branch \
+#   -> ba7a27b6fbc0f0646bc95cb17013efecd4ec491d
+git clone --depth 1 --branch v0.80.3 --single-branch \
   https://github.com/hiero-ledger/hiero-json-rpc-relay chains/hedera/repos/hiero-json-rpc-relay
 git -C chains/hedera/repos/hiero-json-rpc-relay rev-parse HEAD
-#   -> cc01872f1e290ba9701811840c8bfb9e7dd2419a
+#   -> 5879eeb39189553a7a6e53b4186400563daab65f
 
 # --- the org rename and the dead relay repo
 git ls-remote --tags https://github.com/hashgraph/hedera-services | head -3      # redirects, identical tags

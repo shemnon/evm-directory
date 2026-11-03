@@ -19,8 +19,8 @@ lineage:
 client:
   name: go-ethereum
   repo: https://github.com/ethereum/go-ethereum
-  version: v1.17.8
-  commit: a579077007b98217c3e253a66e4b452ca0c32b96
+  version: v1.17.10
+  commit: 1df30b18d9ed35ee9d28ffd4648442c2204554ad
   language: go
   note: reference-by-consensus, not by fiat; cross-check against execution-specs
 
@@ -74,7 +74,7 @@ forks:
     mainnet_equivalent: self
     note: >-
       SCHEDULED ON SEPOLIA ONLY. Sepolia activates it at 1791294816
-      (2026-10-06 13:53:36 UTC); mainnet has no `amsterdamTime` at v1.17.8, so
+      (2026-10-06 13:53:36 UTC); mainnet has no `amsterdamTime` at v1.17.10, so
       nothing it changes is live. It is recorded because the fork is implemented and
       already running on a testnet, which is what makes the downstream rows start
       carrying it. Brings EIP-7928 block access lists (adding a
@@ -130,7 +130,7 @@ eips:
 non_eip_specs: []
 
 tx_types:
-  # verified: core/types/transaction.go:48-52
+  # verified: core/types/transaction.go:49-53
   "0x00": {name: LegacyTx,     status: inherited, spec: frontier/EIP-155, src: "core/types/transaction.go:LegacyTxType"}
   "0x01": {name: AccessListTx, status: inherited, spec: EIP-2930, src: "core/types/transaction.go:AccessListTxType"}
   "0x02": {name: DynamicFeeTx, status: inherited, spec: EIP-1559, src: "core/types/transaction.go:DynamicFeeTxType"}

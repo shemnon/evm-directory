@@ -19,15 +19,15 @@ lineage:
     (Fermat, Haber). A single-parent `upstream` field cannot express this; the
     non-standard `second_heritage` key records what the schema otherwise loses.
   sync_point: >-
-    STALE relative to its upstream. This client is op-geth v0.5.10, whose newest OP
+    STALE relative to its upstream. This client is op-geth v0.5.11, whose newest OP
     branch is IsOptimismFjord; the op-stack row pins v1.101702.3 (Jovian/Karst/Lagoon).
     opBNB therefore has NONE of OP Stack's Granite, Isthmus or Jovian changes.
 
 client:
   name: op-geth (BNB Chain fork)
   repo: https://github.com/bnb-chain/op-geth
-  version: v0.5.10
-  commit: 1b995c366cf7de35d2390c483774c378f59ff143
+  version: v0.5.11
+  commit: 9ee47798d0a675a4ecf1740a38eed9b235ad1123
   language: go
 
 consensus:
@@ -74,7 +74,7 @@ tx_types:
 tx_authorization:
   note: >-
     No delta on the authorizing path. This client is a different fork (bnb-chain
-    op-geth v0.5.10) but reaches the same answer: `recoverPlain` is the only recovery
+    op-geth v0.5.11) but reaches the same answer: `recoverPlain` is the only recovery
     routine, londonSigner short-circuits DepositTxType to the stored From exactly as
     upstream op-geth does, and the txpool rejects deposits so they can arrive only
     through the authenticated engine API. So secp256k1 and the unsigned 0x7e path are
@@ -100,7 +100,7 @@ precompiles:
     p256verify: true
     src: core/vm/contracts.go:PrecompiledContractsFjord
     note: >-
-      op-geth v0.5.10 stops at Fjord: 0x01-0x0a present, NO EIP-2537 BLS at
+      op-geth v0.5.11 stops at Fjord: 0x01-0x0a present, NO EIP-2537 BLS at
       0x0b-0x11 (Fjord predates Prague), P256VERIFY at 0x0100 at RIP-7212 gas. This
       is OP Stack's base map frozen at an older client — see lineage.sync_point.
   "0x66":
@@ -173,7 +173,7 @@ gotchas:
     names. Neither parent describes it alone — the clearest demonstration that a
     single-parent lineage field is insufficient.
   - >-
-    It is a STALE descendant: pinned op-geth v0.5.10 stops at Fjord, so none of
+    It is a STALE descendant: pinned op-geth v0.5.11 stops at Fjord, so none of
     OP Stack's Granite/Isthmus/Jovian precompile changes apply. Two chains sharing
     an `upstream` can be years apart in behaviour.
   - >-

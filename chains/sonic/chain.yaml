@@ -47,8 +47,8 @@ lineage:
 client:
   name: sonic
   repo: https://github.com/0xsoniclabs/sonic
-  version: v2.2.5
-  commit: 32c7475420851baecaad03819d265c55b304390f
+  version: v2.2.6
+  commit: 8bfeb59e34a6883b9ace6362dbaa7eb5a52ea212
   language: go
   note: >-
     The pinned tag is what mainnet is actually running: `web3_clientVersion` returns
@@ -60,8 +60,8 @@ client:
     ALL THREE COMPANION PINS COME FROM `go.mod`, NOT FROM A BRANCH HEAD, and on this row
     that distinction is load-bearing. `go.mod` pins each by Go pseudo-version, so the
     commit sonic actually builds against is whatever the replace directive and the
-    require lines name — at v2.2.5 that is geth e9dfccd4 and tosca 3f411928, both
-    UNCHANGED from the previous pin, and carmen 46335f35 (pseudo-version
+    require lines name — at v2.2.6 that is geth e9dfccd4 and carmen 46335f35, both
+    UNCHANGED from the previous pin, and tosca 2922efb7 (pseudo-version
     v0.0.0-20260916125055-46335f35fa44). Following the repositories' default branches
     instead would be wrong three times over, and in the geth fork's case
     catastrophically: its branch head has moved to a tree with NONE of the Sonic patches
@@ -74,7 +74,7 @@ client:
      pinned_by: {how: manifest, path: "go.mod"},
      provides: "state transition, precompiles, tx types, signer, RLP header — a patch fork of upstream geth 1.17.2-dev"}
   - {name: tosca, repo: "https://github.com/0xsoniclabs/tosca",
-     commit: 3f4119284c421a1840b5716ce19d6eaf67e56103, language: go,
+     commit: 2922efb78c3de047acaf33f4983c0627085599b0, language: go,
      pinned_by: {how: manifest, path: "go.mod"},
      provides: "LFVM and SFVM — the bytecode interpreters that execute every Sonic transaction. BSL-1.1 licensed, not open source."}
   - {name: carmen, repo: "https://github.com/0xsoniclabs/carmen",
@@ -738,10 +738,10 @@ block_metrics:
   block_gas_limit:
     verdict: 5000000000
     observed: 5000000000
-    observed_at_block: 81152523
-    observed_at: 2026-10-16
+    observed_at_block: 82028781
+    observed_at: 2026-11-03
     mutability: fixed
-    src_live: "eth_getBlockByNumber @ 81152523 -> gasLimit 0x12a05f200"
+    src_live: "eth_getBlockByNumber @ 82028781 -> gasLimit 0x12a05f200"
     note: >-
       5,000,000,000 IS IN THE HEADER AND BINDS NOTHING. It is a technical ceiling; real
       capacity is a per-second gas-power allocation shared among validators by stake,
@@ -751,11 +751,11 @@ block_metrics:
       believed.
   block_time:
     verdict: ~
-    observed: 1549.2
-    observed_at_block: 81152523
-    observed_at: 2026-10-16
+    observed: 1805.6
+    observed_at_block: 82028781
+    observed_at: 2026-11-03
     mutability: config
-    src_live: "eth_getBlockByNumber @ 81152523 vs 81142523 -> 15492s / 10000 blocks"
+    src_live: "eth_getBlockByNumber @ 82028781 vs 82018781 -> 18056s / 10000 blocks"
     note: >-
       sub-second; emitter interval 600 ms by default, block duration carried in
       extraData. The observed 1,753 ms is well above the emitter interval because the

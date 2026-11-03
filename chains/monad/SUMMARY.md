@@ -1,10 +1,10 @@
 # Monad
 
 **Role:** `independent` · **Equivalence:** `behavioural` · **Chain ID:** 143 · **Baseline:** Osaka (opcode set only)
-**Client:** [`category-labs/monad`](https://github.com/category-labs/monad) `v0.16.4`
-(`f6a86a1a47dac61b4b34015f7112116c13d8bcce`, C++) ·
-**Companion:** [`category-labs/monad-bft`](https://github.com/category-labs/monad-bft) `v0.16.4`
-(`2a2bcc04679b919db402dee2b13d4adce900098b`, Rust)
+**Client:** [`category-labs/monad`](https://github.com/category-labs/monad) `v0.16.6`
+(`4a0c81f543ac4ffec043da87dacf7f78c27c6d0e`, C++) ·
+**Companion:** [`category-labs/monad-bft`](https://github.com/category-labs/monad-bft) `v0.16.6`
+(`656435c1594d0026cec4f32f431d6272035aa5e6`, Rust)
 **Live probes:** `https://rpc.monad.xyz` @ block `96823552`
 
 ### Repo names, resolved
@@ -16,10 +16,10 @@ unconfirmed. Both are wrong now:
   `category-labs/monad` (its README still says "Monad Execution").
 - `monad-labs/*` → **404** for every candidate name.
 - `category-labs/monad-bft` exists and is on the **same release train** —
-  `v0.16.4`, released the same day as the execution repo. An earlier pass at
+  `v0.16.6`, tagged alongside the execution repo. An earlier pass at
   `v0.9.3` looked like the latest tag only because `git ls-remote` sorts
   lexicographically; it was fifteen months stale and carried a *constant* 50 gwei
-  base fee that no longer matches the chain. Both repos are pinned at `v0.16.4`.
+  base fee that no longer matches the chain. Both repos are pinned at `v0.16.6`, the newest stable tag. Mainnet's RPC reported `Monad/0.16.5` at the 2026-11-03 re-pin, and the release notes say not to upgrade until announced. No mainnet revision changed: the schedule stops at MONAD_TEN either way.
 
 ## The headline: an EIP can be present and still not behave
 

@@ -31,8 +31,8 @@ lineage:
 client:
   name: monad (execution)
   repo: https://github.com/category-labs/monad
-  version: v0.16.4
-  commit: f6a86a1a47dac61b4b34015f7112116c13d8bcce
+  version: v0.16.6
+  commit: 4a0c81f543ac4ffec043da87dacf7f78c27c6d0e
   language: c++
   note: >-
     Formerly published as category-labs/monad-execution; that path 404s now.
@@ -41,7 +41,7 @@ client:
     pinned below at the SAME release train (v0.16.0, same-day commit).
   companion_repos:
   - {name: monad-bft, repo: "https://github.com/category-labs/monad-bft",
-     version: v0.16.4, commit: 2a2bcc04679b919db402dee2b13d4adce900098b,
+     version: v0.16.6, commit: 656435c1594d0026cec4f32f431d6272035aa5e6,
      pinned_by: {how: release-pair},
      language: rust,
      provides: "consensus, deferred-execution delay, the Monad TFM base-fee rule, per-revision chain params"}

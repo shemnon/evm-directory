@@ -56,8 +56,8 @@ lineage:
 client:
   name: arc-node (reth execution + Malachite consensus)
   repo: https://github.com/circlefin/arc-node
-  version: v0.8.1
-  commit: ab09dbfd9553a7ad48f9c134ec5e808c36512c74
+  version: v0.8.2
+  commit: 0f0be9fad975a2fe16546323b060d7b070617936
   language: rust
   built_on: reth v2.2.0 / revm
   note: >-
@@ -66,7 +66,7 @@ client:
     `crates/types` are the CL. A `contracts/` Foundry tree ships the Solidity
     system contracts. The testnet RPC reports only `arc/v1`, so the running
     version CANNOT be matched to this tag — unlike tempo, where it could.
-    v0.8.1 is the newest release (v0.8.0 preceded it by six weeks).
+    v0.8.2 is the newest release. Its fork tables and reth v2.2.0 SDK pin are unchanged from v0.8.1.
     The repo README calls this "alpha software currently undergoing audits".
 
 live_probe:
@@ -532,7 +532,7 @@ opcodes:
     src: >-
       arc-node/crates/malachite-app/src/finalize.rs:168,
       arc-node/crates/malachite-app/src/payload.rs:377,
-      arc-node/crates/malachite-app/src/handlers/decided.rs:380
+      arc-node/crates/malachite-app/src/handlers/decided.rs:391
     src_live: "eth_call 0x445f5260205ff3 @ 0x3c05adb -> 0x00..00, header mixHash 0x00..00"
   added: []
   removed: []

@@ -23,8 +23,8 @@ lineage:
 client:
   name: world-chain (builder)
   repo: https://github.com/worldcoin/world-chain
-  version: v2.4.5
-  commit: ea6c894ddac4874a94d8230cb9fba8b69136e362
+  version: v2.6.0
+  commit: 03435e0c28a607ac25b9fba4b2d7a8ef3a6404e2
   language: rust
   built_on: reth / op-reth
   note: >-
@@ -50,7 +50,7 @@ forks:
     Inherits the OP Stack sequence Bedrock..Karst verbatim — Karst itself activated on
     2026-09-21 — then declares two World-Chain-specific forks. Both are
     ForkCondition::Never in the shipped spec (asserted at
-    crates/chainspec/src/spec.rs:578-579) — declared, not scheduled.
+    crates/chainspec/src/spec.rs:584-585) — declared, not scheduled.
   timeline:
   - {name: "canyon/delta/ecotone", activation_time: 0, mainnet_equivalent: "shanghai+cancun",
      note: "active from genesis (l2_time 1719335639)"}

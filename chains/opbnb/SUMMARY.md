@@ -2,7 +2,7 @@
 
 **Chain ID 204 · role: `fork` · upstream: [op-stack](../op-stack/SUMMARY.md) · baseline: Cancun**
 
-Reference: [bnb-chain/op-geth `v0.5.10`](https://github.com/bnb-chain/op-geth) @ `1b995c36`.
+Reference: [bnb-chain/op-geth `v0.5.11`](https://github.com/bnb-chain/op-geth) @ `9ee47798`.
 
 This row exists to test whether a single-parent `upstream` field can describe a chain
 shaped by two ecosystems. It cannot.
@@ -80,7 +80,7 @@ heritage.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v0.5.10 https://github.com/bnb-chain/op-geth
+git clone --depth 1 --branch v0.5.11 https://github.com/bnb-chain/op-geth
 grep -n "case rules.Is" core/vm/contracts.go          # newest OP branch is Fjord
 grep -n "102\}\|103\}" core/vm/contracts.go           # 0x66, 0x67
 sed -n '176,212p' params/config.go                    # chain 204, Fermat/Haber

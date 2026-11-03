@@ -1,7 +1,7 @@
 # Arc — the same brief as Tempo, the opposite answer
 
-Client pinned: `circlefin/arc-node` **v0.8.1**, commit
-`ab09dbfd9553a7ad48f9c134ec5e808c36512c74`, Rust, built on `paradigmxyz/reth`
+Client pinned: `circlefin/arc-node` **v0.8.2**, commit
+`0f0be9fad975a2fe16546323b060d7b070617936`, Rust, built on `paradigmxyz/reth`
 **tag v2.2.0** (a released tag, not a floating rev — and a major-version move up from
 v1.11.3 at the previous pin). Apache-2.0.
 
@@ -306,8 +306,8 @@ Source over comment, as usual.
 
 ```sh
 cd /Volumes/TendiesTown/EVM-Directory/chains/arc/repos/arc-node
-git rev-parse HEAD          # ab09dbfd9553a7ad48f9c134ec5e808c36512c74
-git describe --tags         # v0.8.1
+git rev-parse HEAD          # 0f0be9fad975a2fe16546323b060d7b070617936
+git describe --tags         # v0.8.2
 grep -n 'reth-chainspec' Cargo.toml    # tag = "v1.11.3"
 
 # 1/2. the native coin is 18-decimal; the ERC-20 view is a separate contract

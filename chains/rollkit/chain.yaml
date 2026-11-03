@@ -59,12 +59,12 @@ lineage:
 client:
   name: ev-node (Evolve)
   repo: https://github.com/evstack/ev-node
-  version: v1.2.3
-  commit: d76e0dfcb0ffa3384d875fa2538eeb9a5321b335
+  version: v1.4.0
+  commit: 28d2714c95ceb45c859726e256ea77b45a7d2445
   language: go
   built_on: libp2p, go-header, Celestia DA client; drives the EL over the Engine API
   note: >-
-    v1.2.3 is the newest non-prerelease tag on the monorepo. The EVM adapter
+    v1.4.0 is the newest non-prerelease tag on the monorepo. The EVM adapter
     is a Go submodule inside it (execution/evm, separately tagged
     execution/evm/v1.1.1). The redirect from rollkit/rollkit is what
     establishes the rename; there is no separate `rollkit/go-execution-evm`
@@ -73,8 +73,8 @@ client:
   companion_repos:
   - name: ev-reth
     repo: https://github.com/evstack/ev-reth
-    version: v0.6.0
-    commit: 9bcc1892fea827f2f8fdc80c605606a81eecb7f6
+    version: v0.7.0
+    commit: c14f77761b56352a5aae78658c17614471f0ef5d
     pinned_by: {how: release-pair}
     provides: "the actual EVM: reth fork with tx type 0x76, precompiles 0xF100/0xF101, EvolvePayloadBuilder, EvolveConsensus, base-fee redirect, configurable EIP-170 limit"
 
@@ -755,6 +755,10 @@ header_fields:
     JSON-RPC client sees is derived, not consensus.
 
 gotchas:
+  delegatecall_refused: >-
+    ev-reth's mint, deploy-permission and proposer-control precompiles refuse state changes under
+    DELEGATECALL from v0.7.0, halting with "state change during delegate call". A proxy that
+    forwards admin calls to them by DELEGATECALL stops working on a deployment that upgrades.
   ordering_a_who_orders: >-
     (a) THE SEQUENCER ORDERS; CELESTIA ONLY RECORDS THE ORDER. This is the
     claim most often muddled in modular-rollup marketing, and the source

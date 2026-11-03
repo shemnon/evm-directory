@@ -2,9 +2,9 @@
 
 **Chain ID 534352 · role: `fork` · baseline: Shanghai · Clique → SystemContract, 3s blocks**
 
-Reference: [scroll-tech/go-ethereum `scroll-v5.10.2`](https://github.com/scroll-tech/go-ethereum)
-@ `d67dd0ba`. The running network is at exactly that build —
-`web3_clientVersion` returns `Geth/v5.10.2-mainnet/linux-amd64/go1.22.2` — which is
+Reference: [scroll-tech/go-ethereum `scroll-v5.10.11`](https://github.com/scroll-tech/go-ethereum)
+@ `e8c9fb72`. The running network is at exactly that release —
+`web3_clientVersion` returns `Geth/v5.10.11-mainnet-e8c9fb72/linux-amd64/go1.26.10` — which is
 unusual in this dataset and means the pinned tag and the deployed client cannot drift
 apart. No companion repo was needed: the predeploy addresses *and their deployed
 bytecode* are Go constants inside the client (`rollup/rcfg/config.go`), so every
@@ -348,10 +348,10 @@ The same Euclid migration left `StateAccount` carrying two zkTrie-era extensions
 ## Re-verify
 
 ```sh
-git clone --depth 1 --branch scroll-v5.10.2 --single-branch \
+git clone --depth 1 --branch scroll-v5.10.11 --single-branch \
   https://github.com/scroll-tech/go-ethereum
 cd go-ethereum
-git rev-parse HEAD          # d67dd0baa0ff3607c23f8f23bc94be26aabaa290
+git rev-parse HEAD          # e8c9fb7297cadf05cdb0b3e62db6002f020b37c6
 
 # the fork ladder stops at Shanghai — and there is no Cancun/Prague/Osaka field at all
 sed -n '/ScrollMainnetChainConfig = &ChainConfig{/,/^	}$/p' params/config.go

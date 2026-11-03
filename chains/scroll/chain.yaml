@@ -39,8 +39,8 @@ lineage:
 client:
   name: scroll-tech/go-ethereum (l2geth)
   repo: https://github.com/scroll-tech/go-ethereum
-  version: scroll-v5.10.2
-  commit: d67dd0baa0ff3607c23f8f23bc94be26aabaa290
+  version: scroll-v5.10.11
+  commit: e8c9fb7297cadf05cdb0b3e62db6002f020b37c6
   language: go
   note: >-
     The running network is at exactly this release: web3_clientVersion @ block
@@ -285,8 +285,8 @@ tx_types:
     note: >-
       Decodable but unreachable: the type constant, the RLP shape and the signer
       branch all exist, and nothing ever activates them — there is no Cancun fork to
-      gate on. Distinct from Linea's blob removal, which is an explicit plugin
-      rejection with a named error; here it is simply never switched on.
+      gate on. Since v5.10.11 the txpool also rejects the type explicitly with
+      ErrTxTypeNotSupported. Linea's blob removal is a plugin rejection instead.
     src: "core/types/transaction.go:BlobTxType, core/types/blob_tx.go:BlobTx"
   "0x04":
     name: SetCodeTx

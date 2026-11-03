@@ -48,8 +48,8 @@ lineage:
 
     (3) DIFFERENT go-ethereum. cosmos/evm replaces geth with
     `cosmos/go-ethereum v1.17.2-cosmos-0`; Cronos replaces it with
-    `crypto-org-chain/go-ethereum v1.10.20-0.20250815065500-a4fbafcae0dd`, whose
-    go.mod comment reads `// release/v1.15`.
+    `crypto-org-chain/go-ethereum v1.10.20-0.20260521015249-663dca6c618e`, whose
+    go.mod comment reads `// release/v1.16`.
 
     (4) Its own modules: `x/cronos` (CRC-20 <-> IBC token mapping, the `evm/<addr>`
     denom namespace) and `x/e2ee`, neither of which exists upstream.
@@ -57,75 +57,97 @@ lineage:
 client:
   name: cronos (cronosd)
   repo: https://github.com/crypto-org-chain/cronos
-  version: v1.7.8
-  commit: 1f072c05accfa8e17d2308fd965547158a15f473
+  version: v1.8.1
+  commit: 616274a74d4f4747e67fad7f895c000e90a3ec6a
   language: go
   note: >-
-    v1.7.9 exists but is marked pre-release on GitHub; v1.7.8 is the newest stable
-    tag. The EVM is NOT in this repo — the interpreter, the ante chain, the JSON-RPC
+    The chain took the `v1.8` plan at height 101485000; v1.8.1 is a later binary-swap
+    patch with no consensus change. The EVM is NOT in this repo — the interpreter, the ante chain, the JSON-RPC
     shim and `x/evm` all live in the ethermint companion below, pinned at the exact
     pseudo-version commit this tag's go.mod names. Citations are written relative to
     whichever clone holds the file.
   companion_repos:
   - {name: ethermint, repo: "https://github.com/crypto-org-chain/ethermint",
-     commit: 2593e6edcfff02679cac491c69d0166436b7501d,
+     commit: e874216e33c8d35f259ac5f103915097dfe4b5af,
      pinned_by: {how: manifest, path: "go.mod"},
      provides: "x/evm, x/feemarket, the ante chain and the EVM keeper (go.mod replace target)"}
 
 live_probe:
   endpoint: https://evm.cronos.org
   chain_id: 25
-  observed_at_block: 92902237
+  observed_at_block: 103699610
+  observed_at: 2026-11-03
   note: >-
     `web3_clientVersion` returns `Version dev ()` with an empty commit — the version
     stamp is not populated in the build mainnet runs, so the pin cannot be confirmed
     against the network from the RPC. Fork level was established by capability probe
-    instead (see forks).
+    instead (see forks). The REST endpoint https://rest.cronos.org gives upgrade and
+    parameter state, with heights sent as `x-cosmos-block-height`, which it does not
+    echo.
 
 consensus:
-  engine: CometBFT (Tendermint) BFT, Cosmos SDK v0.53 via crypto-org-chain's fork
+  engine: CometBFT (Tendermint) BFT, Cosmos SDK v0.54 via crypto-org-chain's fork
   finality: instant (single-block BFT finality)
 
-baseline_fork: prague
+baseline_fork: osaka
 
 forks:
   src: "ethermint/x/evm/types/chain_config.go:EthereumConfig, ethermint/x/evm/types/chain_config.go:DefaultChainConfig"
   note: >-
     NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER
-    in module state, defaulting to every block-numbered fork at 0 and
-    Shanghai/Cancun/Prague at time 0, and governance can change it without a client
-    release. `EthereumConfig` builds a geth `params.ChainConfig` with no OsakaTime
-    field at all, so Osaka is unreachable regardless of the parameter.
+    in module state, and governance can change it without a client release, but the
+    step to Osaka came from a state migration: ethermint's `migrations/v8` sets
+    `OsakaTime` to 0 when the `v1.8` upgrade runs. Time 0 means the parameter's value
+    alone does not say when Osaka began; the upgrade height does.
 
-    Level established by live capability probe rather than by a schedule: KZG at 0x0a
-    and BLS12-381 at 0x0b both answer `invalid input length` (present), the EIP-2935
-    history contract has code, MCOPY works, and CLZ (0x1e, Osaka) reports
-    `invalid opcode`.
+    Established by differential at the upgrade height. CLZ (0x1e) errors at block
+    101484999 and returns the right answer at 101485000. `osaka_time` is absent from the
+    parameters at 101484999 and 0 at 101485000. `applied_plan v1.8` is height 101485000.
   timeline:
   - {name: "genesis config", activation_time: 0, mainnet_equivalent: prague,
      note: "DefaultChainConfig sets Shanghai/Cancun/Prague to time 0; the live value is a governance parameter"}
-  - {name: osaka, activation_time: null, status: pending,
-     note: "EthereumConfig has no OsakaTime field — not schedulable, not just unscheduled"}
+  - name: "v1.8 (osaka)"
+    activation_time: 1792655544
+    mainnet_equivalent: osaka
+    note: >-
+      Block 101485000, 2026-10-22 07:52:24 UTC, on governance proposal 30. At the previous pin
+      EthereumConfig had no OsakaTime field, so this was not schedulable at all.
+    src: "ethermint/x/evm/migrations/v8/migrate.go:OsakaTime, ethermint/x/evm/types/chain_config.go:EthereumConfig, app/upgrades.go:planName"
+    src_live: "eth_call 0x60015f1e5f5260205ff3 @ 101484999 -> error; @ 101485000 -> 0x..0100. /cosmos/upgrade/v1beta1/applied_plan/v1.8 -> height 101485000. /ethermint/evm/v1/params at height 101484999 -> no osaka_time; 101485000 -> osaka_time 0"
 
 eips:
   2537: {status: inherited, note: "BLS12-381 present at mainnet addresses",
-         src_live: "eth_call 0x0b @ 92902237 -> 'invalid input length' (a live precompile)"}
+         src_live: "eth_call 0x0b @ 103699610 -> 'invalid input length' (a live precompile)"}
   4844:
     status: modified
     severity: high
     note: >-
       KZG POINT EVALUATION IS LIVE AND THERE ARE NO BLOBS. 0x0a answers, because the
-      precompile set comes from the geth dependency at Cancun level — but the block
-      has no `blobGasUsed`, no `excessBlobGas` and no blob market, and there is no
-      transaction-type allowlist to refuse type 0x03. The precompile and the
+      precompile set comes from the geth dependency — but there is no blob market:
+      `blobGasUsed` and `excessBlobGas` are constant zeros, BLOBBASEFEE returns 0, and
+      there is no transaction-type allowlist to refuse type 0x03. The precompile and the
       transaction type have come apart.
-    src_live: "eth_call 0x0a @ 92902237 -> 'invalid input length'; eth_getBlockByNumber latest -> no blobGasUsed key"
-  7951: {status: removed, note: "no Osaka is reachable; 0x0100 is an empty account",
-         src: "ethermint/x/evm/types/chain_config.go:EthereumConfig",
-         src_live: "eth_call 0x0100 @ 92902237 -> 0x"}
+    src_live: "eth_call 0x0a @ 103699610 -> 'invalid input length'; eth_getBlockByNumber @ 103699610 -> blobGasUsed 0x0, excessBlobGas 0x0; eth_call 0x4a5f5260205ff3 @ 103699610 -> 0x00..00"
+  7951: {status: inherited, note: "P256VERIFY live at 0x0100 since block 101485000; a valid test vector returns 1",
+         src: "ethermint/x/evm/keeper/config.go:DefaultPrecompiles",
+         src_live: "eth_call 0x0100 with a valid P-256 vector @ 103699610 -> 0x..01"}
+  7823: {status: inherited, note: "MODEXP inputs are capped at 1024 bytes",
+         src_live: "eth_call 0x05 with base length 1025 @ 103699610 -> 'one or more of base/exponent/modulus length exceeded 1024 bytes'"}
+  7939: {status: inherited, note: "CLZ at 0x1e",
+         src_live: "eth_call 0x60015f1e5f5260205ff3 @ 103699610 -> 0x..0100"}
+  7825:
+    status: unrecorded
+    note: >-
+      THE SOURCE AND THE PROJECT'S GUIDE DISAGREE. `CheckMaxTxGas` rejects a gas limit above
+      16,777,216 whenever Osaka rules apply, in the ante handler and in execution, and Osaka
+      rules apply. The v1.7-to-v1.8 migration guide says the cap arrives "not at the upgrade
+      height" and "needs a separate governance change". Settling it means submitting an
+      oversized transaction to mainnet, which this row does not do. An `eth_call` with
+      20,000,000 gas succeeds, but that does not exercise the signed-transaction path.
+    src: "ethermint/x/evm/keeper/state_transition.go:CheckMaxTxGas, ethermint/ante/eth.go:CheckMaxTxGas, docs/migrations/v1.7-to-v1.8.md"
   2935: {status: inherited, note: "the history-storage contract has code",
-         src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 92902237 -> 0x3373ff… (non-empty)"}
-  5656: {status: inherited, src_live: "eth_call 0x60ff5f5260015f60015e60205ff3 @ 92902237 -> 0x..ff"}
+         src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 103699610 -> 0x3373ff… (non-empty)"}
+  5656: {status: inherited, src_live: "eth_call 0x60ff5f5260015f60015e60205ff3 @ 103699610 -> 0x..ff"}
   7702: {status: inherited, note: "`set_code_tx.go` exists in this fork and returns SetCodeTxType",
          src: "ethermint/x/evm/types/set_code_tx.go:70"}
   4399:
@@ -141,7 +163,8 @@ eips:
 
 non_eip_specs:
   - {id: "CRC-20 conversion", name: "x/cronos token mapping between ERC-20 contracts and IBC/native denoms",
-     adoption: adopted, src: "x/cronos/keeper/keeper.go"}
+     adoption: adopted, src: "x/cronos/keeper/keeper.go",
+     note: "since v1.8, `SendCroToIbc` is limited to two authorized bridge contracts, and mappings cannot target the zero address or the Ethereum precompile range"}
   - {id: "evm/<address> denom namespace", name: "per-contract Cosmos bank denominations",
      adoption: draft,
      note: "defined by the unregistered Bank precompile; no contract can reach it today",
@@ -206,22 +229,22 @@ non_evm_transactions:
   src: "x/cronos/keeper/keeper.go, ethermint/x/evm/types/msg.go"
 
 precompiles:
-  # verified: app/app.go:649 — the CustomContractFn slice handed to the EVM keeper is
+  # verified: app/app.go:803 — the CustomContractFn slice handed to the EVM keeper is
   # EMPTY, so the base set from the go-ethereum dependency is the whole live set.
   base_map:
     status: inherited
     present: "0x01-0x11"
-    p256verify: false
+    p256verify: true
     src: >-
       resolved through the crypto-org-chain/go-ethereum dependency (go.mod replace),
       not vendored in either clone; registration site is
-      ethermint/x/evm/keeper/simulate.go:130 (vm.DefaultPrecompiles)
+      ethermint/x/evm/keeper/config.go:114 (vm.DefaultPrecompiles)
     note: >-
-      Prague-level base range, confirmed live rather than from source because the
+      Osaka-level base range, confirmed live rather than from source because the
       implementations are in an unvendored dependency: 0x0a and 0x0b both answer
-      `invalid input length`, which an empty account cannot do. No P256VERIFY —
-      Osaka is not even expressible in this fork's ChainConfig.
-    src_live: "eth_call 0x0a and 0x0b @ 92902237 -> 'invalid input length'; eth_call 0x0100 -> 0x"
+      `invalid input length`, which an empty account cannot do, and 0x0100 verifies a
+      valid P-256 vector.
+    src_live: "eth_call 0x0a and 0x0b @ 103699610 -> 'invalid input length'; eth_call 0x0100 with a valid vector -> 0x..01"
   "0x0000000000000000000000000000000000000064":
     name: Bank (defined, not registered)
     status: removed
@@ -232,28 +255,27 @@ precompiles:
       `mint(address,uint256)`, `burn`, `transfer` and `balanceOf` over Cosmos bank
       denominations in the `evm/<caller>` namespace — a precompile that would let any
       contract mint unbounded supply of its own namespaced Cosmos denom, 200,000 gas
-      flat. It is not wired up: `app/app.go` passes `[]evmkeeper.CustomContractFn{}`,
-      the only occurrence of that type in the repository. Live, 0x64 is an empty
+      flat. It is not wired up: `app/app.go` passes `[]evmkeeper.CustomContractFn{}`. Live, 0x64 is an empty
       account.
 
       Recorded as `removed` rather than omitted because the constant is what a
       grep-based survey finds, and because 0x64 is the most contested address in this
       dataset — BSC, Arbitrum and Core all use it, and Cronos is the chain that is
       usually listed as a fourth and is not.
-    src: "x/cronos/keeper/precompiles/bank.go:32, x/cronos/keeper/precompiles/bank.go:99-140, app/app.go:649"
-    src_live: "eth_getCode 0x64 @ 92902237 -> 0x; eth_call 0x64 with a 4-byte selector -> 0x (empty account, succeeds)"
+    src: "x/cronos/keeper/precompiles/bank.go:32, x/cronos/keeper/precompiles/bank.go:103-140, app/app.go:803"
+    src_live: "eth_getCode 0x64 @ 103699610 -> 0x; eth_call 0x64 with a 4-byte selector -> 0x (empty account, succeeds)"
   "0x0000000000000000000000000000000000000065":
     name: Relayer (defined, not registered)
     status: removed
     note: "IBC relayer precompile at `BytesToAddress([]byte{101})`; same empty registration slice."
-    src: "x/cronos/keeper/precompiles/relayer.go:26, app/app.go:649"
-    src_live: "eth_getCode 0x65 @ 92902237 -> 0x"
+    src: "x/cronos/keeper/precompiles/relayer.go:26, app/app.go:803"
+    src_live: "eth_getCode 0x65 @ 103699610 -> 0x"
   "0x0000000000000000000000000000000000000066":
     name: ICA (defined, not registered)
     status: removed
-    note: "interchain-accounts precompile at `BytesToAddress([]byte{102})`; same empty registration slice."
-    src: "x/cronos/keeper/precompiles/ica.go:36, app/app.go:649"
-    src_live: "eth_getCode 0x66 @ 92902237 -> 0x"
+    note: "interchain-accounts precompile at `BytesToAddress([]byte{102})`; same empty registration slice. The v1.8 upgrade also removed Interchain Accounts from the chain, so this code has nothing to reach even if registered."
+    src: "x/cronos/keeper/precompiles/ica.go:35, app/app.go:803"
+    src_live: "eth_getCode 0x66 @ 103699610 -> 0x"
   note: >-
     ZERO ADDED ADDRESSES, from a chain whose documentation and whose source both
     describe three. The finding is the gap between them, and it is only visible by
@@ -264,7 +286,7 @@ system_contracts:
      note: "installed as a preinstall by the EVM module, not deployed by a transaction", src: "ethermint/x/evm/types/preinstall.go:13-18"}
   "0xcA11bde05977b3631167028862bE2a173976CA11": {name: Multicall3, status: added,
      src: "ethermint/x/evm/types/preinstall.go:19-23",
-     src_live: "eth_getCode @ 92902237 -> 0x6080… (non-empty)"}
+     src_live: "eth_getCode @ 103699610 -> 0x6080… (non-empty)"}
   "0x000000000022D473030F116dDEE9F6B43aC78BA3": {name: Permit2, status: added, src: "ethermint/x/evm/types/preinstall.go:25-27"}
   "0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7": {name: Safe singleton factory, status: added, src: "ethermint/x/evm/types/preinstall.go:30-32"}
   note: >-
@@ -286,9 +308,9 @@ opcodes:
       isMerge." So the field exists to satisfy a merge test, not to carry a value, and
       `block.prevrandao` is 0 on every block and in every `eth_call`.
     src: >-
-      ethermint/x/evm/keeper/config.go:114, ethermint/x/evm/keeper/simulate.go:112-116,
+      ethermint/x/evm/keeper/config.go:126, ethermint/x/evm/keeper/simulate.go:120-124,
       ethermint/x/evm/keeper/state_transition.go:66
-    src_live: "eth_call 0x445f5260205ff3 @ 0x5a7e2be -> 0x00..00, header mixHash 0x00..00"
+    src_live: "eth_call 0x445f5260205ff3 @ 103699610 -> 0x00..00, header mixHash 0x00..00"
   added: []
   removed: []
   modified: []
@@ -308,11 +330,11 @@ p2p:
     tier: policy
     src: "go.mod:cometbft"
     note: >-
-      CometBFT's 1 MiB `mempool.max_tx_bytes`, reached by dependency rather than by any
-      constant in this tree: the pin is `v0.38.19` and a search of the clone finds NO override
-      of the mempool sizing anywhere. What the citation evidences is exactly that — which
-      CometBFT this row runs, and that it is unmodified here; the value is that version's
-      `DefaultConfig`, shown in vendored form on the `sei` row. Note the row carries two pins that disagree — `cronos/go.mod` says v0.38.19 and the vendored `ethermint/go.mod` says v0.38.17.
+      CometBFT's 1 MiB `mempool.max_tx_bytes`, a node setting: the v1.8 migration guide gives
+      `max_tx_bytes = 1048576` as the default. The dependency is now the
+      crypto-org-chain/cometbft fork on the v0.39 line. `cronos/go.mod` replaces it with a
+      pseudo-version and `ethermint/go.mod` names v0.39.3. Nodes may also opt in to the
+      app-side mempool (`mempool.type = "app"`), which keeps this limit.
   fragmentation:
     verdict: app-chunking
     tier: transport
@@ -325,7 +347,9 @@ p2p:
     src: "go.mod:cometbft"
     note: >-
       Two stacks in series: CometBFT p2p admits and broadcasts transactions above, the
-      geth-derived EVM txpool applies its own limits below.
+      geth-derived EVM txpool applies its own limits below. The v1.8 release notes say
+      libp2p replaced the legacy stack, but the fork's config calls `libp2p` experimental and
+      opt-in by node setting. Which transport mainnet validators run was not established.
     stack:
       - {layer: execution, protocol: devp2p, purpose: EVM txpool gossip}
       - {layer: consensus, protocol: CometBFT p2p, purpose: tx broadcast + consensus}
@@ -346,9 +370,9 @@ block_metrics:
     mutability: config
     src_live: "eth_getBlockByNumber @ 97363617 vs 97353617 -> 4524s / 10000 blocks"
     note: >-
-      ~5.6s observed against a nominal ~5s — Tendermint's `timeout_commit` is a floor on
-      the commit step, not a target for the whole round, so the measured interval sits
-      above it whenever voting takes real time.
+      Under half a second measured. Tendermint's `timeout_commit` is a floor on the commit
+      step, not a target for the whole round, so the measured interval sits above it
+      whenever voting takes real time.
 
 fee_model:
   metering: gas
@@ -362,19 +386,20 @@ fee_model:
 
 header_fields:
   added: []
-  removed:
-  - {name: withdrawalsRoot, note: "no beacon chain; the Ethereum header is fabricated over a CometBFT block",
-     src_live: "eth_getBlockByNumber latest @ 92902237 -> no withdrawalsRoot key"}
-  - {name: blobGasUsed, note: "no blob market", src_live: "eth_getBlockByNumber latest @ 92902237 -> no blobGasUsed key"}
-  - {name: excessBlobGas, note: "no blob market", src_live: "eth_getBlockByNumber latest @ 92902237 -> no excessBlobGas key"}
-  - {name: parentBeaconBlockRoot, note: "no beacon chain", src_live: "eth_getBlockByNumber latest @ 92902237 -> no parentBeaconBlockRoot key"}
-  - {name: requestsHash, note: "Prague EVM without Prague's header", src_live: "eth_getBlockByNumber latest @ 92902237 -> no requestsHash key"}
-  modified: []
+  removed: []
+  modified:
+  - {name: withdrawalsRoot, note: "the empty-trie root on every block probed; no beacon chain",
+     src_live: "eth_getBlockByNumber @ 103699610 -> 0x56e81f17…b421"}
+  - {name: blobGasUsed, note: "constant zero; no blob market", src_live: "eth_getBlockByNumber @ 103699610 -> 0x0"}
+  - {name: excessBlobGas, note: "constant zero; no blob market", src_live: "eth_getBlockByNumber @ 103699610 -> 0x0"}
+  - {name: parentBeaconBlockRoot, note: "the empty-trie root, not a beacon root; no beacon chain", src_live: "eth_getBlockByNumber @ 103699610 -> 0x56e81f17…b421"}
+  - {name: requestsHash, note: "the SHA-256 of empty input; no execution requests", src_live: "eth_getBlockByNumber @ 103699610 -> 0xe3b0c442…"}
   note: >-
-    A PRAGUE EVM UNDER A PRE-CANCUN HEADER. BLS12-381 and the EIP-2935 history
-    contract are live, and the block has none of Cancun's or Prague's header fields —
-    because the header is synthesized from a CometBFT block rather than produced by
-    an Ethereum consensus layer.
+    THE RPC NOW SHOWS THESE FIELDS ON EVERY BLOCK, INCLUDING OLD ONES, AND THEY CARRY NO
+    INFORMATION. This row previously recorded all five as absent at block 92902237. That same
+    block now returns all five, so the change is in how the RPC renders a block and not in
+    anything the chain committed to at that height. The values are constants because the
+    Ethereum header is synthesized from a CometBFT block.
 
 gotchas:
   - >-
@@ -391,9 +416,13 @@ gotchas:
     and validation checks only gas and fee-field bounds. What a blob transaction does
     end to end is recorded as `unrecorded`, not guessed.
   - >-
-    THE HEADER IS CANCUN-LESS AND THE EVM IS PRAGUE. Anything that infers fork level
-    from header fields will place this chain years behind where its EVM actually is.
+    HEADER FIELDS SAY NOTHING ABOUT FORK LEVEL HERE. Old blocks now render Cancun and Prague
+    fields they were previously served without, with constant values. A parentBeaconBlockRoot
+    is present and there is no beacon chain. Anything inferring history or fork level from
+    these fields is reading the RPC's version.
   - >-
     THE FORK SCHEDULE IS A GOVERNANCE PARAMETER. `ChainConfig` lives in module state,
     so "which fork is Cronos on" is answerable only by probing the running chain —
-    which is how the level in this row was established.
+    which is how the level in this row was established. Osaka reads as time 0 although it
+    began at block 101485000, so the parameter does not date the fork. Historical `eth_call`
+    follows the height: a CLZ call errors at 101484999 and works at 101485000.

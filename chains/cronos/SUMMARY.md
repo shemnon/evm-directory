@@ -1,8 +1,8 @@
 # Cronos — findings
 
-Chain ID 25. Client `crypto-org-chain/cronos` **v1.7.8** @ `1f072c05`, with one pinned
-companion, `crypto-org-chain/ethermint` @ `2593e6ed` — the go.mod replace target that
-holds the EVM. Baseline fork **prague**. Live probes at block **92902237**
+Chain ID 25. Client `crypto-org-chain/cronos` **v1.8.1** @ `616274a7`, with one pinned
+companion, `crypto-org-chain/ethermint` @ `e874216e` — the go.mod replace target that
+holds the EVM. Baseline fork **osaka**. Live probes at block **103699610**
 (`0x589966d`) on `https://evm.cronos.org`.
 
 `web3_clientVersion` returns `Version dev ()` with an empty commit stamp, so the pin
@@ -59,7 +59,7 @@ handed to the EVM keeper, and there is exactly one occurrence of that type in th
 repository:
 
 ```go
-// app/app.go:649
+// app/app.go:803
 []evmkeeper.CustomContractFn{},
 ```
 
@@ -102,31 +102,37 @@ transaction — so the tempting conclusion is unsupported and is not drawn.
 This is the distinction SCHEMA.md draws between `removed` and `unrecorded`: "we found
 no rejection" and "the chain rejects it" are different claims.
 
-## 4. A Prague EVM under a pre-Cancun header
+## 4. Osaka arrived with v1.8, and the header stopped being evidence
 
-There are no named forks and no timestamps. The fork schedule is a `ChainConfig`
-**parameter in module state**, defaulting to every block-numbered fork at 0 and
-Shanghai/Cancun/Prague at time 0, changeable by governance without a client release.
-`EthereumConfig` has no `OsakaTime` field at all, so Osaka is not merely unscheduled —
-it is not expressible.
+The fork schedule is a `ChainConfig` parameter in module state, changeable by governance
+without a client release. Before v1.8 `EthereumConfig` had no `OsakaTime` field, so Osaka
+could not be scheduled at all. Ethermint's `migrations/v8` now sets it to 0, and governance
+proposal 30 ran that at block **101485000** (2026-10-22 07:52:24 UTC).
 
-Level established by probing the running chain:
+Time 0 would suggest Osaka had always been on, so the fork is dated by differential:
 
-| probe | result | means |
+| probe | block 101484999 | block 101485000 |
 |---|---|---|
-| `eth_call 0x0a` | `invalid input length` | KZG live (Cancun) |
-| `eth_call 0x0b` | `invalid input length` | EIP-2537 live (Prague) |
-| `eth_getCode 0x…2935` | non-empty | EIP-2935 live (Prague) |
-| MCOPY | works | Cancun |
-| `0x1e` (CLZ) | `invalid opcode` | no Osaka |
+| CLZ, `eth_call 0x60015f1e5f5260205ff3` | error | `0x…0100` |
+| `osaka_time` in `/ethermint/evm/v1/params` | absent | `0` |
 
-And the block carries **none** of Cancun's or Prague's header fields — no
-`withdrawalsRoot`, no `blobGasUsed`, no `excessBlobGas`, no `parentBeaconBlockRoot`,
-no `requestsHash` — because the Ethereum header is synthesized over a CometBFT block.
+At the head, `0x0100` verifies a valid P-256 vector and MODEXP rejects inputs over 1024
+bytes.
 
-Anything that infers fork level from header fields places Cronos years behind where
-its EVM actually is. It is the sharpest instance in the dataset of the general Cosmos
-EVM problem: the header is a rendering, not a commitment.
+**One conflict is open.** `CheckMaxTxGas` enforces the 16,777,216 EIP-7825 cap whenever Osaka
+rules apply. The project's migration guide says the cap is "not at the upgrade height" and
+"needs a separate governance change". Testing it means submitting a transaction to mainnet,
+so `eips.7825` stays `unrecorded`.
+
+**The header cannot date anything.** This row used to record `withdrawalsRoot`,
+`blobGasUsed`, `excessBlobGas`, `parentBeaconBlockRoot` and `requestsHash` as absent at block
+92902237. That same block now returns all five. The chain did not rewrite history; the RPC
+renders blocks differently. The values are constants: `parentBeaconBlockRoot` is the
+empty-trie root on a chain with no beacon chain, and `requestsHash` is the SHA-256 of nothing.
+
+v1.8 also removed Interchain Accounts and limited `SendCroToIbc` to two authorized contracts.
+Its release notes say libp2p replaced the legacy networking stack, but the CometBFT fork's
+config calls it experimental and opt-in, and what mainnet validators run was not established.
 
 ## 5. What is inherited and deliberately not restated
 
@@ -146,7 +152,7 @@ module path with it — convergent porting, not shared code.
 
 ```bash
 R=https://evm.cronos.org
-B=0x589966d     # 92902237
+B=0x62e549a     # 103699610
 C=chains/cronos/repos/cronos
 E=chains/cronos/repos/ethermint
 
@@ -159,7 +165,7 @@ ls $E/x/                                          # x/evm, x/feemarket — not x
 # F2: the precompiles are defined and NOT registered
 grep -rn 'BytesToAddress(\[\]byte{10[012]})' $C/x/cronos/keeper/precompiles/
 sed -n '99,140p' $C/x/cronos/keeper/precompiles/bank.go
-grep -rn 'CustomContractFn' $C --include=*.go     # exactly one hit: app/app.go:649
+grep -rn 'CustomContractFn' $C --include=*.go     # the registration site is app/app.go:803
 sed -n '643,652p' $C/app/app.go
 for a in 64 65 66; do
   printf '0x%s code -> ' $a
@@ -178,7 +184,7 @@ grep -n 'AcceptedTxType' chains/cosmos-evm/repos/*/ante/evm/mono_decorator.go   
 grep -n 'func (cc ChainConfig) EthereumConfig' -A28 $E/x/evm/types/chain_config.go
 for p in '{"to":"0x000000000000000000000000000000000000000a","data":"0x00"}' \
          '{"to":"0x000000000000000000000000000000000000000b","data":"0x00"}' \
-         '{"data":"0x60011e5f5260205ff3"}' \
+         '{"data":"0x60015f1e5f5260205ff3"}' \
          '{"data":"0x60ff5f5260015f60015e60205ff3"}'; do
   curl -s -X POST $R -H 'content-type: application/json' \
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\",\"params\":[$p,\"latest\"]}"; echo

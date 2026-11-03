@@ -17,14 +17,15 @@ lineage:
     (Azul, Beryl, Cobalt, Zombie), its own precompile framework, native account
     abstraction, and a DYNAMIC precompile address space.
   sync_point: >-
-    base v1.4.2: the OP Stack sequence through Jovian, then four Base-specific
-    upgrades — Azul, Beryl and Cobalt live, Denim unscheduled — plus the Zenith gate.
+    base v1.5.1: the OP Stack sequence through Jovian, then five Base-specific
+    upgrades — Azul, Beryl and Cobalt live, Denim scheduled for 2026-11-05, Everest
+    unscheduled — plus the Zenith gate.
 
 client:
   name: base (base-reth-node)
   repo: https://github.com/base/base
-  version: v1.4.2
-  commit: 5034ef80bc90261ff6c4841fdf4baed34283abad
+  version: v1.5.1
+  commit: 5476069f1eb74a56bccb56fdefd4b4bb0e3cda42
   language: rust
   built_on: reth / op-reth (revm 40.0.3, reth-revm v2.3.0)
   note: >-
@@ -36,7 +37,7 @@ client:
      pinned_by: {how: reference},
      provides: "nothing this row states — pinned only so the rejection above names a
        specific tree. This is the repo the obvious search finds, and AT THIS COMMIT ITS
-       versions.env STILL PINS base/base v1.2.0 while the client has shipped v1.4.2 and
+       versions.env STILL PINS base/base v1.2.0 while the client has shipped v1.5.1 and
        the network has passed Cobalt. The packaging repo lags the client by three minor
        releases and one live mainnet fork, which is why this row reads the client repo
        and keeps node only as a pointer."}
@@ -66,19 +67,33 @@ forks:
       is not what it was for: Cobalt installs the two EIP-8130 support precompiles,
       NonceManager at 0x8130..aa01 and TxContext at 0x8130..aa02, and enables
       transaction extensions in the builder — but the EIP-8130 TRANSACTION TYPE moved
-      off Cobalt and onto Zenith before Cobalt activated. See the 0x79 entry.
+      off Cobalt before Cobalt activated, and is now on Everest. See the 0x79 entry.
     src: crates/common/chains/src/config.rs:cobalt_timestamp
   - name: denim
     status: pending
+    activation_time: 1793901600
+    mainnet_equivalent: null
+    severity: high
+    note: >-
+      SCHEDULED: BASE MAINNET 2026-11-05 18:00 UTC. Live on Base Sepolia since 2026-10-21
+      18:00. Not active on mainnet at this pin, so the 2s facts on this row still hold
+      until then. Blocks go from 2s to a fixed 200ms. `block.timestamp` stays in whole
+      seconds, so five consecutive blocks share one value, and the millisecond part lives
+      in the `BaseTime` predeploy, updated by a new deposit at tx[1] of every block. At the
+      first Denim block the gas limit is divided by 10 and the EIP-1559 denominator
+      multiplied by 10, preserving throughput per unit of time. Also moves the B-20 asset,
+      stablecoin and policy logic to V3, with inverted policy IDs.
+    src: "crates/common/chains/src/config.rs:denim_timestamp, crates/common/genesis/src/schedule.rs:DenimTimestampSchedule, crates/common/genesis/src/rollup.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS, crates/consensus/derive/src/attributes/stateful.rs:DENIM_GAS_PARAMETER_SCALING_FACTOR, crates/common/precompiles/src/policy/abi/v3.rs:IPolicyRegistry"
+    src_live: "Base Sepolia eth_getBlockByNumber @ 53994016..53994020 -> timestamp 1793720672 on all five, tx[1] to 0x4200…0030 with selector 0x86bdf394; eth_call timestampMs on 0x4200…0030 @ 53994022 -> 1793720673200. Base mainnet @ 53465664 -> 2s spacing, gasLimit 400000000, the same call reverts 'Proxy: implementation not initialized'"
+    src_doc: "https://github.com/base/base/releases/tag/v1.5.1"
+  - name: everest
+    status: pending
     mainnet_equivalent: null
     note: >-
-      Fourth Base-specific upgrade, `ForkCondition::Never` on mainnet and Sepolia —
-      declared, not scheduled. It is the sub-second block upgrade: cadence goes from
-      the 2s `PRE_DENIM_BLOCK_INTERVAL_SECS` to a fixed
-      `NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS` of 200, with
-      `DENIM_GAS_PARAMETER_SCALING_FACTOR` of 10 for the ten Denim blocks that fit in
-      one legacy interval.
-    src: crates/common/genesis/src/rollup.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS
+      New at this pin, and it now holds the EIP-8130 transaction type. Fifth Base-specific
+      upgrade, contract-backed and in the execution ladder, with `everest_timestamp: None`
+      on every network. Declared, not scheduled.
+    src: "crates/common/genesis/src/chain/upgrade.rs:Everest, crates/common/chains/src/config.rs:everest_timestamp, crates/common/evm/src/eip8130.rs:not_active_error"
   - name: zenith
     status: pending
     mainnet_equivalent: null
@@ -121,15 +136,18 @@ tx_types:
     name: Eip8130Tx
     status: pending
     spec: EIP-8130
-    fork: zenith
+    fork: everest
     severity: high
-    src: crates/common/consensus/src/transaction/tx_type.rs:EIP8130_REJECTION_MSG
+    src: "crates/common/consensus/src/transaction/tx_type.rs:EIP8130_REJECTION_MSG, crates/common/evm/src/eip8130.rs:not_active_error, crates/execution/txpool/src/validator.rs:check_without_keystore"
     note: >-
-      WAS `added` AND GATED ON COBALT; IT IS NOW GATED ON ZENITH, WHICH CANNOT BE
-      ACTIVATED AT RUNTIME. The rejection message says so in as many words:
-      "EIP-8130 (account abstraction) transactions are gated behind Zenith;
-      eth_sendRawTransaction does not accept transaction type 0x79 before Zenith" —
-      it read "Cobalt" at the previous pin. Cobalt then went live on 2026-09-30 and
+      THE GATE HAS MOVED TWICE: COBALT, THEN ZENITH, NOW EVEREST. The rejection message says
+      "EIP-8130 (account abstraction) transactions are gated behind Everest;
+      eth_sendRawTransaction does not accept transaction type 0x79 before Everest", and
+      execution rejects it too, since a block can arrive by the Engine API or P2P. This
+      undoes the row's earlier reading that the type sat behind a gate no runtime override
+      could open: Everest is contract-backed and in the execution ladder, though unscheduled.
+      Zenith still holds the Keystore, so between Everest and Zenith a 0x79 transaction may
+      use only delegation and native secp256k1 keys. Cobalt went live on 2026-09-30 and
       brought the type's two support precompiles with it, so the infrastructure for
       native account abstraction is callable on Base mainnet today while the
       transaction type that would use it is not submittable. `pending` rather than
@@ -223,10 +241,11 @@ tx_authorization:
         identified by the KEY, and a P-256 key has no address of its own. Low-s
         enforced to match OpenZeppelin's P256.verify. Paired with 0x0100, which Base
         has at both the Jovian and Azul (Osaka-priced) pricings. STILL `pending` AT
-        v1.4.2, FOR A DIFFERENT REASON THAN BEFORE: the earlier blocker was that the
+        v1.5.1, FOR A DIFFERENT REASON THAN BEFORE: the earlier blocker was that the
         authenticator contracts were undeployed on mainnet, but the binding constraint
         now is that the only transaction type reaching AuthenticatorDispatch is 0x79,
-        which moved from the Cobalt gate to the Zenith gate. Cobalt going live on
+        which moved from the Cobalt gate to Everest, and non-secp256k1 keys need the Zenith
+        Keystore on top of that. Cobalt going live on
         2026-09-30 did not make a P-256 key able to move a wei on Base.
       src: "crates/common/consensus/src/transaction/eip8130/addresses.rs:P256_AUTHENTICATOR, crates/execution/eip8130/src/dispatch.rs:p256_verify, crates/common/precompiles/src/provider.rs:P256VERIFY"
     secp256r1_webauthn:
@@ -276,7 +295,7 @@ precompiles:
       only once the upgrade is >= Cobalt. LIVE SINCE 2026-09-30: at the previous pin
       Cobalt was `ForkCondition::Never`, so this address was in the client and not on
       the network. It is now callable on mainnet even though the 0x79 transaction type
-      it supports is gated behind Zenith and is not.
+      it supports is gated behind Everest and is not.
   "0x813000000000000000000000000000000000aa02":
     name: TxContext
     status: added
@@ -310,6 +329,28 @@ precompiles:
 
 system_contracts:
   note: inherits the OP Stack 0x42.. predeploy set
+  "0x4200000000000000000000000000000000000030":
+    name: BaseTime
+    status: added
+    fork: denim
+    severity: high
+    src: "crates/common/consensus/src/predeploys.rs:BASE_TIME, crates/common/evm/src/base_time.rs:ensure_predeploy, crates/common/consensus/src/base_time.rs:BaseTimeUpdateTx"
+    src_live: "eth_call timestampMs on Base Sepolia @ 53994022 -> 1793720673200; on Base mainnet @ 53465664 -> reverts 'Proxy: implementation not initialized'"
+    note: >-
+      THE ONLY SUB-SECOND CLOCK AFTER DENIM, AND IT IS WRONG DURING tx[0]. `timestampMs()`
+      combines the block's seconds with a stored millisecond part that the tx[1] deposit
+      updates, so the L1-info deposit at tx[0] sees the previous value: 200ms behind within
+      a second and 800ms ahead at rollover, in the client's own words. The proxy is already
+      on mainnet; Denim installs its implementation.
+system_transactions:
+  - name: BaseTime millisecond deposit
+    fork: denim
+    note: >-
+      From Denim every block carries a second system deposit at tx[1], calling
+      `setTimestampMillisPart(uint16)` on BaseTime, ahead of user deposits and sequencer
+      transactions. Consensus rejects a block whose value disagrees with the schedule. Code
+      that assumes user transactions start at index 1 breaks here.
+    src: crates/common/consensus/src/base_time.rs:validate_timestamp_schedule
 
 opcodes:
   prevrandao:
@@ -362,10 +403,10 @@ block_metrics:
     note: >-
       2s, the OP Stack `l2BlockTime` every descendant inherits unless it overrides it.
       Changeable by the chain operator through the SystemConfig, not by a fork — with
-      one declared exception: the unscheduled Denim upgrade replaces it with a fixed
-      200ms cadence (`NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS`), ten blocks per legacy
-      interval, scaling the gas parameters by `DENIM_GAS_PARAMETER_SCALING_FACTOR` to
-      match. `ForkCondition::Never` on mainnet, so 2s is what runs.
+      one declared exception: the Denim upgrade replaces it with a fixed 200ms cadence
+      (`NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS`), ten blocks per legacy interval, scaling
+      the gas parameters by `DENIM_GAS_PARAMETER_SCALING_FACTOR` to match. Denim is
+      scheduled for mainnet at 2026-11-05 18:00 UTC; until then 2s is what runs.
 
 fee_model:
   metering: gas
@@ -380,6 +421,12 @@ header_fields:
   note: inherits OP Stack's repurposed blobGasUsed
 
 gotchas:
+  - >-
+    FROM 2026-11-05 18:00 UTC, FIVE BLOCKS WILL SHARE ONE `block.timestamp`. Denim's blocks are
+    200ms apart and TIMESTAMP stays in seconds, so code that treats a new block as a new time,
+    or divides elapsed seconds by a block interval, is wrong after it. Measured on Base
+    Sepolia. `BaseTime.timestampMs()` is the sub-second source. Block-count time constants
+    written for 2s blocks run ten times faster.
   - >-
     BASE PRECOMPILES ARE NOT ENUMERABLE. From Beryl, a lookup predicate makes every
     0xb2-prefixed address matching the B-20 pattern a precompile. Any tool that

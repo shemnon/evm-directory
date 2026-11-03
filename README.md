@@ -56,7 +56,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.11.3` | osaka |
 | [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.2` | osaka |
 | [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.2` | osaka |
-| [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.2.0` | osaka |
+| [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.5.1` | osaka |
 | [World Chain](chains/worldchain/SUMMARY.md) | world-chain (builder) | `v2.4.2` | osaka |
 | [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB Chain fork) | `v0.5.10` | cancun |
 | [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | prague |

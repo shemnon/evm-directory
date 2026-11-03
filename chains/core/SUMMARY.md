@@ -1,13 +1,41 @@
 # Core — findings
 
-Chain ID 1116. Client `coredao-org/core-chain` **v1.0.26** @ `06a3e0a9`.
-Baseline fork **prague**. Live probes at block **38560250** (`0x24c61ba`) on
+Chain ID 1116. Client `coredao-org/core-chain` **v1.0.27** @ `90aca9a0`.
+Baseline fork **prague**. Live probes at block **40135869** (`0x2646cbd`) on
 `https://rpc.coredao.org`.
 
-`web3_clientVersion` returns `Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12`.
-`06a3e0a9` is this commit: mainnet runs exactly the pinned tag, with no gap.
+`web3_clientVersion` returns `Geth/v1.0.27-90aca9a0-20261031/linux-amd64/go1.23.12`.
+`90aca9a0` is this commit: mainnet runs exactly the pinned tag, with no gap.
 
 ---
+
+## 0. Fermi moved 68.1M CORE with no transaction
+
+v1.0.27 has an empty changelog, and the only code it adds beyond the version bump is one
+fork. At the first block at or after `FermiTime` (2026-11-02 04:00 UTC, block 40093117),
+`ApplyFermiAdjustment` zeroes three hard-coded accounts and credits their total to one
+address, on chain 1116 only.
+
+| account | before (40093116) | after (40093117) |
+|---|---|---|
+| `0x27758c30…e92c` | 63,646,177.22644723 | 0 |
+| `0x18435b4e…ad8e` | 1,999,999.99874 | 0 |
+| `0xa2cc1744…cae5` | 2,499,999.99874 | 0 |
+| `0xb85095fE…c064` | 0 | 68,146,177.22392723 |
+
+The sum is conserved exactly. There is no transaction, log or trace frame, so anything that
+reconstructs balances from transfers now disagrees with `eth_getBalance`. Read from the
+`rpc.ankr.com/core` archive, because the row's own endpoint keeps only recent state.
+
+The recipient is a Safe v1.3.0 proxy with a 2-of-4 threshold and nonce 0 at the probe.
+
+The client does not say why. Press reports, citing b14g, say about 97M CORE left b14g's
+staking contracts on 2026-10-31 and describe this as a recovery of part of it. This row
+records the mechanism and those attributions; it does not establish who owned the funds.
+
+The name collides: BSC's Fermi is its 450ms block-time step. Core's changes no opcode,
+precompile or fee rule, and blocks here are still 3s (30,000s per 10,000 blocks at the
+probe). Every other finding below is unaffected.
 
 ## 1. It is a BSC fork, and the fork names are the evidence
 
@@ -128,7 +156,7 @@ What prevents it is a deliberate override:
 // as Satoshi doesn't implement the PREVRANDAO opcode.
 ```
 
-Verified live at block 38580453: `eth_call 0x445f5260205ff3` returns `0x…02`, and the
+Verified live at block 40135869: `eth_call 0x445f5260205ff3` returns `0x…02`, and the
 header carries `difficulty: 0x2`, `mixHash: 0x00…00`.
 
 Any contract using `block.prevrandao` as an entropy source on Core is reading a
@@ -226,13 +254,13 @@ error corrected in §4 above:
 
 ```bash
 R=https://rpc.coredao.org
-B=0x24c61ba     # 38560250
+B=0x2646cbd     # 40135869 (this endpoint prunes; use a recent block)
 C=chains/core/repos/core-chain
 
 # F1: it is a BSC fork
 grep -n 'Binance smart chain' $C/CHANGELOG.md
 grep -n 'bnb-chain' $C/go.mod
-sed -n '155,196p' $C/params/config.go
+sed -n '155,197p' $C/params/config.go
 
 # F2: the precompile addresses, and the silent gap at 0x66
 sed -n '163,173p' $C/core/vm/contracts.go
@@ -284,6 +312,15 @@ grep -rn 'TxType\s*=\s*0x' $C/core/types/transaction.go
 curl -s -X POST $R -H 'content-type: application/json' \
   -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBlockByNumber\",\"params\":[\"$B\",true]}" \
   | python3 -c 'import sys,json;b=json.load(sys.stdin)["result"];print(sorted({t["type"] for t in b["transactions"]}), b.get("blobGasUsed"))'
+
+# F0: Fermi
+cat $C/consensus/misc/fermi.go
+grep -n 'ApplyFermiAdjustment' $C/core/state_processor.go $C/miner/worker.go
+for b in 0x263c9bc 0x263c9bd; do   # 40093116, 40093117
+  curl -s -X POST https://rpc.ankr.com/core -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_getBalance\",\"params\":[\"0xb85095fE01C1d95da3B1df0998ff5eDDcC9ac064\",\"$b\"]}"
+  echo
+done
 
 # row check
 tools/.venv/bin/python tools/verify.py core

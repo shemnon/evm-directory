@@ -2,7 +2,7 @@
 
 **Chain ID 728126428 · role: `independent` · equivalence: `behavioural` · no upstream**
 
-Reference: [tronprotocol/java-tron `GreatVoyage-v4.8.2.3`](https://github.com/tronprotocol/java-tron) @ `5c449a18`.
+Reference: [tronprotocol/java-tron `GreatVoyage-v4.8.2.4`](https://github.com/tronprotocol/java-tron) @ `4e8389f1`.
 
 Not a fork of any Ethereum client. java-tron reimplements EVM semantics in Java with
 its own resource model, transaction format and address encoding. Every delta below is
@@ -129,10 +129,28 @@ Tron ships GreatVoyage releases, but features activate by **on-chain SR governan
 proposal**. There is no fork-name mapping to Ethereum's schedule to record, which is
 why `forks.timeline` is empty rather than guessed at.
 
+The newest case shows the pattern. GreatVoyage-v4.8.2.4 (2026-10-22) is a mandatory release
+whose notes say only that it optimises "storage and metadata handling in edge cases". It
+adds chain parameter 102, and proposal 108 turned that on (expiry 2026-11-02 12:00 UTC).
+
+The edge case is a keying fault. A version-0 contract's storage row key is 16 bytes of the
+address hash plus the **low 16 bytes of the slot**, so slots with identical low 128 bits
+share a row. Under parameter 102:
+
+- A write moves the slot to a row keyed by a hash of the full slot and deletes the old row.
+- A read does not migrate anything.
+- Reading a slot whose legacy row is already claimed by an aliased slot, while that row
+  still exists, aborts the whole transaction with `OutOfTimeException`, which looks like a
+  timeout and is not one.
+
+Version-1 contracts hash the slot first and are not exposed. Parameter 99, the sibling
+change from v4.8.2.3, is still unset. Reachable only with slots that share low 128 bits, so
+ordinary hashed mapping keys will not hit it by chance.
+
 ## Re-verify
 
 ```
-git clone --depth 1 --branch GreatVoyage-v4.8.2.3 https://github.com/tronprotocol/java-tron
+git clone --depth 1 --branch GreatVoyage-v4.8.2.4 https://github.com/tronprotocol/java-tron
 F=actuator/src/main/java/org/tron/core/vm/PrecompiledContracts.java
 sed -n '133,213p' $F        # all precompile addresses
 sed -n '552,580p' $F        # 0x03 is not RIPEMD160

@@ -76,7 +76,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Cronos](chains/cronos/SUMMARY.md) | cronos (cronosd) + ethermint | `v1.7.8` | prague |
 | [Artela](chains/artela/SUMMARY.md) *(dead — abandoned, went dark Sept 2025)* | artela (artelad) | `v0.4.9-rc9` | cancun |
 | [Moonbeam](chains/moonbeam/SUMMARY.md) *(dead — shutdown 2026-08-10)* | moonbeam (runtime) | `runtime-4401` | osaka |
-| [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.1` | cancun |
+| [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.4` | cancun |
 | [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.0` | osaka |
 | [Hyperliquid (HyperEVM)](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | `—` | cancun |
 | [Hedera](chains/hedera/SUMMARY.md) | hiero-consensus-node (Besu EVM as a library) | `v0.76.1` | cancun |

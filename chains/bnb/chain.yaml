@@ -19,8 +19,8 @@ lineage:
 client:
   name: bsc
   repo: https://github.com/bnb-chain/bsc
-  version: v1.7.8
-  commit: cdb7548b5baacfdae92f9f63437d6456411665f3
+  version: v1.8.2
+  commit: 54afaff4da31ac9e49ba646a4f65104edac5a2f3
   language: go
 
 live_probe:
@@ -38,8 +38,9 @@ consensus:
 
 baseline_fork: osaka
 
-recorded_at: 1788998400   # 2026-09-10 — re-verified after Pasteur, same v1.7.8 pin
-# stale_after: none — v1.7.8 schedules no mainnet fork after Pasteur (BPO1/BPO2 skipped)
+recorded_at: 1793721600   # 2026-11-03 — re-pinned to v1.8.2, which schedules Jenner
+stale_after: 1796697000   # 2026-12-08 02:30 UTC, Jenner activation
+# BSC skips BPO1 and BPO2
 
 forks:
   src: params/config.go:BSCChainConfig
@@ -58,6 +59,19 @@ forks:
      note: "2026-04-28 — nearly five months AFTER mainnet's Osaka (2025-12-03)"}
   - {name: pasteur, activation_time: 1787625000, mainnet_equivalent: null,
      note: "meta-BEP-673 (BEP-682, BEP-695). First block 117920136, timestamp exactly 1787625000. Tombstoned 0x64 and 0x65, hardened and repriced 0x67, replaced StakeHub and Governor bytecode. Chapel testnet took it 2026-07-21."}
+  - name: jenner
+    status: pending
+    activation_time: 1796697000
+    mainnet_equivalent: null
+    note: >-
+      SCHEDULED: MAINNET 2026-12-08 02:30 UTC, first set in v1.8.2 (published 2026-11-03).
+      Chapel testnet has run it since 2026-10-29 02:30 UTC. Meta-BEP-718. Adds precompile 0x70
+      (BEP-706), the CAS20 token precompile family (BEP-702) and a payment lane reserving block
+      gas (BEP-703), and reprices 0x68 per input byte. Every fact on this row is still read
+      from Pasteur, the active set, until then.
+    src: "params/config.go:JennerTime, core/vm/contracts.go:PrecompiledContractsJenner, core/systemcontracts/upgrade.go:jennerUpgrade"
+    src_live: "Chapel eth_call 0x70 @ 140600508 -> 0x..01a1a21b0e78 (milliseconds); BSC mainnet eth_call 0x70 @ 131459876 -> 0x (empty account)"
+    src_doc: "https://github.com/bnb-chain/bsc/releases/tag/v1.8.2, https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-718.md"
   - {name: bpo1, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
   - {name: bpo2, activation_time: null, status: skipped, note: "explicitly 'will be skipped in BSC'"}
 
@@ -95,7 +109,7 @@ eips:
       merge-based derivation and then explicitly rebinds 0x44 back to
       `opDifficulty` for Satoshi. Same answer, three different mechanisms — see
       chains/core/.
-    src: "core/evm.go:75-77, params/config.go:2136, params/config.go:2159-2172, core/vm/jump_table.go:117-118, core/vm/jump_table.go:125-136"
+    src: "core/evm.go:76-78, params/config.go:2177, params/config.go:2199-2212, core/vm/jump_table.go:125-126, core/vm/jump_table.go:133-144"
     src_live: "eth_call 0x445f5260205ff3 @ 121193504 -> 0x..02 (the difficulty); the same call on Ethereum mainnet returns 32 bytes of randomness"
   4844:
     status: inherited
@@ -116,7 +130,7 @@ eips:
     note: >-
       The ONLY Ethereum system contract BSC keeps. Notably its bytecode is installed
       by the client at the Prague transition via statedb.SetCode
-      (core/systemcontracts/upgrade.go:1117-1120), and the code comment calls it
+      (core/systemcontracts/upgrade.go:1153-1156), and the code comment calls it
       "a special system contract in bsc, which can't be upgraded".
     src: "core/systemcontracts/upgrade.go:TryUpdateBuildInSystemContract"
   4788:
@@ -124,7 +138,7 @@ eips:
     note: >-
       No beacon roots. ActiveSystemContracts takes an early-return IsInBSC() branch
       that omits BEACON_ROOTS_ADDRESS entirely — BSC has no beacon chain.
-    src: params/config.go:1917-1923
+    src: params/config.go:1957-1961
   6110: {status: removed, note: "no DEPOSIT_CONTRACT_ADDRESS in the IsInBSC branch",
          src: "params/config.go:ActiveSystemContracts"}
   7002: {status: removed, note: "no WITHDRAWAL_REQUEST_PREDEPLOY in the IsInBSC branch",
@@ -141,6 +155,17 @@ non_eip_specs:
   - {id: BEP-comprehensive, name: BSC BEP series, adoption: adopted,
      note: "fork names (Kepler, Haber, Pascal, Lorentz, Maxwell, Fermi, Mendel, Pasteur) bundle BEPs. Pasteur is meta-BEP-673: BEP-682 and BEP-695 need the fork; BEP-675 (builder-proposed blocks) is only gated on it.",
      src_doc: "https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-673.md"}
+  - id: BEP-703
+    name: Payment Lane
+    adoption: proposed
+    fork: jenner
+    src: "core/payment_lane.go:ResolveLaneState, core/paymentlane/paymentlane.go:MaxLaneRatio"
+    src_doc: "https://github.com/bnb-chain/bsc/releases/tag/v1.8.2"
+    note: >-
+      Scheduled with Jenner, not live. From the block after activation, part of each block's gas
+      is reserved for eligible BNB transfers and transactions to listed payment contracts: 5% by
+      default, capped at 10% by the client, changeable by governance. Importer and producer each
+      derive the quota from state, because nothing commits it. Ordering stops being one gas pool.
 
 tx_types:
   envelope:
@@ -227,7 +252,7 @@ precompiles:
       tmHeaderValidateDeprecated, whose Run returns errors.New("deprecated") for
       every input. The address stays consumed — calling it fails, where calling an
       absent address would succeed with empty output.
-    src: "core/vm/contracts.go:374, core/vm/contracts_lightclient.go:tmHeaderValidateDeprecated"
+    src: "core/vm/contracts.go:416, core/vm/contracts_lightclient.go:tmHeaderValidateDeprecated"
     src_live: "eth_call to 0x...0064 data 0x00 @ 121193504 -> error -32000 'deprecated'"
   "0x65":
     name: iavlMerkleProofValidate
@@ -236,13 +261,13 @@ precompiles:
       IAVL merkle proof validation, revised four times (base, Moran, Planck, Plato)
       and then tombstoned at Pasteur alongside 0x64: iavlMerkleProofValidateDeprecated
       returns errors.New("deprecated") for every input.
-    src: "core/vm/contracts.go:375, core/vm/contracts_lightclient.go:iavlMerkleProofValidateDeprecated"
+    src: "core/vm/contracts.go:417, core/vm/contracts_lightclient.go:iavlMerkleProofValidateDeprecated"
     src_live: "eth_call to 0x...0065 data 0x00 @ 121193504 -> error -32000 'deprecated'"
   "0x66":
     name: blsSignatureVerify
     status: added
     fork: luban
-    src: core/vm/contracts.go:376
+    src: core/vm/contracts.go:418
   "0x67":
     name: cometBFTLightBlockValidate
     status: added
@@ -252,17 +277,40 @@ precompiles:
       decoding rejects a light block that lists a validator twice
       (requireUniqueValidators), and gas scales with input — 3000 plus 16 per byte,
       where every earlier variant charged a flat 3000.
-    src: "core/vm/contracts.go:377, core/vm/contracts_lightclient.go:cometBFTLightBlockValidatePasteur, params/protocol_params.go:CometBFTLightBlockValidatePerByteGas"
+    src: "core/vm/contracts.go:419, core/vm/contracts_lightclient.go:cometBFTLightBlockValidatePasteur, params/protocol_params.go:CometBFTLightBlockValidatePerByteGas"
   "0x68":
     name: verifyDoubleSignEvidence
     status: added
     note: "consensus slashing evidence verification exposed to the EVM"
-    src: core/vm/contracts.go:378
+    src: core/vm/contracts.go:420
   "0x69":
     name: secp256k1SignatureRecover
     status: added
     note: "distinct from ECRECOVER at 0x01"
-    src: core/vm/contracts.go:379
+    src: core/vm/contracts.go:421
+  "0x70":
+    name: MILLI_TIMESTAMP
+    status: pending
+    fork: jenner
+    note: >-
+      BEP-706. Returns the block's millisecond timestamp as a 32-byte integer, ignores calldata,
+      20 gas. Reachable only through block-context dispatch; `block.timestamp` stays in seconds.
+      Until 2026-12-08 this is an empty account on mainnet, so a call succeeds and returns
+      nothing. Also from Jenner, 0x68 costs 16 gas per input byte on top of its base.
+    src: "core/vm/contract_milli_timestamp.go:milliTimestamp, params/protocol_params.go:MilliTimestampGas, core/vm/contracts.go:verifyDoubleSignEvidenceJenner, params/protocol_params.go:DoubleSignEvidenceVerifyPerByteGas"
+    src_live: "Chapel eth_call 0x70 @ 140600508 -> 0x..01a1a21b0e78; BSC mainnet @ 131459876 -> 0x"
+  dynamic_range:
+    name: CAS20 token precompiles
+    status: pending
+    fork: jenner
+    severity: high
+    pattern: "bytes[0:2] == 0xCA52 AND bytes[2:10] all zero"
+    src: "core/vm/cas20.go:IsCAS20Address, core/vm/cas20.go:IsCAS20Routed, core/vm/evm.go:cas20Enabled, core/vm/cas20.go:CAS20FactoryAddress, core/vm/cas20_policy.go:CAS20PolicyRegistryAddress"
+    note: >-
+      BEP-702, and the second chain in this dataset with a precompile space that cannot be
+      listed, after Base's B-20. Every address matching the pattern routes to native code, plus
+      three singletons: the factory at 0xCA5F00…00 and the registries at 0x7020…01 and 0x7020…02.
+      Token creation needs separate activation by a governance-appointed administrator.
   "0x0100": {name: P256VERIFY, status: inherited, note: "mainnet semantics and gas",
              src: "core/vm/contracts.go:PrecompiledContractsPasteur, params/protocol_params.go:P256VerifyGas"}
   note: >-
@@ -292,12 +340,14 @@ system_contracts:
   "0x0000000000000000000000000000000000002004": {name: GovernorContract, status: added, src: "core/systemcontracts/const.go:GovernorContract, core/systemcontracts/upgrade.go:pasteurUpgrade",
     note: "bytecode replaced by the client at Pasteur (BEP-695 governance hardening; bsc-genesis-contract 041881a0)"}
   "0x0000000000000000000000000000000000002005": {name: GovTokenContract, status: added, src: "core/systemcontracts/const.go:GovTokenContract"}
+  "0x0000000000000000000000000000000000002007": {name: PaymentLaneContract, status: pending, fork: jenner,
+     note: "BEP-703, installed at Jenner; holds the lane ratio and the listed payment contracts", src: "core/systemcontracts/const.go:PaymentLaneContract, core/paymentlane/paymentlane.go:ContractAddress"}
   "0x0000000000000000000000000000000000002006": {name: TimelockContract, status: added, src: "core/systemcontracts/const.go:TimelockContract"}
   "0x0000000000000000000000000000000000003000": {name: TokenRecoverPortalContract, status: added, src: "core/systemcontracts/const.go:TokenRecoverPortalContract"}
   mutable_bytecode:
     mechanism: TryUpdateBuildInSystemContract
     severity: high
-    src: core/systemcontracts/upgrade.go:1111-1127
+    src: core/systemcontracts/upgrade.go:1147-1163
     note: >-
       BSC REWRITES system-contract bytecode at fork boundaries via statedb.SetCode.
       Twenty per-fork bytecode directories exist (bruno, euler, gibbs, moran,
@@ -343,7 +393,7 @@ opcodes:
       instruction set BSC can select, because the Shanghai set is derived from the
       London set rather than from the merge set — so it pushes
       `Context.Difficulty`, which Parlia sets to 1 or 2. See eips.4399.
-    src: "core/vm/jump_table.go:117-118, core/vm/instructions.go:477-481"
+    src: "core/vm/jump_table.go:125-126, core/vm/instructions.go:467-478"
     src_live: "eth_call 0x445f5260205ff3 @ 121193504 -> 0x..02"
 
 tx_lifecycle:
@@ -439,10 +489,14 @@ header_fields:
 
       Third meaning for a repurposed header field in this dataset, after OP
       Stack's `blobGasUsed` (DA footprint) and Avalanche's (pinned to zero).
-    src: "consensus/parlia/parlia.go:1176-1180, consensus/parlia/parlia.go:626-635, core/types/block.go:161-173"
+    src: "consensus/parlia/parlia.go:1176-1180, consensus/parlia/parlia.go:628-637, core/types/block.go:161-173"
     src_live: "eth_getBlockByNumber @ 121193504 -> mixHash 0x..0352 (850), timestamp 1789098849, milliTimestamp 1789098849850 — MilliTimestamp()/1000 == Time, as verifyHeader requires"
 
 gotchas:
+  - >-
+    0x70 IS AN EMPTY ACCOUNT UNTIL 2026-12-08. A contract calling the BEP-706 millisecond
+    precompile on mainnet before Jenner gets a successful call and no data. Testing on Chapel will
+    not show this, because Chapel has had it since 2026-10-29.
   - >-
     `block.prevrandao` RETURNS 1 OR 2. BSC never took the merge rung: 0x44 is
     still DIFFICULTY in every instruction set it can select, and Parlia's

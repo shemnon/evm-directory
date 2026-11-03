@@ -2,7 +2,7 @@
 
 **Chain ID 56 · role: `fork` · upstream: go-ethereum · baseline: Osaka**
 
-Reference: [bnb-chain/bsc `v1.7.8`](https://github.com/bnb-chain/bsc) @ `cdb7548b`.
+Reference: [bnb-chain/bsc `v1.8.2`](https://github.com/bnb-chain/bsc) @ `54afaff4`.
 
 ## Fork timing goes both directions
 
@@ -21,9 +21,20 @@ blob-parameter forks are explicitly declined.
 **Pasteur went live on 2026-08-25 at block 117920136** (Chapel testnet: 2026-07-21). It
 is meta-BEP-673: BEP-682 hardens `0x67`, BEP-695 replaces the StakeHub and Governor
 bytecode, and `0x64`/`0x65` are tombstoned. All precompile facts below are read from
-`PrecompiledContractsPasteur`, the active set. The row was re-verified on 2026-09-10
-against the same `v1.7.8` pin — there is no newer stable release (`v1.8.0-alpha` is a
-preview, and schedules no new fork).
+`PrecompiledContractsPasteur`, the active set.
+
+**Jenner is scheduled for mainnet at 2026-12-08 02:30 UTC** by v1.8.2, and Chapel testnet has
+run it since 2026-10-29. It is recorded as `pending`, and none of it is live on mainnet:
+
+- `0x70` returns millisecond block time for 20 gas (BEP-706). Until Jenner, a call to it on
+  mainnet succeeds and returns nothing.
+- CAS20 adds a family of token precompiles matched by address pattern, `0xCA52…` (BEP-702),
+  so BSC's precompile set will no longer be enumerable either.
+- A payment lane reserves 5% of block gas by default for eligible transfers (BEP-703).
+- `0x68` gains a charge of 16 gas per input byte.
+
+The public RPC at `bsc-dataseed.bnbchain.org` reported `Geth/v1.7.7` at the probe, so nodes
+need not be on this pin yet.
 
 ## Prague, split cleanly down the middle
 
@@ -197,7 +208,7 @@ from source alone.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v1.7.8 https://github.com/bnb-chain/bsc
+git clone --depth 1 --branch v1.8.2 https://github.com/bnb-chain/bsc
 sed -n '353,380p' core/vm/contracts.go               # LIVE Pasteur set incl. 0x64-0x69
 sed -n '/BSCChainConfig = /,/^	}/p' params/config.go  # fork timestamps
 sed -n '1910,1935p' params/config.go                 # IsInBSC system contract split

@@ -25,8 +25,8 @@ lineage:
 client:
   name: java-tron
   repo: https://github.com/tronprotocol/java-tron
-  version: GreatVoyage-v4.8.2.3
-  commit: 5c449a18a2bb995d3b688d1587e664d909b473c7
+  version: GreatVoyage-v4.8.2.4
+  commit: 4e8389f159d0782f1ebcd9dab2fd88388c0e6fe9
   language: java
 
 consensus:
@@ -89,7 +89,7 @@ non_eip_specs:
     name: ALLOW_OPTIMIZE_TVM_STORAGE
     adoption: proposed
     src: "actuator/src/main/java/org/tron/core/utils/ProposalUtil.java:ALLOW_OPTIMIZE_TVM_STORAGE, chainbase/src/main/java/org/tron/core/store/DynamicPropertiesStore.java:allowOptimizeTvmStorage"
-    src_live: "wallet/getchainparameters @ 86940471 -> getAllowOptimizeTvmStorage present with NO value, i.e. unset"
+    src_live: "wallet/getchainparameters @ 87682320 -> getAllowOptimizeTvmStorage present with NO value, i.e. unset"
     note: >-
       NEW IN GreatVoyage-v4.8.2.3 AND NOT YET ACTIVE. Proposable only to the value 1,
       never back to 0, like the rest of Tron's feature flags. It changes how
@@ -97,7 +97,27 @@ non_eip_specs:
       `VMConfig.allowOptimizeTvmStorage()`), so it is a storage-layer change reachable by
       SR vote with no client release. Recorded as `proposed` rather than omitted because
       the parameter is live in the proposal validator today — a vote could turn it on
-      between re-pins, and nothing in a client diff would mark the moment.
+      between re-pins, and nothing in a client diff would mark the moment. That did happen
+      to its sibling, parameter 102, within eleven days of the client release that added it.
+  - id: "chain parameter 102"
+    name: ALLOW_OPTIMIZE_TVM_STORAGE_KEY
+    adoption: adopted
+    severity: high
+    src: "actuator/src/main/java/org/tron/core/vm/program/Storage.java:legacyReadProtection, actuator/src/main/java/org/tron/core/vm/program/Storage.java:getOldRowKey, actuator/src/main/java/org/tron/core/vm/program/Storage.java:getNewRowKey, actuator/src/main/java/org/tron/core/vm/program/Program.java:allowOptimizeTvmStorageKey, framework/src/test/java/org/tron/common/runtime/vm/StorageMigrationTest.java:aliasReadWriteCombinationsAbortWholeTransactionWithLegacyRow"
+    src_live: "wallet/getchainparameters @ 87682320 -> getAllowOptimizeTvmStorageKey=1; wallet/getproposalbyid 108 -> parameters [{102: 1}], created 1793351538, expiration 1793620800 (2026-11-02 12:00 UTC), state APPROVED; wallet/getnowblock @ 87682320 -> header version 39"
+    note: >-
+      LIVE ON MAINNET, AND THE RELEASE NOTE CALLS IT "EDGE CASES". GreatVoyage-v4.8.2.4 is a
+      mandatory release that adds block version 39 and this parameter; proposal 108 turned
+      it on. It addresses an aliasing fault in how contract storage is keyed. A version-0
+      contract's row key is the first 16 bytes of the address hash plus the LOW 16 BYTES OF
+      THE SLOT, so two slots with identical low 128 bits share one physical row. Version-1
+      contracts hash the slot first and are not exposed. Under parameter 102 a WRITE moves
+      the slot to a new row keyed by the hash of the address hash and the full slot, and
+      deletes the old row. A READ does not migrate. Reading a slot whose legacy row is
+      already claimed by an aliased slot, while that row still exists, aborts the whole
+      transaction with `OutOfTimeException`, a timeout-shaped error with no timing cause.
+      EXTCODEHASH also stopped writing a computed hash back for a contract with empty code.
+      Parameter 99 stays unset; this row's active path is 102 alone.
 
 tx_types:
   envelope:
@@ -325,7 +345,7 @@ opcodes:
     - {op: "0xd8", name: VOTEWITNESS,
        note: "consensus voting from inside the EVM. THREE ENERGY TIERS, selected by chain parameter, not by release: `getVoteWitnessCost3` under `allowTvmOsaka` (LIVE — mainnet reports getAllowTvmOsaka=1), else `getVoteWitnessCost2` under `allowEnergyAdjustment`, else the default. The flag named Osaka has nothing to do with Ethereum Osaka.",
        src: "actuator/src/main/java/org/tron/core/vm/OperationRegistry.java:adjustVoteWitness",
-       src_live: "wallet/getchainparameters @ 86940471 -> getAllowTvmOsaka=1, getAllowEnergyAdjustment=1, getAllowOptimizeTvmStorage present with NO value (unset)"}
+       src_live: "wallet/getchainparameters @ 87682320 -> getAllowTvmOsaka=1, getAllowEnergyAdjustment=1, getAllowOptimizeTvmStorage present with NO value (unset)"}
     - {op: "0xd9", name: WITHDRAWREWARD}
     - {op: "0xda", name: FREEZEBALANCEV2}
     - {op: "0xdb", name: UNFREEZEBALANCEV2}
@@ -381,7 +401,7 @@ fee_model:
     DynamicPropertiesStore.java:74). Price is set by SR proposal, not by a market.
     Transactions carry a fee_limit rather than a gas price. An account with enough
     staked TRX executes for free, which has no mainnet analogue.
-  src: chainbase/src/main/java/org/tron/core/store/DynamicPropertiesStore.java:73-75,481
+  src: chainbase/src/main/java/org/tron/core/store/DynamicPropertiesStore.java:73-75,483
 
 header_fields:
   note: >-

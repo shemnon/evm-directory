@@ -2,9 +2,9 @@
 
 **Role:** `fork` · **Upstream:** `ethereum` (via avalanchego + coreth) · **Chain ID:** 14 ·
 **Baseline:** Cancun
-**Client:** [`flare-foundation/go-flare`](https://github.com/flare-foundation/go-flare) `v1.14.0`
-(`1f9983a2f83a8469314817b456d8b279861dbad8`) — a monorepo fork of *both*
-avalanchego `v1.14.0` and coreth `v0.16.0-rc.0`
+**Client:** [`flare-foundation/go-flare`](https://github.com/flare-foundation/go-flare) `v1.14.2`
+(`d2e8e830befdd6a821fe7faeb5fdee3d71953919`) — a monorepo fork of *both*
+avalanchego `v1.14.2`, with coreth grafted under `avalanchego/graft/coreth`
 **Live probes:** `https://flare-api.flare.network/ext/C/rpc` @ block `68124744`
 
 Everything [`chains/avalanche-c/`](../avalanche-c/chain.yaml) establishes about coreth

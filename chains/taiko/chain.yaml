@@ -37,13 +37,13 @@ lineage:
 client:
   name: taiko-geth
   repo: https://github.com/taikoxyz/taiko-geth
-  version: v2.7.0
-  commit: 8e98046bfd6ae36b7047c6a593855425721e1cf5
+  version: v2.8.0
+  commit: eab5e67f77744960e2c200ed9bb2bdd5fa37ed88
   language: go
   built_on: go-ethereum (Osaka-era)
   companion_repos:
   - {name: taiko-mono, repo: "https://github.com/taikoxyz/taiko-mono",
-     version: taiko-alethia-client-v2.7.0, commit: d5132235b98ee2ddc5205e13a8e2b555d7eb18b6,
+     version: taiko-alethia-client-v2.8.0, commit: 9468696d42d3f9b5e27fddcc8612828c4abf1da0,
      pinned_by: {how: release-pair},
      provides: "the anchor transaction constructor and its fixed-k signer, the golden-touch private key, the Anchor.sol L2 predeploy, the derivation rules (gas-limit clamp, manifest constants), and an independent Rust reimplementation of all of it"}
 
@@ -711,6 +711,11 @@ header_fields:
 
 gotchas:
   - >-
+    `GASLIMIT` COULD DIFFER BETWEEN BUILDING AND IMPORT BEFORE v2.8.0. The builder set the protocol
+    gas limit on the header only, so the opcode read the miner's own target while importers
+    read the header. v2.8.0 sets both, and calls itself consensus-sensitive. Blocks built earlier
+    by an affected builder may have executed against the other value. Nodes on alethia-reth were
+    not affected.
     EVERY BLOCK'S FIRST TRANSACTION IS A PROTOCOL TRANSACTION WEARING TYPE 0x02, and
     nothing in its bytes says so. It is identified by INDEX — `i == 0` — not by an
     envelope flag. An indexer that classifies by type byte will bill users for

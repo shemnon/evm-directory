@@ -57,8 +57,8 @@ lineage:
 client:
   name: cosmos/evm (evmd reference node)
   repo: https://github.com/cosmos/evm
-  version: v0.7.3
-  commit: c3ae9067a7eadcdea55a5192226916deb44c71c4
+  version: v0.7.4
+  commit: ba66d3106a52f84b1c1ede8d9683c2df98d742ef
   language: go
   built_on: cosmos/go-ethereum v1.17.2-cosmos-0, Cosmos SDK, CometBFT, ibc-go v11
   note: >-
@@ -1066,6 +1066,12 @@ header_fields:
      src: "rpc/backend/comet_to_eth.go:EthBlockFromCometBlock"}
 
 gotchas:
+- >-
+  v0.7.4 IS A STATE-BREAKING SECURITY RELEASE. Chains built on this framework need a coordinated
+  upgrade to get it: it refuses self-destruct of contracts holding staking positions, stops
+  the precompile call counter wrapping, charges EVM gas on commit errors, and rejects timeout,
+  unordered and fee-granter fields in EIP-712 sign documents. A chain's own version decides
+  which of these it has, so this row does not describe every descendant.
 - >-
   A FAILED TRANSACTION CAN BURN YOUR NONCE, TAKE YOUR FEE, AND LEAVE NO RECEIPT.
   The AnteHandler increments the sender's sequence and deducts the fee, and the

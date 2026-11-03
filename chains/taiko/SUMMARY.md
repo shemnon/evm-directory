@@ -1,10 +1,10 @@
 # Taiko Alethia
 
 **Role:** `fork` · **Upstream:** `ethereum` · **Chain ID:** 167000 · **Baseline:** Osaka
-**Client:** [`taikoxyz/taiko-geth`](https://github.com/taikoxyz/taiko-geth) `v2.7.0`
-(`8e98046bfd6ae36b7047c6a593855425721e1cf5`) ·
+**Client:** [`taikoxyz/taiko-geth`](https://github.com/taikoxyz/taiko-geth) `v2.8.0`
+(`eab5e67f77744960e2c200ed9bb2bdd5fa37ed88`) ·
 **Companion:** [`taikoxyz/taiko-mono`](https://github.com/taikoxyz/taiko-mono)
-`taiko-alethia-client-v2.7.0` (`d5132235b98ee2ddc5205e13a8e2b555d7eb18b6`)
+`taiko-alethia-client-v2.8.0` (`9468696d42d3f9b5e27fddcc8612828c4abf1da0`)
 **Live probes:** `https://rpc.mainnet.taiko.xyz` @ block `10471924` (`0x9fc9f4`)
 
 Taiko is a **based rollup**: it has no sequencer of its own. L1 proposers submit L2

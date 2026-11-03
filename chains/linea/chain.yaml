@@ -47,8 +47,8 @@ lineage:
 client:
   name: lineth-monorepo (Linea Besu package + plugins + tracer)
   repo: https://github.com/LFDT-Lineth/lineth-monorepo
-  version: releases/linea-besu-package/v2.3.0
-  commit: 8d0164319186e2aa9f4a2285831b13334895b268
+  version: releases/linea-besu-package/v2.3.1
+  commit: 7d9e0fbdf830796dcc40e3a3d21ef571af50a825
   language: kotlin/java
   note: >-
     The execution client is not in this repo. This repo pins the Besu commit, holds
@@ -56,7 +56,7 @@ client:
     plugin. Besu is cloned alongside as a companion at exactly the pinned commit.
   companion_repos:
   - {name: besu, repo: "https://github.com/besu-eth/besu",
-     commit: efa817c5abc989ef8bb82de14920518ce2a41173,
+     commit: ee9c64c8ed031cba5c6bcdb502a79c03c3a467c4,
      pinned_by: {how: manifest, path: "gradle/libs.versions.toml"},
      provides: "the EVM itself, and the built-in linea-mainnet genesis/fork schedule"}
 
@@ -300,7 +300,7 @@ precompiles:
     note: >-
       Semantics and gas are stock Osaka, and the prover's operand bound now coincides
       with EIP-7823's 1024 bytes. But throughput is capped per block: 64 effective
-      MODEXP calls, of which at most 2 may have any operand wider than 32 bytes
+      MODEXP calls, of which at most 1 may have any operand wider than 32 bytes (lowered from 2 at v2.3.1)
       (PRECOMPILE_MODEXP_EFFECTIVE_CALLS / PRECOMPILE_LARGE_MODEXP_EFFECTIVE_CALLS,
       largeModexp() thresholding at MODEXP_LARGE_INPUT_BYTE_WIDTH = 32).
     src: "tracer/arithmetization/src/main/java/net/consensys/linea/zktracer/module/hub/precompiles/ModexpMetadata.java:largeModexp"

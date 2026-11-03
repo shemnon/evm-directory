@@ -17,7 +17,8 @@ lineage:
     go-flare is a MONOREPO fork of BOTH halves of an Avalanche node: avalanchego
     (consensus, P/X chains, genesis) and coreth (the C-Chain EVM) live side by side
     in one tree and are versioned together. Its own README pins the bases:
-    "a modified version of avalanchego@v1.14.0 and coreth@v0.16.0 rc0".
+    "a modified version of avalanchego@v1.14.2". Coreth is no longer a separate tree: at
+    this tag it is grafted under avalanchego/graft/coreth.
 
     Read chains/avalanche-c/chain.yaml first: everything that row establishes about
     coreth v0.16.0 — libevm, the Durango=Shanghai / Etna=Cancun mapping, the absence
@@ -26,11 +27,11 @@ lineage:
     the UTXO atomic transactions — is true here too and is restated in this file only
     because avalanche-c has role `fork`, not `stack`, so tools/model.py does not
     resolve inheritance across it. The entries that are FLARE'S OWN carry
-    `note: FLARE-SPECIFIC` and cite files under coreth/core/ that do not exist
+    `note: FLARE-SPECIFIC` and cite files under avalanchego/graft/coreth/core/ that do not exist
     upstream: daemon.go, state_connector.go, governance_settings.go,
     state_transition_params.go.
   sync_point: >-
-    coreth v0.16.0-rc.0 / avalanchego v1.14.0, but the FORK CLOCK is what matters
+    avalanchego v1.14.2 with coreth grafted into it, but the FORK CLOCK is what matters
     here, not the code version. Flare runs the same coreth generation as the
     C-Chain and reaches every Avalanche upgrade roughly a year late: Durango
     2024-03-06 on Avalanche vs 2025-08-05 on Flare (17 months), Etna 2024-12-16 vs
@@ -42,15 +43,15 @@ lineage:
 client:
   name: go-flare
   repo: https://github.com/flare-foundation/go-flare
-  version: v1.14.0
-  commit: 1f9983a2f83a8469314817b456d8b279861dbad8
+  version: v1.14.2
+  commit: d2e8e830befdd6a821fe7faeb5fdee3d71953919
   language: go
   note: >-
-    One repo, two vendored trees. EVM facts cite `coreth/...`; fork schedule and
-    genesis allocation cite `avalanchego/...`. The `coreth/plugin/evm/version.go`
-    string still reads v0.15.4 and is served verbatim by web3_clientVersion on
-    mainnet, so the client version reported over RPC does not identify the release.
-    src_live: "web3_clientVersion @ 68124744 -> v0.15.4 (repo tag is v1.14.0)"
+    One repo, two vendored trees. EVM facts cite `avalanchego/graft/coreth/...`; fork schedule and
+    genesis allocation cite `avalanchego/...`. Mainnet's web3_clientVersion still answers v0.15.4,
+    a string from the old `coreth/plugin/evm/version.go` that no longer appears in this tag's
+    Go source, so the client version reported over RPC does not identify the release.
+    src_live: "web3_clientVersion @ 68124744 -> v0.15.4 (this row pins v1.14.2)"
 
 live_probe:
   endpoint: https://flare-api.flare.network/ext/C/rpc
@@ -64,7 +65,7 @@ consensus:
 baseline_fork: cancun
 
 forks:
-  src: avalanchego/upgrade/upgrade.go:Flare, coreth/params/config_extra.go:SetEthUpgrades
+  src: avalanchego/upgrade/upgrade.go:Flare, avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades
   note: >-
     Flare does not define forks of its own on the EVM side. It reuses Avalanche's
     fork NAMES with its own TIMESTAMPS, hardcoded in a `Flare` Config literal beside
@@ -80,7 +81,7 @@ forks:
      note: "ZeroTime for all five; Berlin and London forced to block 0 for chain 14"}
   - {name: apricot_phase3, activation_time: 0, mainnet_equivalent: london,
      note: "LondonBlock = 0 by chain-id case, not by timestamp",
-     src: "coreth/params/config_extra.go:FlareChainID"}
+     src: "avalanchego/graft/coreth/params/config_extra.go:FlareChainID"}
   - {name: apricot_phase_pre6, activation_time: 1734436800, mainnet_equivalent: null}
   - {name: apricot_phase6,     activation_time: 1734440400, mainnet_equivalent: null}
   - {name: apricot_phase_post6, activation_time: 1734444000, mainnet_equivalent: null}
@@ -103,7 +104,7 @@ forks:
     src_live: "eth_call 0x0100 @ 65060227 -> 0x ; @ 65060228 -> 0x..01"
   - {name: songbird_transition, mainnet_equivalent: null, status: skipped,
      note: "a Flare-added fork field in coreth's NetworkUpgrades; never set on chain 14",
-     src: "coreth/params/extras/network_upgrades.go:SongbirdTransitionTimestamp"}
+     src: "avalanchego/graft/coreth/params/extras/network_upgrades.go:SongbirdTransitionTimestamp"}
 
 eips:
   1559:
@@ -115,35 +116,35 @@ eips:
       0x000000000000000000000000000000000000dEaD; the block producer receives
       nothing, ever. And for a "prioritised" call the charge is overridden entirely —
       see fee_model and the severity:high gotcha.
-    src: "coreth/core/state_transition_params.go:stateTransitionParamsFlare, coreth/core/state_transition.go:557-567"
+    src: "avalanchego/graft/coreth/core/state_transition_params.go:stateTransitionParamsFlare, avalanchego/graft/coreth/core/state_transition.go:557-567"
     src_live: "eth_getBalance 0x..dEaD @ 68124743 -> 68124744 delta +0.05638215 FLR; coinbase 0x0100..00 delta 0"
   4844:
     status: removed
     note: "inherited from coreth: Cancun is live via Etna but block validation rejects any header with blobGasUsed != 0 or excessBlobGas != 0"
-    src: coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled
+    src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled
     src_live: "eth_getBlockByNumber @ 68124744 -> blobGasUsed 0x0, excessBlobGas 0x0"
   4788:
     status: modified
     note: "parentBeaconBlockRoot must be the empty hash — no beacon chain, so the beacon-roots contract has nothing to read"
-    src: coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty
+    src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty
     src_live: "eth_getBlockByNumber @ 68124744 -> parentBeaconBlockRoot 0x00..00"
   2537:
     status: removed
     note: "BLS12-381 at 0x0b-0x11 never adopted — Prague is not in the tree"
-    src: coreth/params/config_extra.go:SetEthUpgrades
+    src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades
     src_live: "eth_call 0x0b @ 68124744 -> 0x (empty account, no precompile)"
-  2935: {status: removed, note: "Prague not adopted", src: coreth/params/config_extra.go:SetEthUpgrades}
-  6110: {status: removed, note: "Prague not adopted; no beacon chain", src: coreth/params/config_extra.go:SetEthUpgrades}
-  7002: {status: removed, note: "Prague not adopted; no beacon chain", src: coreth/params/config_extra.go:SetEthUpgrades}
-  7251: {status: removed, note: "Prague not adopted; no beacon chain", src: coreth/params/config_extra.go:SetEthUpgrades}
+  2935: {status: removed, note: "Prague not adopted", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  6110: {status: removed, note: "Prague not adopted; no beacon chain", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  7002: {status: removed, note: "Prague not adopted; no beacon chain", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  7251: {status: removed, note: "Prague not adopted; no beacon chain", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
   7702:
     status: removed
     note: >-
       No EOA code delegation, no transaction type 0x04. Same absence as the C-Chain
       and for the same reason — Prague is not in the tree.
-    src: coreth/params/config_extra.go:SetEthUpgrades
-  7823: {status: removed, note: "Osaka not adopted — MODEXP keeps Cancun bounds", src: coreth/params/config_extra.go:SetEthUpgrades}
-  7883: {status: removed, note: "Osaka not adopted — MODEXP keeps Cancun pricing", src: coreth/params/config_extra.go:SetEthUpgrades}
+    src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades
+  7823: {status: removed, note: "Osaka not adopted — MODEXP keeps Cancun bounds", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  7883: {status: removed, note: "Osaka not adopted — MODEXP keeps Cancun pricing", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
   7951:
     status: modified
     note: >-
@@ -154,17 +155,17 @@ eips:
       EXACTLY — a valid signature returns 32 bytes of 1, a corrupted r returns empty,
       and binary search puts the charge at precisely 6900 gas, EIP-7951's number.
       Recorded as `modified` only because the fork gate differs.
-    src: coreth/params/hooks_libevm.go:PrecompiledContractsGranite
+    src: avalanchego/graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite
     src_live: "eth_call 0x0100 @ 68124744 -> 0x..01 for a valid sig, 0x for r^1; gas floor 6900 by binary search"
 
 non_eip_specs:
   - {id: ACP-176, name: dynamic fee / target gas excess, adoption: adopted,
-     src: "coreth/plugin/evm/upgrade/ap4/cost.go:MinBaseFee"}
+     src: "avalanchego/graft/coreth/plugin/evm/upgrade/ap4/cost.go:MinBaseFee"}
   - {id: ACP-226, name: minimum block delay (Granite), adoption: adopted,
-     src: "coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess"}
+     src: "avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess"}
   - {id: Avalanche Warp Messaging, name: cross-chain messaging, adoption: adopted, fork: durango,
      note: "enabled on Flare mainnet — confirmed live, not merely present in the tree",
-     src: coreth/precompile/contracts/warp/module.go}
+     src: avalanchego/graft/coreth/precompile/contracts/warp/module.go}
   - note: >-
       Flare's own spec series (FIPs) was NOT read. FTSO and FDC protocol versions are
       governed by on-chain contract upgrades, not by client releases, so nothing in
@@ -190,12 +191,12 @@ tx_types:
     name: BlobTx
     status: removed
     note: "decodable but unincludable — blob gas is pinned to zero at the header level"
-    src: coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled
+    src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled
   "0x04":
     name: SetCodeTx
     status: removed
     note: "EIP-7702 not adopted — Prague absent"
-    src: coreth/params/config_extra.go:SetEthUpgrades
+    src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades
     src_live: "40-block census @ 68124704-68124744 -> {0x0: 55, 0x2: 235}; no 0x03, no 0x04"
 
 non_evm_transactions:
@@ -208,11 +209,11 @@ non_evm_transactions:
   entries:
   - name: UnsignedImportTx
     status: added
-    src: coreth/plugin/evm/atomic/import_tx.go:UnsignedImportTx
+    src: avalanchego/graft/coreth/plugin/evm/atomic/import_tx.go:UnsignedImportTx
     fields: [NetworkID, BlockchainID, SourceChain, ImportedInputs, Outs]
   - name: UnsignedExportTx
     status: added
-    src: coreth/plugin/evm/atomic/export_tx.go:UnsignedExportTx
+    src: avalanchego/graft/coreth/plugin/evm/atomic/export_tx.go:UnsignedExportTx
     fields: [NetworkID, BlockchainID, DestinationChain, Ins, ExportedOutputs]
 
 tx_authorization:
@@ -248,7 +249,7 @@ tx_authorization:
       authorizes: protocol
       precompile: "0x01"
       note: "EVM path, stock. The 0x01-0x11 implementations come from ava-labs/libevm, outside this clone, so the citation is the call site."
-      src: coreth/core/state_transition.go:TransactionToMessage
+      src: avalanchego/graft/coreth/core/state_transition.go:TransactionToMessage
     secp256k1_utxo_credential:
       status: added
       authorizes: protocol
@@ -259,13 +260,13 @@ tx_authorization:
         the signature block is a list of credentials (one per input, each holding a
         list of signatures) rather than a single (v,r,s). See chains/avalanche-c for
         why this is recorded as 0x01-with-a-caveat rather than `none`.
-      src: coreth/plugin/evm/atomic/tx.go:Sign
+      src: avalanchego/graft/coreth/plugin/evm/atomic/tx.go:Sign
     secp256r1:
       status: inherited
       authorizes: never
       precompile: "0x0100"
       note: "P256VERIFY from Granite. A tool for contracts; a P-256 key cannot authorize either kind of Flare transaction."
-      src: coreth/params/hooks_libevm.go:P256VerifyAddress
+      src: avalanchego/graft/coreth/params/hooks_libevm.go:P256VerifyAddress
     bls12_381:
       status: added
       authorizes: never
@@ -275,7 +276,7 @@ tx_authorization:
         signature is checked by a BLOCK PREDICATE outside EVM execution and the
         precompile only reads the verdict, so a contract cannot point this address at
         an arbitrary BLS signature.
-      src: coreth/precompile/contracts/warp/config.go:VerifyPredicate
+      src: avalanchego/graft/coreth/precompile/contracts/warp/config.go:VerifyPredicate
 
 precompiles:
   base_map:
@@ -283,7 +284,7 @@ precompiles:
     present: "0x01-0x0a"
     p256verify: true
     src: >-
-      coreth/params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a
+      avalanchego/graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a
       resolved through the ava-labs/libevm dependency, not vendored in this tree)
     note: >-
       coreth's map byte-for-byte: Cancun-level base, 0x01-0x0a present, MODEXP
@@ -293,7 +294,7 @@ precompiles:
     THE PREDICTION FOR THIS ROW WAS WRONG, AND THAT IS THE FINDING. Flare was
     expected to add FTSO and State Connector PRECOMPILES at 0x1000..0001-0003. It
     adds NO precompile addresses at all. The precompile map is coreth's, byte for
-    byte (coreth/params/hooks_libevm.go:PrecompiledContractsGranite), and every
+    byte (avalanchego/graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite), and every
     0x1000.. address holds real EVM bytecode from the genesis allocation — they are
     system contracts, listed below under system_contracts and proved by eth_getCode.
     Flare's oracle machinery reaches consensus through STATE-TRANSITION HOOKS on
@@ -302,14 +303,14 @@ precompiles:
     name: MODEXP
     status: modified
     note: "Cancun-level (EIP-2565 only) — no EIP-7823 bounds and no EIP-7883 repricing, because Osaka was never adopted"
-    src: coreth/params/config_extra.go:SetEthUpgrades
-  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: coreth/params/config_extra.go:SetEthUpgrades}
+    src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: avalanchego/graft/coreth/params/config_extra.go:SetEthUpgrades}
   "0x0100":
     name: P256VERIFY
     status: modified
@@ -320,25 +321,25 @@ precompiles:
       Hyperliquid, Sei and Sonic: the address is occupied by the same function
       everyone else's 0x0100 is supposed to hold. Marked `modified` because the fork
       gate is Granite rather than Osaka, not because behaviour differs.
-    src: coreth/params/hooks_libevm.go:PrecompiledContractsGranite
+    src: avalanchego/graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite
     src_live: "eth_call 0x0100 @ 68124744 -> valid 0x..01, corrupted-r 0x; eth_getCode -> 0x"
   "0x0100000000000000000000000000000000000000":
     name: GenesisContract
     status: tombstoned
     note: "always reverts (nativeasset.DeprecatedContract). Also the chain's coinbase address in every block header."
-    src: coreth/nativeasset/contract.go:GenesisContractAddr
+    src: avalanchego/graft/coreth/nativeasset/contract.go:GenesisContractAddr
     src_live: "eth_getCode @ 68124744 -> 0x"
   "0x0100000000000000000000000000000000000001":
     name: NativeAssetBalance
     status: tombstoned
     note: "tombstoned at Flare's Banff (2024-12-17), 26 months after Avalanche's. Reverts; address permanently consumed."
-    src: coreth/nativeasset/contract.go:NativeAssetBalanceAddr
+    src: avalanchego/graft/coreth/nativeasset/contract.go:NativeAssetBalanceAddr
     src_live: "eth_call @ 68124744 -> execution reverted, while empty 0x1000..0008 returns 0x"
   "0x0100000000000000000000000000000000000002":
     name: NativeAssetCall
     status: tombstoned
     note: "same lifecycle; always reverts since Banff"
-    src: coreth/nativeasset/contract.go:NativeAssetCallAddr
+    src: avalanchego/graft/coreth/nativeasset/contract.go:NativeAssetCallAddr
   "0x0200000000000000000000000000000000000005":
     name: Warp Messenger
     status: added
@@ -353,7 +354,7 @@ precompiles:
       contradicts SCHEMA.md's precompile/system_contract boundary ("no bytecode in
       state, no EXTCODESIZE") — the one-byte marker is a third thing. It is still a
       precompile: no dispatcher, no ABI, native Go.
-    src: "coreth/precompile/contracts/warp/module.go, coreth/core/state_processor_ext.go:ApplyPrecompileActivations"
+    src: "avalanchego/graft/coreth/precompile/contracts/warp/module.go, avalanchego/graft/coreth/core/state_processor_ext.go:ApplyPrecompileActivations"
     src_live: "eth_getCode @ 68124744 -> 0x01 ; eth_call getBlockchainID() -> 0x77d3074dc510f43b09ac5be77edee276ef3b55f0097d504846aa8eec613fc625"
 
 system_contracts:
@@ -379,7 +380,7 @@ system_contracts:
       transaction. SWITCHED OFF AT DURANGO (2025-08-05): the gate is
       `!isDurango && ...`, so on Flare today this hook is dead code and the contract
       is an ordinary contract. It ran for three years.
-    src: "coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalledFlare, coreth/core/state_connector.go:FinalisePreviousRound, coreth/core/state_connector.go:GetDefaultAttestors"
+    src: "avalanchego/graft/coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalledFlare, avalanchego/graft/coreth/core/state_connector.go:FinalisePreviousRound, avalanchego/graft/coreth/core/state_connector.go:GetDefaultAttestors"
     src_live: "eth_getCode @ 68124744 -> 2196 bytes; contains selectors for submitAttestation(uint256,bytes32,bytes32,bytes32) and getAttestation(uint256)"
   "0x1000000000000000000000000000000000000002":
     name: FlareDaemon
@@ -396,7 +397,7 @@ system_contracts:
       succeeds. Its side effects land inside the user's receipt: a probed submission
       transaction carries six logs emitted by this address that its own call tree
       never produced.
-    src: "coreth/core/daemon.go:GetDaemonContractAddr, coreth/core/daemon.go:GetDaemonSelector, coreth/core/daemon.go:GetMaximumMintRequest, coreth/core/daemon.go:atomicDaemonAndMint, coreth/core/state_transition.go:571"
+    src: "avalanchego/graft/coreth/core/daemon.go:GetDaemonContractAddr, avalanchego/graft/coreth/core/daemon.go:GetDaemonSelector, avalanchego/graft/coreth/core/daemon.go:GetMaximumMintRequest, avalanchego/graft/coreth/core/daemon.go:atomicDaemonAndMint, avalanchego/graft/coreth/core/state_transition.go:571"
     src_live: "eth_getCode @ 68124744 -> 13627 bytes; receipt of 0xf9a1072e659b67ea1768a25f628b8c0776f70bb93f83b3eada23a2977c9aa39c @ 68124724 carries 6 logs from this address though the tx was sent to 0x2cA6..c33f"
   "0x1000000000000000000000000000000000000003":
     name: PriceSubmitter
@@ -405,7 +406,7 @@ system_contracts:
       The legacy FTSO price-submission entry point, and the first of the two
       PRIORITISED addresses: a call here whose selector is 0x8fc6f667 or 0xe2db5a52
       is charged a flat nominal fee instead of what it used gas for. See fee_model.
-    src: "coreth/core/daemon.go:prioritisedFTSOContractAddress, coreth/core/daemon.go:prioritisedFTSOContractDataPrefixesFlareNetworks"
+    src: "avalanchego/graft/coreth/core/daemon.go:prioritisedFTSOContractAddress, avalanchego/graft/coreth/core/daemon.go:prioritisedFTSOContractDataPrefixesFlareNetworks"
     src_live: "eth_getCode @ 68124744 -> 9742 bytes; contains selector for getFtsoManager()"
   "0x1000000000000000000000000000000000000004":
     name: DistributionTreasury
@@ -415,7 +416,7 @@ system_contracts:
       0x4d1c42F41555Ae35DfC1819bd718f7D9Fb28abdD carrying selector 0x5ace4f0d makes
       the client SWEEP THIS CONTRACT'S ENTIRE BALANCE to another address with a raw
       SubBalance/AddBalance pair, outside any EVM frame.
-    src: "coreth/core/governance_settings.go:GetDistributionContractAddress, coreth/core/governance_settings.go:UpdateDistributionAddress"
+    src: "avalanchego/graft/coreth/core/governance_settings.go:GetDistributionContractAddress, avalanchego/graft/coreth/core/governance_settings.go:UpdateDistributionAddress"
     src_live: "eth_getCode @ 68124744 -> 5048 bytes; contains selectors for pullFunds(uint256) and lastPullTs()"
   "0x1000000000000000000000000000000000000005":
     name: IncentivePoolTreasury
@@ -426,7 +427,7 @@ system_contracts:
     name: InitialAirdrop
     status: added
     note: "same client-driven balance sweep as 0x1000..0004, triggered by selector 0x7d1f9946 to 0x4AeE563140E36abA778944E2Ca68c3988CAd5730"
-    src: "coreth/core/governance_settings.go:GetInitialAirdropContractAddress, coreth/core/governance_settings.go:UpdateInitialAirdropAddress"
+    src: "avalanchego/graft/coreth/core/governance_settings.go:GetInitialAirdropContractAddress, avalanchego/graft/coreth/core/governance_settings.go:UpdateInitialAirdropAddress"
     src_live: "eth_getCode @ 68124744 -> 6855 bytes"
   "0x1000000000000000000000000000000000000007":
     name: GovernanceSettings
@@ -439,7 +440,7 @@ system_contracts:
       NewGovernanceAddressIsPermitted returns false unconditionally, so the governance
       address can no longer be changed by this path at all; NewTimelockIsPermitted
       accepts exactly one value, 3600.
-    src: "coreth/core/governance_settings.go:GetGovernanceSettingIsActivatedAndCalled, coreth/core/governance_settings.go:NewGovernanceAddressIsPermitted, coreth/core/governance_settings.go:NewTimelockIsPermitted"
+    src: "avalanchego/graft/coreth/core/governance_settings.go:GetGovernanceSettingIsActivatedAndCalled, avalanchego/graft/coreth/core/governance_settings.go:NewGovernanceAddressIsPermitted, avalanchego/graft/coreth/core/governance_settings.go:NewTimelockIsPermitted"
     src_live: "eth_getCode @ 68124744 -> 2533 bytes; contains selectors for setGovernanceAddress(address) and setTimelock(uint256)"
   "0x2cA6571Daa15ce734Bbd0Bf27D5C9D16787fc33f":
     name: Submitter (FTSO v2 / FDC)
@@ -452,7 +453,7 @@ system_contracts:
       a 40-block window. Prioritisation applies when the selector is one of five
       hardcoded prefixes, the calldata is <= 4500 bytes, the tx gas limit is
       <= 3,000,000, and the call returned a non-zero word.
-    src: "coreth/core/daemon.go:prioritisedSubmitterContractAddress, coreth/core/daemon.go:submitterDataPrefixes, coreth/core/daemon.go:prioritisedCallDataCap, coreth/core/daemon.go:IsPrioritisedContractCall"
+    src: "avalanchego/graft/coreth/core/daemon.go:prioritisedSubmitterContractAddress, avalanchego/graft/coreth/core/daemon.go:submitterDataPrefixes, avalanchego/graft/coreth/core/daemon.go:prioritisedCallDataCap, avalanchego/graft/coreth/core/daemon.go:IsPrioritisedContractCall"
     src_live: "40-block census @ 68124704-68124744 -> 248/290 transactions to this address, all selector 0x833bf6c0"
   "0x000000000000000000000000000000000000dEaD":
     name: fee burn sink
@@ -462,7 +463,7 @@ system_contracts:
       the chain is credited to. Held 4,216,961,490.46 FLR at the probed block. Listed
       here because it is a fixed, protocol-referenced address; mainnet's equivalent
       of "burn" removes supply from existence instead.
-    src: coreth/core/state_transition_params.go:stateTransitionParamsFlare
+    src: avalanchego/graft/coreth/core/state_transition_params.go:stateTransitionParamsFlare
     src_live: "eth_getCode @ 68124744 -> 0x ; eth_getBalance -> 4216961490.456238 FLR"
 
 system_transactions:
@@ -482,7 +483,7 @@ system_transactions:
       and inflation are funded, and it is the second mechanism in this dataset after
       subnet-evm's ContractNativeMinter that increases native supply outside block
       rewards — but unlike that one it is unconditional and needs no allowlist.
-    src: "coreth/core/daemon.go:atomicDaemonAndMint, coreth/core/daemon.go:mint, coreth/core/state_transition.go:571"
+    src: "avalanchego/graft/coreth/core/daemon.go:atomicDaemonAndMint, avalanchego/graft/coreth/core/daemon.go:mint, avalanchego/graft/coreth/core/state_transition.go:571"
   - name: State Connector round finalisation
     status: tombstoned
     tombstoned_at: 1754395200
@@ -494,18 +495,18 @@ system_transactions:
       (`!isDurango && ...`). A node operator could set SC_LOCAL_ATTESTATORS and
       SC_FORKING_ENABLED=1 to make its own node halt when its local attestors
       disagreed with the default set — a deliberate, configurable consensus split.
-    src: "coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalled, coreth/core/state_connector.go:FinalisePreviousRound"
+    src: "avalanchego/graft/coreth/core/state_connector.go:GetStateConnectorIsActivatedAndCalled, avalanchego/graft/coreth/core/state_connector.go:FinalisePreviousRound"
   - name: governance address / timelock re-execution
     status: added
     note: "re-runs the same calldata against 0x1000..0007 with msg.sender = block.coinbase = 0x..DEaD0, only for arguments the client's own allowlist permits"
-    src: "coreth/core/governance_settings.go:SetGovernanceAddress, coreth/core/governance_settings.go:SetTimelock"
+    src: "avalanchego/graft/coreth/core/governance_settings.go:SetGovernanceAddress, avalanchego/graft/coreth/core/governance_settings.go:SetTimelock"
   - name: treasury balance sweep
     status: added
     note: >-
       A 4-byte call to either of two hardcoded addresses makes the client move the
       ENTIRE balance of a genesis treasury to another address with SubBalance /
       AddBalance — a value transfer with no transaction, no trace frame, and no log.
-    src: "coreth/core/governance_settings.go:UpdateInitialAirdropAddress, coreth/core/governance_settings.go:UpdateDistributionAddress"
+    src: "avalanchego/graft/coreth/core/governance_settings.go:UpdateInitialAirdropAddress, avalanchego/graft/coreth/core/governance_settings.go:UpdateDistributionAddress"
 
 opcodes:
   prevrandao:
@@ -520,7 +521,7 @@ opcodes:
       State Connector and an on-chain random number feed, and none of it reaches 0x44.
       A contract that wants Flare's randomness calls the RandomNumberV2 contract; a
       contract that reads `block.prevrandao` gets 1.
-    src: coreth/core/evm.go:OverrideNewEVMArgs
+    src: avalanchego/graft/coreth/core/evm.go:OverrideNewEVMArgs
     src_live: "eth_call 0x4460005260206000f3 @ 0x42e6f84 -> 0x00..01, with the header reporting difficulty 0x1 and mixHash 0x00..00"
   added: []
   removed: []
@@ -532,7 +533,7 @@ opcodes:
 tx_lifecycle:
   ordered_then_invalid:
     verdict: unreachable
-    src: "coreth/miner/worker.go:commitTransactions, coreth/core/state_transition.go:preCheck"
+    src: "avalanchego/graft/coreth/miner/worker.go:commitTransactions, avalanchego/graft/coreth/core/state_transition.go:preCheck"
     note: >-
       The proposer executes each transaction as it appends it: an invalid one is popped out
       of the candidate set and never reaches the block, so the ordered-but-invalid state is
@@ -541,7 +542,7 @@ tx_lifecycle:
       against this row's own pinned client rather than assumed from the family.
   nonce_on_failure:
     verdict: preserved
-    src: "coreth/miner/worker.go:commitTransactions, coreth/core/state_transition.go:preCheck"
+    src: "avalanchego/graft/coreth/miner/worker.go:commitTransactions, avalanchego/graft/coreth/core/state_transition.go:preCheck"
     note: >-
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
@@ -550,13 +551,13 @@ p2p:
   max_tx_bytes:
     verdict: 131072
     tier: policy
-    src: "coreth/core/txpool/legacypool/legacypool.go:txMaxSize"
+    src: "avalanchego/graft/coreth/core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth, and that is the only thing about this row's p2p that is.
   max_message_bytes:
     verdict: 2031616
     tier: transport
-    src: "coreth/plugin/evm/message/codec.go:maxMessageSize"
+    src: "avalanchego/graft/evm/message/codec.go:maxMessageSize"
     note: >-
       A FIFTH OF MAINNET'S. `2*units.MiB - 64*units.KiB` = 2,031,616 bytes, and the comment
       states the derivation: the 64 KiB is subtracted "to leave room for encoding overhead
@@ -565,7 +566,7 @@ p2p:
       `eth` protocol to carry it.
   transports:
     verdict: "AvalancheGo p2p"
-    src: "coreth/plugin/evm/message/codec.go:maxMessageSize"
+    src: "avalanchego/graft/evm/message/codec.go:maxMessageSize"
     note: >-
       NOT DEVP2P. The clone has no `eth/protocols` directory at all: the EVM runs as a VM
       plugin inside AvalancheGo, which speaks its own TLS/protobuf transport, and the VM
@@ -630,22 +631,22 @@ fee_model:
     This is the majority path, not an edge case: 86% of sampled transactions qualify.
     Any fee accounting, gas-cost dashboard, MEV estimate or revenue model built on
     Flare receipts is wrong by two to three orders of magnitude.
-  src: "coreth/core/state_transition.go:550-568, coreth/core/daemon.go:IsPrioritisedContractCall, coreth/core/state_transition_params.go:stateTransitionParamsFlare"
+  src: "avalanchego/graft/coreth/core/state_transition.go:550-568, avalanchego/graft/coreth/core/daemon.go:IsPrioritisedContractCall, avalanchego/graft/coreth/core/state_transition_params.go:stateTransitionParamsFlare"
   src_live: "receipt of 0x5dbbbce34e3cdf774908dd2931f596cb3eabc6bceba7f6f3dd715a6a10e9446d @ 68124744 -> gasUsed 212362 x 1625 gwei = 0.34508825 FLR; eth_getBalance of its sender 68124743 -> 68124744 delta -0.000525 FLR"
 
 header_fields:
   added:
-    - {name: extDataHash, note: "Avalanche atomic-tx data commitment; from coreth, not Flare", src: coreth/plugin/evm/customtypes/header_ext.go:ExtDataHash}
-    - {name: extDataGasUsed, note: "gas attributed to atomic transactions", src: coreth/plugin/evm/customtypes/header_ext.go:ExtDataGasUsed}
-    - {name: blockGasCost, note: "ACP-176 block cost", src: coreth/plugin/evm/customtypes/header_ext.go:BlockGasCost}
-    - {name: timestampMilliseconds, note: "Granite; sub-second block times", src: coreth/plugin/evm/customtypes/header_ext.go:TimeMilliseconds}
-    - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess}
+    - {name: extDataHash, note: "Avalanche atomic-tx data commitment; from coreth, not Flare", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:ExtDataHash}
+    - {name: extDataGasUsed, note: "gas attributed to atomic transactions", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:ExtDataGasUsed}
+    - {name: blockGasCost, note: "ACP-176 block cost", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:BlockGasCost}
+    - {name: timestampMilliseconds, note: "Granite; sub-second block times", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:TimeMilliseconds}
+    - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess}
   removed: []
   modified:
-    - {name: blobGasUsed, note: "must be 0", src: coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled}
-    - {name: excessBlobGas, note: "must be 0", src: coreth/plugin/evm/wrapped_block.go:errInvalidExcessBlobGas}
-    - {name: parentBeaconBlockRoot, note: "must be the empty hash — no beacon chain", src: coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty}
-    - {name: miner, note: "always the blackhole 0x0100..0000; header validation rejects any other value, and it receives no fees", src: coreth/plugin/evm/wrapped_block.go:431}
+    - {name: blobGasUsed, note: "must be 0", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled}
+    - {name: excessBlobGas, note: "must be 0", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errInvalidExcessBlobGas}
+    - {name: parentBeaconBlockRoot, note: "must be the empty hash — no beacon chain", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty}
+    - {name: miner, note: "always the blackhole 0x0100..0000; header validation rejects any other value, and it receives no fees", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:426}
   note: >-
     The five added fields are coreth's, not Flare's, and are recorded here because
     inheritance does not resolve across a `fork` upstream. They are RLP-appended to

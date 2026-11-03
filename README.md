@@ -38,35 +38,35 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 
 | Chain | Client | Pinned | Baseline |
 |---|---|---|---|
-| [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.5` | osaka (baseline) |
+| [Ethereum Mainnet](chains/ethereum/SUMMARY.md) | go-ethereum | `v1.17.10` | osaka (baseline) |
 | [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.8.2` | osaka |
 | [Core](chains/core/SUMMARY.md) | core-chain (BSC fork) | `v1.0.27` | prague |
-| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.0` | prague |
+| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.3` | prague |
 | [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | cancun |
 | [Avalanche subnet-evm (L1s / Subnets)](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | cancun |
 | [Kaia](chains/kaia/SUMMARY.md) | kaia | `v2.2.2` | osaka |
-| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.6.1` | prague |
-| [Gnosis Chain](chains/gnosis/SUMMARY.md) | Nethermind | `1.39.3` | osaka |
+| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.7.2` | prague |
+| [Gnosis Chain](chains/gnosis/SUMMARY.md) | Nethermind | `2.2.2` | osaka |
 | [Rootstock (RSK)](chains/rootstock/SUMMARY.md) | rskj | `VETIVER-9.0.4` | petersburg |
-| [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.1` | prague |
+| [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.6` | prague |
 | [Berachain](chains/berachain/SUMMARY.md) | bera-reth | `v1.4.4` | osaka |
-| [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.14.0` | cancun |
-| [Conflux eSpace](chains/conflux/SUMMARY.md) | conflux-rust | `v3.1.0` | osaka |
+| [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.14.2` | cancun |
+| [Conflux eSpace](chains/conflux/SUMMARY.md) | conflux-rust | `v3.1.1` | osaka |
 | [Taraxa](chains/taraxa/SUMMARY.md) *(no reachable RPC)* | taraxa-node | `v1.14.1` | constantinople |
-| [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.11.3` | osaka |
+| [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.12.2` | osaka |
 | [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.2` | osaka |
-| [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.2` | osaka |
+| [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.3` | osaka |
 | [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.5.1` | osaka |
-| [World Chain](chains/worldchain/SUMMARY.md) | world-chain (builder) | `v2.4.2` | osaka |
-| [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB Chain fork) | `v0.5.10` | cancun |
-| [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.4` | prague |
-| [Mantle](chains/mantle/SUMMARY.md) | op-geth (Mantle fork) | `v1.6.1` | osaka |
+| [World Chain](chains/worldchain/SUMMARY.md) | world-chain (builder) | `v2.6.0` | osaka |
+| [opBNB](chains/opbnb/SUMMARY.md) | op-geth (BNB Chain fork) | `v0.5.11` | cancun |
+| [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.5` | prague |
+| [Mantle](chains/mantle/SUMMARY.md) | op-geth (Mantle fork) | `v1.6.3` | osaka |
 | [Blast](chains/blast/SUMMARY.md) | blast (blast-geth + blast-optimism) | `v1.8.0` | cancun |
-| [MegaETH](chains/megaeth/SUMMARY.md) | mega-evm (MegaEVM) | `v1.7.0` | prague |
+| [MegaETH](chains/megaeth/SUMMARY.md) | mega-evm (MegaEVM) | `v1.7.2` | prague |
 | [RISE](chains/rise/SUMMARY.md) | rise-node (config only; execution client closed) | `v0.6.0` | prague |
-| [Linea](chains/linea/SUMMARY.md) | lineth-monorepo (Linea Besu package + plugins + tracer) | `releases/linea-besu-package/v2.1.1` | osaka |
-| [Scroll](chains/scroll/SUMMARY.md) | scroll-tech/go-ethereum (l2geth) | `scroll-v5.10.2` | shanghai |
-| [Taiko Alethia](chains/taiko/SUMMARY.md) | taiko-geth | `v2.6.0` | osaka |
+| [Linea](chains/linea/SUMMARY.md) | lineth-monorepo (Linea Besu package + plugins + tracer) | `releases/linea-besu-package/v2.3.1` | osaka |
+| [Scroll](chains/scroll/SUMMARY.md) | scroll-tech/go-ethereum (l2geth) | `scroll-v5.10.11` | shanghai |
+| [Taiko Alethia](chains/taiko/SUMMARY.md) | taiko-geth | `v2.8.0` | osaka |
 | [Polygon zkEVM](chains/polygon-zkevm/SUMMARY.md) *(dead — shutdown 2026-07-03)* | cdk-erigon | `v2.64.2` | berlin |
 | [zkSync Era](chains/zksync-era/SUMMARY.md) | zksync-era | `core-v31.5.0` | osaka |
 | [ZK Stack (ZKsync Elastic Network)](chains/zk-stack/SUMMARY.md) *(template)* | zksync-era *(shared clone)* | `core-v31.5.0` | osaka |
@@ -77,12 +77,12 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Artela](chains/artela/SUMMARY.md) *(dead — abandoned, went dark Sept 2025)* | artela (artelad) | `v0.4.9-rc9` | cancun |
 | [Moonbeam](chains/moonbeam/SUMMARY.md) *(dead — shutdown 2026-08-10)* | moonbeam (runtime) | `runtime-4401` | osaka |
 | [Tron](chains/tron/SUMMARY.md) | java-tron | `GreatVoyage-v4.8.2.4` | cancun |
-| [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.0` | osaka |
+| [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.6` | osaka |
 | [Hyperliquid (HyperEVM)](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | `—` | cancun |
-| [Hedera](chains/hedera/SUMMARY.md) | hiero-consensus-node (Besu EVM as a library) | `v0.76.1` | cancun |
+| [Hedera](chains/hedera/SUMMARY.md) | hiero-consensus-node (Besu EVM as a library) | `v0.78.1` | cancun |
 | [Autonomys (Auto EVM)](chains/autonomys/SUMMARY.md) | subspace (Auto EVM domain runtime) | `runtime-mainnet-2026-jul-29` | osaka |
 | [IOTA EVM](chains/iota-evm/SUMMARY.md) | wasp (ISC) | `v2.0.3` | cancun |
-| [Tempo](chains/tempo/SUMMARY.md) | tempo (reth-based execution + Simplex consensus) | `v1.13.1` | osaka |
+| [Tempo](chains/tempo/SUMMARY.md) | tempo (reth-based execution + Simplex consensus) | `v1.16.1` | osaka |
 | [Arc](chains/arc/SUMMARY.md) *(pre-launch)* | arc-node (reth execution + Malachite consensus) | `v0.7.3` | osaka |
 | [Plasma](chains/plasma/SUMMARY.md) | reth (upstream, unmodified) | `v1.11.3` | prague |
 

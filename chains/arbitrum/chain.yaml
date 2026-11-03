@@ -20,13 +20,13 @@ lineage:
 client:
   name: nitro
   repo: https://github.com/OffchainLabs/nitro
-  version: v3.12.1
-  commit: 70fa99a6e711f09eedd96a907290c3df0f3bcf7d
+  version: v3.12.2
+  commit: 5f02f3f03076343061f167e81b8e82ec5518064b
   language: go + rust
   submodule:
     name: go-ethereum
     repo: https://github.com/OffchainLabs/go-ethereum
-    commit: 5eee8f546e7602b7deeef7909f291bbebc77e233
+    commit: 30456d24d3cff444d3b0f246e9c7609477c7d4a1
     pinned_by: {how: submodule, path: "go-ethereum"}
 
 consensus:

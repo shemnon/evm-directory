@@ -2,8 +2,8 @@
 
 **Chain ID 1 · role: `baseline` · live fork: Osaka (+BPO1, +BPO2)**
 
-Reference client: [go-ethereum `v1.17.8`](https://github.com/ethereum/go-ethereum)
-@ `a5790770`. All facts below were read out of that pinned tree, not from docs.
+Reference client: [go-ethereum `v1.17.10`](https://github.com/ethereum/go-ethereum)
+@ `1df30b18`. All facts below were read out of that pinned tree, not from docs.
 
 ## Why geth and not execution-specs
 
@@ -91,7 +91,7 @@ guessed at later.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v1.17.8 https://github.com/ethereum/go-ethereum
+git clone --depth 1 --branch v1.17.10 https://github.com/ethereum/go-ethereum
 grep -n 'TxType' core/types/transaction.go              # tx types
 sed -n '/PrecompiledContractsOsaka = /,/^}/p' core/vm/contracts.go   # precompiles
 cat params/chainspecs/mainnet.json                      # forks (moved here in v1.17.8)

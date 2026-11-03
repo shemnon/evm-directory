@@ -1,7 +1,7 @@
 # MegaETH — what this row teaches
 
 Pinned: `megaeth-labs/mega-evm` **v1.7.2** (`faf6f2d7`) — the EVM — with
-`megaeth-labs/stateless-validator` **v2.0.20** (`b8e9553a`) as a companion, which
+`megaeth-labs/stateless-validator` **v2.1.0** (`812bff35`) as a companion, which
 supplies an independent re-execution client *and* the canonical mainnet genesis.
 Live probe: `https://mainnet.megaeth.com/rpc` / `wss://mainnet.megaeth.com/ws`,
 chain id **4326**, block **24869120** (timestamp 1787666131, 2026-08-25). Baseline

@@ -59,7 +59,7 @@ client:
     API — is `src_live:` or `src_doc:`.
   companion_repos:
   - {name: stateless-validator, repo: "https://github.com/megaeth-labs/stateless-validator",
-     version: v2.0.20, commit: b8e9553a62222544c8e5195ff8b7ec0285922b92, language: rust,
+     version: v2.1.0, commit: 812bff3594dec903411c0d9fc368c312e82a8ad9, language: rust,
      pinned_by: {how: release-pair},
      provides: "an independent re-execution client (chain spec, block executor, withdrawals root) and the canonical mainnet genesis with the full hardfork schedule"}
   note_second_client: >-

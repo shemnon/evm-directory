@@ -1,15 +1,15 @@
 # Sonic — findings
 
-Chain ID 146. Client `0xsoniclabs/sonic` **v2.2.5** @ `32c7475420851baecaad03819d265c55b304390f`,
+Chain ID 146. Client `0xsoniclabs/sonic` **v2.2.6** @ `8bfeb59e34a6883b9ace6362dbaa7eb5a52ea212`,
 with three pinned companions: `0xsoniclabs/go-ethereum` @ `e9dfccd4`, `0xsoniclabs/tosca`
 @ `3f411928`, `0xsoniclabs/carmen` @ `46335f35`. The geth and tosca pins are **unchanged**
 at v2.2.5 and carmen's moved — all three read from `go.mod`, not from a branch head.
 Baseline fork **prague**. Live probes at block **78050451** (`0x4a6f493`) on
 `https://rpc.soniclabs.com`.
 
-The pinned tag is what mainnet runs: `web3_clientVersion` returns
-`Sonic/v2.2.5-32c74754-…`, and `32c74754` is this commit. No gap between the pin and
-the network.
+The pin is ahead of this endpoint: at the 2026-11-03 re-pin, `web3_clientVersion` returned
+`Sonic/v2.2.4-238d0754-…`. v2.2.6 is a stability release with no fork, so the gap changes no
+fact on this row.
 
 ---
 
@@ -417,7 +417,7 @@ R=https://rpc.soniclabs.com
 B=0x4a6f493            # 78050451
 
 # --- pins ---
-git -C chains/sonic/repos/sonic       rev-parse HEAD   # 32c7475420851baecaad03819d265c55b304390f
+git -C chains/sonic/repos/sonic       rev-parse HEAD   # 8bfeb59e34a6883b9ace6362dbaa7eb5a52ea212
 git -C chains/sonic/repos/go-ethereum rev-parse HEAD   # e9dfccd41dbeaafc8489794ca8e01906929f24ab
 git -C chains/sonic/repos/tosca       rev-parse HEAD   # 3f4119284c421a1840b5716ce19d6eaf67e56103
 git -C chains/sonic/repos/carmen      rev-parse HEAD   # 46335f35fa44eb31f676def37634a617df38e8e4

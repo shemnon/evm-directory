@@ -29,7 +29,7 @@ ethereum (baseline — go-ethereum v1.17.8, Osaka)
     └── Core (v1.0.27, prague)
   └── Cosmos EVM (evmd) (v0.7.3, prague)
     └── Artela (v0.4.9-rc9, cancun)
-    └── Cronos (v1.7.8, prague)
+    └── Cronos (v1.8.1, osaka)
     └── Injective (v1.20.3, prague)
   └── Flare (v1.14.0, cancun)
   └── Gnosis Chain (2.2.2, osaka)
@@ -92,7 +92,7 @@ Tron — no upstream (role: independent)
 | Conflux eSpace | `osaka` | TWO LADDERS THAT DO NOT LINE UP, AND THE UNITS ARE THE TRAP. Conflux gates some CIPs on BLOCK HEIGHT (= pivot-chain height = the eSpace `block.number` = the epoch number) and others on BLOCK |
 | Cosmos EVM (evmd) | `prague` | Two upgrade axes that do not line up, and neither is a timestamp fork in the Ethereum sense. (1) The Ethereum fork level is a per-deployment ChainConfig stored as x/vm module state; it is ge |
 | Artela | `cancun` | THE ONLY ROW IN THIS DATASET WHERE SHANGHAI AND CANCUN ARE BLOCK-NUMBERED. Ethereum made Shanghai and Cancun timestamp forks; Artela's ChainConfig proto declares them as `shanghai_block` and |
-| Cronos | `prague` | NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER in module state, defaulting to every block-numbered fork at 0 and Shanghai/Cancun/Prague at time 0, and gover |
+| Cronos | `osaka` | NO NAMED FORKS AND NO TIMESTAMPS. The fork schedule is a `ChainConfig` PARAMETER in module state, and governance can change it without a client release, but the step to Osaka came from a sta |
 | Injective | `prague` | As on the framework, the Ethereum fork level is x/evm module state rather than client constants, and the real upgrade axis is Cosmos governance-scheduled named upgrades. Injective's delta is |
 | Flare | `cancun` | Flare does not define forks of its own on the EVM side. It reuses Avalanche's fork NAMES with its own TIMESTAMPS, hardcoded in a `Flare` Config literal beside avalanchego's `Mainnet` one. Th |
 | Gnosis Chain | `osaka` | Gnosis uses MAINNET fork names for everything except one fork of its own, and the lag is NOT monotonic — which is the interesting part. It was 110 days late to Shanghai, then shipped Cancun  |

@@ -36,18 +36,21 @@ lineage:
 client:
   name: core-chain (geth fork)
   repo: https://github.com/coredao-org/core-chain
-  version: v1.0.26
-  commit: 06a3e0a9804f8d11f289e2b64ba211c17f18228a
+  version: v1.0.27
+  commit: 90aca9a0640a9f3194f1f42c27f3f637da7d804c
   language: go
 
 live_probe:
   endpoint: https://rpc.coredao.org
   chain_id: 1116
-  observed_at_block: 38560250
+  observed_at_block: 40135869
+  observed_at: 2026-11-03
   note: >-
     `web3_clientVersion` returns
-    `Geth/v1.0.26-06a3e0a9-20260902/linux-amd64/go1.23.12`. `06a3e0a9` is this
-    commit: mainnet runs exactly the pinned tag, with no gap.
+    `Geth/v1.0.27-90aca9a0-20261031/linux-amd64/go1.23.12`. `90aca9a0` is this
+    commit: mainnet runs exactly the pinned tag, with no gap. This endpoint retains
+    only recent state (about 130 blocks when probed), so the Fermi balances below were
+    read from the archive at https://rpc.ankr.com/core.
 
 consensus:
   engine: >-
@@ -58,7 +61,7 @@ consensus:
 baseline_fork: prague
 
 forks:
-  src: params/config.go:155-195
+  src: params/config.go:155-196
   note: >-
     TWO FORK LADDERS INTERLEAVED. BSC's names and Core's own share one timestamp
     space and several fire together — Luban, Plato, Bohr, Pascal, Prague and Hermes
@@ -78,6 +81,24 @@ forks:
   - {name: "prague + luban + plato + bohr + pascal + hermes", activation_time: 1764057600, mainnet_equivalent: prague}
   - {name: coreRewardFix, activation_time: 1788440400, mainnet_equivalent: null,
      note: "2026-09-03; closed an EIP-7702 interaction with the block-reward path — see eips.7702"}
+  - name: fermi
+    activation_time: 1793592000
+    mainnet_equivalent: null
+    severity: high
+    note: >-
+      A BALANCE MOVE, NOT AN EVM CHANGE, AND NOT BSC'S FERMI. 2026-11-02 04:00 UTC, first
+      applied at block 40093117. At the transition block the client zeroes three hard-coded
+      accounts and credits their combined balance, 68,146,177.22 CORE, to
+      0xb85095fE01C1d95da3B1df0998ff5eDDcC9ac064, with no transaction and no log. The code
+      gates it on chain id 1116. No opcode, precompile, fee rule or block time changed, and
+      the v1.0.27 release notes have an empty changelog. The recipient is a Safe v1.3.0
+      proxy, 2-of-4, whose nonce was still 0 at the probe. b14g's staking contracts were
+      reported drained of about 97M CORE on 2026-10-31, and b14g describes this move as
+      recovering part of that; the client names no incident, and its only stated rule is
+      that listed accounts must be single-owner.
+    src: "params/config.go:FermiTime, consensus/misc/fermi.go:ApplyFermiAdjustment, core/state_processor.go:ApplyFermiAdjustment, miner/worker.go:ApplyFermiAdjustment"
+    src_live: "eth_getBalance (rpc.ankr.com/core archive) @ 40093116 -> 0x2775..e92c 63646177.22644723, 0x1843..ad8e 1999999.99874, 0xa2cc..cae5 2499999.99874, recipient 0; @ 40093117 -> all three 0, recipient 68146177.22392723; eth_call getThreshold/getOwners/nonce on the recipient @ 40135869 -> 2, 4 owners, 0"
+    src_doc: "https://cryptoslate.com/zero-token-withdrawals-let-a-hacker-drain-97-million-core-from-bitcoin-staking-platform-b14g/, https://panews.io/articles/01a19bb9-e4aa-7617-a2f4-92bd799188a2"
   - {name: osaka,        activation_time: null, status: pending, note: "no OsakaTime in CoreChainConfig"}
 
 eips:
@@ -89,7 +110,7 @@ eips:
       address is an empty account that succeeds with no output — the failure mode
       EIP-7951 cannot be distinguished from an invalid signature.
     src: "core/vm/contracts.go:136-157, core/vm/contracts.go:263-293"
-    src_live: "eth_call 0x0100 @ 38560250 -> 0x"
+    src_live: "eth_call 0x0100 @ 40135869 -> 0x"
   2537: {status: inherited, note: "BLS12-381 at 0x0b-0x11 via Prague/Pascal, at mainnet addresses and prices",
          src: "core/vm/contracts.go:PrecompiledContractsPrague"}
   7702:
@@ -116,7 +137,7 @@ eips:
       sidecars, and both header fields were zero in every block sampled. Whether a
       blob transaction has ever been included is not established.
     src: "consensus/satoshi/satoshi.go:671-688, core/txpool/validation.go:81-82"
-    src_live: "eth_getBlockByNumber latest @ 38560250 -> blobGasUsed 0x0, excessBlobGas 0x0"
+    src_live: "eth_getBlockByNumber latest @ 40135869 -> blobGasUsed 0x0, excessBlobGas 0x0"
   4399:
     status: removed
     severity: high
@@ -146,8 +167,8 @@ eips:
       by never letting `opRandom` into the derivation chain at all; see
       chains/bnb/. Same answer, different mechanism, and only the live probe
       shows they agree.
-    src: "core/evm.go:75-77, core/vm/evm.go:143, core/vm/jump_table.go:91-133, core/vm/jump_table.go:135-146, params/config.go:1571-1578"
-    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02 (the difficulty); eth_getBlockByNumber @ 38580453 -> difficulty 0x2, mixHash 0x00…00, so milliTimestamp is exactly timestamp*1000"
+    src: "core/evm.go:75-77, core/vm/evm.go:143, core/vm/jump_table.go:91-133, core/vm/jump_table.go:135-146, params/config.go:1588-1595"
+    src_live: "eth_call 0x445f5260205ff3 @ 40135869 -> 0x..02 (the difficulty); eth_getBlockByNumber @ 40135869 -> difficulty 0x2, mixHash 0x00…00, so milliTimestamp is exactly timestamp*1000"
   2935: {status: inherited, note: "the history-storage contract's code is INSTALLED BY THE CLIENT at the Prague transition rather than being in genesis",
          src: "core/systemcontracts/upgrade.go:771-775"}
   1559: {status: inherited, note: "EIP-1559 base fee present; see fee_model for where the priority fee actually goes",
@@ -160,7 +181,7 @@ non_eip_specs:
   - {id: "Core fee market (Rev+)", name: contract-registered gas revenue sharing by event signature, adoption: adopted, fork: theseus,
      src: "eth/feemarket/feemarket.go:NewFeeMarket"}
   - {id: BEP-derived, name: BSC consensus precompiles and fork names, adoption: adopted,
-     src: "params/config.go:155-195"}
+     src: "params/config.go:155-196"}
 
 tx_types:
   envelope:
@@ -229,7 +250,7 @@ precompiles:
       them simultaneously. A tool holding one address-keyed precompile map is wrong
       on four chains at this single address.
     src: "core/vm/contracts.go:165-167, core/vm/contracts_lightclient.go:18-63, params/protocol_params.go:148-149"
-    src_live: "eth_getCode 0x64 @ 38560250 -> 0x (a precompile, not a predeploy)"
+    src_live: "eth_getCode 0x64 @ 40135869 -> 0x (a precompile, not a predeploy)"
   "0x65":
     name: blsSignatureVerify
     status: added
@@ -251,7 +272,7 @@ precompiles:
       for BSC that calls 0x65 expecting an IAVL proof check gets a BLS signature
       verification on Core.
     src: "core/vm/contracts.go:170-172, core/vm/contracts.go:1207-1231, params/protocol_params.go:158-159"
-    src_live: "eth_call 0x65 @ 38560250 -> execution reverted; eth_call 0x66 @ 38560250 -> 0x (empty account, succeeds)"
+    src_live: "eth_call 0x65 @ 40135869 -> execution reverted; eth_call 0x66 @ 40135869 -> 0x (empty account, succeeds)"
   note: >-
     Two added addresses, both inside the 0x64-0x69 block that BSC opened and that
     mainnet is growing toward. Core is the fourth chain in this dataset to place
@@ -297,7 +318,7 @@ system_contracts:
       slot packing/order is a breaking change". A Solidity upgrade that reorders one
       field changes the state transition. See fee_model.
     src: "eth/feemarket/feemarket.go:18-52, core/systemcontracts/const.go"
-    src_live: "eth_getCode 0x…1016 @ 38560250 -> 0x6080… (non-empty)"
+    src_live: "eth_getCode 0x…1016 @ 40135869 -> 0x6080… (non-empty)"
   "0x0000000000000000000000000000000000001017": {name: ChannelContract, status: added, src: core/systemcontracts/const.go}
   "0x0000000000000000000000000000000000010001": {name: BTCLSTTokenContract, status: added,
      note: "outside the 0x1000-0x1017 block", src: core/systemcontracts/const.go}
@@ -345,7 +366,7 @@ opcodes:
       BSC and Polygon, reached by a third route: this chain had PREVRANDAO and took it
       out on purpose.
     src: core/vm/jump_table.go:newSatoshiRevertDifficultyInstructionSet
-    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02, matching the header difficulty 0x2"
+    src_live: "eth_call 0x445f5260205ff3 @ 40135869 -> 0x..02, matching the header difficulty 0x2"
   added: []
   removed: []
   modified:
@@ -358,7 +379,7 @@ opcodes:
       table the rules select whenever `rules.IsSatoshi`. Returns 1 or 2. See
       eips.4399 — and note that BSC gets there without ever binding `opRandom`.
     src: "core/vm/jump_table.go:124-129, core/vm/jump_table.go:135-146"
-    src_live: "eth_call 0x445f5260205ff3 @ 38580453 -> 0x..02"
+    src_live: "eth_call 0x445f5260205ff3 @ 40135869 -> 0x..02"
   pending: []
   tombstoned: []
 
@@ -454,7 +475,7 @@ header_fields:
       mixHash carried 0x352 at the block sampled. Wherever it is used, `block.mixHash`
       becomes a number in [0, 999].
     src: "core/types/block.go:161-173, internal/ethapi/api.go:1440"
-    src_live: "eth_getBlockByNumber latest @ 38560250 -> mixHash 0x00…00, milliTimestamp 0x1a0882b24e0 = timestamp*1000"
+    src_live: "eth_getBlockByNumber latest @ 40135869 -> mixHash 0x00…00, milliTimestamp 0x1a1a211d0d8 = timestamp*1000"
   removed: []
   modified: []
 
@@ -486,7 +507,16 @@ gotchas:
     P-256 verification returns empty output, which EIP-7951 also uses to signal an
     invalid signature. Every P-256 check on Core reports "invalid" forever.
   - >-
-    TWO CONSENSUS RULES ARE SIX DAYS OLD. CoreRewardFix (2026-09-03) rejects a block
+    TWO CONSENSUS RULES DATE ONLY FROM 2026-09-03. CoreRewardFix rejects a block
     whose coinbase carries an EIP-7702 delegation, and rejects zero-gas-price
     transactions not addressed to system contracts. Any analysis of Core's reward
     path from before that date describes a different chain.
+  - >-
+    A BALANCE CAN CHANGE WITH NO TRANSACTION. Fermi set three accounts to zero and credited
+    a fourth at block 40093117 with no transaction, log or trace frame. An indexer that
+    builds balances from transfers disagrees with `eth_getBalance` from that block on, by
+    68,146,177.22 CORE, until it special-cases the fork.
+  - >-
+    "FERMI" MEANS TWO DIFFERENT FORKS. On BSC it is the 450ms block-time step. On Core it is
+    the balance move above, and Core's block time is still 3s. The shared name implies
+    nothing shared, even though Core merges from BSC.

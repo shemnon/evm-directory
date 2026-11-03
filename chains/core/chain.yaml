@@ -29,7 +29,7 @@ lineage:
     Zeus, Hera, Poseidon, Athena, Theseus, TheseusFix and Hermes, and go.mod still
     depends on `bnb-chain/fastssz` and replaces cometbft with
     `bnb-chain/greenfield-cometbft`. The merge point is BSC v1.4.10 plus later
-    cherry-picks; the pinned BSC row is v1.7.8 and carries Osaka, which Core does
+    cherry-picks; the pinned BSC row is v1.8.2 and carries Osaka, which Core does
     not. Core therefore has BSC's Prague and none of its Osaka, and none of BSC's
     0x66-0x69 precompiles.
 

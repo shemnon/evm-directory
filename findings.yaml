@@ -1368,3 +1368,85 @@
     hard-coded address patterns. A chain missing from this table has not been shown to be free of
     these. Upgrades that only install code, such as OP Stack's Canyon create2 deployer, are a
     related mechanism and are not counted here.
+
+- id: amsterdam-arrived-by-merge
+  title: Amsterdam reached the forks by merge, before they could run it
+  axis: lineage
+  rank: 32
+  lede: >-
+    Merging upstream geth brought Amsterdam's opcode, header fields and engine checks into forks
+    that have not scheduled it. EIP-7843's slot number comes from a beacon chain that these forks
+    do not have, so each fork needs its own answer to where the slot comes from, and most have
+    not given one. The code being present says nothing about whether the chain could activate it.
+  chains:
+    ethereum: >-
+      **Where the code comes from.** Amsterdam is scheduled on Sepolia only at this pin, with no
+      mainnet time. Its slot number comes from the consensus layer, the code size limit is 65536
+      bytes, and the EIP-8038 gas constants are present.
+    op-stack: >-
+      **The driver cannot request an Amsterdam block.** `op-node` has no Amsterdam branch when it
+      picks an engine method, so it would keep calling `forkchoiceUpdatedV3` and `newPayloadV4`,
+      and `op-geth` rejects both for an Amsterdam timestamp. Its `PayloadAttributes` also has no
+      slot number field. Setting `amsterdamTime` alone would stop block production at the fork.
+      Read from source, not run.
+    mantle: >-
+      **Kept off it deliberately.** `TestMantleEngineAPIVersions_NeverAmsterdam` pins `op-node` to
+      the non-Amsterdam engine methods for a Mantle L2 while its L1 upgrades. `op-service` still
+      parses Amsterdam header fields.
+    taiko: >-
+      **The driver sends no slot.** `taiko-client` hard-codes the V2 engine methods and builds
+      payload attributes with no slot number, and `taiko-geth` refuses to build an Amsterdam block
+      without one. No Taiko network has an Amsterdam time. Read from source, not run.
+    bnb: >-
+      **The slot is the block number.** BSC's miner never calls the engine API, so it has no guard
+      and sets `SlotNumber` to the header's block number. `SLOTNUM` would therefore repeat
+      `NUMBER` on this chain. `AmsterdamTime` is nil in every chain config in the client.
+    rollkit: >-
+      **The slot is the rollup height, by design.** `ev-node` already speaks
+      `engine_forkchoiceUpdatedV4` and supplies `slotNumber` from `deriveSlotNumber`, which returns
+      the block height. Its comment calls this a wire contract that must not change once a live
+      chain enables the fork. Activation is per deployment.
+    arbitrum: >-
+      **The only fork here that adapted the gas model.** Its geth submodule maps multi-dimensional
+      gas onto EIP-8037's state gas under Amsterdam. It still has the 32768-byte limit and none of
+      EIP-8038's constants. The miner guard is present, and `nitro` itself does not import that
+      miner.
+    sonic: >-
+      **Unreachable here.** The geth fork carries the opcode and the miner guard, but the Sonic
+      client imports neither the miner nor the engine API package and sets no Amsterdam time.
+    cosmos-evm: >-
+      **Unreachable here.** The geth fork carries the opcode and the miner guard, but the `evm`
+      module imports neither the miner nor the engine API package and sets no Amsterdam time.
+  body: >-
+    Seven geth forks at their current pins carry `SLOTNUM` (`0x4b`) and the Amsterdam header
+    fields: Arbitrum, BSC, Cosmos EVM, Mantle, OP Stack, Sonic and Taiko. None has scheduled the
+    fork on mainnet. They got the code by merging upstream, and EIP-7843 defines the slot in terms
+    of a beacon chain that none of them runs.
+
+
+    **Six of the seven kept upstream's guard unchanged:** `prepareWork` returns "no slot number set
+    post-amsterdam" when the caller supplies no slot. Whether that matters depends on who the
+    caller is. OP Stack's `op-node` and Taiko's `taiko-client` drive the engine API and send no
+    slot. On OP Stack the engine rejects the call before it reaches the guard, because `op-node`
+    still selects `forkchoiceUpdatedV3`. Sonic, Cosmos EVM and Nitro never import that miner, so
+    there the guard is dead code.
+
+
+    **Three answers exist so far.** Mantle tests that it never negotiates the Amsterdam engine
+    methods. BSC sets the slot to the block number in its miner, with no guard. Rollkit's `ev-node`
+    supplies the rollup height through `engine_forkchoiceUpdatedV4`. The last two make `SLOTNUM`
+    repeat `NUMBER`, which a contract written for Ethereum would not expect.
+
+
+    **The merged code is already behind upstream.** All seven have `MaxCodeSizeAmsterdam = 32768`,
+    where geth now has 65536, and none has geth's eleven EIP-8038 access-cost constants. Only
+    Arbitrum has work toward EIP-8037's two-dimensional gas. A fork that activated Amsterdam from
+    its current tree would not match Ethereum's Amsterdam even with a slot source.
+
+
+    **What this does not cover.** The census searched geth-layout Go clients and Arbitrum's
+    submodule at their pins; OP Stack's `op-node` was read at the commit the row pins, which is
+    tagged for the contracts release. Besu, Nethermind and Monad also carry `SLOTNUM` but were not
+    assessed here. Go forks without the opcode at their pin, such as Polygon's Bor and Celo's
+    `op-geth`, are not counted. The failure paths come from reading source: nobody has activated
+    Amsterdam on these chains, and each team would be expected to change this code first.

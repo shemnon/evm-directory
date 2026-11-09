@@ -17,17 +17,17 @@ lineage:
     (Azul, Beryl, Cobalt, Zombie), its own precompile framework, native account
     abstraction, and a DYNAMIC precompile address space.
   sync_point: >-
-    base v1.5.1: the OP Stack sequence through Jovian, then five Base-specific
-    upgrades — Azul, Beryl and Cobalt live, Denim scheduled for 2026-11-05, Everest
-    unscheduled — plus the Zenith gate.
+    base v1.5.4: the OP Stack sequence through Jovian, then five Base-specific
+    upgrades — Azul, Beryl, Cobalt and Denim live, Everest unscheduled — plus the
+    Zenith gate.
 
 client:
   name: base (base-reth-node)
   repo: https://github.com/base/base
-  version: v1.5.1
-  commit: 5476069f1eb74a56bccb56fdefd4b4bb0e3cda42
+  version: v1.5.4
+  commit: 8bb377afad0d3521381487fc99edd10640418a63
   language: rust
-  built_on: reth / op-reth (revm 40.0.3, reth-revm v2.3.0)
+  built_on: reth / op-reth (revm 42.0.1, base/reth tag base-v2.5.2.11)
   note: >-
     base/node is only a Docker packaging repo pinning this client via versions.env.
     Reading node alone would have produced a near-empty and badly wrong row.
@@ -70,22 +70,23 @@ forks:
       off Cobalt before Cobalt activated, and is now on Everest. See the 0x79 entry.
     src: crates/common/chains/src/config.rs:cobalt_timestamp
   - name: denim
-    status: pending
     activation_time: 1793901600
+    activation_block: 53556127
     mainnet_equivalent: null
     severity: high
     note: >-
-      SCHEDULED: BASE MAINNET 2026-11-05 18:00 UTC. Live on Base Sepolia since 2026-10-21
-      18:00. Not active on mainnet at this pin, so the 2s facts on this row still hold
-      until then. Blocks go from 2s to a fixed 200ms. `block.timestamp` stays in whole
+      LIVE ON BASE MAINNET SINCE 2026-11-05 18:00 UTC, FROM BLOCK 53556127 (Sepolia since
+      2026-10-21 18:00). Block 53556126 is the last 2s block. Blocks go from 2s to a fixed
+      200ms. `block.timestamp` stays in whole
       seconds, so five consecutive blocks share one value, and the millisecond part lives
       in the `BaseTime` predeploy, updated by a new deposit at tx[1] of every block. At the
       first Denim block the gas limit is divided by 10 and the EIP-1559 denominator
       multiplied by 10, preserving throughput per unit of time. Also moves the B-20 asset,
-      stablecoin and policy logic to V3, with inverted policy IDs.
+      stablecoin and policy logic to V3, with inverted policy IDs. v1.5.2 to v1.5.4 change
+      no schedule source; v1.5.4 retunes engine persistence and gossip for 200ms blocks.
     src: "crates/common/chains/src/config.rs:denim_timestamp, crates/common/genesis/src/schedule.rs:DenimTimestampSchedule, crates/common/genesis/src/rollup.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS, crates/consensus/derive/src/attributes/stateful.rs:DENIM_GAS_PARAMETER_SCALING_FACTOR, crates/common/precompiles/src/policy/abi/v3.rs:IPolicyRegistry"
-    src_live: "Base Sepolia eth_getBlockByNumber @ 53994016..53994020 -> timestamp 1793720672 on all five, tx[1] to 0x4200…0030 with selector 0x86bdf394; eth_call timestampMs on 0x4200…0030 @ 53994022 -> 1793720673200. Base mainnet @ 53465664 -> 2s spacing, gasLimit 400000000, the same call reverts 'Proxy: implementation not initialized'"
-    src_doc: "https://github.com/base/base/releases/tag/v1.5.1"
+    src_live: "Base mainnet eth_getBlockByNumber @ 53556126 -> timestamp 1793901599, gasLimit 400000000, extraData 0x0100000064…; @ 53556127..53556131 -> timestamp 1793901601 on all five, gasLimit 40000000, extraData 0x01000003e8…, tx[1] a 0x7e deposit to 0x4200…0030 with selector 0x86bdf394. eth_call timestampMs on 0x4200…0030 @ 53556126 -> reverts 'Proxy: implementation not initialized'; @ 53556127 -> 1793901601000; @ 53556128 -> 1793901601200"
+    src_doc: "https://github.com/base/base/releases/tag/v1.5.4"
   - name: everest
     status: pending
     mainnet_equivalent: null
@@ -202,21 +203,24 @@ tx_authorization:
     sponsor may itself be a P-256 or WebAuthn key. Absent a payer, the sender pays and
     payer_auth is empty.
 
-    NOT LIVE ON MAINNET YET, and the source says why it might move. Cobalt gates 0x79,
-    and the canonical authenticator addresses are CREATE2 derivations of contract init
-    code the repo's own module docs mark "NOT final" and describe as the current Base
-    Sepolia deployment. Probed at block 50098345: ACCOUNT_CONFIG and all three
-    authenticator contracts return empty code on mainnet. So the P-256 schemes below
-    are `pending`, not `added` — a P-256 key cannot sign a Base mainnet transaction
-    today. Because the enshrined dispatch keys on those addresses, a re-pin before
-    Cobalt changes WHICH address means P-256; it will not change that P-256 authorizes.
+    NOT LIVE ON MAINNET, AND TWO FORK GATES SAY SO, NOT A DEPLOYMENT GAP. The only
+    transaction type that reaches AuthenticatorDispatch is 0x79, which is gated behind
+    Everest (unscheduled), and non-secp256k1 keys also need Zenith's Keystore. So the P-256
+    schemes below are `pending`, not `added` — a P-256 key cannot sign a Base mainnet
+    transaction today. Cobalt's activation on 2026-09-30 did not change that. The
+    canonical contracts are CREATE2 deployments with per-contract mined salts sharing a
+    `0x8130…` vanity prefix. The module docs warn that any bytecode change moves an
+    address, and this row's earlier `0x2403…`/`0x2809…` set is gone for that reason. None of
+    the current five has code on mainnet. Because the enshrined dispatch keys on those
+    addresses, a redeploy before Everest changes WHICH address means P-256; it will not
+    change that P-256 authorizes.
 
     A fifth selector, DELEGATE_AUTHENTICATOR, is deliberately NOT recorded as a scheme:
     it verifies no signature of its own. It wraps one canonical non-delegate
     authenticator at depth 1 exactly (nesting is NestedDelegate, an error) and surfaces
     a delegated-account obligation. It changes WHOSE key counts, not WHAT a key is.
-  src: "crates/execution/eip8130/src/dispatch.rs:AuthenticatorDispatch, crates/execution/eip8130/src/dispatch.rs:NotCanonical, crates/common/consensus/src/transaction/eip8130/addresses.rs:CANONICAL_AUTHENTICATORS, crates/execution/eip8130/README.md, crates/execution/eip8130/src/verify.rs:verify_sender, crates/common/consensus/src/transaction/eip8130/signed.rs:recover_eoa_sender, crates/execution/eip8130/src/account_config.rs:ActorConfig, crates/common/consensus/src/transaction/eip8130/tx.rs:sender_signature_hash, crates/common/consensus/src/transaction/eip8130/tx.rs:payer_signature_hash, crates/execution/eip8130/src/verify.rs:ActorTxVerifier"
-  src_live: "eth_getCode @ 50098345 for ACCOUNT_CONFIG 0x2403408177dB7F8512a9593343a7C80371D8f2dF, P256_AUTHENTICATOR 0x28096E6f98996799A08fBbCFF0B7c0D512D1f503, WEBAUTHN_AUTHENTICATOR 0xD9B8d163a34FBaD781057F7B68889F0bbd70D7ed, DELEGATE_AUTHENTICATOR 0xb1f064A99919E4199b45F1b553b6ecb8d5d62a11, DEFAULT_ACCOUNT 0xaF0973bbebe12BDaE6B61c96019dc0DcA554b67c -> all 0x (no code)"
+  src: "crates/execution/eip8130/src/dispatch.rs:AuthenticatorDispatch, crates/execution/eip8130/src/dispatch.rs:NotCanonical, crates/common/consensus/src/transaction/eip8130/addresses.rs:CANONICAL_AUTHENTICATORS, crates/common/consensus/src/transaction/eip8130/addresses.rs:P256_AUTHENTICATOR_SALT, crates/execution/eip8130/README.md, crates/execution/eip8130/src/verify.rs:verify_sender, crates/common/consensus/src/transaction/eip8130/signed.rs:recover_eoa_sender, crates/execution/eip8130/src/account_config.rs:ActorConfig, crates/common/consensus/src/transaction/eip8130/tx.rs:sender_signature_hash, crates/common/consensus/src/transaction/eip8130/tx.rs:payer_signature_hash, crates/execution/eip8130/src/verify.rs:ActorTxVerifier"
+  src_live: "eth_getCode @ 55270259 for ACCOUNT_CONFIG 0x813012Bd8D971928475235BBac6F0488c4A100AC, P256_AUTHENTICATOR 0x8130C89F65750431b564A4730397552a11CeA256, WEBAUTHN_AUTHENTICATOR 0x813007b6b1b48E75D91dEc5927ab515d12a0F1d0, DELEGATE_AUTHENTICATOR 0x81301AA52202f8C6b79Cde660440E3c6A7c5ade1, DEFAULT_ACCOUNT 0x81309c54D6Bc190FbBc0FA9f296ea4C6A539ADEf -> all 0x (no code)"
   schemes:
     secp256k1:
       status: inherited
@@ -335,13 +339,13 @@ system_contracts:
     fork: denim
     severity: high
     src: "crates/common/consensus/src/predeploys.rs:BASE_TIME, crates/common/evm/src/base_time.rs:ensure_predeploy, crates/common/consensus/src/base_time.rs:BaseTimeUpdateTx"
-    src_live: "eth_call timestampMs on Base Sepolia @ 53994022 -> 1793720673200; on Base mainnet @ 53465664 -> reverts 'Proxy: implementation not initialized'"
+    src_live: "eth_call timestampMs on Base mainnet @ 53556126 -> reverts 'Proxy: implementation not initialized'; @ 53556127 -> 1793901601000; @ 55170259 -> 1794224427400; @ 55270259 -> 1794244427400"
     note: >-
-      THE ONLY SUB-SECOND CLOCK AFTER DENIM, AND IT IS WRONG DURING tx[0]. `timestampMs()`
+      THE ONLY SUB-SECOND CLOCK SINCE DENIM, AND IT IS WRONG DURING tx[0]. `timestampMs()`
       combines the block's seconds with a stored millisecond part that the tx[1] deposit
       updates, so the L1-info deposit at tx[0] sees the previous value: 200ms behind within
-      a second and 800ms ahead at rollover, in the client's own words. The proxy is already
-      on mainnet; Denim installs its implementation.
+      a second and 800ms ahead at rollover, in the client's own words. The proxy predates
+      Denim on mainnet; Denim installed its implementation at block 53556127.
 system_transactions:
   - name: BaseTime millisecond deposit
     fork: denim
@@ -369,8 +373,8 @@ opcodes:
       then takes the stock path: `Difficulty.Sign() == 0` holds on every OP block, so
       `random = &header.MixDigest` and `opRandom` pushes it. Two consequences a mainnet
       contract does not expect. First, THE VALUE REPEATS: every L2 block in an L1 epoch
-      shares one L1 origin, so at a 2s L2 block time against 12s L1 slots the same word
-      is returned by five or six consecutive blocks. Second, it is OLD: the L1 block it
+      shares one L1 origin, so against 12s L1 slots the same word was returned by five or
+      six consecutive 2s blocks, and since Denim by 60 consecutive 200ms blocks. Second, it is OLD: the L1 block it
       comes from was finalized and public before the L2 block existed, so anyone can
       read the next several L2 blocks' PREVRANDAO off Ethereum in advance. The entropy
       is genuine beacon-chain entropy; the freshness is not.
@@ -378,7 +382,7 @@ opcodes:
       base/crates/proof/host/src/handler.rs:793,
       base/crates/proof/executor/src/builder/env.rs:121,
       base/crates/proof/executor/src/builder/assemble.rs:107
-    src_live: "eth_call 0x445f5260205ff3 @ 0x31228d2 -> 0x9d11e1d9…, equal to that block's mixHash; blocks 51521760-51521764 share one value and 51521765-51521769 the next, five and six L2 blocks per L1 epoch"
+    src_live: "eth_call 0x445f5260205ff3 @ 0x31228d2 -> 0x9d11e1d9…, equal to that block's mixHash; blocks 51521760-51521764 share one value and 51521765-51521769 the next, five and six L2 blocks per L1 epoch. After Denim, eth_getBlockByNumber over 55270060..55270259 -> one complete run of 60 blocks sharing a mixHash"
   added: []
   removed: []
   modified: []
@@ -398,15 +402,42 @@ p2p:
 
 block_metrics:
   block_time:
-    verdict: ~
-    mutability: config
+    verdict: 200
+    observed: 200.0
+    observed_at_block: 55270259
+    observed_at: 2026-11-09
+    mutability: fixed
+    src: "crates/common/genesis/src/rollup.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS, crates/consensus/service/src/actors/sequencer/actor.rs:NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS"
+    src_live: "eth_call timestampMs on 0x4200…0030 @ 55170259 vs 55270259 -> 20000000ms / 100000 blocks; eth_getBlockByNumber timestamps over the same window -> 20000s"
     note: >-
-      2s, the OP Stack `l2BlockTime` every descendant inherits unless it overrides it.
-      Changeable by the chain operator through the SystemConfig, not by a fork — with
-      one declared exception: the Denim upgrade replaces it with a fixed 200ms cadence
-      (`NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS`), ten blocks per legacy interval, scaling
-      the gas parameters by `DENIM_GAS_PARAMETER_SCALING_FACTOR` to match. Denim is
-      scheduled for mainnet at 2026-11-05 18:00 UTC; until then 2s is what runs.
+      200ms since Denim at block 53556127, a compiled constant
+      (`NATIVE_SUBSECOND_BLOCK_INTERVAL_MILLIS`) rather than the OP Stack `l2BlockTime`
+      config every other descendant inherits, so changing it now takes a fork. Before
+      Denim it was that inherited 2s. `block.timestamp` stays in seconds, so the exact
+      figure comes from BaseTime's millisecond clock, not from header timestamps.
+  block_gas_limit:
+    verdict: ~
+    observed: 40000000
+    observed_at_block: 55270259
+    observed_at: 2026-11-09
+    mutability: config
+    src: "crates/consensus/derive/src/attributes/stateful.rs:DENIM_GAS_PARAMETER_SCALING_FACTOR"
+    src_live: "eth_getBlockByNumber @ 53556126 -> gasLimit 400000000; @ 53556127 -> 40000000; @ 55270259 -> 40000000"
+    note: >-
+      Set by the operator through the SystemConfig, and divided by
+      `DENIM_GAS_PARAMETER_SCALING_FACTOR` (10) at the first Denim block, so 400,000,000
+      became 40,000,000 and gas per second did not change.
+  extras:
+    - name: EIP-1559 denominator
+      value: 1000
+      note: >-
+        Read from the Holocene `extraData` (version 1, denominator, elasticity, then the
+        Jovian minimum base fee). Denim multiplied it by 10, from 100 to 1000, so base-fee
+        response per second stays the same at ten times the blocks. Elasticity 5 and the
+        5,000,000 wei minimum base fee were unchanged. The first post-Denim step, +8,447 wei
+        on 21,516,598 gas against an 8,000,000 target, is what 1000 predicts.
+      src: "crates/consensus/derive/src/attributes/stateful.rs:DENIM_GAS_PARAMETER_SCALING_FACTOR"
+      src_live: "eth_getBlockByNumber @ 53556126 -> extraData 0x01000000640000000500000000004c4b40; @ 53556127 -> 0x01000003e80000000500000000004c4b40, gasUsed 21516598, baseFee 5000000; @ 53556128 -> baseFee 5008447"
 
 fee_model:
   metering: gas
@@ -422,11 +453,11 @@ header_fields:
 
 gotchas:
   - >-
-    FROM 2026-11-05 18:00 UTC, FIVE BLOCKS WILL SHARE ONE `block.timestamp`. Denim's blocks are
-    200ms apart and TIMESTAMP stays in seconds, so code that treats a new block as a new time,
-    or divides elapsed seconds by a block interval, is wrong after it. Measured on Base
-    Sepolia. `BaseTime.timestampMs()` is the sub-second source. Block-count time constants
-    written for 2s blocks run ten times faster.
+    SINCE BLOCK 53556127 (2026-11-05 18:00 UTC), FIVE BLOCKS SHARE ONE `block.timestamp`.
+    Denim's blocks are 200ms apart and TIMESTAMP stays in seconds, so code that treats a new
+    block as a new time, or divides elapsed seconds by a block interval, is wrong. Measured
+    on mainnet. `BaseTime.timestampMs()` is the sub-second source. Block-count time constants
+    written for 2s blocks run ten times faster, and PREVRANDAO repeats for 60 blocks.
   - >-
     BASE PRECOMPILES ARE NOT ENUMERABLE. From Beryl, a lookup predicate makes every
     0xb2-prefixed address matching the B-20 pattern a precompile. Any tool that

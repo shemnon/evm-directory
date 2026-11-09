@@ -43,7 +43,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Arbitrum One](chains/arbitrum/SUMMARY.md) | nitro | `v3.12.2` | osaka |
 | [OP Stack](chains/op-stack/SUMMARY.md) *(stack node)* | op-geth | `v1.101702.3` | osaka |
 | [OP Mainnet](chains/optimism/SUMMARY.md) | op-geth | `v1.101702.3` | osaka |
-| [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.5.1` | osaka |
+| [Base](chains/base/SUMMARY.md) | base (base-reth-node) | `v1.5.4` | osaka |
 | [Blast](chains/blast/SUMMARY.md) | blast (blast-geth + blast-optimism monorepo) | `v1.8.0` | cancun |
 | [Celo](chains/celo/SUMMARY.md) | op-geth (Celo fork) | `celo-v2.2.5` | prague |
 | [Mantle](chains/mantle/SUMMARY.md) | op-geth (Mantle fork) | `v1.6.3` | osaka |

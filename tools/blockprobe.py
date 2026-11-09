@@ -41,7 +41,7 @@ import argparse, concurrent.futures as cf, json, pathlib, re, sys
 from datetime import date
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from model import ROOT, load, order, short
+from model import ROOT, load, order, short, refuse_in_github_actions
 from livecheck import RpcError, num, rpc
 
 UA_NOTE = "EVM-Directory/blockprobe"
@@ -251,6 +251,7 @@ def write_back(slug, updates, quiet):
 # --------------------------------------------------------------------------
 
 def main():
+    refuse_in_github_actions("blockprobe.py")
     ap = argparse.ArgumentParser(
         description="Re-sample block metrics from every row's live endpoint.",
         epilog="Reports drift by default; --write updates the observed values in place.")

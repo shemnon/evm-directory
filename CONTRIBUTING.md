@@ -208,6 +208,14 @@ A chain is eligible for a row when it meets all four:
 Eligible is not scheduled. The backlog, the selection order and what each past pass
 predicted are in [CANDIDATES.md](CANDIDATES.md).
 
+## Automation
+
+GitHub Actions must not contact any live network, mainnet or testnet. No workflow may make
+an RPC call or run a tool that makes one. CI checks what is committed, including
+`src_live:` claims as recorded, and does not re-observe them. `tools/verify.py` fails on a
+workflow that breaks this, and `tools/livecheck.py` and `tools/blockprobe.py` refuse to
+run under GitHub Actions.
+
 ## Sensitive findings and security
 
 > **Do not send sensitive findings to this directory.**

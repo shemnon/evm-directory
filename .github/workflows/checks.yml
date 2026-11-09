@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+# No step here may contact a live network, mainnet or testnet. CONTRIBUTING.md, "Automation".
+# tools/verify.py enforces this.
+
 jobs:
   checks:
     runs-on: ubuntu-latest

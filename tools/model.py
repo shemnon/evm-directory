@@ -7,7 +7,7 @@ in `website/`) read the dataset through this module. Nothing here renders; it on
 loads, orders, canonicalises and cross-indexes, so the two renderers cannot drift
 apart on questions like "is `0x0100` the same address as `0x0000...0100`".
 """
-import pathlib, yaml
+import os, pathlib, sys, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CHAINS = ROOT / "chains"
@@ -627,3 +627,11 @@ def code_parent(chains, s):
     if documented(c):
         return None, None
     return "independent", "codebase"
+
+
+def refuse_in_github_actions(tool):
+    """GitHub Actions must not contact any live network, mainnet or testnet
+    (CONTRIBUTING.md, "Automation"). Every tool that makes an RPC call starts here."""
+    if os.environ.get("GITHUB_ACTIONS"):
+        sys.exit(f"{tool}: refusing to run under GitHub Actions, which must not contact "
+                 "any live network. See CONTRIBUTING.md, \"Automation\".")

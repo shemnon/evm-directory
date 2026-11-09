@@ -1453,6 +1453,26 @@ def check_contributions(c):
     return out
 
 
+# What a workflow may not mention. Lines that are comments are skipped, so a workflow can
+# say why it does not do these things.
+WORKFLOW_NETWORK = re.compile(
+    r"livecheck|blockprobe|\beth_[a-zA-Z]+|\bweb3_[a-zA-Z]+|\bnet_version\b|\bjsonrpc\b|"
+    r"\bcast\s+(?:call|block|chain-id|rpc|send)\b|--rpc-url|wss?://|\brpc\.", re.I)
+
+
+def check_workflows_offline():
+    """GitHub Actions must not contact any live network, mainnet or testnet
+    (CONTRIBUTING.md, "Automation"). The tools refuse to run there; this catches a workflow
+    that asks them to, or that makes the call itself."""
+    out = []
+    for p in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+        for n, line in enumerate(p.read_text().splitlines(), 1):
+            if line.lstrip().startswith("#"): continue
+            if WORKFLOW_NETWORK.search(line):
+                out.append(f"LIVE NETWORK  {p.name}:{n} reaches for a live network: {line.strip()}")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="Re-extract facts from the pinned clones and diff them against "
@@ -1476,6 +1496,8 @@ def main():
         return 2
 
     problems = 0
+    for b in check_workflows_offline():
+        print(f"\n.github/workflows\n  {b}"); problems += 1
     totals = {"src": 0, "src_live": 0, "src_doc": 0, "unrecorded": 0, "none": 0}
     skipped, unextracted = [], []
     if no_clones:

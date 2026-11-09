@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Deploy website to GitHub Pages
 
+# No step here may contact a live network, mainnet or testnet. CONTRIBUTING.md, "Automation".
+# tools/verify.py enforces this.
+
 on:
   push:
     branches: [main]

@@ -99,7 +99,7 @@ rebuild.
 Three gates. Each writes nothing and exits non-zero with the list of what is wrong.
 
 ```
-tools/generate.py --check       # fail if the four Markdown tables are stale
+tools/generate.py --check       # fail if the four Markdown tables or README's status table are stale
 tools/site.py --check           # fail if website/ does not match the dataset
 tools/verify.py --no-clones     # fail if a chain.yaml contradicts itself
 ```

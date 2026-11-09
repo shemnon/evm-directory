@@ -51,7 +51,7 @@ import argparse, json, pathlib, sys, urllib.error, urllib.request
 from datetime import date, datetime, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from model import ROOT, load, order, name
+from model import ROOT, load, order, name, refuse_in_github_actions
 from verify import provenance
 
 # Header fields introduced by a fork, newest last. Presence is the signal; a field
@@ -305,6 +305,7 @@ def check(slug, c, args):
 
 
 def main():
+    refuse_in_github_actions("livecheck.py")
     ap = argparse.ArgumentParser(
         description="Re-probe the live endpoints behind every row's src_live: "
                     "facts and report chains that have halted, moved or forked "

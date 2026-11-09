@@ -288,12 +288,44 @@ def gen_matrix(chains):
         L.append("")
     write("MATRIX.md", "\n".join(L) + "\n")
 
+def status_tag(c):
+    """The italic note after a chain's name, derived from what the row says about itself."""
+    ch, ep = c["chain"], (c.get("live_probe") or {}).get("endpoint")
+    if ch.get("dead"): return f"dead: {ch['dead'].get('how', 'unrecorded')}"
+    if ch.get("live_state"): return ch["live_state"]
+    if ch.get("role") == "template": return "template"
+    if ch.get("role") == "stack": return "stack node"
+    if ch.get("evidence") == "documented": return "documented"
+    if isinstance(ep, str) and not ep.startswith("http"): return "no reachable RPC"
+    return None
+
+
+def gen_readme_status(ch):
+    """README's status table. It was kept by hand and drifted: four versions and three
+    baselines were wrong by the time it was replaced. Only the table between the markers
+    is generated; the rest of README stays prose, so this splices rather than overwrites."""
+    begin, end = "<!-- status-table:begin", "<!-- status-table:end -->"
+    text = (ROOT / "README.md").read_text()
+    i, j = text.index(begin), text.index(end)
+    L = [text[i:text.index("\n", i)], "| Chain | Client | Pinned | Baseline |", "|---|---|---|---|"]
+    for s in order(ch):
+        c = ch[s]
+        tag = status_tag(c)
+        version = client(c, "version") or "—"
+        base = c.get("baseline_fork") or "—"
+        if s == "ethereum": base = f"{base} (baseline)"
+        L.append(f"| [{c['chain']['name']}](chains/{s}/SUMMARY.md)"
+                 f"{f' *({tag})*' if tag else ''} | {client(c, 'name', '*none public*')} | "
+                 f"{f'`{version}`' if version != '—' else version} | {base} |")
+    write("README.md", text[:i] + "\n".join(L) + "\n" + text[j:])
+
+
 def main():
     ap = argparse.ArgumentParser(
-        description="Regenerate the four top-level Markdown tables from "
-                    "chains/*/chain.yaml.",
-        epilog="With no arguments, writes MATRIX.md, PRECOMPILES.md, TX-TYPES.md "
-               "and LINEAGE.md. See SITE.md.")
+        description="Regenerate the four top-level Markdown tables and README's status "
+                    "table from chains/*/chain.yaml.",
+        epilog="With no arguments, writes MATRIX.md, PRECOMPILES.md, TX-TYPES.md, "
+               "LINEAGE.md and the table in README.md. See SITE.md.")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if any table is out of date; write nothing")
     ap.add_argument("-q", "--quiet", action="store_true")
@@ -302,6 +334,7 @@ def main():
     ch = load()
     if not a.quiet: print(f"loaded {len(ch)} chain files")
     gen_matrix(ch); gen_precompiles(ch); gen_txtypes(ch); gen_lineage(ch)
+    gen_readme_status(ch)
 
     if a.check:
         # Byte comparison against what is committed. A file that is missing counts

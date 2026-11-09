@@ -57,7 +57,7 @@ Triage by row kind before going further:
 | `MOTHBALLED` | The chain is LIVE but its source was withdrawn, so the pin does not move either (SCHEMA.md `mothballed:`). Do not bump it and do not downgrade `evidence:` — the pinned tree still verifies. The useful work is the opposite of a bump: re-probe, because `src_live:` is the only evidence of what the chain now does — but NO SOONER THAN FOUR WEEKS since `live_probe.observed_at` (SCHEMA.md sets the floor; `pin_status.py` prints the next allowed date and whether it is due). A probe pass is more than a replay, which can pass while the network has moved: follow SCHEMA.md's four parts (replay, scan beyond the row's addresses for ABI dispatch, read every release note and changelog since the last probe, establish what the network runs). If the newer tags have regained source, say so — that un-mothballs the row. |
 | `SHARED` | The pin belongs to the named row. Run this skill on that row. This row only mirrors `client.version`/`commit` and keeps its own `forks.timeline`. |
 | role `stack` / `template` | Not a network. The "associated mainnet" is its flagship or reference deployment (`FLAGSHIP` in `tools/model.py`, e.g. op-stack → optimism) plus each descendant's own schedule (OP: the superchain-registry companion). Check forks there. |
-| `prelaunch` | There is no mainnet, so every fork is testnet-only and that is expected. Check `live_probe.awaiting_endpoint` and follow the Arc conventions already in its row. |
+| `prelaunch` | There is no mainnet, so every fork is testnet-only and that is expected. Read the project's current docs for a mainnet endpoint first: a dead `live_probe.awaiting_endpoint` is not evidence of no launch (Arc's row was wrong for six months this way). `OVERDUE PENDING` on such a row is a reason to check, not noise. |
 | no newer stable tag, branch pins current | Nothing to bump. Still check the fork steps below: an **overdue pending** fork is a data update even at the same pin. |
 | newest release is unstable only | Do not pin it. If a mainnet fork *requires* it (release notes say "mandatory for mainnet"), ask the user. |
 
@@ -177,7 +177,7 @@ Classify the outcome:
   date. This alone is routine mode.
 - **Testnet-only fork** (a testnet time, no mainnet time at the target tag): **notify
   the user**. Give the fork name, which testnet, its activation date, and "mainnet:
-  unscheduled at <tag>". Ask whether to record it the way Arc does (`status: pending`
+  unscheduled at <tag>". Ask whether to record it the way Arc's row once did (`status: pending`
   with a note saying it is testnet-only at that tag) or to leave it out. It does not make
   this a mainnet update.
 - **No mainnet fork**: go to step 5.

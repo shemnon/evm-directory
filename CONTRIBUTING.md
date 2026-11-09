@@ -241,9 +241,6 @@ exception, or by removing it. Until then each is shown, marked, as it is today.
 3. **[taraxa](chains/taraxa/SUMMARY.md)** — [11, live and publicly reachable](#11-live-and-publicly-reachable).
    Every published RPC endpoint failed to resolve when checked on 2026-08-27, so the row
    has no live evidence, and it is still marked `live: true`.
-4. **[arc](chains/arc/SUMMARY.md)** — [11, live and publicly reachable](#11-live-and-publicly-reachable).
-   Prelaunch: mainnet has never produced a block. Launch is announced for 2026-09-16,
-   which would resolve it.
 
 Dead rows — [artela](chains/artela/SUMMARY.md), [moonbeam](chains/moonbeam/SUMMARY.md)
 and [polygon-zkevm](chains/polygon-zkevm/SUMMARY.md) — are not on this list. They met the

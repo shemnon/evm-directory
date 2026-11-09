@@ -82,7 +82,7 @@ Tron — no upstream (role: independent)
 | ZK Stack (ZKsync Elastic Network) | `osaka` | NO FORK NAMES AND NO TIMESTAMPS — numbered protocol versions, activated by an L1 upgrade transaction that swaps the bootloader / default-account / EVM-emulator bytecode hashes. This is one o |
 | zkSync Era | `cancun` | Upgrades arrive as tx type 0xfe, carrying new bootloader / default-account / EVM-emulator bytecode hashes. There is no fork name, no activation timestamp and no mainnet-equivalence claim to  |
 | Polygon zkEVM | `berlin` | THE ONLY ACTIVATION MECHANISM IN THIS DATASET THAT IS NOT IN THE CLIENT AT ALL. The Ethereum ladder is frozen at Berlin by a chainspec of sentinels; everything that actually changes is gated |
-| Arc | `osaka` | TWO SCHEDULES THAT DO NOT MATCH, and the mismatch is the finding. Mainnet (5042) gets Zero3, Zero4, Osaka, Zero5, Zero6 all at genesis and STOPS — Zero7 and Zero8 are absent from `ARC_MAINNE |
+| Arc | `osaka` | TWO SCHEDULES THAT REACHED THE SAME PLACE. Mainnet (5042) has Zero3, Zero4, Osaka, Zero5 and Zero6 at genesis, then took Zero7 and Zero8 together at 1789052400 (2026-09-10 15:00 UTC), on a c |
 | Autonomys Auto EVM | `osaka` | There is no fork timeline. The EVM ruleset is `Config::osaka()`, a `const fn` baked into the domain runtime WASM. It changes only when the domain runtime is upgraded — an on-chain event sche |
 | Avalanche C-Chain | `cancun` | Only two Avalanche upgrades map onto Ethereum forks, and the mapping is an explicit assignment, not a coincidence: `c.ShanghaiTime = durango` and `c.CancunTime = etna`. There is NO PragueTim |
 | Avalanche subnet-evm (L1s / Subnets) | `cancun` | Same mapping as the C-Chain: ShanghaiTime = durango, CancunTime = etna, and NO PragueTime or OsakaTime. Cancun-equivalent. |

@@ -500,6 +500,39 @@ def ex_hedera():
         raise ExtractError("hedera: no Besu version pin to check the borrowed tree against")
     return besu_registry(companion("linea", "besu"), forks[0])
 
+def sys_hedera():
+    """Hedera's system contracts (HTS, exchange rate, PRNG, HAS, HSS, CLPR and its
+    verifiers) are not in the Besu registry. They are one Dagger-provided map,
+    ProcessorModule.provideHederaSystemContracts, which every V0xxModule hands to
+    CustomMessageCallProcessor unfiltered, so that map is the set the chain dispatches.
+
+    Its keys are constant names. They resolve against `public static final String`
+    declarations only: AbstractNativeSystemContract has private byte[] constants with
+    the same names, and `0x16C` is written in upper case. A name that resolves to more
+    than one value is an error rather than a guess. The CLPR entries are in the map but
+    halt unless `clpr.enabled` is set, which is why the row records them `pending`."""
+    pm = text("hedera", "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/"
+                        "hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java")
+    body = block(pm, "static Map<Address, HederaSystemContract> provideHederaSystemContracts(",
+                 "\n    }")
+    if not body: raise ExtractError("hedera: no provideHederaSystemContracts in ProcessorModule")
+    names = re.findall(r"entry\(\s*Address\.fromHexString\((\w+)\)", body)
+    if not names or len(names) != body.count("entry("):
+        raise ExtractError(f"hedera: system contract map has {body.count('entry(')} entries, "
+                           f"{len(names)} keyed by a constant name")
+    want, values = set(names), {}
+    for f in sorted((repo("hedera") / "hedera-node").rglob("*.java")):
+        if "/src/test/" in f.as_posix(): continue
+        s = f.read_text(errors="replace")
+        for m in re.finditer(r'public static final String (\w+) = "(0x[0-9a-fA-F]+)"', s):
+            if m.group(1) in want: values.setdefault(m.group(1), set()).add(int(m.group(2), 16))
+    out = set()
+    for n in want:
+        v = values.get(n, set())
+        if len(v) != 1: raise ExtractError(f"hedera: system contract key {n} resolves to {sorted(v)}")
+        out |= v
+    return out
+
 # --- reimplementations -----------------------------------------------------
 def ex_monad():
     """C++. `resolve_precompile` is a chain of CASE(addr, ...) macros under
@@ -999,6 +1032,9 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "megaeth": ex_megaeth, "moonbeam": ex_moonbeam,
            "polygon-zkevm": ex_polygon_zkevm, "rollkit": ex_rollkit, "sonic": ex_sonic,
            "taiko": ex_taiko, "taraxa": ex_taraxa, "tempo": ex_tempo}
+
+# Rows whose system contracts are a dispatch map in source, checked like precompiles.
+SYSTEM_EXTRACT = {"hedera": sys_hedera}
 
 # Rows whose clones register no precompile, so there is nothing for an extractor to read.
 # Their evidence is live, and a stated reason is more use than a permanent "taken on trust".
@@ -1886,6 +1922,31 @@ def main():
         elif ex is None and not no_clones:
             print("  ! NO EXTRACTOR — precompile list NOT cross-checked against source")
             unextracted.append(slug)
+        sx = None if no_clones else SYSTEM_EXTRACT.get(slug)
+        if sx is not None:
+            # The same two directions as the precompile check, over `system_contracts:`.
+            # Only rows with a dispatch map to read are in SYSTEM_EXTRACT: most rows'
+            # system contracts are deployed bytecode with no registration site at all.
+            try:
+                sfound = set(sx())
+            except ExtractError as e:
+                print(f"  ! EXTRACTOR  {e}"); problems += 1; sfound = None
+            if sfound is not None:
+                sdec = declared(c, "system_contracts")
+                gone = {a for a, v in sdec.items() if v.get("status") in ("removed", "tombstoned")}
+                sexp = {a for a, v in sdec.items()
+                        if a not in gone and not v.get("inherited_from")}
+                bad = 0
+                for a in sorted(sexp - sfound):
+                    print(f"  MISSING  system contract 0x{a:x} declared but not in the source map"); bad += 1
+                for a in sorted(sfound - set(sdec) - set(declared(c, "precompiles"))):
+                    print(f"  UNLISTED system contract 0x{a:x} in the source map but not in chain.yaml"); bad += 1
+                for a in sorted(gone & sfound):
+                    print(f"  ALIVE    system contract 0x{a:x} declared "
+                          f"{sdec[a]['status']} but still in the source map"); bad += 1
+                problems += bad
+                if not bad:
+                    print(f"  system contracts ok  ({len(sfound)} in source, {len(sdec)} declared)")
         if ex is not None:
             # A thin "this client overrides nothing upstream" extractor has no set
             # of its own to disagree with, so it reports failure by raising. That

@@ -692,15 +692,15 @@ precompiles:
       Prague, and the probe at 0x0100 returns empty. The divergence is at every OTHER
       address below 0x2EE — see the sink note below.
   note: >-
-    `V067Module.providePrecompileContractRegistry` calls Besu's
-    `MainnetPrecompiledContracts.populateForCancun` and NOTHING ELSE — no address is added,
-    removed or repriced. 0x01-0x0a are stock Besu 25.2.2 Cancun. The divergence is not in
-    the precompiles; it is in what happens at every OTHER address below 0x2EE.
+    `V070Module.providePrecompileContractRegistry` (the `evm.version` default is v0.70) calls
+    Besu's `MainnetPrecompiledContracts.populateForPrague` and NOTHING ELSE — no address is
+    added, removed or repriced. 0x01-0x11 are stock Besu 26.2.0 Prague. The divergence is not
+    in the precompiles; it is in what happens at every OTHER address below 0x2EE.
   dynamic_range:
     name: "system-account sink — every address 0x01..0x2EE with no precompile and no system contract"
     status: added
     severity: high
-    pattern: "long-zero address with entity number <= 750 (0x2EE), excluding 0x01-0x0a and 0x167-0x16d"
+    pattern: "long-zero address with entity number <= 750 (0x2EE), excluding 0x01-0x11 and the ten system contract addresses in 0x167-0x171"
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:handleNonExtantSystemAccountCall, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v038/Version038AddressChecks.java:isSystemAccount, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/ProcessorModule.java:NUM_SYSTEM_ACCOUNTS"
     src_live: "eth_call to 0x0000000000000000000000000000000000000100 with 160 zero bytes @ 99380446 -> 0x (success, empty output); eth_getCode 0x0100 @ 99380446 -> 0x"
     note: >-
@@ -715,11 +715,11 @@ precompiles:
       VALUE to any such address halts with `INVALID_CONTRACT_ID` instead of creating the
       account. This also settles the P256VERIFY probe: `eth_call` to 0x0100 returns empty
       output NOT because EIP-7951 semantics are present but because 0x0100 is inside the
-      sink — Besu 25.2.2's Cancun map has no 0x0100 entry at all.
+      sink — Besu 26.2.0's Prague map has no 0x0100 entry at all (P256VERIFY is Osaka).
   "0x0a":
     name: KZG point evaluation
     status: added
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:KZGPointEvalPrecompiledContract"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:KZGPointEvalPrecompiledContract"
     note: >-
       `added` relative to a reader's likely expectation, not to mainnet Cancun: it IS
       mainnet's 0x0a and it IS installed and initialised here, on a chain that cannot accept
@@ -728,7 +728,7 @@ precompiles:
   "0x0100":
     name: P256VERIFY (RIP-7212 / EIP-7951)
     status: removed
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:populateForPrague"
     src_live: "eth_call 0x0100 @ 99380446 -> 0x (indistinguishable from an invalid-signature answer; source settles it)"
     note: >-
       Absent. Eleven rows in this dataset carry it; Hedera is not one. The empty `eth_call`
@@ -1208,7 +1208,7 @@ eips:
       `system_contracts.synthesised_bytecode`.
   7951:
     status: removed
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v067/V067Module.java:populateForCancun"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/v070/V070Module.java:populateForPrague"
     note: "No P256VERIFY. An eth_call to 0x0100 returns empty output because of the system-account sink, which is not the same thing."
   2537:
     status: inherited

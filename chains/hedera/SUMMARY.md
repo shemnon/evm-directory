@@ -296,6 +296,18 @@ analysis over `eth_getCode` now works. But **every HTS token now shares one
 breaks, and one that reads a 7702 designator as "this EOA delegated to a contract" now
 misreads every native token on the chain.
 
+**The calldata dependence moved from code to dispatch.** Account code no longer depends
+on calldata, but where a call goes still does, for the same three selectors. In
+`CustomMessageCallProcessor.createProxyOrCodeDelegationContext`, a call to an account with
+no code or only a designator is sent to HAS at `0x16a` if its calldata starts with
+`hbarAllowance`, `hbarApprove` or `setUnlimitedAutomaticAssociations`. That check runs
+**before** the 7702 delegation is followed, so a delegate contract that defines any of
+those three functions can never be reached for them through the delegating account.
+HIP-1340 states this shadowing as intended. On mainnet at block 102,140,215, account
+0.0.800, which has no code, answers `hbarAllowance` with a HAS result (code 22, allowance 0)
+and any other selector with `0x`. The precedence over a delegation is from source; testing
+it live needs a delegated account, and so a transaction.
+
 ## 11. Gas is priced in dollars; `block.basefee` is zero while the RPC says 1.11e12
 
 `TinybarValues.topLevelTinybarGasPrice` = the fee schedule's **tinycent** price for a gas

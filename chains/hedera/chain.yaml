@@ -809,12 +809,20 @@ system_contracts:
     name: Hedera Account Service (HAS)
     status: added
     kind: "native dispatch, no bytecode"
-    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HasSystemContract.java:HAS_EVM_ADDRESS"
-    src_live: "eth_getCode 0x...16a @ 99380446 -> 0x"
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HasSystemContract.java:HAS_EVM_ADDRESS, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/systemcontracts/HasSystemContract.java:HAS_PROXY_ELIGIBLE_CALL_DATA_PREFIXES, hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/processors/CustomMessageCallProcessor.java:createProxyOrCodeDelegationContext"
+    src_live: "eth_getCode 0x...16a @ 99380446 -> 0x. At 0.0.800 (0x...0320, no code) @ 102140215: eth_call with hbarAllowance(0xabcd) calldata -> (22 SUCCESS, 0), with selector 0x12345678 -> 0x"
+    src_doc: https://hips.hedera.com/hip/hip-1340
     note: >-
       Carries `isAuthorizedRaw`, the ONLY way EVM code can check an ED25519 signature on
       this chain. Priced at the ECRECOVER rate by
-      `HederaGasCalculatorImpl.getEdSignatureVerificationSystemContractGasCost`.
+      `HederaGasCalculatorImpl.getEdSignatureVerificationSystemContractGasCost`. ALSO
+      ANSWERS AT EVERY ACCOUNT, FOR THREE SELECTORS. A call to an account with no code, or
+      with only an EIP-7702 designator, whose calldata starts with `hbarAllowance`
+      (0xbbee989e), `hbarApprove` (0x86aff07c) or `setUnlimitedAutomaticAssociations`
+      (0xf5677e99) executes HAS instead, and HAS precedes the delegation. So a 7702 delegate
+      contract that defines any of those three selectors can never be reached through a
+      delegating account for them. HIP-1340 states this shadowing as intended. Real contracts
+      (code longer than a designator) skip the check.
   "0x000000000000000000000000000000000000016b":
     name: Hedera Schedule Service (HSS)
     status: added
@@ -950,9 +958,10 @@ opcodes:
     name: EXTCODEHASH
     src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/exec/operations/CustomExtCodeHashOperation.java:INVALID_SOLIDITY_ADDRESS"
     note: >-
-      Same halt path as EXTCODESIZE, plus: for an HTS token address it hashes bytecode that
-      was SYNTHESISED for that address on demand, and for a plain account it may hash
-      account-proxy bytecode whose presence depends on the calling selector.
+      Same halt path as EXTCODESIZE, plus: since v0.77.2 every HTS token address hashes the
+      same constant 7702 designator pointing at 0x167, so all native tokens share one
+      `EXTCODEHASH`, and a plain account hashes empty code or its own designator. The hash no
+      longer depends on calldata, but dispatch does: see the HAS redirect at 0x16a.
   - op: "0xf1"
     name: CALL
     severity: high
@@ -1350,16 +1359,18 @@ gotchas:
   - >-
     `eth_getCode` AT 0x167 RETURNS `0xfe` AND THE RELAY INVENTED IT. `ContractService.getCode`
     short-circuits on the HTS address "before consulting nodes" and returns one INVALID
-    opcode byte. No such byte is in state. The five other Hedera system contracts —
-    0x168, 0x169, 0x16a, 0x16b, 0x16c — return `0x` from the same call. Contract-detection
+    opcode byte. No such byte is in state. The nine other Hedera system contracts —
+    0x168-0x16c and the CLPR set at 0x16e-0x171 — return `0x` from the same call. Contract-detection
     by `eth_getCode != "0x"` is therefore wrong in both directions on this chain.
   - >-
-    AN ACCOUNT'S CODE DEPENDS ON THE CALLDATA USED TO CALL IT. `ProxyEvmAccount.getEvmCode`
-    takes the function selector as a parameter and returns account-proxy bytecode only for
-    `hbarAllowance`, `hbarApprove` and `setUnlimitedAutomaticAssociations`, and empty code
-    otherwise. Separately, every HTS token has synthesised, address-dependent ERC-20/721
-    proxy bytecode generated on demand by `RedirectBytecodeUtils`. There is no Ethereum
-    account state that behaves like either.
+    THREE SELECTORS ARE RESERVED ON EVERY EIP-7702 ACCOUNT. A call to an account with no
+    code or only a delegation designator, whose calldata starts with `hbarAllowance`,
+    `hbarApprove` or `setUnlimitedAutomaticAssociations`, goes to the Hedera Account Service
+    at 0x16a, BEFORE the delegation is followed. A delegate contract that implements any of
+    those three functions, which a wallet porting ERC-style allowance code may well do, has
+    them silently replaced by HAS when reached through the delegating account. HIP-1340 calls
+    this shadowing intended. Code is no longer calldata-dependent since v0.77.2, so
+    `eth_getCode` analysis does not show this.
   - >-
     `block.basefee` IS ZERO AND `block.gaslimit` IS THE TRANSACTION'S OWN GAS LIMIT.
     `HevmBlockValues.getBaseFee()` returns `Wei.ZERO` unconditionally while

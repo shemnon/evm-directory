@@ -158,8 +158,8 @@ conflates two situations that a reader must not confuse.
 | `unreachable` | no endpoint answers, so whether it runs is **unknown**. Not a claim that it stopped — nothing was observed to stop. Artela. |
 
 The distinction is not cosmetic. A `prelaunch` row's live evidence may be
-contradicted by mainnet at launch — Arc's testnet runs a fork the mainnet schedule
-does not contain — while a `halted` row's live evidence can never be contradicted,
+contradicted by mainnet at launch — Arc's was, on four counts, when its row was finally
+replayed against mainnet — while a `halted` row's live evidence can never be contradicted,
 because nothing further will happen. Neither is a claim about intent: a chain may be
 halted because it was sunset or because it broke, and no probe distinguishes those.
 
@@ -173,6 +173,11 @@ stopped. Two optional `live_probe` keys support the check:
 |---|---|
 | `awaiting_endpoint` | for a `prelaunch` row, the URL of the network it is waiting for. The row's `endpoint` is a stand-in testnet, so nothing about the real chain can be probed; this is checked separately and reports the moment it starts answering. Arc. |
 | `awaiting_chain_id` | the chain id that endpoint should answer with, for the same reason `chain_id` exists. |
+
+Take `awaiting_endpoint` from the project's current published documentation, and re-read
+that documentation at every pass. A hostname that does not resolve is not evidence that a
+network does not exist. Arc's row watched such a hostname for six months while its mainnet
+ran at another, and `livecheck.py` reported "still does not answer" throughout.
 
 A `halted` row is **not** required to pin its own last block. Moonbeam's
 `observed_at_block` is the *finalized* head at probe time and production ran 5,791

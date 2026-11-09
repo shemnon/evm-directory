@@ -688,8 +688,8 @@
       Writes `0xef`, giving `EXTCODESIZE == 1` — indistinguishable by size from a real
       one-byte contract.
     arc: >-
-      Writes `0x01`, giving `EXTCODESIZE == 1` — indistinguishable by size from a real
-      one-byte contract.
+      Writes `0xef` on mainnet and `0x01` on its testnet, each giving `EXTCODESIZE == 1` —
+      indistinguishable by size from a real one-byte contract, and different by network.
     avalanche-c: >-
       `ApplyPrecompileActivations` deliberately writes `nonce=1, code=0x01` at its
       precompiles so Solidity's `extcodesize` guard passes — the origin of the pattern
@@ -706,8 +706,8 @@
     different shapes, and it fails in BOTH directions. Avalanche's `ApplyPrecompileActivations`
     deliberately writes `nonce=1, code=0x01` at its precompiles so Solidity's
     `extcodesize` guard passes — so Flare's Warp precompile answers `0x01`. Sonic writes
-    a 1-byte `0x00` stub at EvmWriter. Tempo writes `0xef`; Arc writes `0x01`; both give
-    `EXTCODESIZE == 1`, indistinguishable by size from a real one-byte contract. Cosmos
+    a 1-byte `0x00` stub at EvmWriter. Tempo writes `0xef`; Arc writes `0xef` on mainnet and
+    `0x01` on its testnet; all give `EXTCODESIZE == 1`, indistinguishable by size from a real one-byte contract. Cosmos
     EVM writes a **full ~24KB ERC-20 runtime** at its dynamic token precompiles that is
     never executed and decompiles into the contract it impersonates. Moonbeam breaks it
     the other way too: `PrecompileRegistry.updateAccountCode` at `0x0815` writes a

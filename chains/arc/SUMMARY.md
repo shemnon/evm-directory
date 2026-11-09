@@ -5,22 +5,18 @@ Client pinned: `circlefin/arc-node` **v0.8.2**, commit
 **tag v2.2.0** (a released tag, not a floating rev — and a major-version move up from
 v1.11.3 at the previous pin). Apache-2.0.
 
-**Mainnet (5042) is not live.** `https://rpc.arc.network` still did not answer on
-2026-10-08, while the testnet was at block 66,193,736. Chain id 5042 exists in this
-tag as a constant and a hardfork table and nothing else.
-Circle's announced public-mainnet date is 2026-09-16, and as of the last check —
-**2026-09-09**, seven days short of it — the hostname is still NXDOMAIN. Every live
-fact below comes from the **public testnet, 5042002**, probed at block **58728247**
-(`0x3801f37`, `finalized`). The row is `live: false` / `live_state: prelaunch`, and
-every `src_live:` should be read as "the testnet does this".
+**Mainnet (5042) is live, and has been since May 2026.** `https://rpc.mainnet.arc.io`
+answers for chain 5042, with genesis dated 2026-05-12 and block 1 dated 2026-05-15. Circle
+described a private mainnet in August and announced the public launch for 2026-09-16.
+Every live fact below is from mainnet at block **29537893** (`0x1c2b665`, `finalized`,
+2026-11-04), unless it names the testnet, 5042002.
 
-When mainnet does appear, flipping `live_state` is not the update this row needs —
-the live half still has to be re-probed against 5042 at a mainnet height rather than
-relabelled. But the gap it would be closing just narrowed a long way: at v0.7.3 the
-mainnet table stopped at Zero6, and at v0.8.1 it carries Zero7 and Zero8 as well
-(§8). Testnet is no longer running a protocol mainnet will not launch with.
-`live_probe.awaiting_endpoint` records the mainnet URL so `tools/livecheck.py`
-reports the day that becomes possible.
+**This row called itself prelaunch until 2026-11-04.** It watched
+`https://rpc.arc.network`, a hostname that never resolved, and read that as a chain that
+did not exist. Arc's docs had moved to `docs.arc.io` and published the real endpoint.
+Replaying the row against mainnet then corrected four other claims, marked below: when
+Zero7 and Zero8 activated, whether plain transfers emit EIP-7708 logs, the precompile
+marker byte, and two code sizes.
 
 Tempo and Arc were briefed as the same problem — *what happens to the EVM when the
 gas asset is a 6-decimal stablecoin*. They answer it in opposite directions, and
@@ -45,13 +41,13 @@ block, on three unrelated accounts:
 
 | account | `eth_getBalance` | `USDC.balanceOf` |
 |---|---:|---:|
-| `0xa693cc18…` (proposer) | 5028673577309960459376547 | 5028673577309 |
-| `0x5d56c534…` (sender) | 808717034443278127 | 808717 |
-| `0x1c831f75…` (recipient) | 3048802109906077411 | 3048802 |
+| `0xd9153d9a…` (proposer) | 35131686861142866688282 | 35131686861 |
+| `0x994d7313…` (recipient) | 92672261265336915910 | 92672261 |
+| `0x8568d2a6…` (sender) | 13728503694425242822 | 13728503 |
 
 The relationship is `balanceOf(a) == eth_getBalance(a) // 10^12` — **integer
 division, exact in none of the three cases.** Minting happens in whole
-microdollars (`totalSupply` does divide exactly: 314870942069315201 × 10¹²) but gas
+microdollars (`totalSupply` does divide exactly: 1183563569272467 × 10¹²) but gas
 refunds and priority fees are arbitrary wei, so live accounts accumulate
 sub-microdollar dust that the token interface cannot see and cannot move.
 `transfer`ring your entire ERC-20 balance does not empty your account, and any
@@ -65,14 +61,14 @@ against. This finding is `src_live:` only, and that is recorded as such.
 
 ## 2. One transfer, two `Transfer` events, two different amounts
 
-The first transaction in the probed block is an ordinary ERC-20
-`transfer(0x1c831f75…, 78775)` to `0x3600…0000`. Its receipt carries **two logs**:
+Transaction `0xfec9562d…` at block 29537465 is an ordinary ERC-20
+`transfer(0x994d7313…, 92670043)` to `0x3600…0000`. Its receipt carries **two logs**:
 
 ```
 log[0]  address 0xfffffffffffffffffffffffffffffffffffffffe   (EIP-7708 system address)
-        Transfer(from, to)  data 0x0117dd71f42e7000  = 78,775,000,000,000,000
+        Transfer(from, to)  data = 92,670,043,000,000,000,000
 log[1]  address 0x3600000000000000000000000000000000000000   (the USDC ERC-20)
-        Transfer(from, to)  data 0x00000133b7        = 78,775
+        Transfer(from, to)  data = 92,670,043
 ```
 
 Same movement. Same topic hash. Two amounts, 10¹² apart. An indexer that
@@ -81,10 +77,10 @@ every native movement on this chain *and* mis-scales one of the two copies.
 
 Arc adopts **EIP-7708** (native transfers emit ERC-20-shaped logs), which is not on
 mainnet Ethereum, because when the native coin *is* a stablecoin you want native
-movement to be indexable like a token. But **adoption is partial**: the log is
-emitted by `SELFDESTRUCT` (Zero5+) and by the NativeCoinAuthority mint/burn/transfer
-paths, and **not** by an ordinary `CALL` carrying value. So "index native movement
-from logs" works for some native movement.
+movement to be indexable like a token. **Adoption is wider than this row used to say.**
+The log comes from `SELFDESTRUCT`, the NativeCoinAuthority paths and
+`before_frame_init`, so a plain value transfer to an EOA emits it too, as
+`0x30569396…` at block 29537853 shows. Self-transfers do not.
 
 ## 3. The base fee lives in `extraData`
 
@@ -122,8 +118,9 @@ Three changes to EIP-1559 at once:
    the gas limit and the fee-market bounds are upgradeable by whoever holds the
    proxy admin, with no client release.
 
-The base fee held flat at 20 gwei across the probed window while `gasUsedRatio`
-moved from 0.017 to 0.19 and back — consistent with the smoothing.
+The base fee held flat at 20 gwei across the probed window, with `gasUsedRatio` between
+0.008 and 0.034. Block use is far below any target, so that window does not test the
+smoothing.
 
 ## 5. A blocklist that reaches into block validity
 
@@ -161,8 +158,8 @@ at startup: **there is no denylist-free Arc node.** So this row's config-switcha
 warning no longer applies — the divergence became network-wide and unavoidable rather
 than per-operator, which is a stronger claim, not a weaker one.
 
-It is also deployed now: `eth_getCode` on the testnet address returns **1494 bytes**
-at block 66,193,736, where the old localdev default returned `0x`.
+It is deployed: `eth_getCode` on mainnet's address returns **1494 bytes** at genesis and
+at the pinned block.
 
 ## 6. `msg.sender` is not proof of a signature (Zero7)
 
@@ -183,7 +180,8 @@ It executes `target` with `msg.sender == sender`. The guard is an allow-list of
 AllowedCallers::Only(HashSet::from([MEMO_ADDRESS, MULTICALL3_FROM_ADDRESS]))
 ```
 
-Both are deployed on testnet. This does not change *who authorizes a transaction* —
+Both are deployed on mainnet, from blocks 3087090 and 3087061, and CallFrom has answered
+since Zero7 at block 20156410. This does not change *who authorizes a transaction* —
 that is still one secp256k1 signature — but it does mean `msg.sender` inside a
 called contract is not evidence that that address signed anything, which is an
 assumption a great deal of Solidity rests on. The allow-list is in consensus code,
@@ -199,20 +197,26 @@ ordinary state of a verifier precompile — and worth stating precisely because 
 Tempo row, written from the same brief, shows the *opposite* pairing on the same
 axis (a scheme that authorizes with no verifier to match).
 
-## 8. Mainnet and testnet do not run the same protocol
+## 8. Zero7 and Zero8 activated on a running mainnet
 
-**This section used to say they do not. At v0.8.1 they very nearly do.**
+`ARC_MAINNET_HARDFORKS` gives chain 5042 Zero3, Zero4, Osaka, Zero5 and Zero6 at genesis,
+then Zero7 and Zero8 at the same timestamp, `1789052400` (2026-09-10 15:00 UTC). This row
+used to read that as "active from the first block". **Mainnet was already past block 20
+million.** The first block at that timestamp is **20156410**, and the change is visible
+at exactly that height:
 
-`ARC_MAINNET_HARDFORKS` gives chain 5042 Zero3, Zero4, Osaka, Zero5 and Zero6 at
-genesis, and then — new at this tag — Zero7 at `1789052400` and Zero8 at the **same**
-`1789052400` (2026-09-10 15:00 UTC). Both timestamps are already in the past, and
-mainnet has never produced a block, so the practical effect is that **Zero7 and Zero8
-will both be active from mainnet's first block**.
+| Probe | Block 20156409 | Block 20156410 |
+|---|---|---|
+| `eth_call` to CallFrom, empty calldata | `OpcodeNotFound` | `unauthorized caller` |
+| SELFDESTRUCT to a warmed target, 5,100 gas | fails | succeeds |
 
-So CallFrom, Multicall3From, Memo and the later SELFDESTRUCT variants — everything in
-§6 — are no longer "live on testnet and not scheduled for mainnet". They are
-scheduled, at genesis. Testnet has stopped being a superset; what it is now is
-*earlier*, having reached Zero7 in June and Zero8 in September on a real timeline.
+The second probe is specific to Zero8, whose handler counts a target warmed earlier in the
+transaction as warm. Testnet took Zero8 alone at block 60260874, and shows the same flip
+there. Two controls held at every height: an unwarmed target with 5,100 gas fails, and a
+warmed target with 8,000 gas succeeds.
+
+Both networks now run the same fork set. Testnet reached Zero7 in June and Zero8 on
+2026-09-03, so it is earlier rather than different.
 
 The activation *mechanism* is mixed too: Zero3/Zero4 by block; Zero5/Zero6 by block
 on mainnet but by **timestamp** on testnet; Zero7+ by timestamp everywhere. The
@@ -227,7 +231,7 @@ the corresponding EVM/validation behaviour would never trigger."
 The `ArcHardfork` enum annotates its variants "align to Ethereum Prague". The
 schedule does not agree: `BASE_FORKS` stops at Prague and every network table then
 inserts `EthereumHardfork::Osaka` — at `Timestamp(0)` for mainnet, at 1779890400 for
-testnet — paired with Zero5. Confirmed live: P256VERIFY answers at `0x0100` with
+testnet — paired with Zero5. Confirmed on mainnet: P256VERIFY answers at `0x0100` with
 EIP-7951 empty-on-invalid semantics, and the client asserts the negative case too
 (`test_p256_precompile_not_available_with_prague`).
 
@@ -239,12 +243,12 @@ Source over comment, as usual.
   root. The EIP-4788 ring-buffer contract holds no code, so nothing consumes it,
   and no contract can read the value back. Anyone treating a non-zero value as
   evidence of a beacon chain is wrong here.
-- **`eth_getCode` at an Arc precompile returns `0x01`.** Every address in
-  `0x1800…000{0..4}` carries one byte of marker code and `EXTCODESIZE == 1`, while
-  the inherited Ethereum precompiles return `0x`. Same inversion as Tempo's `0xef`,
-  a different byte — and `0x01` as bytecode is a bare `ADD` that would underflow
-  the stack, where `0xef` is the EOF-reserved prefix. The dataset now has six
-  distinct fake-code shapes at precompile addresses.
+- **`eth_getCode` at an Arc precompile returns one byte, and the networks disagree.**
+  Mainnet returns `0xef` and testnet `0x01`, each with `EXTCODESIZE == 1`, while the
+  inherited Ethereum precompiles return `0x`. This row used to say `0x01` because only the
+  testnet had been probed. Mainnet's genesis file writes `0xef` with nonce 1 across all 256
+  addresses from `0x1800…0000` to `0x1800…00ff`, far more than the five in use. It is the
+  same byte Tempo writes.
 - **KZG works on a chain that rejects blobs**, exactly as on Tempo — `0x0a` is
   present and errors on garbage while `.no_eip4844()` keeps blob transactions out
   of the pool. Note the removal here is *weaker* than Tempo's: it is a mempool
@@ -252,28 +256,21 @@ Source over comment, as usual.
 - **No Arc-specific transaction type exists.** For a chain whose pitch is
   stablecoin payments, that is a real finding: no fee-payer type, no sponsored
   type, no batch type. Batching and sender-spoofing are ordinary transactions to
-  the Multicall3From contract. 586 transactions across 50 blocks were `{0x0: 355,
-  0x2: 231}` — 60% legacy.
+  the Multicall3From contract. 209 transactions across 50 blocks were `{0x0: 61,
+  0x2: 148}`, with one `0x04` seen in the 430 blocks before that.
 - **Receipts are stock.** No added fields, in contrast to Tempo's `feeToken` and
   `feePayer`.
 - **The supply authority is one upgradeable contract.** The NativeCoinAuthority
-  precompile refuses any caller other than `0x3600…0000`, and that address is an
-  ERC-1967 proxy. Mint, burn, blocklist and the ERC-20 interface all sit behind one
+  precompile refuses any caller other than `0x3600…0000`, and that address is a proxy
+  whose `implementation()` returns `0xc6ad664a…`; its ERC-1967 slot is empty. Mint, burn, blocklist and the ERC-20 interface all sit behind one
   upgrade key.
 
 ## Not established here
 
-- **Mainnet behaviour, at all.** Mainnet does not exist. The mainnet fork table is
-  read from source; nothing about mainnet is live-verified, and the schedule may
-  change before 2026-09-16.
 - **The `NativeFiatToken` Solidity source.** Not in this repository. The 6-decimal
   ERC-20 view, the 10¹² flooring, and the mint/blocklist authorisation logic are
   established by live probe and by the precompile's `ALLOWED_CALLER_ADDRESS` check
-  only — the contract itself is a black box with 3,598 bytes of runtime.
-- **Whether a plain value-bearing CALL emits any log.** Argued from source (only
-  SELFDESTRUCT and the precompile paths call the log constructors) but not probed —
-  no value-bearing CALL was found in the scanned range. Recorded in `eips.7708` as
-  partial adoption rather than asserted as absent.
+  only — the contract itself is a black box with 1,798 bytes of runtime.
 - **EIP-4895 withdrawal handling.** The list is empty with the empty-trie root, but
   unlike Tempo no active rejection was traced. `unrecorded`.
 - **EIP-2930 (`0x01`).** Not observed in the scanned range and nothing in the client
@@ -282,9 +279,12 @@ Source over comment, as usual.
 - **Whether the base fee is burned.** `fee_model.burn: unrecorded` — the destination
   of the base fee was not followed through the executor. On a chain where the base
   fee is a stablecoin this is a materially interesting question and it is left open.
-- **The running testnet version.** `web3_clientVersion` returns only `arc/v1`, so
-  the pinned tag cannot be matched to what testnet validators run — the gap Tempo's
-  row was able to close.
+- **The running version.** `web3_clientVersion` returns only `arc/v1` on both networks,
+  so the pinned tag cannot be matched to what validators run — the gap Tempo's row was
+  able to close.
+- **Whether every Zero8 change is live.** The SELFDESTRUCT handler was measured. The
+  delegatecall penalty could not be reached without an authorised caller, and the rejected
+  gas credit was not tested.
 
 ## What this contradicts elsewhere in the dataset
 
@@ -292,9 +292,9 @@ Source over comment, as usual.
   consensus family, a language and an execution client, and diverge completely on
   the question that matters. Any aggregate row that groups them will be wrong about
   one of them.
-- **`eth_getCode` at a precompile now has a sixth shape** (`0x01`). Together with
-  Tempo's `0xef` marker, two of the newest rows in the dataset both write fake code
-  at precompile addresses *as a marker*, not as an ABI stub — a different pattern
+- **`eth_getCode` at a precompile depends on the network as well as the chain.** Arc
+  writes `0xef` on mainnet and `0x01` on testnet. With Tempo's `0xef`, two of the newest
+  rows in the dataset both write fake code at precompile addresses *as a marker*, not as an ABI stub — a different pattern
   from Flare/Sonic/Cosmos EVM/Moonbeam and one that a size heuristic cannot
   separate from a genuine one-byte contract.
 - **Header `extraData` can be consensus data.** Any tool that reads it as a client
@@ -308,7 +308,7 @@ Source over comment, as usual.
 cd /Volumes/TendiesTown/EVM-Directory/chains/arc/repos/arc-node
 git rev-parse HEAD          # 0f0be9fad975a2fe16546323b060d7b070617936
 git describe --tags         # v0.8.2
-grep -n 'reth-chainspec' Cargo.toml    # tag = "v1.11.3"
+grep -n 'reth-chainspec' Cargo.toml    # tag = "v2.2.0"
 
 # 1/2. the native coin is 18-decimal; the ERC-20 view is a separate contract
 grep -n -A3 'NATIVE_FIAT_TOKEN_ADDRESS' crates/precompiles/src/helpers.rs
@@ -319,6 +319,7 @@ ls contracts/src        # note: no NativeFiatToken.sol — the ERC-20 is not in 
 # 2. EIP-7708 logs, and where they are (and are not) emitted
 sed -n '/create_eip7708_transfer_log/,/^}/p' crates/evm/src/log.rs
 grep -rn 'create_eip7708_transfer_log\|create_native_transfer_log' crates/evm/src crates/precompiles/src
+grep -n 'fn before_frame_init\|amsterdam_eip7708_disabled' crates/evm/src/evm.rs
 
 # 3. base fee in extraData
 grep -n -A8 'fn encode_base_fee_to_bytes' crates/execution-config/src/gas_fee.rs
@@ -361,98 +362,109 @@ grep -n 'no_eip4844' crates/execution-txpool/src/pool.rs
 
 # precompile addresses, as the contracts see them
 cat contracts/src/Precompiles.sol | tail -10
+grep -c '"code": "0xef"' assets/mainnet/genesis.json
 ```
 
 ```sh
-# TESTNET (5042002) — mainnet does not exist yet
-RPC=https://rpc.testnet.arc.network
-B=0x3801f37          # 58728247
+# MAINNET (5042), read-only
+RPC=https://rpc.mainnet.arc.io
+B=0x1c2b665          # 29537893
 call() { curl -s -X POST $RPC -H 'Content-Type: application/json' \
          -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}"; echo; }
 
-call eth_chainId '[]'                 # -> 0x4cef52 (5042002)
+call eth_chainId '[]'                 # -> 0x13b2 (5042)
 call web3_clientVersion '[]'          # -> "arc/v1" — no version detail, cannot match the tag
-
-# mainnet is still not up: NXDOMAIN, not a refused connection or an empty reply
-host rpc.arc.network                  # -> NXDOMAIN  (re-checked 2026-09-09)
-curl -s -m 10 https://rpc.arc.network -X POST -H 'Content-Type: application/json' \
-     -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'; echo "exit=$?"
-#   -> no output, exit=6 (could not resolve host)
-tools/livecheck.py arc                # the same two checks, as a maintenance gate
+call eth_getBlockByNumber '["0x1",false]'   # timestamp 2026-05-15, so not prelaunch
+tools/livecheck.py arc --deep         # the same identity and head checks, as a maintenance gate
 
 # THE headline: the ERC-20 view is floor(native / 10^12), exact in none of these
-for a in a693cc18aa09d33dd388013b7a02e5ff863b8760 \
-         5d56c5348a4f17e21f00ef04222baff247163691 \
-         1c831f75f24f5ca0ee088f201e691a6c55aff0b5; do
+for a in d9153d9a997626d812a18dd64ee1eb1d45454123 \
+         994d73136cb37959e295b49d36c104f3e4b4ebd2 \
+         8568d2a61b91a6166791efda9cb5e641c836d24d; do
   call eth_getBalance "[\"0x$a\",\"$B\"]"
   call eth_call "[{\"to\":\"0x3600000000000000000000000000000000000000\",
                    \"data\":\"0x70a08231000000000000000000000000$a\"},\"$B\"]"
 done
-# 5028673577309960459376547 / 5028673577309
-#      808717034443278127   /      808717
-#     3048802109906077411   /     3048802
+# 35131686861142866688282 / 35131686861
+#    92672261265336915910 / 92672261
+#    13728503694425242822 / 13728503
 
-call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x313ce567"},"0x3801f37"]' # 6
-call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x95d89b41"},"0x3801f37"]' # "USDC"
-call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x18160ddd"},"0x3801f37"]' # 6dp
-call eth_call '[{"to":"0x1800000000000000000000000000000000000000","data":"0x18160ddd"},"0x3801f37"]' # 18dp
+call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x313ce567"},"0x1c2b665"]' # 6
+call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x95d89b41"},"0x1c2b665"]' # "USDC"
+call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x18160ddd"},"0x1c2b665"]' # 6dp
+call eth_call '[{"to":"0x1800000000000000000000000000000000000000","data":"0x18160ddd"},"0x1c2b665"]' # 18dp
 #   the second is exactly the first x 10^12
+call eth_call '[{"to":"0x3600000000000000000000000000000000000000","data":"0x5c60da1b"},"0x1c2b665"]' # implementation()
 
 # one transfer, two Transfer logs, two amounts
-call eth_getTransactionReceipt '["0x134f1abe4d0c4445c7b55702712550868dd039547510dec3b35cdb25b7bdcd24"]'
-#   log[0] address 0xfffffffffffffffffffffffffffffffffffffffe data 0x0117dd71f42e7000 (78775e12)
-#   log[1] address 0x3600000000000000000000000000000000000000 data 0x133b7            (78775)
+call eth_getTransactionReceipt '["0xfec9562d882eff1d4a81abf85f5af06602a9ef055c159bf9ec05cb2b8a442b49"]'
+#   log[0] address 0xfffffffffffffffffffffffffffffffffffffffe data 92670043e12
+#   log[1] address 0x3600000000000000000000000000000000000000 data 92670043
+
+# a plain value transfer to an EOA also emits the EIP-7708 log
+call eth_getTransactionReceipt '["0x305693964cee8983d60a5cf8fa4d2dd0b14993b66e974ef5574694fe16a2ec08"]'
 
 # header: extraData IS the next base fee; parentBeaconBlockRoot IS the parent hash
-call eth_getBlockByNumber '["0x3801f37",false]'
+call eth_getBlockByNumber '["0x1c2b665",false]'
 #   extraData 0x00000004a817c800 == baseFeePerGas 0x4a817c800 (20 gwei)
 #   parentBeaconBlockRoot == parentHash;  gasLimit 0x1c9c380;  withdrawals []
 
 # the gas limit really does come out of ProtocolConfig's storage
 call eth_getStorageAt '["0x3600000000000000000000000000000000000001",
-  "0x668f09ce856848ead6cb1ddee963f15ef833cea8958030868f867aec84385203","0x3801f37"]'  # -> 0x1c9c380
+  "0x668f09ce856848ead6cb1ddee963f15ef833cea8958030868f867aec84385203","0x1c2b665"]'  # -> 0x1c9c380
 call eth_getStorageAt '["0x3600000000000000000000000000000000000001",
-  "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc","0x3801f37"]'  # ERC-1967 impl
+  "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc","0x1c2b665"]'  # ERC-1967 impl
 
-# base fee flat while gasUsedRatio swings — the EMA
-call eth_feeHistory '["0x4","0x3801f37",[10,50]]'
+call eth_feeHistory '["0x4","0x1c2b665",[10,50]]'
 call eth_gasPrice '[]'
 
-# precompiles carry 0x01; Ethereum's carry nothing
+# precompiles carry 0xef on mainnet; Ethereum's carry nothing
 for a in 1800000000000000000000000000000000000000 1800000000000000000000000000000000000001 \
          1800000000000000000000000000000000000002 1800000000000000000000000000000000000003 \
          1800000000000000000000000000000000000004; do
-  call eth_getCode "[\"0x$a\",\"$B\"]"; done                 # all -> 0x01
-call eth_getCode '["0x0000000000000000000000000000000000000001","0x3801f37"]'   # -> 0x
-call eth_getCode '["0x0000000000000000000000000000000000000100","0x3801f37"]'   # -> 0x
+  call eth_getCode "[\"0x$a\",\"$B\"]"; done                 # all -> 0xef
+call eth_getCode '["0x0000000000000000000000000000000000000001","0x1c2b665"]'   # -> 0x
+call eth_getCode '["0x0000000000000000000000000000000000000100","0x1c2b665"]'   # -> 0x
 call eth_call '[{"to":"0x00000000000000000000000000000000000face8",
                  "data":"0x0000000000000000000000001800000000000000000000000000000000000000"},
-                "0x3801f37",{"0x00000000000000000000000000000000000face8":{"code":"0x5f353b5f5260205ff3"}}]'
+                "0x1c2b665",{"0x00000000000000000000000000000000000face8":{"code":"0x5f353b5f5260205ff3"}}]'
 #   EXTCODESIZE(NativeCoinAuthority) -> 1
 
 # the precompiles answer
 call eth_call '[{"to":"0x1800000000000000000000000000000000000001",
-  "data":"0x8e204c430000000000000000000000000000000000000000000000000000000000000000"},"0x3801f37"]'  # isBlocklisted(0x0) -> false
+  "data":"0x8e204c430000000000000000000000000000000000000000000000000000000000000000"},"0x1c2b665"]'  # isBlocklisted(0x0) -> false
 call eth_call '[{"to":"0x1800000000000000000000000000000000000002",
-  "data":"0x805108150000000000000000000000000000000000000000000000000000000003801f36"},"0x3801f37"]' # getGasValues(parent)
-call eth_call '[{"to":"0x1800000000000000000000000000000000000004","data":"0x"},"0x3801f37"]'
+  "data":"0x805108150000000000000000000000000000000000000000000000000000000001c2b664"},"0x1c2b665"]' # getGasValues(parent)
+call eth_call '[{"to":"0x1800000000000000000000000000000000000004","data":"0x"},"0x1c2b665"]'
 #   -> revert "Input too short"  (PQ precompile is present)
 
-# Osaka is live: P256VERIFY answers with EIP-7951 semantics; KZG present despite no blobs
-call eth_call '[{"to":"0x0000000000000000000000000000000000000100","data":"0x'$(printf '00%.0s' {1..160})'"},"0x3801f37"]'  # -> 0x
-call eth_call '[{"to":"0x000000000000000000000000000000000000000a","data":"0x'$(printf '00%.0s' {1..192})'"},"0x3801f37"]'  # -> PrecompileError
+# Zero7 and Zero8 activate at block 20156410 (0x1338ffa)
+call eth_call '[{"to":"0x1800000000000000000000000000000000000003","data":"0x"},"0x1338ff9"]'  # OpcodeNotFound
+call eth_call '[{"to":"0x1800000000000000000000000000000000000003","data":"0x"},"0x1338ffa"]'  # unauthorized caller
 
-# Zero7 contracts exist on testnet; the Denylist is deployed at the TESTNET address
-call eth_getCode '["0x522fAf9A91c41c443c66765030741e4AaCe147D0","0x3801f37"]'   # Multicall3From — deployed
-call eth_getCode '["0x5294E9927c3306DcBaDb03fe70b92e01cCede505","0x3801f37"]'   # Memo — deployed
-call eth_getCode '["0x360b451bb0490637F52fa1794961455615777757","0x3f20948"]'  # Denylist — 1494 bytes
+# Zero8: SELFDESTRUCT to a target warmed earlier in the transaction, with 5100 gas
+A=0x00000000000000000000000000000000000000aa
+BB=00000000000000000000000000000000000000bb
+T=00000000000000000000000000000000000000cc
+W=0x73${T}31505f5f5f5f5f73${BB}6113ecf15f5260205ff3
+O="{\"$A\":{\"code\":\"$W\"},\"0x$BB\":{\"code\":\"0x73${T}ff\",\"balance\":\"0x1\"},\"0x$T\":{\"balance\":\"0x1\"}}"
+call eth_call "[{\"to\":\"$A\",\"gas\":\"0x7a120\"},\"0x1338ff9\",$O]"   # -> 0 (child ran out of gas)
+call eth_call "[{\"to\":\"$A\",\"gas\":\"0x7a120\"},\"0x1338ffa\",$O]"   # -> 1 (child succeeded)
+
+# Osaka is live: P256VERIFY answers with EIP-7951 semantics; KZG present despite no blobs
+call eth_call '[{"to":"0x0000000000000000000000000000000000000100","data":"0x'$(printf '00%.0s' {1..160})'"},"0x1c2b665"]'  # -> 0x
+call eth_call '[{"to":"0x000000000000000000000000000000000000000a","data":"0x'$(printf '00%.0s' {1..192})'"},"0x1c2b665"]'  # -> PrecompileError
+
+call eth_getCode '["0x522fAf9A91c41c443c66765030741e4AaCe147D0","0x1c2b665"]'   # Multicall3From — 3180 bytes
+call eth_getCode '["0x5294E9927c3306DcBaDb03fe70b92e01cCede505","0x1c2b665"]'   # Memo — 1228 bytes
+call eth_getCode '["0x3600000000000000000000000000000000000004","0x1c2b665"]'   # Denylist — 1494 bytes
 
 # 4788 dead, 2935 alive, 7002/7251 absent
-call eth_getCode '["0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02","0x3801f37"]'   # -> 0x
-call eth_getCode '["0x0000F90827F1C53a10cb7A02335B175320002935","0x3801f37"]'   # -> standard runtime
-call eth_getCode '["0x00000961Ef480Eb55e80D19ad83579A64c007002","0x3801f37"]'   # -> 0x
-call eth_getCode '["0x0000BBdDc7CE488642fb579F8B00f3a590007251","0x3801f37"]'   # -> 0x
+call eth_getCode '["0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02","0x1c2b665"]'   # -> 0x
+call eth_getCode '["0x0000F90827F1C53a10cb7A02335B175320002935","0x1c2b665"]'   # -> standard runtime
+call eth_getCode '["0x00000961Ef480Eb55e80D19ad83579A64c007002","0x1c2b665"]'   # -> 0x
+call eth_getCode '["0x0000BBdDc7CE488642fb579F8B00f3a590007251","0x1c2b665"]'   # -> 0x
 
-# tx type census: 58728247..58728296 -> 586 txs, {0x0: 355, 0x2: 231}
-for n in 3801f37 3801f38 3801f39 3801f3a; do call eth_getBlockByNumber "[\"0x$n\",true]"; done
+# tx type census: 29537844..29537893 -> 209 txs, {0x0: 61, 0x2: 148}
+for n in 1c2b65c 1c2b65d 1c2b65e 1c2b65f; do call eth_getBlockByNumber "[\"0x$n\",true]"; done
 ```

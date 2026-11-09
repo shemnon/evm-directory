@@ -180,7 +180,8 @@ staleness test — for Polygon zkEVM a *moving* head is the finding — and it i
 by the head's **age**, not its distance from `observed_at_block`, because a halted row
 need not pin its own last block (Moonbeam pinned the finalized head and production ran
 5,791 blocks past it). A `prelaunch` row additionally probes `live_probe.awaiting_endpoint`,
-so the day Arc mainnet answers is reported rather than waited for.
+so the day that network answers is reported rather than waited for. It can only watch the
+URL it was given, so a wrong URL looks exactly like a network that has not launched.
 
 **The fork check is a differential, not an assertion.** No JSON-RPC method returns a
 fork name, so it compares the header markers at the pinned block against the head and

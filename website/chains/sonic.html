@@ -431,8 +431,7 @@ removes <code>msg.Value</code> from the balance test and leaves the nonce test a
   against block contents, which the public RPC does not expose.</li>
 <li><strong>Precompile gas equality between Tosca and geth.</strong> Precompiles execute in geth, so
   their prices are upstream's; but the <em>call</em> gas Tosca charges before dispatch was not
-  independently measured. <code>verify.py</code> reports <code>NO EXTRACTOR</code> for this row, so the
-  precompile list is taken on trust — no extractor was written, per the brief.</li>
+  independently measured.</li>
 <li><strong>The exact block at which Allegro alone activated.</strong> <code>eth_config</code> reports one upgrade
   height carrying both <code>Allegro</code> and <code>GasSubsidies</code>; whether they were ever separate
   earlier cannot be recovered from the two entries the API returns.</li>

@@ -326,9 +326,6 @@ for whoever owns that prose:</p>
 <hr />
 <h2>Not established here</h2>
 <ul>
-<li><strong><code>opcodes</code> extractor / precompile cross-check.</strong> <code>verify.py</code> reports
-  <code>! NO EXTRACTOR</code> for taiko; the precompile list is taken from a source read
-  (<code>PrecompiledContractsOsaka</code>, unmodified) and not machine-diffed.</li>
 <li><strong>EIP-3529</strong> — <code>unrecorded</code>. The refund path is upstream's, but the anchor skips
   <code>returnGas</code> entirely and no source read was done on how the zk-gas meter composes with
   a refunded <code>SSTORE</code> (which flows through a Taiko-added <code>errSStoreSentry</code> branch).</li>
@@ -352,7 +349,6 @@ for whoever owns that prose:</p>
 <pre><code class="language-sh"># from the repo root
 tools/clone.sh                                  # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py          # expect: pin ok, citations ok, exit 0
-                                                # &quot;! NO EXTRACTOR&quot; for taiko is expected
 
 G=chains/taiko/repos/taiko-geth
 M=chains/taiko/repos/taiko-mono

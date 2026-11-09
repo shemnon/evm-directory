@@ -531,8 +531,6 @@ are called out rather than guessed:</p>
   effects are reachable through <code>0x1001</code>–<code>0x100c</code>.</li>
 <li><strong>Whether <code>includeSyntheticTxs</code> defaults on or off per RPC method.</strong> Established that
   the flag exists and gates the <code>0xffffffff</code> receipts differently on different paths.</li>
-<li><strong>Precompile extractor.</strong> <code>verify.py</code> reports <code>! NO EXTRACTOR</code> for this row; the
-  address list is taken on trust from <code>precompiles/setup.go:GetCustomPrecompiles</code>.</li>
 <li><strong>Whether <code>pacific-1</code> validators actually run with the Giga executor enabled.</strong> The
   <em>default</em> is established from source (<code>DefaultConfig{Enabled: true, OCCEnabled: true}</code>)
   and the consequence of enabling it is established

@@ -256,9 +256,6 @@ Two softer notes for the integrator:
 - **`songbird_transition`** is recorded as `skipped` for chain 14 from the absence of a
   timestamp in `upgrade.Flare`; Songbird itself (chain 19) is a separate row nobody has
   written.
-- **No extractor** exists for this row, so `verify.py` takes the precompile list on trust.
-  It is a nine-entry list copied from one `map` literal, which is the cheapest kind to
-  extract if someone wants to.
 
 ## Re-verify
 
@@ -266,7 +263,6 @@ Two softer notes for the integrator:
 # from the repo root
 tools/clone.sh                                 # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py         # expect: flare pin ok, citations ok, exit 0
-                                               # "! NO EXTRACTOR" for flare is expected
 
 C=chains/flare/repos/go-flare
 

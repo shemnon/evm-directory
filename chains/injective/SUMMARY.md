@@ -491,7 +491,6 @@ row is **absent** on Injective.
 # from the repo root
 tools/clone.sh                                  # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py          # expect: pin ok, citations ok
-                                                # "! NO EXTRACTOR" for injective is expected
 
 I=chains/injective/repos/injective-core
 R=https://sentry.evm-rpc.injective.network

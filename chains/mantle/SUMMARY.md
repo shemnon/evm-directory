@@ -243,9 +243,6 @@ registry says why in one line: `Interop → MantleNoSupport`.
   `v1.6.3`** and an ancestor of it — the `hotfix/failed-bvmeth-deposit-gas` merge. So
   everything the network runs is in this pin, and the pin carries six commits the
   network does not. Stated rather than hidden, as before.
-* **No precompile extractor** exists for this row, so `verify.py` reports
-  `! NO EXTRACTOR` and the precompile list is taken on trust from
-  `core/vm/contracts.go`.
 * **Pre-Everest history.** Whether any MetaTx transaction is actually present in
   Mantle's chain history was not measured; the scheme is recorded from source and
   from its live rejection, not from a historical census.
@@ -382,6 +379,5 @@ done
 tools/.venv/bin/python tools/verify.py 2>&1 | sed -n '/^mantle/,/^$/p'
 # mantle  (op-geth (Mantle fork) v1.6.1)
 #   pin ok  11fa8109
-#   ! NO EXTRACTOR — precompile list NOT cross-checked against source
 #   citations ok    53 symbol(s) confirmed, 0 line ref(s) in range
 ```

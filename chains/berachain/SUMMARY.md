@@ -522,9 +522,6 @@ here, not a node setting. Vanilla CometBFT paces blocks with each validator's lo
 - **A mainnet control for the EIP-170 probe.** Three public Ethereum endpoints refused
   the `eth_call` (403 / 521 / internal error), so the 24576 contrast rests on the
   protocol constant rather than on a matched live probe.
-- **Precompile extraction.** `verify.py` reports `NO EXTRACTOR` for this slug; the
-  "stock revm set" claim rests on reading the constructor and on the live probes above,
-  not on a mechanical diff.
 - **EIP-7918 (`unrecorded`).** BRIP-0010's rationale excludes it; the client neither
   confirms nor denies it, and bera-reth inherits upstream reth's Osaka unless it overrides.
   What would settle it: a read of the pinned reth dependency's Osaka blob-fee path, or an

@@ -313,7 +313,6 @@ transaction, and no BLS key is ever consulted when deciding who sent one.
 # from the repo root
 tools/clone.sh                             # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py     # expect: pin ok, citations ok, exit 0
-                                           # "! NO EXTRACTOR" for monad is expected
 
 # gasUsed == gas limit, in source
 git -C chains/monad/repos/monad grep -n -A 6 'uint64_t compute_gas_refund' \

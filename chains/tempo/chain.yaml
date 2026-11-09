@@ -555,6 +555,20 @@ precompiles:
     note: "the registry `key_binding: declared` rests on: which access keys may act for an account, of which signature type, under what spending limit"
     src: crates/contracts/src/precompiles/mod.rs:ACCOUNT_KEYCHAIN_ADDRESS
     src_live: "eth_getCode @ 36217459 -> 0xef"
+  "0x4D50500000000000000000000000000000000000":
+    name: TIP20ChannelReserve
+    status: added
+    activation_time: 1781013600
+    note: TIP-1034 payment channels. Locks TIP-20 deposits from a payer and lets the payee claim signed cumulative vouchers.
+    src: crates/contracts/src/precompiles/tip20_channel_reserve.rs:TIP20_CHANNEL_RESERVE_ADDRESS, crates/precompiles/src/lib.rs:TIP20ChannelReserve
+    src_live: eth_getCode @ 36217459 -> 0xef
+  "0x5AF2000000000000000000000000000000000000":
+    name: ZoneFactory
+    status: added
+    activation_time: 1787320800
+    note: TIP-1091 zones. Installed at the T10 boundary with its full zone state rather than the one-byte marker alone. The ZoneVerifier at 0x5A56.. is NOT live; it waits for the pending T13.
+    src: crates/contracts/src/precompiles/zone_factory.rs:ZONE_FACTORY_ADDRESS, crates/evm/src/block.rs:deploy_zone_factory_at_boundary
+    src_live: eth_getCode @ 36217459 -> 0xef
   "0xFDC0000000000000000000000000000000000000":
     name: AddressRegistry
     status: added

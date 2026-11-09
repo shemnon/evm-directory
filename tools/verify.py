@@ -40,7 +40,10 @@ MAINNET_STD = set(range(0x01, 0x12)) | {0x100}   # 0x01-0x11 plus P256VERIFY
 # cronos joins them for a different reason: its EVM is `evmos/ethermint`
 # replaced onto crypto-org-chain's fork, and go-ethereum itself is replaced
 # onto crypto-org-chain/go-ethereum, so 0x01-0x11 are in neither of its clones.
-EXTERNAL_BASE = {"avalanche-c", "avalanche-subnet", "cronos"}
+# The rest take the table from a crate or module that is not cloned: revm for arc, rollkit
+# and tempo, libevm through coreth for flare, go-ethereum for injective.
+EXTERNAL_BASE = {"avalanche-c", "avalanche-subnet", "cronos", "arc", "flare", "injective",
+                 "rollkit", "tempo"}
 
 def repo(slug, chain=None):
     """The clone holding this row's evidence. Rows may carry companion repos, and
@@ -718,6 +721,265 @@ def ex_zk_stack():
     return ex_zksync_era()
 
 
+# --- helpers for the second round of extractors ---------------------------------
+def row(slug):
+    return yaml.safe_load((ROOT / "chains" / slug / "chain.yaml").read_text())
+
+def go_code(s):
+    """Go source with whole-line comments removed. Taraxa's live map holds
+    `//common.BytesToAddress([]byte{0x0a}): &kzgPointEvaluation{}`; reading that as an
+    entry would report a deliberately disabled KZG as a working precompile."""
+    return re.sub(r"^\s*//.*$", "", s, flags=re.M)
+
+def rust_addr_consts(*dirs):
+    """name -> address for `const NAME: Address = address!("...")`. Test constants are in
+    here too and do no harm, because only names found at a registration site are looked up.
+    Files are read whole: rust_prod cuts at the first #[cfg(test)], which in tempo's lib.rs
+    is a `use` on line 60, ahead of everything that matters."""
+    out = {}
+    for d in dirs:
+        for f in sorted(d.rglob("*.rs")):
+            for n, a in re.findall(r'const (\w+): Address =\s*address!\("(?:0x)?([0-9a-fA-F]{40})"\)',
+                                   f.read_text(errors="replace")):
+                out[n] = int(a, 16)
+    return out
+
+def named(names, table, slug):
+    """Resolve registration-site names through a constant table. An unresolved name
+    raises, because dropping it would report a live precompile as absent."""
+    bad = [n for n in names if n not in table]
+    if bad: raise ExtractError(f"{slug}: no address constant for {', '.join(sorted(bad))}")
+    return {table[n] for n in names}
+
+def substrate_set(s):
+    """A Frontier `PrecompilesAt` type: `PrecompileAt<AddressU64<N>, ...>` runs and
+    `RemovedPrecompileAt<AddressU64<N>>` is a tombstone. The prefix anchors the match, so
+    the `OnlyFrom<AddressU64<2056>>` caller filters inside an entry are not read as
+    addresses. N is a literal or a named u64 constant."""
+    s = re.sub(r"^\s*//.*$", "", s, flags=re.M)
+    names = {n: int(v, 0) for n, v in re.findall(r"const (\w+): u64 = (0x[0-9a-fA-F]+|\d+)", s)}
+    live, removed = set(), set()
+    for kind, a in re.findall(r"\b(RemovedPrecompileAt|PrecompileAt)<\s*AddressU64<(\w+)>", s):
+        v = int(a) if a.isdigit() else names.get(a)
+        if v is None: raise ExtractError(f"unresolved precompile address constant {a}")
+        (removed if kind == "RemovedPrecompileAt" else live).add(v)
+    if not live: raise ExtractError("no PrecompileAt entries")
+    return live, removed
+
+
+# --- geth forks and vendored geth ------------------------------------------------
+def ex_kaia():
+    """geth-derived, with its own fork ladder. Its three precompiles sit in the same map
+    as the base set, moved out of the 0x09-0x0b collision to 0x03fd-0x03ff."""
+    s = text("kaia", "blockchain/vm/contracts.go")
+    m = re.search(r"case rules\.\w+:\s*\n\s*precompiledContracts = (\w+)",
+                  block(s, "func ActivePrecompiledContracts(", "\n}"))
+    if not m: raise ExtractError("kaia: no fork arm in ActivePrecompiledContracts")
+    return go_addrs(go_map(s, m.group(1)))
+
+def ex_taiko():
+    """taiko-geth's map is upstream's. What Taiko adds is per-call ZK gas accounting in
+    evm.go, which changes the price of a call and not the set of addresses."""
+    e, _ = geth_active(text("taiko", "core/vm/contracts.go"))
+    return set(e)
+
+def ex_artela():
+    """Three clones. artela-evm's ladder tops out at Berlin whatever the row's fork claim
+    says, and that Berlin map also holds Artela's 0x64-0x66. AspectCore is not in the map:
+    x/evm's keeper recognises it through aspect-core's address."""
+    e, _ = geth_active((companion("artela", "artela-evm") / "vm/contracts.go").read_text(errors="replace"))
+    core = (companion("artela", "aspect-core") / "types/controller.go").read_text(errors="replace")
+    m = re.search(r'aspectCoreAddr = common\.HexToAddress\("(0x[0-9a-fA-F]+)"\)', core)
+    if not m: raise ExtractError("artela: no aspectCoreAddr in aspect-core")
+    return set(e) | {int(m.group(1), 16)}
+
+def ex_iota_evm():
+    """The wasp emulator's chain config stops at Cancun, and the map is the replaced
+    iotaledger/go-ethereum's. The config is what selects the rung, so it is asserted
+    rather than assumed: a Prague time appearing there must move this row."""
+    em = text("iota-evm", "packages/vm/core/evm/emulator/emulator.go")
+    if "CancunTime:" not in em: raise ExtractError("iota-evm: emulator config has no CancunTime")
+    if "PragueTime:" in em: raise ExtractError("iota-evm: emulator config now sets PragueTime")
+    g = (companion("iota-evm", "go-ethereum") / "core/vm/contracts.go").read_text(errors="replace")
+    return set(go_map_entries(go_map(g, "PrecompiledContractsCancun")))
+
+def ex_sonic():
+    """Tosca's adapter looks membership up in go-ethereum's map for the revision, so the
+    base set is the Sonic go-ethereum fork's map at the row's baseline. EvmWriter is the
+    entry in `StatePrecompiles`. The row's baseline picks the map, so moving the baseline
+    moves this check with it."""
+    fork = row("sonic")["baseline_fork"].capitalize()
+    g = (companion("sonic", "go-ethereum") / "core/vm/contracts.go").read_text(errors="replace")
+    a = set(go_map_entries(go_map(g, f"PrecompiledContracts{fork}")))
+    cfg = text("sonic", "opera/vm_config.go")
+    b = block(cfg, "StatePrecompiles: map[", "\n\t\t}")
+    if "evmwriter.ContractAddress" not in b:
+        raise ExtractError("sonic: EvmWriter is no longer in StatePrecompiles")
+    w = text("sonic", "opera/contracts/evmwriter/evm_writer.go")
+    return a | go_addrs("\n".join(l for l in w.splitlines() if "ContractAddress = " in l))
+
+def ex_taraxa():
+    """The first arm of the rules switch in evm.go names the map, and the DPoS and
+    slashing contracts are registered on top of it at their hardforks. Comment lines are
+    removed first, because KZG at 0x0a is commented out of the live map."""
+    t = companion("taraxa", "taraxa-evm")
+    evm = (t / "core/vm/evm.go").read_text(errors="replace")
+    m = re.search(r"case rules\.\w+:\s*\n\s*self\.precompiles = copyPrecompiles\((\w+)\)", evm)
+    if not m: raise ExtractError("taraxa: no fork arm in NewEVM's precompile switch")
+    a = set(go_map_entries(block(go_code((t / "core/vm/contracts.go").read_text(errors="replace")),
+                                 f"var {m.group(1)} = ")))
+    hard = (t / "taraxa/state/state_transition/state_hardforks.go").read_text(errors="replace")
+    for name, rel in (("dpos", "dpos/precompiled/dpos_contract.go"),
+                      ("slashing", "slashing/precompiled/slashing_contract.go")):
+        if f"{name}_contract.Register(" not in hard:
+            raise ExtractError(f"taraxa: {name} contract is no longer registered")
+        s = (t / "taraxa/state/contracts" / rel).read_text(errors="replace")
+        h = re.search(rf'{name}_contract_address = .*FromHex\("(0x[0-9a-fA-F]+)"\)', s)
+        if not h: raise ExtractError(f"taraxa: no {name}_contract_address")
+        a.add(int(h.group(1), 16))
+    return a
+
+def ex_polygon_zkevm():
+    """Dead chain, frozen tree. Elderberry is the last map it ran, because Durian never
+    activated. Every entry carries an `enabled:` flag and `false` is a tombstone, the one
+    thing the address list cannot show."""
+    b = block(text("polygon-zkevm", "core/vm/contracts_zkevm.go"),
+              "var PrecompiledContractsForkID8Elderberry = ")
+    if not b: raise ExtractError("polygon-zkevm: no Elderberry map")
+    live, dead = set(), set()
+    for line in b.splitlines():
+        a = go_addrs(line)
+        if a: (dead if "enabled: false" in line else live).update(a)
+    return Found(live | dead, dead)
+
+# --- coreth and cosmos ------------------------------------------------------------
+def ex_flare():
+    """coreth, vendored under avalanchego/graft. Same shape as avalanche-c: the Granite
+    map holds P256VERIFY and the three burned native-asset addresses as
+    `DeprecatedContract`, Warp registers itself, and the base comes from libevm."""
+    p = "avalanchego/graft/coreth/"
+    s, na = text("flare", p + "params/hooks_libevm.go"), text("flare", p + "nativeasset/contract.go")
+    names = consts(s) | consts(na)
+    g = block(s, "var PrecompiledContractsGranite = ")
+    if not g: raise ExtractError("flare: no Granite map")
+    warp = re.search(r'ContractAddress = common\.HexToAddress\("(0x[0-9a-fA-F]+)"\)',
+                     text("flare", p + "precompile/contracts/warp/module.go"))
+    if not warp: raise ExtractError("flare: no Warp address")
+    entries = go_named_entries(g, names)
+    return Found(set(entries) | {int(warp.group(1), 16)},
+                 {a for a, t in entries.items() if t == "DeprecatedContract"})
+
+def ex_cosmos_evm():
+    """`DefaultStaticPrecompiles` is the registration: each `With<X>Precompile` installs
+    `<X>PrecompileAddress`. A constant with no With call, such as vesting at 0x0803, is
+    defined and not installed. The base map is the vendored go-ethereum's Prague map, which
+    `WithPraguePrecompiles` copies."""
+    d = block(text("cosmos-evm", "precompiles/types/defaults.go"), "func DefaultStaticPrecompiles(", "\n}")
+    if "WithPraguePrecompiles()" not in d:
+        raise ExtractError("cosmos-evm: the default set no longer starts from Prague")
+    names = {m.group(1): int(m.group(2), 16) for m in re.finditer(
+        r'(\w+)PrecompileAddress\s*=\s*"(0x[0-9a-fA-F]{40})"', text("cosmos-evm", "x/vm/types/precompiles.go"))}
+    a = named(re.findall(r"\bWith(\w+?)Precompile\(", d), names, "cosmos-evm")
+    g = (companion("cosmos-evm", "go-ethereum") / "core/vm/contracts.go").read_text(errors="replace")
+    return a | set(go_map_entries(go_map(g, "PrecompiledContractsPrague")))
+
+def ex_injective():
+    """Mothballed, so this reads the frozen pin. `NewEVM` installs whatever
+    `CustomContractFn` returns, and each constructor's package holds its address. The base
+    comes from the go-ethereum dependency. 0x68 has no source anywhere and is exempted by
+    the mothball rule in main, not by anything here."""
+    b = block(text("injective", "injective-chain/app/app.go"), "[]evmkeeper.CustomContractFn{", "\n\t\t},")
+    pkgs = re.findall(r"return (\w+)pc\.New", b)
+    if not pkgs: raise ExtractError("injective: CustomContractFn list resolved to nothing")
+    out, root = set(), repo("injective") / "injective-chain/modules/evm/precompiles"
+    for p in pkgs:
+        s = "\n".join(f.read_text(errors="replace") for f in sorted((root / p).glob("*.go"))
+                      if not f.name.endswith("_test.go"))
+        a = go_addrs("\n".join(l for l in s.splitlines() if re.search(r"\w+ContractAddress\s*=", l)))
+        if len(a) != 1: raise ExtractError(f"injective: {p}: expected one address, found {len(a)}")
+        out |= a
+    return out
+
+# --- rust --------------------------------------------------------------------------
+def ex_arc():
+    """Stock revm table, four lookup arms, and CallFrom through the subcall registry
+    rather than the map. Only production code is read: `handle_unknown_precompile` and the
+    panicking 0xdead address are cfg(test)/integration. Zero7 gates CallFrom and is live."""
+    r = repo("arc") / "crates"
+    b = block((r / "precompiles/src/precompile_provider.rs").read_text(errors="replace"),
+              "pub fn create_precompiles_map(", "\n    }")
+    if "Precompiles::new(PrecompileSpecId::from_spec_id(spec))" not in b:
+        raise ExtractError("arc: no longer built from the stock revm table")
+    sub = block((r / "evm/src/evm.rs").read_text(errors="replace"), "fn build_subcall_registry(", "\n    }")
+    arms = re.findall(r"^\s*(\w+_ADDRESS) => Some", b, re.M) + re.findall(r"registry\.register\(\s*(\w+),", sub)
+    if not arms: raise ExtractError("arc: no precompile arms found")
+    return named(arms, rust_addr_consts(r / "precompiles/src", r / "pq-precompile/src",
+                                       r / "execution-config/src"), "arc")
+
+def ex_rollkit():
+    """ev-reth installs its three precompiles with `apply_precompile` in the EVM factory.
+    Which are switched on is chainspec config, and the row calls them optional."""
+    r = companion("rollkit", "ev-reth") / "crates"
+    names = set(re.findall(r"apply_precompile\(&(\w+)", rust_prod(r / "ev-revm/src/factory.rs")))
+    if not names: raise ExtractError("rollkit: no apply_precompile sites")
+    return named(names, rust_addr_consts(r / "ev-precompiles/src"), "rollkit")
+
+def ex_tempo():
+    """`set_precompile_lookup` is the registration. An arm gated on `is_t<N>()` counts only
+    if this row's timeline has that fork active, so T13's ZoneVerifier stays out while T13
+    is pending. pathUSD is the first member of the `is_tip20()` predicate, the only member
+    with a fixed row of its own; the rest of the range is `dynamic_range`."""
+    r = repo("tempo") / "crates"
+    b = block((r / "precompiles/src/lib.rs").read_text(errors="replace"),
+              "precompiles.set_precompile_lookup(", "\n    });")
+    if "address.is_tip20()" not in b: raise ExtractError("tempo: the TIP-20 predicate has moved")
+    live = {f["name"].lower() for f in row("tempo")["forks"]["timeline"] if f.get("status") != "pending"}
+    names = {"PATH_USD_ADDRESS"}
+    for n, gate in re.findall(r"\*address == (\w+)(?:\s*&&\s*env\.cfg\.spec\.is_(\w+)\(\))?", b):
+        if not gate or gate in live: names.add(n)
+    return named(names, rust_addr_consts(r / "contracts/src/precompiles"), "tempo")
+
+def ex_conflux():
+    """`new_builtin_map` inserts by number, plus the BLS loop and P256VERIFY. Both spaces
+    run the same map, differing only at 0x01. P256VERIFY_ADDRESS is re-exported from
+    revm_precompile, so its value is not in this tree: the name is the EIP-7951 constant."""
+    r = repo("conflux") / "crates/execution/executor/src"
+    b = block((r / "machine/mod.rs").read_text(errors="replace"), "fn new_builtin_map(", "\n}")
+    a = {int(n) for n in re.findall(r"from_low_u64_be\((\d+)\)", b)}
+    if "build_bls12_builtin_map()" in b:
+        c = dict(re.findall(r"pub const (\w+_ADDRESS): u64 = (0x[0-9a-fA-F]+);",
+                            (r / "builtin/bls12_381/consts.rs").read_text(errors="replace")))
+        m = block((r / "builtin/bls12_381/mod.rs").read_text(errors="replace"), "pub fn build_bls12_builtin_map(", "\n}")
+        for n in re.findall(r"\b(\w+_ADDRESS)\b", m):
+            if n not in c: raise ExtractError(f"conflux: no value for {n}")
+            a.add(int(c[n], 16))
+    if "from_low_u64_be(P256VERIFY_ADDRESS)" in b: a.add(0x100)
+    if not a: raise ExtractError("conflux: new_builtin_map resolved to nothing")
+    return a
+
+def ex_megaeth():
+    """Starts from op-revm's Isthmus table, whose contents are in a crate, and replaces two
+    entries at existing addresses. What the clone can prove is that nothing else is
+    extended. `DynPrecompilesBuilder` is an embedder hook with no caller in this tree."""
+    s = rust_prod(repo("megaeth") / "crates/mega-evm/src/evm/precompiles.rs")
+    b = block(s, "pub fn mini_rex()", "\n}")
+    if "op_revm::precompiles::isthmus().clone()" not in b:
+        raise ExtractError("megaeth: mini_rex no longer starts from Isthmus")
+    ext = re.findall(r"\.extend\(\s*\[([^\]]*)\]", b)
+    if [" ".join(x.split()) for x in ext] != ["revm::precompile::modexp::OSAKA, kzg_point_evaluation::KZG_POINT_EVALUATION"]:
+        raise ExtractError(f"megaeth: mini_rex extends something new: {ext}")
+    return set(MAINNET_STD)
+
+# --- substrate ---------------------------------------------------------------------
+def ex_autonomys():
+    live, removed = substrate_set(text("autonomys", "domains/primitives/evm-precompiles/src/lib.rs"))
+    return Found(live | removed, removed)
+
+def ex_moonbeam():
+    live, removed = substrate_set(text("moonbeam", "runtime/moonbeam/src/precompiles.rs"))
+    return Found(live | removed, removed)
+
+
 EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "avalanche-c": ex_avalanche_c, "avalanche-subnet": ex_avalanche_subnet,
            "tron": ex_tron, "worldchain": ex_worldchain, "optimism": ex_optimism,
@@ -730,7 +992,20 @@ EXTRACT = {"ethereum": ex_ethereum, "op-stack": ex_opstack, "bnb": ex_bnb,
            "rootstock": ex_rootstock,
            "core": ex_core,
            "cronos": ex_cronos,
-           "zk-stack": ex_zk_stack}
+           "zk-stack": ex_zk_stack,
+           "arc": ex_arc, "artela": ex_artela, "autonomys": ex_autonomys,
+           "conflux": ex_conflux, "cosmos-evm": ex_cosmos_evm, "flare": ex_flare,
+           "injective": ex_injective, "iota-evm": ex_iota_evm, "kaia": ex_kaia,
+           "megaeth": ex_megaeth, "moonbeam": ex_moonbeam,
+           "polygon-zkevm": ex_polygon_zkevm, "rollkit": ex_rollkit, "sonic": ex_sonic,
+           "taiko": ex_taiko, "taraxa": ex_taraxa, "tempo": ex_tempo}
+
+# Rows whose clones register no precompile, so there is nothing for an extractor to read.
+# Their evidence is live, and a stated reason is more use than a permanent "taken on trust".
+NO_REGISTRATION_IN_SOURCE = {
+    "plasma": "stock reth; eth_config enumerates the set from the client itself",
+    "rise": "rise-node is configuration only; the set is measured live",
+}
 
 # A DIRECTORY, not a file list. The hand-maintained list of files failed open the
 # same way the extension allowlist did: op-geth declares PostExecTxType = 0x7D in
@@ -1606,7 +1881,9 @@ def main():
         # tallied at the end, but it is not drift: failing here would make the build
         # red for every new chain and block the work that closes the gap.
         ex = None if no_clones else EXTRACT.get(slug)
-        if ex is None and not no_clones:
+        if ex is None and not no_clones and slug in NO_REGISTRATION_IN_SOURCE:
+            print(f"  no extractor, by design: {NO_REGISTRATION_IN_SOURCE[slug]}")
+        elif ex is None and not no_clones:
             print("  ! NO EXTRACTOR — precompile list NOT cross-checked against source")
             unextracted.append(slug)
         if ex is not None:
@@ -1625,7 +1902,10 @@ def main():
             expect = {a for a, v in dec.items()
                       if v.get("status") in (None, "added", "modified", "inherited")
                       # inherited from a stack ancestor: verified in the ancestor's repo
-                      and not v.get("inherited_from")}
+                      and not v.get("inherited_from")
+                      # a mothballed row's pin is frozen, so a precompile that arrived
+                      # after the source went private can only be evidenced live
+                      and not (c["chain"].get("mothballed") and not v.get("src"))}
             # `tombstoned` is deliberately NOT expected-in-source, because a chain
             # can kill an address two ways and they look opposite in the tree.
             # Scroll leaves 0x03 IN the map as `&ripemd160hashDisabled{}`; zkSync

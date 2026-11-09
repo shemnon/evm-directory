@@ -353,7 +353,6 @@ second-signer path for any deployment that re-enables it. Recorded
 # from the repo root
 tools/clone.sh                                  # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py          # expect: pin ok, citations ok
-                                                # "! NO EXTRACTOR" for cosmos-evm is expected
 
 E=chains/cosmos-evm/repos/evm
 G=chains/cosmos-evm/repos/go-ethereum

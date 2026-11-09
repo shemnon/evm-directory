@@ -45,8 +45,7 @@
       different ABI.
     opbnb: >-
       opBNB occupies `0x66` and `0x67`, which are also Arbitrum's ArbAddressTable and
-      ArbBLS and BSC's cross-chain precompiles — the only three-way address collisions
-      in the dataset.
+      ArbBLS and BSC's cross-chain precompiles. Injective holds both of them too.
     polygon: >-
       Polygon places a contract named `ValidatorContract` at `0x…1000`. BSC places one
       there too, with different code and a different ABI, so the name is not a usable
@@ -55,7 +54,9 @@
     Arbitrum's ArbSys, ArbInfo, ArbAddressTable, ArbBLS, ArbFunctionTable and ArbosTest
     occupy `0x64`–`0x69`, the same six addresses BSC uses for its cross-chain and
     consensus precompiles. The two sets share no code and serve unrelated functions.
-    opBNB occupies `0x66` and `0x67` as well, making those two three-way. Polygon and
+    opBNB occupies `0x66` and `0x67` as well. Injective holds `0x64`–`0x68`, Core
+    `0x64`–`0x65`, and Artela, now dead, `0x64`–`0x66`, so `0x66` has had five owners.
+    Polygon and
     BSC both place a contract named `ValidatorContract` at `0x…1000`, with different
     code and different ABIs. A single global address-keyed map is therefore incorrect
     for at least one major chain whichever way it is populated.

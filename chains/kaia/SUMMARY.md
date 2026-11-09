@@ -279,8 +279,6 @@ was "Cancun-equivalent" by fork name had no blobs for two fork generations.
 - **Whether the `kaiax/gasless` module changes fee semantics on mainnet.** The module
   exists and prepends the `0x78` envelope on its own path; its activation state is not
   established from source.
-- **Precompile extractor.** `verify.py` reports `! NO EXTRACTOR` for this row; the
-  address list is taken on trust from `blockchain/vm/contracts.go:PrecompiledContractsOsaka`.
 
 ---
 

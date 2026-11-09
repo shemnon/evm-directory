@@ -210,7 +210,6 @@ untouched, and the scheme stays paired with its precompile. Recorded as
 # from the repo root
 tools/clone.sh                                 # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py        # expect: pin ok, citations ok, exit 0
-                                              # "! NO EXTRACTOR" for celo is expected
 
 # the custom transaction types
 git -C chains/celo/repos/op-geth grep -n 'TxV2Type = 0x7b' -- core/types/celo_dynamic_fee_tx_v2.go

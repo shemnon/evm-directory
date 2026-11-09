@@ -302,8 +302,7 @@ the documents state them; every `status:` elsewhere in the row comes from source
   precompile is new at v1.16.0 and waits on the unscheduled T13.
   ZonePortal addresses are recorded from the address-prefix constant only, not probed.
 - **Gas-cost verification.** No transaction was submitted, so every gas figure is read
-  from source, not measured. The `!NO EXTRACTOR` line from `verify.py` is expected for a
-  new slug and the precompile list is not cross-checked mechanically.
+  from source, not measured.
 - **The tx-type census covers 58 blocks, not 100** — the public endpoint rate-limited
   the scan. 7 transactions, `{0x2: 3, 0x76: 4}`. Blocks are frequently empty at ~200ms.
 

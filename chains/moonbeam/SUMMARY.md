@@ -354,7 +354,7 @@ ERC-20 face at `0x0802` is a precompile with five bytes of dummy code.
 ```sh
 # from the repo root
 tools/.venv/bin/python tools/verify.py 2>&1 | sed -n '/^moonbeam/,/^$/p'
-# -> pin ok c6d58748 / citations ok / "! NO EXTRACTOR" is expected for a new slug
+# -> pin ok c6d58748 / citations ok
 
 R=https://moonbeam.api.onfinality.io/public     # 1rpc.io/glmr works too, minus state_*
 B=0x100357c                                     # 16790908

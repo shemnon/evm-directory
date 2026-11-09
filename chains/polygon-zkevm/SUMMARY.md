@@ -453,9 +453,6 @@ SENDALL, the scalable account) and each chain holds its own forkID — which is 
 - **Whether type-0x01 (access list) transactions actually appear on chain.** The pool
   accepts them and the source path exists; the block census at the pinned height found
   only type `0x0`.
-- **The precompile extractor.** `verify.py` reports `! NO EXTRACTOR` for this slug — the
-  precompile list is taken from a hand-read of four Go maps and confirmed by probe, not
-  cross-checked mechanically.
 - **`CREATE2` address derivation.** `opCreate2_zkevm` differs from upstream only in gas
   bookkeeping and revert-data handling; the derivation itself was not traced to
   `crypto.CreateAddress2`, so it is stated nowhere in the row rather than asserted as

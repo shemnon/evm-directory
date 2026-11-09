@@ -414,6 +414,9 @@ claim the row was always weaker than it is.
 - **Nothing is deleted, and nothing is weakened.** Every fact keeps its `src:`. The
   frozen clone still resolves them, so this row is checked exactly as strictly as any
   other — it does not become a trust-me row.
+- **A precompile with no `src:` is exempt from the source cross-check.** It arrived after
+  the source went private, so the frozen tree cannot contain it (Injective's `0x68`). It
+  must carry `src_live:`, and everything that has a `src:` is still checked.
 - **The client pin stops moving.** Not as policy but because there is nowhere to move
   it to: the newer tags have no source in them. `pin_status.py` reports
   `MOTHBALLED` and stops, the way it does for `DEAD`.

@@ -660,7 +660,6 @@ tools/.venv/bin/python -c "import yaml;yaml.safe_load(open('chains/autonomys/cha
 tools/.venv/bin/python tools/verify.py 2>&1 | sed -n '/^autonomys/,/^$/p'
 # autonomys  (subspace (Auto EVM domain runtime) runtime-mainnet-2026-jul-29)
 #   pin ok  f76e41c2
-#   ! NO EXTRACTOR — precompile list NOT cross-checked against source
 #   citations ok    62 symbol(s) confirmed, 0 line ref(s) in range
 #   evidence  src=37  src_live=14  none=6
 ```

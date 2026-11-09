@@ -226,8 +226,8 @@ the *sender's* code but the callee's Aspect.
 
 **`0x…A27E14` (AspectCore) is native at depth 0 and empty at depth 1.** `ApplyMessage`
 intercepts by comparing `msg.To` against the address *before any call frame is built*.
-The forked EVM's own `precompile()` is stock go-ethereum's Berlin map and does not
-contain it. So a `CALL` to `0xA27E14` from inside contract bytecode reaches an account
+The forked EVM's own `precompile()` is go-ethereum's Berlin map plus Artela's three
+helpers at `0x64`-`0x66`, and does not contain it. So a `CALL` to `0xA27E14` from inside contract bytecode reaches an account
 with no code, which go-ethereum's `Call` reports as **success with empty output**. A
 contract that tries to bind, unbind or query an Aspect gets a successful-looking call
 that did nothing.
@@ -414,6 +414,5 @@ cd /Volumes/TendiesTown/EVM-Directory
 tools/.venv/bin/python -c "import yaml;yaml.safe_load(open('chains/artela/chain.yaml'))"
 tools/.venv/bin/python tools/verify.py 2>&1 | sed -n '/^artela/,/^$/p'
 #   pin ok  0de86198
-#   ! NO EXTRACTOR — precompile list NOT cross-checked against source
 #   citations ok    119 symbol(s) confirmed, 0 line ref(s) in range
 ```

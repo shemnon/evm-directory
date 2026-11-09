@@ -426,15 +426,11 @@ a Flare difference, and belongs to whoever owns that row.</p>
 <li><strong><code>songbird_transition</code></strong> is recorded as <code>skipped</code> for chain 14 from the absence of a
   timestamp in <code>upgrade.Flare</code>; Songbird itself (chain 19) is a separate row nobody has
   written.</li>
-<li><strong>No extractor</strong> exists for this row, so <code>verify.py</code> takes the precompile list on trust.
-  It is a nine-entry list copied from one <code>map</code> literal, which is the cheapest kind to
-  extract if someone wants to.</li>
 </ul>
 <h2>Re-verify</h2>
 <pre><code class="language-sh"># from the repo root
 tools/clone.sh                                 # re-fetches every pinned clone
 tools/.venv/bin/python tools/verify.py         # expect: flare pin ok, citations ok, exit 0
-                                               # &quot;! NO EXTRACTOR&quot; for flare is expected
 
 C=chains/flare/repos/go-flare
 

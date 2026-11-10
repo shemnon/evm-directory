@@ -1365,10 +1365,21 @@
     writes, followed by archive reads either side of the transition block.
 
 
-    **This is not a complete list.** The search covered Go clients for a set of function names and
-    hard-coded address patterns. A chain missing from this table has not been shown to be free of
-    these. Upgrades that only install code, such as OP Stack's Canyon create2 deployer, are a
-    related mechanism and are not counted here.
+    **What has been searched.** Every pinned clone, as of 2026-11-10: Go first, then Rust, Java and
+    Kotlin, C#, C++ and TypeScript, for balance writes within 20 lines of a hard-coded address and for
+    DAO-style irregular-state hooks. Where a client spells addresses differently, the search followed
+    it: base58 and `41`-prefixed hex for Tron, entity-number schema migrations for Hedera, and
+    `OnRuntimeUpgrade` balance calls for the Substrate rows. The non-Go clients added no instance.
+    Their hits were transaction, fee, reward and withdrawal paths, test code, or reth's, Besu's and
+    Nethermind's inherited DAO refund, which is gated on a block those chains never set.
+
+
+    **That is still not proof of absence.** A list held in a config file, or an address assembled at
+    runtime, would pass this search, and so would any change made outside the pinned clones.
+    Upgrades that only install code are a related mechanism and are not counted: OP Stack's Canyon
+    create2 deployer, and Base's `IrregularStateChange` hooks, which installed BaseTime's
+    implementation at Denim and will stub Everest's system accounts, each keeping the balance it
+    found.
 
 - id: amsterdam-arrived-by-merge
   title: Amsterdam reached the forks by merge, before they could run it

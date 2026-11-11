@@ -242,6 +242,12 @@ In addition to step 6:
   map from the day the fork lands, and still passes because the addresses rarely change.
   Switch it to `geth_active`, and return tombstoned stubs as `Found(..., dead)` (see
   `ex_scroll`, `ex_bnb`). Otherwise a correct `tombstoned` reads as `ALIVE`.
+- **Search for balance moves.** Run `tools/balancescan.py <slug>`. A fork can write a list
+  of balances straight into state with no transaction, and release notes need not say so
+  (Core's Fermi changelog was empty). Every unreviewed hit is either a real move, which goes
+  in `findings.yaml` `client-applied-balance-moves` with archive balances either side of the
+  block, or an ordinary path, which gets a rule with a reason in
+  `tools/balancescan-known.yaml`.
 - **Cross-check `chain_id`.** Check `eth_chainId` against both `chain.chain_id` and
   `live_probe.chain_id`.
 - **Descendants.** Every row that inherits from this one inherits the fork's changes. For

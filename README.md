@@ -307,6 +307,7 @@ tools/site.py       regenerates website/
 ```
 tools/clone.sh      re-fetch the pinned evidence (gitignored) from chain.yaml
 tools/verify.py     re-extract facts from source, diff against chain.yaml
+tools/balancescan.py search the clones for balance changes made with no transaction
 tools/generate.py   regenerate the four top-level tables and this README's status table
 tools/site.py       regenerate website/ (incremental; see SITE.md)
 tools/livecheck.py  re-probe live endpoints: halted chains, moved endpoints, forks

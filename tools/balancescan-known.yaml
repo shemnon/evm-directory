@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# Reviewed hits for tools/balancescan.py. Each rule covers hits by row, repo, file and kind
+# (globs), plus an optional regex on the line. Every rule needs a reason. A rule that matches
+# nothing on a full run is reported stale. A real balance move stays listed here only once it
+# is recorded in findings.yaml (client-applied-balance-moves) and on its row.
+rules:
+
+# --- recorded: real balance moves, in findings.yaml and on the row ---
+- {row: core, repo: core-chain, file: consensus/misc/fermi.go, kind: IRREGULAR,
+   reason: "RECORDED. Fermi moved 68,146,177.22 CORE at block 40093117; findings client-applied-balance-moves"}
+- {row: core, repo: core-chain, file: "core/state_processor.go", text: ApplyFermiAdjustment,
+   reason: "RECORDED. Fermi's call site; see fermi.go"}
+- {row: core, repo: core-chain, file: "miner/worker.go", text: ApplyFermiAdjustment,
+   reason: "RECORDED. Fermi's call site in block building"}
+- {row: core, repo: core-chain, file: consensus/misc/core_recovery.go, kind: WRITE,
+   reason: "RECORDED. CoreRewardFix zeroed 25 accounts, 152,778,693.32 CORE, at block 38376795"}
+
+# --- inherited DAO refund, gated on a DAO block none of these chains sets ---
+- {repo: "*", file: "*consensus/misc/dao.go", kind: IRREGULAR,
+   reason: "geth's ApplyDAOHardFork, the 2016 Ethereum refund. Runs only at DAOForkBlock"}
+- {repo: "*", kind: IRREGULAR, text: "misc\\.ApplyDAOHardFork\\(",
+   reason: "call sites of geth's DAO refund, gated on DAOForkBlock"}
+- {repo: "*", kind: IRREGULAR, text: "drain_balances\\(dao_fork::DAO_HARDFORK_ACCOUNTS\\)",
+   reason: "reth's DAO refund, inherited; gated on the DAO block in the chainspec"}
+- {repo: nethermind, file: "src/Nethermind/Nethermind.Consensus/Processing/BlockProcessor*.cs", kind: IRREGULAR,
+   reason: "Nethermind's DAO refund, gated on DaoBlockNumber, which Gnosis does not set"}
+- {repo: besu, file: "ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java",
+   reason: "Besu's DaoBlockProcessor and its refund to 0xbf4e…a754, the DAO withdraw contract"}
+
+# --- code or storage installs that keep the balance (excluded by the finding) ---
+- {row: base, repo: base, file: "crates/common/evm2/src/*.rs", kind: IRREGULAR, text: "IrregularStateChange::new",
+   reason: "Canyon, Denim (BaseTime) and Everest hooks; each keeps the account's balance, code only"}
+- {row: opbnb, repo: op-geth, text: ApplyPreContractHardFork,
+   reason: "WBNB name/symbol storage and a governance-token self-destruct. Testnet only: block 5805494 on 5611; mainnet 204 sets no PreContractForkBlock"}
+
+# --- ordinary paths ---
+- {row: sonic, repo: tosca, file: go/geth_adapter/adapter.go, kind: WRITE,
+   reason: "SELFDESTRUCT moving the balance to the beneficiary, ordinary EVM semantics"}
+- {row: flare, repo: go-flare, file: "avalanchego/graft/coreth/core/daemon.go", kind: WRITE,
+   reason: "an interface method declaration, not a write"}
+- {row: gnosis, repo: nethermind, file: "src/Nethermind/Nethermind.Xdc/*",
+   reason: "Nethermind's XDC network module; not used by Gnosis"}
+- {row: sei, repo: sei-chain, file: "sei-tendermint/scripts/confix/*",
+   reason: "a config-file migration script named ApplyFixes; touches no state"}
+- {row: moonbeam, repo: moonbeam, file: runtime/common/src/apis.rs, kind: UPGRADE,
+   reason: "XCM benchmark setup in the runtime API, not a runtime upgrade"}
+- {row: zksync-era, repo: era-contracts, file: "protocol-ops/*",
+   reason: "an operator CLI funding a dev account over RPC, not node code"}

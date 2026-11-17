@@ -42,6 +42,18 @@ client:
        releases and one live mainnet fork, which is why this row reads the client repo
        and keeps node only as a pointer."}
 
+live_probe:
+  endpoint: https://mainnet.base.org
+  chain_id: 8453
+  observed_at_block: 55270259      # the newest height the src_live entries below cite
+  observed_at: 2026-11-09
+  chain_id_src_live: "eth_chainId @ 55270259 -> 0x2105 (8453)"
+  src_doc: https://docs.base.org/get-started/connect-to-base
+  caveat: >-
+    The public endpoint is rate-limited and serves recent state; the Denim facts cite
+    blocks 53556126-53556131 by number rather than this height, because they are about
+    the transition itself. Blocks arrive every 200ms, so a block number is a moment.
+
 consensus:
   engine: OP Stack (sequencer) + fault proofs
 

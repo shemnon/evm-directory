@@ -142,9 +142,16 @@ eips:
       16,777,216 whenever Osaka rules apply, in the ante handler and in execution, and Osaka
       rules apply. The v1.7-to-v1.8 migration guide says the cap arrives "not at the upgrade
       height" and "needs a separate governance change". Settling it means submitting an
-      oversized transaction to mainnet, which this row does not do. An `eth_call` with
-      20,000,000 gas succeeds, but that does not exercise the signed-transaction path.
-    src: "ethermint/x/evm/keeper/state_transition.go:CheckMaxTxGas, ethermint/ante/eth.go:CheckMaxTxGas, docs/migrations/v1.7-to-v1.8.md"
+      oversized transaction to mainnet, which this row does not do. `osaka_time` is 0 in the
+      live `/ethermint/evm/v1/params`. Three cheaper tests do not work. `eth_call` and
+      `eth_simulateV1` both succeed at 20,000,000 gas, even with validation on, because
+      `ToMessage` always sets `SkipTransactionChecks`, which skips the cap. An unfunded signed
+      transaction stops at the balance check (`VerifyEthAccount`), which runs before the cap
+      (`CheckEthGasConsume`). What the chain shows points toward enforcement but does not
+      settle it. Blocks 101445000-101484999 included 2 transactions over the cap, at 21,000,000
+      and 29,631,594 gas. Blocks 101485000-101524999 included none, out of 6,541 transactions
+      in 38,720 blocks fetched. Both senders kept transacting after the upgrade.
+    src: "ethermint/x/evm/keeper/state_transition.go:CheckMaxTxGas, ethermint/ante/eth.go:CheckMaxTxGas, ethermint/x/evm/types/tx_args.go:SkipTransactionChecks, ethermint/evmd/ante/handler_options.go:VerifyEthAccount, docs/migrations/v1.7-to-v1.8.md"
   2935: {status: inherited, note: "the history-storage contract has code",
          src_live: "eth_getCode 0x0000F90827F1C53a10cb7A02335B175320002935 @ 103699610 -> 0x3373ff… (non-empty)"}
   5656: {status: inherited, src_live: "eth_call 0x60ff5f5260015f60015e60205ff3 @ 103699610 -> 0x..ff"}

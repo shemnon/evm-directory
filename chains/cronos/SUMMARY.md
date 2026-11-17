@@ -121,8 +121,11 @@ bytes.
 
 **One conflict is open.** `CheckMaxTxGas` enforces the 16,777,216 EIP-7825 cap whenever Osaka
 rules apply. The project's migration guide says the cap is "not at the upgrade height" and
-"needs a separate governance change". Testing it means submitting a transaction to mainnet,
-so `eips.7825` stays `unrecorded`.
+"needs a separate governance change". The live `osaka_time` is 0, so on the source's reading
+the cap applies. No read-only test reaches it. `eth_call` and `eth_simulateV1` skip it, and
+an unfunded signed transaction fails the balance check first. A sample of blocks leans toward
+enforcement. 2 over-cap transactions landed in the 40,000 blocks before the upgrade at 101485000,
+and none in the 40,000 after. That is too few to settle it, so `eips.7825` stays `unrecorded`.
 
 **The header cannot date anything.** This row used to record `withdrawalsRoot`,
 `blobGasUsed`, `excessBlobGas`, `parentBeaconBlockRoot` and `requestsHash` as absent at block

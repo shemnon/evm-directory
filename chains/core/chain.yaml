@@ -90,9 +90,15 @@ forks:
       eight accounts (94,725,624.69 CORE, four of them holding nothing) and claws 58,053,068.63
       CORE back from seventeen others, down to a floor per account. No transaction, log or
       trace frame. The client's comments call the amounts an "anomalous reward" from an
-      "attack". Fermi later moved balances; this one reduced them.
+      "attack". Fermi later moved balances; this one reduced them. CORE DAO'S OWN POST-MORTEM
+      SAYS 186,153,491 CORE, AND THE CHAIN DOES NOT SHOW IT
+      (https://x.com/Coredao_Org/status/2096279838453854558). The most the code can
+      remove is 158,070,000.61 (the eight balances plus the 63,344,375.92 of listed excess),
+      no system contract's balance fell at the fork block, and the validator contract's
+      pending incomes did not change. The 33.37M gap is unexplained; the measured figure
+      stands.
     src: "consensus/misc/core_recovery.go:ApplyCoreRecovery, consensus/misc/core_recovery.go:coreRecoveryExcess, consensus/misc/core_recovery.go:coreRecoveryFloor, core/state_processor.go:ApplyCoreRecovery"
-    src_live: "eth_getBalance across all 25 listed accounts (rpc.ankr.com/core archive) @ 38376794 vs 38376795 -> total decrease 152778693.31745481; 0x1c58..6361 46206985.55 -> 0; 0x88ff..9581 36404444.46 -> 0; 0x555b..BDe2 12000000 -> 0"
+    src_live: "eth_getBalance across all 25 listed accounts (rpc.ankr.com/core archive) @ 38376794 vs 38376795 -> total decrease 152778693.31745481; system contracts 0x…1000-0x…1014 -> only 0x…1000 changed, +1.33 CORE; ValidatorSet currentValidatorSet income summed over 21 validators -> 42047.36 vs 42050.05; 0x1c58..6361 46206985.55 -> 0; 0x88ff..9581 36404444.46 -> 0; 0x555b..BDe2 12000000 -> 0"
     src_doc: "https://cointelegraph.com/news/core-dao-emergency-hard-fork-excess-validator-rewards"
   - name: fermi
     activation_time: 1793592000

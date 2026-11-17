@@ -1350,7 +1350,8 @@
 
     Core has done this twice. CoreRewardFix (2026-09-03) removed 152,778,693.32 CORE with no
     recipient, and Fermi (2026-11-02) moved 68,146,177.22 CORE to one Safe; both were measured
-    from source and archive balances. Berachain's consensus client added a validator from a
+    from source and archive balances. Core DAO's post-mortem gives 186,153,491 for the first, more
+    than that code can remove; the chain's own record is the smaller figure. Berachain's consensus client added a validator from a
     hard-coded deposit and forced another to exit at Electra1, and Ethereum's 2016 DAO fork moved
     listed balances to a refund contract; those two are from source only.
 

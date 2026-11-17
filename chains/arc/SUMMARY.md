@@ -118,6 +118,12 @@ Three changes to EIP-1559 at once:
    the gas limit and the fee-market bounds are upgradeable by whoever holds the
    proxy admin, with no client release.
 
+**Nothing is burned.** `reward_beneficiary` overrides EIP-1559 and credits the base fee
+and the priority fee to the block's beneficiary. Three blocks near 29537893 confirm it: in
+each one the miner's balance rose by exactly the sum of `gasUsed × effectiveGasPrice` over
+its receipts, and no transaction in them touched the miner. So on Arc the base fee is
+validator income in USDC, not a supply sink.
+
 The base fee held flat at 20 gwei across the probed window, with `gasUsedRatio` between
 0.008 and 0.034. Block use is far below any target, so that window does not test the
 smoothing.
@@ -209,10 +215,18 @@ at exactly that height:
 |---|---|---|
 | `eth_call` to CallFrom, empty calldata | `OpcodeNotFound` | `unauthorized caller` |
 | SELFDESTRUCT to a warmed target, 5,100 gas | fails | succeeds |
+| DELEGATECALL to `storeGasValues` on 0x1800…0002, from the system caller | 2,619 gas | 2,819 gas |
+| fee credited to a beneficiary that self-destructed in the tx | accepted | invalid tx |
 
-The second probe is specific to Zero8, whose handler counts a target warmed earlier in the
-transaction as warm. Testnet took Zero8 alone at block 60260874, and shows the same flip
-there. Two controls held at every height: an unwarmed target with 5,100 gas fails, and a
+The last three probes are specific to Zero8. Its SELFDESTRUCT handler counts a target
+warmed earlier in the transaction as warm. A rejected delegatecall now pays the 200-gas
+early-revert penalty; the revert reason, "Delegate call not allowed", is the same on both
+sides, and a non-system caller ("Invalid caller") pays 2,819 at every height, which shows
+the harness measures the penalty and nothing else. The beneficiary test uses
+`blockOverrides` to make the coinbase a contract that the transaction creates and
+self-destructs; from Zero8 on the call fails with "Cannot increase the balance of
+selfdestructed account". Testnet took Zero8 alone at block 60260874, and shows all three
+flips there. Two controls held at every height: an unwarmed target with 5,100 gas fails, and a
 warmed target with 8,000 gas succeeds.
 
 Both networks now run the same fork set. Testnet reached Zero7 in June and Zero8 on
@@ -276,15 +290,9 @@ Source over comment, as usual.
 - **EIP-2930 (`0x01`).** Not observed in the scanned range and nothing in the client
   excludes it. `unrecorded` rather than assumed inherited.
 - **EIP-7623.** Not traced. `unrecorded`.
-- **Whether the base fee is burned.** `fee_model.burn: unrecorded` — the destination
-  of the base fee was not followed through the executor. On a chain where the base
-  fee is a stablecoin this is a materially interesting question and it is left open.
 - **The running version.** `web3_clientVersion` returns only `arc/v1` on both networks,
   so the pinned tag cannot be matched to what validators run — the gap Tempo's row was
   able to close.
-- **Whether every Zero8 change is live.** The SELFDESTRUCT handler was measured. The
-  delegatecall penalty could not be reached without an authorised caller, and the rejected
-  gas credit was not tested.
 
 ## What this contradicts elsewhere in the dataset
 
@@ -450,6 +458,24 @@ W=0x73${T}31505f5f5f5f5f73${BB}6113ecf15f5260205ff3
 O="{\"$A\":{\"code\":\"$W\"},\"0x$BB\":{\"code\":\"0x73${T}ff\",\"balance\":\"0x1\"},\"0x$T\":{\"balance\":\"0x1\"}}"
 call eth_call "[{\"to\":\"$A\",\"gas\":\"0x7a120\"},\"0x1338ff9\",$O]"   # -> 0 (child ran out of gas)
 call eth_call "[{\"to\":\"$A\",\"gas\":\"0x7a120\"},\"0x1338ffa\",$O]"   # -> 1 (child succeeded)
+
+# Zero8: a rejected DELEGATECALL pays the 200-gas early-revert penalty. The wrapper copies
+# calldata, DELEGATECALLs 0x1800…0002 and returns (success, gas spent around the call).
+D=0x00000000000000000000000000000000000c0de1
+DC=0x3660006000375a60006000366000731800000000000000000000000000000000000002620186a0f45a820360205260005260406000f3
+SG=$(cast calldata 'storeGasValues(uint64,(uint64,uint64,uint64))' 1 '(1,2,3)')
+O="{\"$D\":{\"code\":\"$DC\"}}"
+call eth_call "[{\"from\":\"0xfffffffffffffffffffffffffffffffffffffffe\",\"to\":\"$D\",\"data\":\"$SG\",\"gas\":\"0x1e8480\"},\"0x1338ff9\",$O]"  # -> (0, 0xa3b)
+call eth_call "[{\"from\":\"0xfffffffffffffffffffffffffffffffffffffffe\",\"to\":\"$D\",\"data\":\"$SG\",\"gas\":\"0x1e8480\"},\"0x1338ffa\",$O]"  # -> (0, 0xb03)
+
+# Zero8: a fee credited to a beneficiary that self-destructed in the tx is rejected.
+# The factory CREATEs a child running PUSH1 0 SELFDESTRUCT; the coinbase is that child.
+F=0x00000000000000000000000000000000000fac01
+FC=0x626000ff6000526003601d6000f060005260206000f3
+CH=$(cast compute-address $F --nonce 1 | awk '{print $NF}')
+O="{\"$F\":{\"code\":\"$FC\",\"nonce\":\"0x1\"}}"
+call eth_call "[{\"to\":\"$F\",\"gas\":\"0x1e8480\"},\"0x1338ff9\",$O,{\"coinbase\":\"$CH\"}]"  # -> child address
+call eth_call "[{\"to\":\"$F\",\"gas\":\"0x1e8480\"},\"0x1338ffa\",$O,{\"coinbase\":\"$CH\"}]"  # -> Cannot increase the balance of selfdestructed account
 
 # Osaka is live: P256VERIFY answers with EIP-7951 semantics; KZG present despite no blobs
 call eth_call '[{"to":"0x0000000000000000000000000000000000000100","data":"0x'$(printf '00%.0s' {1..160})'"},"0x1c2b665"]'  # -> 0x

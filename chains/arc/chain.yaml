@@ -155,13 +155,16 @@ forks:
       ACTIVATED WITH ZERO7 AT BLOCK 20156410, from the same mainnet constant. Testnet:
       1788447600 (2026-09-03 15:00 UTC), first block 60260874. It adds a FOURTH SELFDESTRUCT
       handler (`arc_network_selfdestruct_zero8`, with transaction-warm target checks),
-      rejects the legacy gas credit earlier forks allowed, and makes delegatecall
-      rejections charge the uniform early-revert gas penalty. The live test uses the
-      handler: a target warmed earlier in the transaction no longer pays the cold-access
-      cost, so a SELFDESTRUCT given 5,100 gas fails before the fork and succeeds after it.
-      Testnet, where Zero8 arrived alone, shows the same flip at its own boundary.
-    src: "crates/execution-config/src/hardforks.rs:ARC_ZERO8_HARDFORK_TIMESTAMP_ACTIVATION_MAINNET, crates/evm/src/opcode.rs:arc_network_selfdestruct_zero8"
-    src_live: "eth_call with state override, wrapper warms the target with BALANCE then CALLs a child with 5100 gas whose code is PUSH20 target SELFDESTRUCT: child success 0 @ 20156409, 1 @ 20156410, 1 @ 29537893; testnet 0 @ 60260873, 1 @ 60260874. Controls at all those heights: unwarmed target with 5100 gas -> 0; warmed target with 8000 gas -> 1"
+      makes a transaction INVALID when its fee would credit a beneficiary that
+      self-destructed in it (before Zero8 the fee was credited and lost at commit), and
+      makes delegatecall rejections in the native-coin and system-accounting precompiles
+      charge the 200-gas early-revert penalty. All three were tested live, and each flips
+      at block 20156410. The SELFDESTRUCT test: a target warmed earlier in the
+      transaction no longer pays the cold-access cost, so a SELFDESTRUCT given 5,100 gas
+      fails before the fork and succeeds after it. Testnet, where Zero8 arrived alone,
+      shows the same three flips at its own boundary.
+    src: "crates/execution-config/src/hardforks.rs:ARC_ZERO8_HARDFORK_TIMESTAMP_ACTIVATION_MAINNET, crates/evm/src/opcode.rs:arc_network_selfdestruct_zero8, crates/evm/src/handler.rs:reward_beneficiary, crates/precompiles/src/helpers.rs:check_delegatecall"
+    src_live: "eth_call with state override, wrapper warms the target with BALANCE then CALLs a child with 5100 gas whose code is PUSH20 target SELFDESTRUCT: child success 0 @ 20156409, 1 @ 20156410, 1 @ 29537893; testnet 0 @ 60260873, 1 @ 60260874. Controls at all those heights: unwarmed target with 5100 gas -> 0; warmed target with 8000 gas -> 1. Delegatecall: from 0xff…fe (the system caller), a state-override wrapper DELEGATECALLs storeGasValues on 0x1800…0002 and measures GAS around it -> 'Delegate call not allowed' and 2619 gas @ 20156409, 2819 @ 20156410 and @ 29537893; testnet 2619 @ 60260873, 2819 @ 60260874. Control from a non-system caller -> 'Invalid caller' and 2819 at every height. Beneficiary: eth_call to a factory that CREATEs a child running PUSH1 0 SELFDESTRUCT, with blockOverrides coinbase = that child -> success @ 20156409 and testnet 60260873; error 'Cannot increase the balance of selfdestructed account' @ 20156410, @ 29537893 and testnet 60260874"
 
 eips:
   1559:
@@ -606,7 +609,7 @@ fee_model:
   metering: gas, denominated in 18-decimal units of the native USDC coin
   fee_market: EIP-1559 formula over an EMA-smoothed gas figure, fixed-point params, contract-governed bounds
   gas_token: "USDC — the native coin itself, mint/burn controlled by the NativeFiatToken contract"
-  burn: unrecorded
+  burn: none
   note: >-
     THE UNIT ANSWER, AND IT IS THE OPPOSITE OF TEMPO'S. Arc did not remove the
     native asset; it made the native asset a stablecoin and left the EVM alone.
@@ -638,6 +641,9 @@ fee_model:
   - {name: EMA gas smoothing, src: "crates/execution-config/src/gas_fee.rs:determine_ema_parent_gas_used"}
   - {name: base fee in extraData, src: "crates/execution-config/src/gas_fee.rs:encode_base_fee_to_bytes"}
   - {name: contract-governed fee params and gas limit, src: "crates/execution-config/src/protocol_config.rs:determine_bounded_base_fee"}
+  - name: base fee paid to the block beneficiary, not burned
+    src: crates/evm/src/handler.rs:reward_beneficiary
+    src_live: "eth_getBalance(miner) delta vs sum(gasUsed × effectiveGasPrice) from eth_getBlockReceipts @ 29537893 -> 17377599400000000 both (base share 13832100000000000); @ 29537880 -> 52499508750000000 both; @ 29537870 -> 6861593800000000 both; no transaction in those blocks touches the miner"
   - {name: 20,000 gwei base-fee ceiling, src: "crates/execution-config/src/chainspec.rs:BASE_FEE_CONFIG_MAINNET"}
   src: crates/execution-config/src/gas_fee.rs:arc_calc_next_block_base_fee
   src_live: "eth_getBalance vs USDC.balanceOf @ 29537893 for 0xd9153d9a…, 0x994d7313…, 0x8568d2a6… -> 35131686861142866688282/35131686861, 92672261265336915910/92672261, 13728503694425242822/13728503 — floor(x/10^12) in all three, exact in none; eth_gasPrice -> 0x4e3b29200; header baseFeePerGas 0x4a817c800"

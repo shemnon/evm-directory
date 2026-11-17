@@ -24,8 +24,17 @@ at 46,206,985.55 and `0x88ff…9581` at 36,404,444.46. Measured across all 25 ac
 38376794 and 38376795 on the `rpc.ankr.com/core` archive.
 
 The client's comments call the amounts an "anomalous reward" from an "attack". Coverage at the
-time reported an emergency fork after validators drew excess rewards. An unconfirmed repost of a
-post-mortem gives about 186M CORE burned, which does not match the amount measured here.
+time reported an emergency fork after validators drew excess rewards.
+
+**Core DAO's post-mortem gives a larger number than the chain shows.** It says the fork removed
+186,153,491 CORE ([post](https://x.com/Coredao_Org/status/2096279838453854558)). This row
+measures 152,778,693.32, and 186M cannot come from this code. At most it removes the eight zeroed
+balances plus the listed excess, 63,344,375.92, which is 158,070,000.61 CORE. Two other places
+were checked at the fork block and neither accounts for the 33.37M gap. No system contract from
+`0x…1000` to `0x…1014` lost balance (ValidatorSet gained 1.33 CORE, an ordinary block reward).
+The pending validator incomes in ValidatorSet's `currentValidatorSet` were 42,047 CORE before
+and 42,050 after. Coverage that quotes the post-mortem puts the 186M "in the reward pool", but no
+state matching that figure was found. The measured figure stands, and the gap is open.
 
 **Fermi.**
 

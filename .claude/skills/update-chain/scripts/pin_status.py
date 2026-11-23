@@ -288,11 +288,16 @@ def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
     p = {"label": label, "repo": repo, "version": version, "commit": commit,
          "pinned_by": pb or None, "pinned_commit_date": None, "clone": None,
          "kind": None, "target": None, "newer_stable": [], "newer_unstable": [],
-         "other_families": [], "older_line": [], "stripped": []}
+         "other_families": [], "older_line": [], "stripped": [], "archived": False}
     if clone_dir.is_dir():
         p["clone"] = {"path": str(clone_dir.relative_to(ROOT)),
                       "head": sh("git", "-C", str(clone_dir), "rev-parse", "HEAD")}
     p["pinned_commit_date"] = commit_date(repo, commit)
+    # An archived repo publishes nothing, so every check below answers "current"
+    # forever. ava-labs/coreth was archived 2025-11-25 when coreth moved into
+    # avalanchego as graft/coreth; avalanche-c then read "current" for a year while
+    # Avalanche mainnet scheduled Helicon in the successor tree.
+    p["archived"] = sh("gh", "api", f"repos/{repo}", "--jq", ".archived") == "true"
     if how in GOVERNED:
         # Deliberately no lookup at all. Not "look and then suppress": the tag list
         # and the branch head are not evidence about this pin, and printing them
@@ -525,6 +530,10 @@ def render(r, now):
         print(f"  {p['label']:<30} {p['repo']}  {p['version'] or '(commit)'} @ {p['commit'][:8]}"
               f"  [{d(p['pinned_commit_date'])}]  {cstate}")
         t = p["target"]
+        if p.get("archived"):
+            print("    ARCHIVED upstream — nothing here can move again, so 'current' below "
+                  "means nothing. Find where development went (a monorepo, a rename, a "
+                  "successor org) before trusting this pin")
         if p.get("governed_by_companion"):
             print(f"    GOVERNED by {p['governed_by_companion']} — the tags below are "
                   f"upstream's releases, NOT candidates: that companion decides which "

@@ -53,6 +53,7 @@ Triage by row kind before going further:
 
 | The report says | Do this |
 |---|---|
+| `ARCHIVED` on a pin | The upstream repo is frozen, so "current" is meaningless. Find the successor (ava-labs/coreth and subnet-evm moved into avalanchego as `graft/`) and re-pin there: a new `client.repo`, re-derive every `src:` path. |
 | `DEAD` | Stop. A dead row's pin does not move (SCHEMA.md `dead:`). Tell the user. Proceed only if they report the chain restarted, and then run `tools/livecheck.py <slug>` first. |
 | `DOCUMENTED` | There is no pin. Tell the user that only `src_doc:`/`src_live:` facts can move. Offer to re-probe and re-read the docs instead. |
 | `MOTHBALLED` | The chain is LIVE but its source was withdrawn, so the pin does not move either (SCHEMA.md `mothballed:`). Do not bump it and do not downgrade `evidence:` — the pinned tree still verifies. The useful work is the opposite of a bump: re-probe, because `src_live:` is the only evidence of what the chain now does — but NO SOONER THAN FOUR WEEKS since `live_probe.observed_at` (SCHEMA.md sets the floor; `pin_status.py` prints the next allowed date and whether it is due). A probe pass is more than a replay, which can pass while the network has moved: follow SCHEMA.md's four parts (replay, scan beyond the row's addresses for ABI dispatch, read every release note and changelog since the last probe, establish what the network runs). If the newer tags have regained source, say so — that un-mothballs the row. |

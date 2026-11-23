@@ -115,6 +115,39 @@ def gh_file(repo, ref, path):
         return None
 
 
+# A tree that names its own withdrawal. Injective's later tags hold exactly this one
+# file. The structural test below catches the same tree without it.
+WITHDRAWN_MARKERS = {"SOURCE_CODE_IS_PRIVATE"}
+
+
+def tree_shape(repo, ref):
+    """The top level of the tree at a ref, as {"blobs", "trees", "names"}, or None
+    when GitHub will not say. One API call: the trees endpoint takes a commit or tag
+    and lists only the root, which is all the emptiness test needs."""
+    t = gh_json("api", f"repos/{repo}/git/trees/{ref}")
+    if not isinstance(t, dict) or not isinstance(t.get("tree"), list):
+        return None
+    kinds = [e.get("type") for e in t["tree"]]
+    return {"blobs": kinds.count("blob"), "trees": kinds.count("tree"),
+            "names": [e.get("path") for e in t["tree"]]}
+
+
+def stripped(shape, pin_shape):
+    """Why a candidate tag's tree is not source, or None if it may be. Not a size
+    comparison: a release legitimately adds and drops files. The two signals are a
+    withdrawal marker at the root, and a root with NO directories where the pinned
+    tree had some. No client in this dataset keeps its code at the top level."""
+    if shape is None:
+        return None
+    hit = WITHDRAWN_MARKERS & set(shape["names"])
+    if hit:
+        return f"tree holds {', '.join(sorted(hit))}"
+    if pin_shape and pin_shape["trees"] and not shape["trees"]:
+        return (f"tree has no directories ({shape['blobs']} file(s) at the root) "
+                f"where the pin has {pin_shape['trees']}")
+    return None
+
+
 def manifest_key(line):
     """The left-hand side of a manifest line: `besuCommit` from `besuCommit = "..."`,
     `github.com/0xsoniclabs/tosca` from a go.mod require. Used to find the SAME entry
@@ -255,7 +288,7 @@ def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
     p = {"label": label, "repo": repo, "version": version, "commit": commit,
          "pinned_by": pb or None, "pinned_commit_date": None, "clone": None,
          "kind": None, "target": None, "newer_stable": [], "newer_unstable": [],
-         "other_families": [], "older_line": []}
+         "other_families": [], "older_line": [], "stripped": []}
     if clone_dir.is_dir():
         p["clone"] = {"path": str(clone_dir.relative_to(ROOT)),
                       "head": sh("git", "-C", str(clone_dir), "rev-parse", "HEAD")}
@@ -273,10 +306,20 @@ def pin_report(label, repo_url, version, commit, clone_dir, pinned_by=None):
         p["newer_unstable"] = [r for r in newer if r["unstable"]]
         p["other_families"] = other
         p["older_line"] = older_line
-        if p["newer_stable"]:
-            t = p["newer_stable"][0]
-            p["target"] = {"tag": t["tag"], "commit": tag_commit(repo, t["tag"]),
-                           "date": t["date"]}
+        # The highest newer tag is the target ONLY IF ITS TREE IS SOURCE. A tag can
+        # match the pin's shape exactly and still hold nothing — injective's
+        # `v1.20.4-1789748350` escaped only because its suffix gave it a different
+        # shape, and the next stripped `v1.20.5` would not. Walk down the list,
+        # setting aside each stripped tag, so the target is never an empty tree.
+        pin_shape = tree_shape(repo, commit) if p["newer_stable"] else None
+        for t in p["newer_stable"]:
+            sha = tag_commit(repo, t["tag"])
+            why = stripped(tree_shape(repo, sha or t["tag"]), pin_shape)
+            if why:
+                p["stripped"].append({**t, "commit": sha, "why": why})
+                continue
+            p["target"] = {"tag": t["tag"], "commit": sha, "date": t["date"]}
+            break
     else:
         # A branch or commit pin: the question is how far its branch has moved, not
         # which tag is newest. `name (branch)` and `main (UNTAGGED)` follow that named
@@ -517,13 +560,23 @@ def render(r, now):
                 print(f"      unchanged at client target {ct} — bump the client, "
                       f"leave this pin alone")
         elif p["kind"] == "tag":
+            for n in p["stripped"]:
+                print(f"    STRIPPED newer tag: {n['tag']}  [{d(n['date'])}] — {n['why']}. "
+                      f"NOT A PIN CANDIDATE")
+            gone = {n["tag"] for n in p["stripped"]}
+            if p["newer_stable"] and p["newer_stable"][0]["tag"] in gone:
+                print("    ^ the NEWEST tag has no source: the row likely needs "
+                      "`chain.mothballed:` (SCHEMA.md). A NEWER line below is only the "
+                      "last tag that still has source, not proof the source is back")
             if t:
                 print(f"    NEWER  → {t['tag']} @ {(t['commit'] or '?')[:12]}  [{d(t['date'])}]")
-                for n in p["newer_stable"][1:]:
+                for n in p["newer_stable"]:
+                    if n["tag"] == t["tag"] or n["tag"] in gone:
+                        continue
                     late = ("  PUBLISHED AFTER THE TARGET, but a lower version"
                             if n["date"] and t["date"] and n["date"] > t["date"] else "")
                     print(f"             also newer: {n['tag']}  [{d(n['date'])}]{late}")
-            else:
+            elif not p["stripped"]:
                 print("    current — no newer stable tag of this family")
             for n in p["older_line"][:3]:
                 print(f"    older line, published after the pin: {n['tag']}  [{d(n['date'])}]  "

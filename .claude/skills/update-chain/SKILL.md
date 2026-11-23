@@ -16,7 +16,8 @@ The steps run in order. Steps 4 and 5 can stop the run.
 - **If a newer tag has no source in it, the row gets mothballed, not bumped.** A client
   repository that stays public while publishing an empty tree is a real and recurring
   thing; SCHEMA.md `mothballed:` is the standard answer, and injective is the worked
-  example. Check the newest tag's tree before trusting a target.
+  example. `pin_status.py` checks each candidate's root tree and reports an empty one
+  as `STRIPPED`, never as a target; a tree that dodges both of its tests still needs a look.
 - Never hand-edit `website/` or the generated tables (`MATRIX.md`, `PRECOMPILES.md`,
   `TX-TYPES.md`, `LINEAGE.md`). Regenerate them.
 - Provenance (`src`, `†`, `via` pills) renders only on chain pages. This skill edits data,
@@ -65,7 +66,10 @@ Choose the **target**: the highest-versioned stable tag per pin, which is not al
 last one published, because a repo patching two lines publishes `v6.6.4` after `v6.7.0`.
 `pin_status.py` ranks by version and flags the rest: `PUBLISHED AFTER THE TARGET` on a
 lower candidate, and `older line` on a backport below the pin. Neither is a target, but
-read their notes, since a backport can carry a fork. Companions move when the client does,
+read their notes, since a backport can carry a fork. A `STRIPPED` tag (its root holds
+`SOURCE_CODE_IS_PRIVATE`, or no directories where the pin's had some) is set aside and the
+next tag down becomes the target; if the NEWEST tag is stripped, mothball the row instead
+of bumping it. Companions move when the client does,
 or when their own schedule or definitions changed.
 
 A tag is only a candidate if it has the **same shape** as the pin — the full string with

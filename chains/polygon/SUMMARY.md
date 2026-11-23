@@ -2,7 +2,7 @@
 
 **Chain ID 137 · role: `fork` · upstream: go-ethereum · baseline: Prague**
 
-Reference: [0xPolygon/bor `v2.10.3`](https://github.com/0xPolygon/bor) @ `a16f123d`.
+Reference: [0xPolygon/bor `v2.11.2`](https://github.com/0xPolygon/bor) @ `a4afe5a9`.
 Heimdall (consensus/checkpointing) is a separate component, not cloned.
 
 ## PIP-88: a systematic gas surcharge
@@ -50,6 +50,11 @@ to zero. Two chains, both without blobs, two different absences.
 different ABIs. That is the most confusing possible collision: an address-and-name
 match that is not a behaviour match. Anything resolving contracts by name-plus-address
 across chains gets it wrong in the direction of appearing correct.
+
+At **Uburu** (block 96787900) the StateReceiver at `0x…1001` was replaced. Each
+state-sync receiver now gets the gas set by an owner-controlled oracle
+(`0x5e3a…2147`), live at **160,000**, where every receiver used to get a flat
+5,000,000. The limit can change without a fork, up to the 5M cap.
 
 ## `0x7f` — the last type byte
 
@@ -103,7 +108,7 @@ attributing bridged L1 value to the zero address.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v2.10.3 https://github.com/0xPolygon/bor
+git clone --depth 1 --branch v2.11.2 https://github.com/0xPolygon/bor
 sed -n '274,295p' core/vm/contracts.go        # Chicago set; note no 0x0a
 sed -n '74,90p;190,206p' params/protocol_params.go   # PIP-88 multipliers
 sed -n '405,440p' params/config.go            # mainnet blocks + system contracts

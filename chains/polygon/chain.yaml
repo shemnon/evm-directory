@@ -12,15 +12,16 @@ lineage:
   ancestry: [ethereum]
   fork_of: go-ethereum
   sync_point: >-
-    Full geth fork. Tracks mainnet through PRAGUE (PragueBlock 73440256); no
+    Full geth fork, at bor v2.11.2. Latest Bor fork live is Uburu (block 96787900, a
+    StateReceiver code swap); Hampi is still unscheduled. Tracks mainnet through PRAGUE (PragueBlock 73440256); no
     OsakaBlock is set for mainnet, yet the Chicago precompile set pulls in several
     Osaka-era precompile changes out of band.
 
 client:
   name: bor
   repo: https://github.com/0xPolygon/bor
-  version: v2.10.3
-  commit: a16f123d9b4f41a552a3a98d93a0340430838576
+  version: v2.11.2
+  commit: a4afe5a9c854ef07ea383bfa0d4e4ca45c62d157
   language: go
   note: >-
     bor is the execution client; heimdall (consensus/checkpointing) is a separate
@@ -57,7 +58,7 @@ forks:
     status: pending
     mainnet_equivalent: null
     note: >-
-      NEW BOR FORK AT v2.10.3, declared and unscheduled — `HampiBlock: nil // unscheduled`
+      BOR FORK DECLARED AT v2.10.3 AND STILL UNSCHEDULED AT v2.11.2 — `HampiBlock: nil // unscheduled`
       on both BorMainnetChainConfig (137) and AmoyChainConfig (80002); only the test
       NonActivatedConfig sets it to 0. What it changes is unusually narrow and the source
       says so outright: in SSTORE's gas path, from Hampi the storage slot is only READ
@@ -69,6 +70,18 @@ forks:
       to a stateless client and to nothing an EVM caller can observe, and a direct
       consequence of PIP-88's repricing.
     src: "params/config.go:IsHampi, core/vm/operations_acl.go:ColdSstoreCostPIP88"
+  - name: uburu
+    activation_time: null
+    activation_condition: "block 96787900"
+    mainnet_equivalent: null
+    note: >-
+      A STATE-SYNC FORK, AND THE ONLY ONE IN THIS TIMELINE A PINNED NODE COULD NOT
+      FOLLOW: v2.11.0's notes say nodes on v2.10.3 or older "stopped following the chain
+      at the fork block". Uburu installs new StateReceiver code at 0x..1001 (Amoy at
+      51978200) — see system_contracts. Nothing else is gated on it: `IsUburu` has no
+      caller outside the fork id and the banner, so the whole fork is that one alloc.
+    src: "params/config.go:BorConfig.UburuBlock, params/config.go:IsUburu, core/forkid/forkid.go:UburuBlock"
+    src_live: "eth_getCode 0x..1001 @ 96787899 -> 5052 bytes, @ 96787900 -> 6332 bytes (sha256 77c06e6e81dcbe64, identical to the 96787900 alloc in params/config.go)"
   - {name: osaka,        activation_time: null, status: pending, note: "no OsakaBlock set for mainnet"}
 
 eips:
@@ -227,8 +240,23 @@ system_contracts:
     name: StateReceiverContract
     status: added
     severity: high
-    src: "params/config.go:BorConfig.StateReceiverContract"
-    note: "COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose."
+    src: "params/config.go:BorConfig.StateReceiverContract, params/config.go:BorConfig.BlockAlloc"
+    note: >-
+      COLLISION: BSC uses 0x..1001 for SlashContract. Same address, different purpose.
+
+      RECEIVER GAS FELL FROM 5,000,000 TO 160,000 AT UBURU (block 96787900). Before the
+      fork, commitState forwarded a flat 5,000,000 gas to every state-sync receiver's
+      onStateReceive — the PoS bridge's deposit path. The Uburu code asks a gas oracle
+      instead: a TransparentUpgradeableProxy at 0x5e3a5eafd4501332c0bc2acfd38df3ebc5152147,
+      queried with 50,000 gas, answering one owner-set limit for every record. The
+      StateReceiver falls back to 160,000 if the oracle reverts or answers badly, and caps
+      any answer at MAX_RECEIVER_GAS = 5,000,000. The live oracle answers 160,000, so a
+      receiver that needed more than 160k now fails its sync. The failed sync can be
+      replayed with replayFailedStateSync, at no more gas than the oracle allows. The limit is
+      now governance-mutable with no fork: the oracle's owner (0x9d851f8b…9052) can move
+      it anywhere up to 5M with setGasLimit. Seven selectors were added and none removed.
+    src_live: "eth_call gasLimit() on 0x5e3a5eafd4501332c0bc2acfd38df3ebc5152147 @ 97844430 -> 0x27100 (160000); owner() -> 0x9d851f8b8751c5fbc09b9e74e6e68e9950949052; eth_getCode 0x..1001 @ 96787899 holds PUSH3 0x4c4b40 once and no oracle address, @ 96787900 holds the oracle address, 0x027100 and 0x4c4b40"
+    src_doc: "https://github.com/0xPolygon/genesis-contracts/blob/8c07edce78/contracts/oracle/StateSyncGasOracle.sol"
 
 opcodes:
   prevrandao:

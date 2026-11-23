@@ -464,6 +464,23 @@ tx_authorization:
     MsgEVMTransaction inside authz (CheckAuthzContainsEvm) while leaving
     bank/staking/gov/wasm reachable, and v6.7 additionally exposed x/authz itself as a
     precompile at 0x100e.
+
+    THE COSMOS SURFACE IS SCHEDULED FOR REMOVAL, NOT YET REMOVED. SIP-3 (status
+    "Living", created 2025-05-07) proposes that "only EVM addresses will be allowed to
+    initiate transactions on Sei", in three milestones: EVM pointers for every Cosmos
+    and CosmWasm asset; no new CosmWasm deployments and no inbound IBC; then "disable
+    remaining CosmWasm contract execution and transaction support for non-EVM
+    addresses". The second milestone has shipped: Proposal #115 set wasm upload and
+    instantiate access to Nobody, #116/#120 closed inbound IBC, and #121 closed
+    outbound IBC on 2026-07-31. The third — the one that ends sr25519, secp256r1 and
+    multisig authorization here — has no published proposal number, height or date.
+    Sei's migration guide describes it only as a coming "SIP-03 upgrade". At the
+    pinned v6.7.2, and still at v6.8.0, every Cosmos-surface citation below resolves,
+    so the schemes stay `authorizes: protocol`. When a public tag removes the ante
+    path, the sr25519, secp256r1 and multisig entries leave this section, the row
+    leaves the `unpaired-schemes` finding, and the EVM surface's secp256k1 becomes
+    the only transaction signer.
+  src_doc: "https://github.com/sei-protocol/sips/blob/main/sips/sip-3.md, https://docs.sei.io/learn/sip-03-migration"
   src: "app/ante.go:NewAnteHandler, app/app.go:SigGasConsumer, sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer, x/evm/state/balance.go:GetBalance, x/evm/keeper/address.go:GetSeiAddressOrDefault, x/evm/keeper/address.go:GetEVMAddressOrDefault, x/evm/ante/preprocess.go:EVMAddressDecorator, precompiles/addr/addr.go:associatePublicKey, utils/helpers/address.go:PubkeyToEVMAddress"
   schemes:
     secp256k1:

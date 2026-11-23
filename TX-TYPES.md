@@ -82,7 +82,7 @@ Chains whose protocol transactions fall outside the EIP-2718 envelope entirely. 
   - `domain_sudo` domain sudo call injected by the consensus chain
   - `evm_tracker_inherent` set_contract_creation_allowed_by inherent
 
-**Avalanche C-Chain** — Atomic transactions move value between the C-Chain and Avalanche's X/P chains. They are UTXO-based, serialised with Avalanche's own codec (not RLP), and registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.
+**Avalanche C-Chain** — Atomic transactions move value between the C-Chain and Avalanche's X/P chains. They are UTXO-based, serialised with Avalanche's own codec (not RLP), and registered in a separate codec namespace (vms/saevm/cchain/tx/codec.go) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.
   - `` UnsignedImportTx
   - `` UnsignedExportTx
 

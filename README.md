@@ -60,7 +60,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Polygon zkEVM](chains/polygon-zkevm/SUMMARY.md) *(dead: shutdown)* | cdk-erigon | `v2.64.2` | berlin |
 | [Arc](chains/arc/SUMMARY.md) | arc-node (reth execution + Malachite consensus) | `v0.8.2` | osaka |
 | [Autonomys Auto EVM](chains/autonomys/SUMMARY.md) | subspace (Auto EVM domain runtime) | `runtime-mainnet-2026-jul-29` | osaka |
-| [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | coreth | `v0.16.0` | cancun |
+| [Avalanche C-Chain](chains/avalanche-c/SUMMARY.md) | avalanchego (C-Chain VM) | `v1.15.3` | cancun |
 | [Avalanche subnet-evm (L1s / Subnets)](chains/avalanche-subnet/SUMMARY.md) *(template)* | subnet-evm | `v0.8.0` | cancun |
 | [Berachain](chains/berachain/SUMMARY.md) | bera-reth | `v1.4.4` | osaka |
 | [BNB Smart Chain](chains/bnb/SUMMARY.md) | bsc | `v1.8.2` | osaka |

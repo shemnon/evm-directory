@@ -12,23 +12,41 @@ lineage:
   ancestry: [ethereum]
   fork_of: go-ethereum (via libevm)
   note: >-
-    As of v0.16.0 coreth is NOT a whole-repo geth fork. It consumes
-    ava-labs/libevm — a geth fork published as a library with explicit extension
+    The C-Chain VM is avalanchego's own since the coreth repo was archived. From
+    Helicon (2026-09-22) it is the SAE VM (vms/saevm, ACP-194), and v1.15.3 registers
+    saevm.Factory directly. No Coreth execution path is left in the tree: graft/coreth
+    keeps only params, header types, the precompiles and nativeasset. Like coreth
+    before it, the VM is NOT a whole-repo geth fork. It consumes ava-labs/libevm — a geth fork published as a library with explicit extension
     hooks — and layers Avalanche behaviour through RulesExtra hooks
-    (params/hooks_libevm.go). Structurally the cleanest fork relationship in this
+    (graft/coreth/params/hooks_libevm.go, vms/saevm/cchain/libevm). Structurally the cleanest fork relationship in this
     dataset: divergence is concentrated in hook implementations rather than
     scattered through a patched tree.
   sync_point: >-
-    libevm v1.13.15-0.20251016142715. EVM behaviour tracks geth through CANCUN
-    only — see forks.
+    avalanchego v1.15.3 on libevm v1.13.15-0.20261028200218-d398bc4dbe41. EVM behaviour
+    tracks geth through CANCUN only — see forks. Execution has been asynchronous (SAE)
+    since Helicon.
 
 client:
-  name: coreth
-  repo: https://github.com/ava-labs/coreth
-  version: v0.16.0
-  commit: 64c271b44104f67c6c5ac2dee343f18b0e648f6e
+  name: avalanchego (C-Chain VM)
+  repo: https://github.com/ava-labs/avalanchego
+  version: v1.15.3
+  commit: 983815fd993acf846a27749b598f0fea4d876a75
   language: go
-  note: the C-Chain VM plugin for avalanchego; subnet-evm is its sibling
+  note: >-
+    RE-PINNED FROM ava-labs/coreth, WHICH WAS ARCHIVED ON 2025-11-25. Coreth moved into
+    avalanchego as graft/coreth, and the row read a frozen repo for a year. Since Helicon
+    (2026-09-22) the C-Chain VM is avalanchego's transitionvm: Coreth up to Helicon, then
+    the SAE VM (vms/saevm, ACP-194). The last coreth-repo pin was v0.16.0 @ 64c271b4.
+
+live_probe:
+  endpoint: https://api.avax.network/ext/bc/C/rpc
+  chain_id: 43114
+  observed_at_block: 101206057
+  observed_at: 2026-11-23
+  chain_id_src_live: "eth_chainId @ 101206057 -> 0xa86a (43114)"
+  note: >-
+    Added at the avalanchego re-pin. web3_clientVersion @ 101206057 answers
+    avalanchego/1.15.3 commit=983815fd, the pinned commit exactly.
 
 consensus:
   engine: Snowman++ (Avalanche consensus)
@@ -37,8 +55,8 @@ consensus:
 baseline_fork: cancun
 
 forks:
-  src: params/extras/network_upgrades.go, params/config_extra.go
-  mapping_src: params/config_extra.go:82-89
+  src: upgrade/upgrade.go:Mainnet, vms/saevm/cchain/cparams/config.go:FromUpgrades
+  mapping_src: vms/saevm/cchain/genesis.go:100-101
   note: >-
     Only two Avalanche upgrades map onto Ethereum forks, and the mapping is an
     explicit assignment, not a coincidence:
@@ -52,47 +70,68 @@ forks:
   - {name: durango, mainnet_equivalent: shanghai, enforced: "ShanghaiTime = durango"}
   - {name: etna,    mainnet_equivalent: cancun,   enforced: "CancunTime = etna"}
   - {name: fortuna, mainnet_equivalent: null}
-  - {name: granite, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100 — out of Ethereum's fork order"}
+  - {name: granite, activation_time: 1763568000, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100 — out of Ethereum's fork order"}
+  - name: helicon
+    activation_time: 1790089200
+    mainnet_equivalent: null
+    severity: high
+    note: >-
+      CONTINUOUS (ASYNCHRONOUS) EXECUTION, ACP-194, plus ACP-283's dynamic minimum gas
+      price. Blocks are accepted first and executed afterwards. Consequences on this chain:
+      (1) a header's stateRoot is the post-execution root of the LAST SETTLED block, not of
+      the block itself (Tau = 5 s); (2) "latest" is the last-executed block, and "safe" and
+      "finalized" are the last-settled one; (3) every transaction is charged at least
+      ceil(gasLimit/2); (4) inclusion is checked against a worst-case balance and nonce
+      state, so included transactions are valid when executed; (5) atomic import/export
+      transactions become end-of-block operations whose gas is counted in gasUsed, so
+      extDataGasUsed is 0; (6) a builder rule asks each transaction to carry at least
+      blockGasLimit/TargetBlockBytes gas per byte, so a full block still fits one 2 MiB
+      p2p message. No Ethereum fork is added: there is still no PragueTime.
+    src: "upgrade/upgrade.go:Mainnet, node/node.go:saevm, vms/saevm/sae/block_builder.go:PostExecutionStateRoot, vms/saevm/params/params.go:TauSeconds, graft/coreth/params/hooks_libevm.go:MinimumGasConsumption, vms/saevm/worstcase/state.go:State, vms/saevm/cchain/hooks.go:ExtDataGasUsed, vms/saevm/txgossip/txgossip.go:minGasForSize, vms/saevm/cchain/cparams/config.go:HeliconTimestamp"
+    src_live: "eth_getBlockByNumber @ 95921104 -> timestamp 1790089190, no targetExponent; @ 95921105 -> timestamp 1790089200, targetExponent 0x2c5c860"
+    src_doc: "https://github.com/avalanche-foundation/ACPs/tree/main/ACPs/194-streaming-asynchronous-execution"
+  - {name: igloo, status: pending, mainnet_equivalent: null, note: "declared placeholder, UnscheduledActivationTime at v1.15.3", src: "upgrade/upgrade.go:IglooTime"}
 
 eips:
   1559:
     status: modified
     note: >-
-      Avalanche uses its own dynamic-fee mechanism (ACP-176 target gas excess,
-      consensus/dummy/consensus.go:79) rather than mainnet's 1559 base-fee update
-      rule. London is marked active but fee dynamics differ.
-    src: "plugin/evm/customheader/base_fee.go:BaseFee"
+      Avalanche uses its own dynamic-fee mechanism (ACP-176 target gas excess, now
+      with ACP-283's dynamic minimum price from Helicon) rather than mainnet's 1559
+      base-fee update rule. London is marked active but fee dynamics differ.
+    src: "vms/saevm/gastime/acp176.go:AfterBlock, vms/saevm/cchain/dynamic/doc.go"
   4844:
     status: removed
     note: >-
       Cancun is active via Etna, but blobs are explicitly disabled. Block validation
-      REJECTS any header with blobGasUsed != 0 or excessBlobGas != 0
-      (errBlobsNotEnabled). The header fields exist and are pinned to zero.
-    src: plugin/evm/wrapped_block.go:480-487
+      rejects any header with blobGasUsed != 0 or excessBlobGas != 0: since Helicon
+      the SAE builder writes both as zero and a block is verified by rebuilding it.
+      The header fields exist and are pinned to zero.
+    src: "vms/saevm/cchain/hooks.go:BlobGasUsed, vms/saevm/cchain/hooks.go:ExcessBlobGas"
   4788:
     status: modified
     note: >-
       parentBeaconRoot must be the EMPTY HASH — there is no beacon chain. The field
       is structurally present (Cancun compliance) and semantically inert, so the
       beacon-roots system contract has nothing to read.
-    src: plugin/evm/wrapped_block.go:478-479
+    src: "vms/saevm/cchain/hooks.go:ParentBeaconRoot"
   2537:
     status: removed
     note: "BLS12-381 precompiles 0x0b-0x11 never adopted — C-Chain has no Prague"
-    src: "params/config_extra.go:SetEthUpgrades"
-  2935: {status: removed, note: "Prague not adopted", src: "params/config_extra.go:SetEthUpgrades"}
-  6110: {status: removed, note: "Prague not adopted; no beacon chain", src: "params/config_extra.go:SetEthUpgrades"}
-  7002: {status: removed, note: "Prague not adopted; no beacon chain", src: "params/config_extra.go:SetEthUpgrades"}
-  7251: {status: removed, note: "Prague not adopted; no beacon chain", src: "params/config_extra.go:SetEthUpgrades"}
+    src: "vms/saevm/cchain/genesis.go:CancunTime"
+  2935: {status: removed, note: "Prague not adopted", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  6110: {status: removed, note: "Prague not adopted; no beacon chain", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  7002: {status: removed, note: "Prague not adopted; no beacon chain", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  7251: {status: removed, note: "Prague not adopted; no beacon chain", src: "vms/saevm/cchain/genesis.go:CancunTime"}
   7702:
     status: removed
     note: >-
       NO EOA code delegation. Prague was never adopted, so tx type 0x04 does not
       exist. This is the single most consequential absence for wallets and
       account-abstraction tooling targeting the C-Chain.
-    src: "params/config_extra.go:SetEthUpgrades"
-  7823: {status: removed, note: Osaka not adopted, src: "params/config_extra.go:SetEthUpgrades"}
-  7883: {status: removed, note: Osaka not adopted, src: "params/config_extra.go:SetEthUpgrades"}
+    src: "vms/saevm/cchain/genesis.go:CancunTime"
+  7823: {status: removed, note: Osaka not adopted, src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  7883: {status: removed, note: Osaka not adopted, src: "vms/saevm/cchain/genesis.go:CancunTime"}
   7951:
     status: modified
     note: >-
@@ -100,13 +139,17 @@ eips:
       Osaka. Adopted OUT OF ORDER: the C-Chain has 0x0100 but does NOT have the
       BLS12-381 precompiles at 0x0b-0x11 that mainnet shipped two forks earlier.
       Fork-level inference from precompile presence fails here in both directions.
-    src: params/hooks_libevm.go:35,81-86
+    src: "graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite"
 
 non_eip_specs:
   - {id: ACP-176, name: dynamic fee / target gas excess, adoption: adopted,
-     src: "consensus/dummy/consensus.go:79"}
+     src: "vms/saevm/gastime/acp176.go:AfterBlock"}
   - {id: Avalanche Warp Messaging, name: cross-subnet messaging, adoption: adopted, fork: durango,
-     src: "precompile/contracts/warp/module.go:23"}
+     src: "graft/coreth/precompile/contracts/warp/contract.go:ContractAddress"}
+  - {id: ACP-194, name: streaming asynchronous execution, adoption: adopted, fork: helicon,
+     src: "node/node.go:saevm"}
+  - {id: ACP-283, name: dynamic minimum gas price, adoption: adopted, fork: helicon,
+     src: "vms/saevm/cchain/cparams/config.go:HeliconTimestamp"}
 
 tx_types:
   envelope:
@@ -125,30 +168,30 @@ tx_types:
     name: BlobTx
     status: removed
     note: "type exists in libevm but blocks with nonzero blob gas are rejected"
-    src: plugin/evm/wrapped_block.go:480-487
+    src: "vms/saevm/cchain/hooks.go:BlobGasUsed"
   "0x04":
     name: SetCodeTx
     status: removed
     note: "EIP-7702 not adopted — Prague absent"
-    src: "params/config_extra.go:SetEthUpgrades"
+    src: "vms/saevm/cchain/genesis.go:CancunTime"
 
 non_evm_transactions:
   # SCHEMA NOTE: these have no EIP-2718 type byte and are not RLP. New category.
   note: >-
     Atomic transactions move value between the C-Chain and Avalanche's X/P chains.
     They are UTXO-based, serialised with Avalanche's own codec (not RLP), and
-    registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) —
+    registered in a separate codec namespace (vms/saevm/cchain/tx/codec.go) —
     they live entirely OUTSIDE the EIP-2718 envelope while still being included in
     C-Chain blocks. No type byte can be assigned to them, which is why they cannot
     appear in tx_types.
   entries:
   - name: UnsignedImportTx
     status: added
-    src: plugin/evm/atomic/import_tx.go:48
+    src: "vms/saevm/cchain/tx/import.go:Import"
     fields: [NetworkID, BlockchainID, SourceChain, ImportedInputs, Outs]
   - name: UnsignedExportTx
     status: added
-    src: plugin/evm/atomic/export_tx.go:46
+    src: "vms/saevm/cchain/tx/export.go:Export"
     fields: [NetworkID, BlockchainID, DestinationChain, Ins, ExportedOutputs]
 
 tx_authorization:
@@ -181,10 +224,12 @@ tx_authorization:
       authorizes: protocol
       precompile: "0x01"
       note: >-
-        EVM path. The 0x01-0x11 implementations come from ava-labs/libevm, outside this
-        clone, which is why the citation is coreth's call site rather than the recovery
-        code.
-      src: "core/state_transition.go:TransactionToMessage"
+        EVM path. Sender recovery and the 0x01-0x11 implementations come from
+        ava-labs/libevm (d398bc4dbe41), a module dependency outside this clone. The
+        in-tree evidence is the SAE executor's call into libevm's state processing,
+        and the C-Chain hooks add no other signer.
+      src: "vms/saevm/saexec/execution.go:NewEVMBlockContext"
+      src_doc: "https://github.com/ava-labs/libevm/blob/d398bc4dbe41/core/state_transition.go"
     secp256k1_utxo_credential:
       status: added
       authorizes: protocol
@@ -206,12 +251,13 @@ tx_authorization:
         PRECOMPILE PAIRING, STATED CAREFULLY. This is NOT an `authorizes: protocol` +
         `precompile: none` finding. The scheme is secp256k1 ECDSA, and 0x01 verifies
         secp256k1 ECDSA, so a contract that reconstructs the digest can check these
-        signatures. The catch is the digest: it is a hash of Avalanche codec bytes
-        (hashing.ComputeHash256, in avalanchego and therefore outside this pinned
-        clone), not keccak256 of an RLP envelope, so the reconstruction is neither free
-        nor verified here. Recorded as 0x01 with that caveat rather than as `none`,
-        because claiming `none` would overstate what was established.
-      src: "plugin/evm/atomic/tx.go:Sign, plugin/evm/atomic/vm/tx_semantic_verifier.go:ExportTx, plugin/evm/atomic/vm/tx_semantic_verifier.go:ImportTx"
+        signatures. The catch is the digest: it is SHA-256 of the Avalanche-codec bytes
+        of the unsigned transaction. RecoverPublicKey hashes with
+        hashing.ComputeHash256 before recovering, which the avalanchego re-pin now
+        lets this row verify. It is not keccak256 of an RLP envelope, so a contract must
+        rebuild the codec bytes and SHA-256 them (0x02) before calling 0x01. Recorded as
+        0x01 with that caveat rather than as `none`.
+      src: "vms/saevm/cchain/tx/export.go:verifyCredentials, vms/saevm/cchain/tx/import.go:verifyCredentials, utils/crypto/secp256k1/secp256k1.go:RecoverPublicKey"
     secp256r1:
       status: inherited
       authorizes: never
@@ -220,7 +266,7 @@ tx_authorization:
         P256VERIFY, adopted at Granite out of Ethereum's fork order (see eips.7951). A
         tool for contracts; a P-256 key cannot authorize either kind of C-Chain
         transaction.
-      src: "params/hooks_libevm.go:P256VerifyAddress"
+      src: "graft/coreth/params/hooks_libevm.go:P256VerifyAddress"
     bls12_381:
       status: added
       authorizes: never
@@ -238,16 +284,16 @@ tx_authorization:
         the way it can with 0x01 — the address is listed as the pairing because it is
         where Warp BLS verification is reachable at all, not because it is a
         general-purpose BLS verifier.
-      src: "precompile/contracts/warp/config.go:VerifyPredicate, precompile/contracts/warp/module.go"
+      src: "graft/coreth/precompile/contracts/warp/config.go:VerifyPredicate, graft/coreth/precompile/contracts/warp/contract.go:ContractAddress"
 
 precompiles:
-  # verified: params/hooks_libevm.go:81-86 (PrecompiledContractsGranite = current)
+  # verified: graft/coreth/params/hooks_libevm.go:81-86 (PrecompiledContractsGranite = current)
   base_map:
     status: inherited
     present: "0x01-0x0a"
     p256verify: true
     src: >-
-      params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a resolved
+      graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite (base 0x01-0x0a resolved
       through the ava-labs/libevm dependency, not vendored in this tree)
     note: >-
       Cancun-level base: 0x01-0x0a present, MODEXP without the EIP-7823/7883 Osaka
@@ -257,31 +303,31 @@ precompiles:
     name: MODEXP
     status: modified
     note: "Cancun-level (eip2565 only) — no EIP-7823 bounds, no EIP-7883 repricing, because Osaka was never adopted"
-    src: "params/config_extra.go:SetEthUpgrades"
-  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+    src: "vms/saevm/cchain/genesis.go:CancunTime"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: "vms/saevm/cchain/genesis.go:CancunTime"}
   "0x0100000000000000000000000000000000000000":
     name: GenesisContract
     status: tombstoned
     note: "always reverts (nativeasset.DeprecatedContract → vm.ErrExecutionReverted)"
-    src: nativeasset/contract.go:25,167-171
+    src: graft/coreth/nativeasset/contract.go:25,167-171
   "0x0100000000000000000000000000000000000001":
     name: NativeAssetBalance
     status: tombstoned
     note: >-
       Live in Apricot Phase 2 and again in Phase 6; tombstoned at Banff. Now always
       reverts. Address is permanently burned — cannot be reused.
-    src: nativeasset/contract.go:26
+    src: graft/coreth/nativeasset/contract.go:26
   "0x0100000000000000000000000000000000000002":
     name: NativeAssetCall
     status: tombstoned
     note: "same lifecycle as NativeAssetBalance; always reverts since Banff"
-    src: nativeasset/contract.go:27
+    src: graft/coreth/nativeasset/contract.go:27
   "0x0200000000000000000000000000000000000005":
     name: Warp Messenger
     status: added
@@ -290,13 +336,13 @@ precompiles:
       Stateful precompile for Avalanche Warp Messaging. Uses block predicates
       (GetPredicateResults) — a mechanism with no mainnet analogue: results are
       computed outside normal EVM execution and read by the precompile.
-    src: precompile/contracts/warp/module.go:23
+    src: "graft/coreth/precompile/contracts/warp/contract.go:ContractAddress"
   "0x0100":
     name: P256VERIFY
     status: modified
     fork: granite
     note: "adopted at Granite, out of Ethereum fork order — see eips.7951"
-    src: "params/hooks_libevm.go:PrecompiledContractsGranite"
+    src: "graft/coreth/params/hooks_libevm.go:PrecompiledContractsGranite"
   note: >-
     Two distinct custom ranges: 0x0100..00-02 (legacy native-asset, all tombstoned)
     and 0x0200..05 (warp). Both are far from mainnet's 0x01-0x11, following the
@@ -315,8 +361,8 @@ opcodes:
     source: difficulty
     value: the constant 1
     chooser: >-
-      nobody — the dummy consensus engine writes `header.Difficulty = big.NewInt(1)`,
-      and `wrapped_block.go` rejects any block whose difficulty is not exactly 1
+      nobody — since Helicon the SAE builder writes `Difficulty: big.NewInt(1)` and a
+      block is verified by rebuilding it (before Helicon, coreth's dummy engine did the same)
     known_at: always
     note: >-
       COPIED FROM THE DIFFICULTY FIELD BY A libevm HOOK, NOT READ FROM ANY HEADER MIX.
@@ -325,11 +371,11 @@ opcodes:
       comment says why — "This allows using the same jump table as upstream": coreth
       wants stock geth's post-merge jump table, where 0x44 is `opRandom`, so it feeds
       the difficulty in through the `Random` slot rather than patch the instruction.
-      `DummyEngine` fixes the difficulty at 1 and `wrapped_block.go` rejects anything
-      else, so `block.prevrandao` and `block.difficulty` are both 1 forever.
+      The SAE VM kept the trick verbatim in its own libevm hook, and its builder fixes
+      the difficulty at 1, so `block.prevrandao` and `block.difficulty` are both 1
+      forever, across the Helicon switch.
     src: >-
-      core/evm.go:OverrideNewEVMArgs, consensus/dummy/consensus.go:234,
-      plugin/evm/wrapped_block.go:391
+      vms/saevm/cchain/libevm/vm/hooks.go:OverrideNewEVMArgs, vms/saevm/cchain/hooks.go:Difficulty
   added: []
   removed: []
   modified: []
@@ -340,16 +386,20 @@ opcodes:
 tx_lifecycle:
   ordered_then_invalid:
     verdict: unreachable
-    src: "miner/worker.go:commitTransactions, core/state_transition.go:preCheck"
+    src: "vms/saevm/sae/block_builder.go:pendingTxs, vms/saevm/worstcase/state.go:State"
     note: >-
-      The proposer executes each transaction as it appends it: an invalid one is popped out
+      SAME VERDICT, NEW MECHANISM SINCE HELICON. The SAE builder no longer executes a
+      transaction to include it: it applies each candidate to a worst-case balance and
+      nonce state designed so that everything included is valid when the execution
+      stream reaches it. The ordered-but-invalid state stays unreachable. Before
+      Helicon (Coreth): the proposer executes each transaction as it appends it: an invalid one is popped out
       of the candidate set and never reaches the block, so the ordered-but-invalid state is
       not reachable and the nonce is untouched. If one reached a proposed block anyway,
       `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
       against this row's own pinned client rather than assumed from the family.
   nonce_on_failure:
     verdict: preserved
-    src: "miner/worker.go:commitTransactions, core/state_transition.go:preCheck"
+    src: "vms/saevm/sae/block_builder.go:pendingTxs, vms/saevm/worstcase/state.go:State"
     note: >-
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
@@ -358,13 +408,19 @@ p2p:
   max_tx_bytes:
     verdict: 131072
     tier: policy
-    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    src_doc: "https://github.com/ava-labs/libevm/blob/d398bc4dbe41/core/txpool/legacypool/legacypool.go"
     note: >-
-      Unchanged from geth, and that is the only thing about this row's p2p that is.
+      The flat cap is libevm's geth value (4 * 32 KiB), at the libevm version avalanchego
+      v1.15.3 pins. It is no longer the binding rule. Since Helicon the gossip layer also
+      requires gasLimit >= ceil(size * blockGasLimit / TargetBlockBytes): at 80M gas and
+      1.75 MiB that is about 43.6 gas per byte, so a transaction heavy on calldata but light
+      on gas is refused far below 128 KiB. This keeps a full block inside one p2p message.
+      TargetBlockBytes is marked "NOT a consensus-breaking change", so this is builder and
+      mempool policy, not block validity.
   max_message_bytes:
     verdict: 2031616
     tier: transport
-    src: "plugin/evm/message/codec.go:maxMessageSize"
+    src: "graft/evm/message/codec.go:maxMessageSize"
     note: >-
       A FIFTH OF MAINNET'S. `2*units.MiB - 64*units.KiB` = 2,031,616 bytes, and the comment
       states the derivation: the 64 KiB is subtracted "to leave room for encoding overhead
@@ -373,24 +429,40 @@ p2p:
       `eth` protocol to carry it.
   transports:
     verdict: "AvalancheGo p2p"
-    src: "plugin/evm/message/codec.go:maxMessageSize"
+    src: "graft/evm/message/codec.go:maxMessageSize"
     note: >-
       NOT DEVP2P. The clone has no `eth/protocols` directory at all: the EVM runs as a VM
       plugin inside AvalancheGo, which speaks its own TLS/protobuf transport, and the VM
       reaches peers through AppRequest/AppGossip rather than an RLPx subprotocol.
       Transaction gossip is also a different MODEL, not just a different wire — it is
-      bloom-filter pull gossip (`plugin/evm/eth_gossiper.go`), where a peer advertises what it holds and others
+      bloom-filter pull gossip (SAE's `vms/saevm/txgossip`, coreth's `eth_gossiper.go` before it), where a peer advertises what it holds and others
       pull the gap, in place of mainnet's push-and-announce.
     stack:
       - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}
 
 block_metrics:
+  block_gas_limit:
+    verdict: ~
+    observed: 80000000
+    observed_at_block: 101206057
+    observed_at: 2026-11-23
+    mutability: adjustable
+    src_live: "eth_getBlockByNumber @ 101196057 and @ 101206057 -> gasLimit 0x4c4b400 (80,000,000) at both"
+    note: >-
+      ACP-176 sets the per-block limit at 20 times the gas target, and the target is
+      itself a validator-voted exponent (targetExponent in the header), so the limit can
+      move without a fork. The txgossip README gives 80M as the Helicon-launch figure.
   block_time:
     verdict: ~
-    mutability: config
+    observed: 964.2
+    observed_at_block: 101206057
+    observed_at: 2026-11-23
+    mutability: adjustable
+    src_live: "timestampMilliseconds @ 101196057 vs 101206057 -> 9641.6 s / 10000 blocks"
     note: >-
-      ~2s. Snowman++ paces proposals, so the interval is a consequence of the proposer
-      window rather than a configured target.
+      Under one second, not the ~2 s this row used to say. ACP-226's minimum block delay
+      (minDelayExcess in the header) is validator-voted and sets the floor; Snowman++
+      paces proposals above it.
 
 fee_model:
   metering: gas
@@ -398,26 +470,33 @@ fee_model:
   extra_components: []
   note: >-
     London is active (LondonBlock = 0 from Apricot Phase 3) so 1559-shaped fields
-    exist, but the base-fee update algorithm is Avalanche's own.
-  src: consensus/dummy/consensus.go:79
+    exist, but the base-fee update algorithm is Avalanche's own. FROM HELICON, A
+    TRANSACTION PAYS FOR AT LEAST HALF ITS GAS LIMIT (ACP-194's ceil(limit/2) floor),
+    so gas-limit padding is no longer refunded. The minimum price is ACP-283's dynamic
+    one, a validator-voted minPriceExponent carried in the header.
+  src: "vms/saevm/gastime/acp176.go:AfterBlock, graft/coreth/params/hooks_libevm.go:MinimumGasConsumption"
+  src_live: "eth_getTransactionReceipt @ 101206056 -> gas limit 250000, gasUsed 125000; @ 101206055 -> limit 300000, gasUsed 150000 (both exactly ceil(limit/2))"
 
 header_fields:
   added:
-    - {name: extDataHash, note: "commitment to the atomic (UTXO) transaction data — the header half of non_evm_transactions", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
-    - {name: extDataGasUsed, note: "gas attributed to atomic transactions, metered separately from gasUsed", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
-    - {name: blockGasCost, note: "ACP-176 block cost", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
-    - {name: timestampMilliseconds, note: "Granite; sub-second block times, so the second-resolution timestamp is no longer the full story", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
-    - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: "plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: extDataHash, note: "commitment to the atomic (UTXO) transaction data — the header half of non_evm_transactions", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: extDataGasUsed, note: "gas attributed to atomic transactions, metered separately from gasUsed — until Helicon; SAE writes 0 and counts atomic gas in gasUsed", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: blockGasCost, note: "ACP-176 block cost", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: timestampMilliseconds, note: "Granite; sub-second block times, so the second-resolution timestamp is no longer the full story", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra"}
+    - {name: targetExponent, note: "Helicon: validator-voted ACP-176 gas target, ramped block to block", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:TargetExponent", src_live: "eth_getBlockByNumber @ 95921105 -> targetExponent 0x2c5c860; absent @ 95921104"}
+    - {name: minPriceExponent, note: "Helicon: ACP-283 dynamic minimum gas price", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:MinPriceExponent"}
+    - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: "graft/coreth/plugin/evm/customtypes/header_ext.go:HeaderExtra"}
   removed: []
   modified:
-    - {name: blobGasUsed,   note: "must be 0", src: "plugin/evm/wrapped_block.go:480-483"}
-    - {name: excessBlobGas, note: "must be 0", src: "plugin/evm/wrapped_block.go:484-487"}
-    - {name: parentBeaconRoot, note: "must be the empty hash — no beacon chain", src: "plugin/evm/wrapped_block.go:478-479"}
+    - {name: blobGasUsed,   note: "must be 0", src: "vms/saevm/cchain/hooks.go:BlobGasUsed"}
+    - {name: excessBlobGas, note: "must be 0", src: "vms/saevm/cchain/hooks.go:ExcessBlobGas"}
+    - {name: parentBeaconRoot, note: "must be the empty hash — no beacon chain", src: "vms/saevm/cchain/hooks.go:ParentBeaconRoot"}
+    - {name: stateRoot, note: "FROM HELICON: the post-execution root of the last SETTLED block, not of this block", src: "vms/saevm/sae/block_builder.go:PostExecutionStateRoot"}
   note: >-
     Two things at once. Cancun's header shape is adopted for compatibility, then
     every Cancun-specific field is constrained to a constant — structurally
-    conformant, semantically empty. AND coreth RLP-appends five fields of its own
-    (HeaderExtra), so they are inside the block hash: an Ethereum header decoder
+    conformant, semantically empty. AND the VM RLP-appends fields of its own
+    (HeaderExtra, seven since Helicon), so they are inside the block hash: an Ethereum header decoder
     does not round-trip an Avalanche header. This row recorded `added: []` until the
     `flare` row — a different client, the same coreth — observed all five live and
     contradicted it. Corrected against this row's own pinned clone.

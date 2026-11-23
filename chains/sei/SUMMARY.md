@@ -1,14 +1,20 @@
 # Sei
 
-**Client:** `sei-protocol/sei-chain` `v6.7.2` (`02df238d`), Go
-**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-20` (`092edae5`) — the EVM itself
+**Client:** `sei-protocol/sei-chain` `v6.7.5` (`6c31ae62`), Go
+**Companion:** `sei-protocol/go-ethereum` `v1.15.7-sei-20-hf` (`a0ea6434`) — the EVM itself
 **Chain ID:** 1329 (`pacific-1`) · **Baseline:** Prague · **Live probes:** block `226969278`
 
 Sei is a Cosmos-SDK chain whose EVM interpreter is a maintained fork of go-ethereum.
 The interpreter tracks upstream; nothing around it does. `role: fork` describes only
 the part of Sei that descends from geth by code.
 
-**One clone covers almost everything.** As of `v6.7.2` the forked SDK and the forked
+**v6.8 is scheduled, not active.** It is a mandatory upgrade at block 245131382 (proposal
+#130, target 2026-11-24 16:30 UTC). The oracle (`0x1008`), IBC (`0x1009`) and pointer
+(`0x100b`) precompiles become revert-only. Precompile versioning ends, so historical
+calls and traces need a v6.7 node. The oracle, tokenfactory and vesting modules go, and
+wasmd's `execute_batch` is disabled. This row stays on v6.7.5 until the height passes.
+
+**One clone covers almost everything.** As of `v6.7.2` (still true at `v6.7.5`) the forked SDK and the forked
 consensus engine are no longer separate Go modules: `sei-cosmos/`, `sei-tendermint/`,
 `sei-db/`, `sei-ibc-go/` and `sei-wasmd/` are directories *inside* the `sei-chain`
 module, imported as `github.com/sei-protocol/sei-chain/sei-tendermint/...`. `go.mod`
@@ -466,9 +472,9 @@ are called out rather than guessed:
 
 ```bash
 # 1. Re-fetch the pinned evidence (both repos)
-git clone --depth 1 --branch v6.7.2 \
+git clone --depth 1 --branch v6.7.5 \
   https://github.com/sei-protocol/sei-chain chains/sei/repos/sei-chain
-git -C chains/sei/repos/sei-chain rev-parse HEAD   # 02df238d64de1e0ffd9e941f520c202c02f6b0f6
+git -C chains/sei/repos/sei-chain rev-parse HEAD   # 6c31ae622210480652121c4b59aed1ac5826b255
 
 git clone --depth 1 --branch v1.15.7-sei-17 \
   https://github.com/sei-protocol/go-ethereum chains/sei/repos/go-ethereum

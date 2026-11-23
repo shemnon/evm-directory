@@ -81,7 +81,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Plasma](chains/plasma/SUMMARY.md) | reth (upstream, unmodified) | `v1.11.3` | prague |
 | [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.11.2` | prague |
 | [Rootstock (RSK)](chains/rootstock/SUMMARY.md) | rskj | `VETIVER-9.0.4` | petersburg |
-| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.7.2` | prague |
+| [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.7.5` | prague |
 | [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.6` | prague |
 | [Taraxa](chains/taraxa/SUMMARY.md) *(no reachable RPC)* | taraxa-node | `v1.14.1` | constantinople |
 | [Tempo](chains/tempo/SUMMARY.md) | tempo (reth-based execution + Simplex consensus) | `v1.16.1` | osaka |

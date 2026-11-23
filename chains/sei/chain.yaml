@@ -27,8 +27,8 @@ lineage:
 client:
   name: sei-chain
   repo: https://github.com/sei-protocol/sei-chain
-  version: v6.7.2
-  commit: 02df238d64de1e0ffd9e941f520c202c02f6b0f6
+  version: v6.7.5
+  commit: 6c31ae622210480652121c4b59aed1ac5826b255
   language: go
   note: >-
     sei-chain holds the Cosmos modules, the custom precompiles and the whole
@@ -44,7 +44,7 @@ client:
     mempool all cite into this clone.
   companion_repos:
   - {name: go-ethereum, repo: "https://github.com/sei-protocol/go-ethereum",
-     version: v1.15.7-sei-20, commit: 092edae5f1f57724d6bb52d8723f7903a6db2574,
+     version: v1.15.7-sei-20-hf, commit: a0ea64345d3e06af3e5ff7e5c7e5876858863358,
      pinned_by: {how: manifest, path: "go.mod"},
      provides: "the EVM interpreter, precompile base set, gas table and params.ChainConfig"}
 
@@ -209,6 +209,27 @@ forks:
       `sei_*` and `sei2_*` JSON-RPC namespaces were removed except `sei_getSeiAddress`,
       `sei_getEVMAddress` and `sei_getCosmosTx`.
     src: "precompiles/setup.go:GetCustomPrecompiles, app/retiredibc/query.go:QueryResponse"
+  - name: "v6.8"
+    status: pending
+    activation_condition: "block 245131382 (governance proposal #130; target 2026-11-24 16:30 UTC)"
+    mainnet_equivalent: null
+    note: >-
+      SCHEDULED, NOT YET ACTIVE: head 245,009,017 at this re-pin, 122,365 blocks short.
+      The second Sei upgrade on this timeline and a large one: about 65,000 lines are
+      deleted under precompiles/ alone. Recorded from the public v6.8.0 tag and release
+      notes. Its effects wait for the height, as bnb/Pasteur's did, so every other fact
+      on this row is still read from v6.7.5. At the height: (1) THREE PRECOMPILES
+      BECOME REVERT-ONLY — oracle 0x1008, ibc 0x1009 and pointer 0x100b. Each keeps its
+      address and ABI and returns a fixed revert reason. (2) Precompile VERSIONING ENDS:
+      GetCustomPrecompiles builds one current set, with no per-upgrade version map, so
+      historical eth_call and debug_trace before the height need a v6.7 node. (3) The
+      oracle, tokenfactory and vesting modules are removed, and the retired feegrant and
+      IBC stores are deleted. (4) wasmd execute_batch is disabled, and governance can stop
+      CosmWasm execution (msgExecuteContractDisabled, contractExecutionDisabled, both
+      false). (5) Off by default on nodes, not consensus: ABCI /store state proofs, and
+      the Cosmos gRPC servers are removed. Re-pin to v6.8.0 once the height passes.
+    src_doc: "https://github.com/sei-protocol/sei-chain/releases/tag/v6.8.0"
+    src_live: "eth_blockNumber @ 245009017 -> 245009017, below the plan height 245131382"
   - {name: osaka, mainnet_equivalent: osaka, status: pending,
      note: "no OsakaTime field exists in Sei's ChainConfig; not schedulable without a client release"}
 
@@ -475,7 +496,7 @@ tx_authorization:
     outbound IBC on 2026-07-31. The third — the one that ends sr25519, secp256r1 and
     multisig authorization here — has no published proposal number, height or date.
     Sei's migration guide describes it only as a coming "SIP-03 upgrade". At the
-    pinned v6.7.2, and still at v6.8.0, every Cosmos-surface citation below resolves,
+    pinned v6.7.5 (and v6.7.2 before it), and still at v6.8.0, every Cosmos-surface citation below resolves,
     so the schemes stay `authorizes: protocol`. When a public tag removes the ante
     path, the sr25519, secp256r1 and multisig entries leave this section, the row
     leaves the `unpaired-schemes` finding, and the EVM surface's secp256k1 becomes
@@ -580,6 +601,8 @@ precompiles:
     name: wasmd
     status: added
     note: >-
+      FROM v6.8 (block 245131382, pending) execute_batch is disabled ("wasmd execute_batch
+      is disabled"), and governance gains params to stop CosmWasm execution entirely.
       instantiate/execute/query CosmWasm contracts from EVM bytecode. A CALL to
       this address can re-enter the EVM through a CosmWasm contract, which is
       how the synthetic 0xffffffff receipts arise.
@@ -619,7 +642,11 @@ precompiles:
   "0x0000000000000000000000000000000000001008":
     name: oracle
     status: added
-    note: "reads the validator-voted price feed from Sei's native oracle module"
+    note: >-
+      reads the validator-voted price feed from Sei's native oracle module. SCHEDULED TO
+      BECOME REVERT-ONLY AT v6.8 (block 245131382, pending): the v6.8.0 tree replaces it
+      with a retired executor that keeps the address and ABI and reverts with a fixed
+      reason. See forks.timeline v6.8.
     src: "precompiles/oracle/oracle.go:OracleAddress, precompiles/setup.go:GetCustomPrecompiles"
   "0x0000000000000000000000000000000000001009":
     name: ibc
@@ -633,7 +660,9 @@ precompiles:
       yet `ibc.IBCAddress` is still registered in `GetCustomPrecompiles`, so the address
       is still a precompile rather than an empty account. Recorded as still `added` on
       that basis; what it can actually do post-retirement is not established from source
-      alone.
+      alone. v6.8 SETTLES IT, FROM THE HEIGHT: the v6.8.0 tree replaces it with a retired
+      executor that reverts with "ibc precompile is retired; IBC transfers are disabled"
+      (block 245131382, pending).
     src: "precompiles/ibc/ibc.go:IBCAddress, precompiles/setup.go:GetCustomPrecompiles"
   "0x000000000000000000000000000000000000100a":
     name: pointerview
@@ -643,7 +672,11 @@ precompiles:
   "0x000000000000000000000000000000000000100b":
     name: pointer
     status: added
-    note: "deploys ERC-20/721/1155 pointer contracts for native denoms and CW contracts"
+    note: >-
+      deploys ERC-20/721/1155 pointer contracts for native denoms and CW contracts.
+      SCHEDULED TO BECOME REVERT-ONLY AT v6.8 (block 245131382, pending): the v6.8.0 tree
+      replaces it with a retired executor that keeps the address and ABI and reverts with a
+      fixed reason. See forks.timeline v6.8.
     src: "precompiles/pointer/pointer.go:PointerAddress, precompiles/setup.go:GetCustomPrecompiles"
   "0x000000000000000000000000000000000000100c":
     name: solo

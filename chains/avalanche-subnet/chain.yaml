@@ -24,11 +24,17 @@ lineage:
     address range — but their precompile sets differ, so they are separate rows.
 
 client:
-  name: subnet-evm
-  repo: https://github.com/ava-labs/subnet-evm
-  version: v0.8.0
-  commit: 44b20d219471a0e08bd163b7466e3d8620ff45f2
+  name: subnet-evm (avalanchego graft/subnet-evm)
+  repo: https://github.com/ava-labs/avalanchego
+  version: v1.15.3
+  commit: 983815fd993acf846a27749b598f0fea4d876a75
   language: go
+  note: >-
+    RE-PINNED FROM ava-labs/subnet-evm, WHICH WAS ARCHIVED ON 2025-11-25. subnet-evm now
+    lives in avalanchego as graft/subnet-evm and is versioned with it. The last
+    subnet-evm-repo pin was v0.8.0 @ 44b20d21. The same tag as avalanche-c, but its own
+    clone and not `shared_with`: the two VMs are siblings, and shared_with would draw
+    this row as a code descendant of the C-Chain.
 
 consensus:
   engine: Snowman++ (per-L1 validator set)
@@ -36,7 +42,7 @@ consensus:
 baseline_fork: cancun
 
 forks:
-  src: params/extras/network_upgrades.go, params/config_extra.go:75-82
+  src: graft/subnet-evm/params/extras/network_upgrades.go, graft/subnet-evm/params/config_extra.go:75-82
   note: >-
     Same mapping as the C-Chain: ShanghaiTime = durango, CancunTime = etna, and NO
     PragueTime or OsakaTime. Cancun-equivalent.
@@ -46,20 +52,22 @@ forks:
   - {name: etna,    mainnet_equivalent: cancun,   enforced: "CancunTime = etna"}
   - {name: fortuna, mainnet_equivalent: null}
   - {name: granite, mainnet_equivalent: null, note: "added P256VERIFY at 0x0100"}
+  - {name: helicon, mainnet_equivalent: null, note: "declared for completeness and gates nothing here. The source says it 'has no effect on Subnet-EVM by itself': subnet-evm L1s stay on synchronous execution, unlike the C-Chain, which moved to SAE at Helicon", src: "graft/subnet-evm/params/extras/network_upgrades.go:HeliconTimestamp"}
+  - {name: igloo, status: pending, mainnet_equivalent: null, note: "'our next upcoming upgrade' per the source; nothing is gated on IsIgloo at v1.15.3", src: "graft/subnet-evm/params/extras/network_upgrades.go:IsIgloo"}
 
 eips:
-  2537: {status: removed, note: "no Prague — BLS12-381 0x0b-0x11 unavailable", src: "params/config_extra.go:SetEthUpgrades"}
-  7702: {status: removed, note: "no Prague — tx type 0x04 does not exist", src: "params/config_extra.go:SetEthUpgrades"}
+  2537: {status: removed, note: "no Prague — BLS12-381 0x0b-0x11 unavailable", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  7702: {status: removed, note: "no Prague — tx type 0x04 does not exist", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
   4844: {status: removed, note: "no blob market on subnets",
-         src: "plugin/evm/wrapped_block.go:errBlobsNotEnabled"}
+         src: "graft/subnet-evm/plugin/evm/wrapped_block.go:errBlobsNotEnabled"}
   7951:
     status: modified
     note: "P256VERIFY at 0x0100 via Granite, not Osaka — same out-of-order adoption as the C-Chain"
-    src: params/hooks_libevm.go:35,68-70
+    src: "graft/subnet-evm/params/hooks_libevm.go:P256VerifyAddress, graft/subnet-evm/params/hooks_libevm.go:PrecompiledContractsGranite"
 
 non_eip_specs:
   - {id: Avalanche Warp Messaging, name: cross-L1 messaging, adoption: optional,
-     src: "precompile/contracts/warp/module.go:23"}
+     src: "graft/subnet-evm/precompile/contracts/warp/module.go:23"}
 
 tx_types:
   envelope:
@@ -70,7 +78,7 @@ tx_types:
       The EIP-2718 envelope this chain accepts in mainnet shape; no blob transactions
       (EIP-4844), no EIP-7702 set-code transactions. Derived from the eips map
       (2930/1559/4844/7702); per-type divergences and their evidence are on the rows below.
-  "0x04": {name: SetCodeTx, status: removed, note: "EIP-7702 not adopted", src: "params/config_extra.go:SetEthUpgrades"}
+  "0x04": {name: SetCodeTx, status: removed, note: "EIP-7702 not adopted", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
   note: "0x00-0x03 from libevm; no subnet-specific envelope types"
 
 tx_authorization:
@@ -105,7 +113,7 @@ tx_authorization:
         the citation is subnet-evm's call site. A deployment with TxAllowList enabled
         additionally requires the recovered sender to be allowlisted — a filter applied
         AFTER recovery, in the same place a nonce or balance check happens.
-      src: "core/state_transition.go:TransactionToMessage, core/state_transition.go:ErrSenderAddressNotAllowListed"
+      src: "graft/subnet-evm/core/state_transition.go:TransactionToMessage, graft/subnet-evm/core/state_transition.go:ErrSenderAddressNotAllowListed"
     secp256r1:
       status: inherited
       authorizes: never
@@ -114,7 +122,7 @@ tx_authorization:
         P256VERIFY, present from Granite for every deployment (it is a fork feature, not
         one of the opt-in 0x0200.. precompiles). A tool for contracts; a P-256 key
         cannot authorize a transaction on any subnet-evm chain.
-      src: "params/hooks_libevm.go:P256VerifyAddress"
+      src: "graft/subnet-evm/params/hooks_libevm.go:P256VerifyAddress"
     bls12_381:
       status: added
       authorizes: never
@@ -129,7 +137,7 @@ tx_authorization:
         predicate evaluated outside EVM execution, and the precompile only reads the
         result — so this is not a general-purpose BLS verifier a contract can point at
         arbitrary signatures.
-      src: "precompile/contracts/warp/config.go:VerifyPredicate, precompile/contracts/warp/module.go"
+      src: "graft/subnet-evm/precompile/contracts/warp/config.go:VerifyPredicate, graft/subnet-evm/precompile/contracts/warp/module.go"
 
 precompiles:
   # verified: precompile/contracts/*/module.go — ALL OPT-IN via genesis config key
@@ -138,7 +146,7 @@ precompiles:
     present: "0x01-0x0a"
     p256verify: true
     src: >-
-      params/config_extra.go:SetEthUpgrades (base 0x01-0x0a resolved through the
+      graft/subnet-evm/params/config_extra.go:SetEthUpgrades (base 0x01-0x0a resolved through the
       ava-labs/libevm dependency, not vendored in this tree)
     note: >-
       Same Cancun-level base as Avalanche C-Chain: 0x01-0x0a present, no BLS12-381,
@@ -148,20 +156,20 @@ precompiles:
     name: MODEXP
     status: modified
     note: "Cancun-level (eip2565 only) — no EIP-7823 bounds, no EIP-7883 repricing, because Osaka was never adopted"
-    src: "params/config_extra.go:SetEthUpgrades"
-  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
-  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: "params/config_extra.go:SetEthUpgrades"}
+    src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"
+  "0x0b": {name: BLS12_G1ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x0c": {name: BLS12_G1MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x0d": {name: BLS12_G2ADD, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x0e": {name: BLS12_G2MSM, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x0f": {name: BLS12_PAIRING, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x10": {name: BLS12_MAP_FP_TO_G1, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
+  "0x11": {name: BLS12_MAP_FP2_TO_G2, status: removed, note: "EIP-2537 absent — no Prague", src: "graft/subnet-evm/params/config_extra.go:SetEthUpgrades"}
   "0x0200000000000000000000000000000000000000":
     name: ContractDeployerAllowList
     status: added
     availability: optional
     activation_condition: \'genesis key "contractDeployerAllowListConfig"\'
-    src: precompile/contracts/deployerallowlist/module.go:22
+    src: graft/subnet-evm/precompile/contracts/deployerallowlist/module.go:22
     note: >-
       Gates CREATE/CREATE2 on an on-chain allowlist keyed by tx.ORIGIN (not
       msg.sender). Unauthorised deploys fail with gas set to 0.
@@ -170,7 +178,7 @@ precompiles:
     status: added
     availability: optional
     activation_condition: \'genesis key "contractNativeMinterConfig"\'
-    src: precompile/contracts/nativeminter/module.go:24
+    src: graft/subnet-evm/precompile/contracts/nativeminter/module.go:24
     note: >-
       Allowlisted callers mint native coin directly via stateDB.AddBalance
       (contract.go:125). Native token supply is mutable by permissioned accounts —
@@ -180,34 +188,55 @@ precompiles:
     status: added
     availability: optional
     activation_condition: \'genesis key "txAllowListConfig"\'
-    src: precompile/contracts/txallowlist/module.go:22
-    note: "gates transaction submission on msg.From, enforced in core/state_transition.go:361"
+    src: graft/subnet-evm/precompile/contracts/txallowlist/module.go:22
+    note: "gates transaction submission on msg.From, enforced in graft/subnet-evm/core/state_transition.go:255 (GetTxAllowListStatus)"
   "0x0200000000000000000000000000000000000003":
     name: FeeManager
     status: added
     availability: optional
     activation_condition: \'genesis key "feeManagerConfig"\'
-    src: precompile/contracts/feemanager/module.go:22
+    src: graft/subnet-evm/precompile/contracts/feemanager/module.go:22
     note: "allowlisted callers rewrite the chain's fee config at runtime"
   "0x0200000000000000000000000000000000000004":
     name: RewardManager
     status: added
     availability: optional
     activation_condition: \'genesis key "rewardManagerConfig"\'
-    src: precompile/contracts/rewardmanager/module.go:22
+    src: graft/subnet-evm/precompile/contracts/rewardmanager/module.go:22
     note: "redirects or burns block fee rewards"
   "0x0200000000000000000000000000000000000005":
     name: Warp Messenger
     status: added
     availability: optional
     activation_condition: genesis key
-    src: precompile/contracts/warp/module.go:23
+    src: graft/subnet-evm/precompile/contracts/warp/module.go:23
     note: "same address as the C-Chain's warp precompile"
+  "0x0200000000000000000000000000000000000006":
+    name: GasPriceManager
+    status: added
+    availability: optional
+    activation_condition: \'genesis or upgrade key "gasPriceManagerConfig"\'
+    src: "graft/subnet-evm/precompile/contracts/gaspricemanager/module.go:ContractAddress, graft/subnet-evm/precompile/contracts/gaspricemanager/IGasPriceManager.sol"
+    note: >-
+      NEW SINCE subnet-evm v0.8.0 (v0.8.0 had six precompile directories and no
+      gaspricemanager). An allowlisted caller rewrites the dynamic gas-PRICE mechanism
+      at runtime: target gas per second, a minimum gas price, a static-pricing switch
+      that pins the price to that minimum, the price-doubling time, and whether
+      validators may set the target from node preferences. FeeManager (0x..03)
+      rewrites the fee config; this rewrites the pricing curve itself. Opt-in like
+      every 0x0200.. address, so present only on L1s whose genesis or upgrade config
+      names it. The last change is exposed on-chain via getGasPriceConfigLastChangedAt.
+
+      INERT AT v1.15.3. The precompile is registered and callable and it stores its
+      config, but no fee, header or block-building code outside its own package reads
+      that config (the only reference is precompile/registry). Setting it changes
+      nothing about pricing yet, so a deployment that enables it gets a working
+      allowlist and an ineffective control.
   "0x0100":
     name: P256VERIFY
     status: modified
     fork: granite
-    src: params/hooks_libevm.go:68-70
+    src: "graft/subnet-evm/params/hooks_libevm.go:P256VerifyAddress"
   note: >-
     Contiguous 0x0200..00-05. The C-Chain's tombstoned 0x0100..00-02 native-asset
     precompiles do NOT exist here — subnet-evm never carried that legacy, so it has
@@ -229,7 +258,7 @@ opcodes:
       upstream merge jump table can be used unmodified while 0x44 reports a constant.
       A subnet that wants real randomness has to reach a precompile for it; the opcode
       will never carry any.
-    src: core/evm.go:OverrideNewEVMArgs
+    src: graft/subnet-evm/core/evm.go:OverrideNewEVMArgs
   added: []
   removed: []
   modified: []
@@ -241,7 +270,7 @@ opcodes:
 tx_lifecycle:
   ordered_then_invalid:
     verdict: unreachable
-    src: "miner/worker.go:commitTransactions, core/state_transition.go:preCheck"
+    src: "graft/subnet-evm/miner/worker.go:commitTransactions, graft/subnet-evm/core/state_transition.go:preCheck"
     note: >-
       The proposer executes each transaction as it appends it: an invalid one is popped out
       of the candidate set and never reaches the block, so the ordered-but-invalid state is
@@ -250,7 +279,7 @@ tx_lifecycle:
       against this row's own pinned client rather than assumed from the family.
   nonce_on_failure:
     verdict: preserved
-    src: "miner/worker.go:commitTransactions, core/state_transition.go:preCheck"
+    src: "graft/subnet-evm/miner/worker.go:commitTransactions, graft/subnet-evm/core/state_transition.go:preCheck"
     note: >-
       Preserved. Nothing is committed for a transaction the builder rejected, so the account
       nonce is untouched and the sender resubmits at the same nonce.
@@ -259,13 +288,13 @@ p2p:
   max_tx_bytes:
     verdict: 131072
     tier: policy
-    src: "core/txpool/legacypool/legacypool.go:txMaxSize"
+    src: "graft/subnet-evm/core/txpool/legacypool/legacypool.go:txMaxSize"
     note: >-
       Unchanged from geth, and that is the only thing about this row's p2p that is.
   max_message_bytes:
     verdict: 2031616
     tier: transport
-    src: "plugin/evm/message/codec.go:maxMessageSize"
+    src: "graft/evm/message/codec.go:maxMessageSize"
     note: >-
       A FIFTH OF MAINNET'S. `2*units.MiB - 64*units.KiB` = 2,031,616 bytes, and the comment
       states the derivation: the 64 KiB is subtracted "to leave room for encoding overhead
@@ -274,13 +303,13 @@ p2p:
       `eth` protocol to carry it.
   transports:
     verdict: "AvalancheGo p2p"
-    src: "plugin/evm/message/codec.go:maxMessageSize"
+    src: "graft/evm/message/codec.go:maxMessageSize"
     note: >-
       NOT DEVP2P. The clone has no `eth/protocols` directory at all: the EVM runs as a VM
       plugin inside AvalancheGo, which speaks its own TLS/protobuf transport, and the VM
       reaches peers through AppRequest/AppGossip rather than an RLPx subprotocol.
       Transaction gossip is also a different MODEL, not just a different wire — it is
-      bloom-filter pull gossip (`plugin/evm/eth_gossiper.go`), where a peer advertises what it holds and others
+      bloom-filter pull gossip (`graft/subnet-evm/plugin/evm/eth_gossiper.go`), where a peer advertises what it holds and others
       pull the gap, in place of mainnet's push-and-announce.
     stack:
       - {layer: execution, protocol: AvalancheGo p2p, purpose: AppGossip tx + block exchange}

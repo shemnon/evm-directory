@@ -2,7 +2,15 @@
 
 **No fixed chain ID · role: `fork` · sibling of coreth · baseline: Cancun**
 
-Reference: [ava-labs/subnet-evm `v0.8.0`](https://github.com/ava-labs/subnet-evm) @ `44b20d21`.
+Reference: [ava-labs/avalanchego `v1.15.3`](https://github.com/ava-labs/avalanchego) @ `983815fd`,
+subtree `graft/subnet-evm`. Re-pinned on 2026-11-23 from `ava-labs/subnet-evm` v0.8.0, which was
+archived on 2025-11-25 when subnet-evm moved into avalanchego.
+
+**Helicon left subnet-evm alone.** The source says Helicon "has no effect on Subnet-EVM by
+itself", so subnet-evm L1s keep synchronous execution, while the C-Chain moved to SAE at
+Helicon. One new opt-in precompile, **GasPriceManager** at `0x0200…06`, lets an allowlisted
+caller set the gas-pricing curve. At v1.15.3 nothing reads its config yet, so enabling it
+has no effect on pricing.
 
 ## The central caveat
 
@@ -20,7 +28,7 @@ This is subnet-evm's sharpest divergence from every other chain in the dataset, 
 it isn't a precompile or an opcode — it's a pair of hooks that change whether
 operations **succeed**:
 
-- **`CanCreateContract`** (`params/hooks_libevm.go:44-56`) — with
+- **`CanCreateContract`** (`graft/subnet-evm/params/hooks_libevm.go:CanCreateContract`) — with
   `ContractDeployerAllowList` enabled, `CREATE`/`CREATE2` fail for unauthorised
   callers, gas zeroed. Permission is keyed on **`tx.origin`**, not `msg.sender`, so
   a factory contract's ability to deploy depends on who *initiated* the transaction.
@@ -96,10 +104,10 @@ Two absences worth stating explicitly, because the sibling row has both:
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v0.8.0 https://github.com/ava-labs/subnet-evm
-grep -rn "ContractAddress = common.HexToAddress" precompile/contracts/*/module.go
-sed -n '44,62p' params/hooks_libevm.go               # CanCreateContract allowlist
-sed -n '358,366p' core/state_transition.go           # TxAllowList
-sed -n '120,128p' precompile/contracts/nativeminter/contract.go   # native mint
-sed -n '73,84p' params/config_extra.go               # Shanghai=Durango, Cancun=Etna
+git clone --depth 1 --branch v1.15.3 https://github.com/ava-labs/avalanchego && cd avalanchego/graft/subnet-evm
+grep -rn "ContractAddress = common.HexToAddress" precompile/contracts/*/module.go   # eight, incl. 0x..06
+grep -n "func (r RulesExtra) CanCreateContract" -A18 params/hooks_libevm.go         # deployer allowlist
+grep -n "ShanghaiTime\|CancunTime" params/config_extra.go                           # Shanghai=Durango, Cancun=Etna
+grep -n "Helicon has no effect" params/extras/network_upgrades.go                    # stays synchronous
+grep -rln "gaspricemanager" --include=*.go . | grep -v _test                         # registry only: inert
 ```

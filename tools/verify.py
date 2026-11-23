@@ -329,11 +329,13 @@ def ex_avalanche_c():
     return Found({x for x in a if x > 0xff or x in MAINNET_STD}, dead)
 
 def ex_avalanche_subnet():
-    s = text("avalanche-subnet", "params/hooks_libevm.go")
+    # avalanchego since the 2026-11-23 re-pin: subnet-evm is the graft/subnet-evm subtree.
+    g = "graft/subnet-evm/"
+    s = text("avalanche-subnet", g + "params/hooks_libevm.go")
     a = resolve(block(s, "var PrecompiledContractsGranite = "), consts(s))
     p = repo("avalanche-subnet")
     if p:
-        for m in (p / "precompile" / "contracts").glob("*/module.go"):
+        for m in (p / "graft" / "subnet-evm" / "precompile" / "contracts").glob("*/module.go"):
             a |= go_addrs(m.read_text())
     return a
 def ex_tron():

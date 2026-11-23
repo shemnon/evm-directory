@@ -889,7 +889,8 @@ def ex_polygon_zkevm():
 def ex_flare():
     """coreth, vendored under avalanchego/graft. Same shape as avalanche-c: the Granite
     map holds P256VERIFY and the three burned native-asset addresses as
-    `DeprecatedContract`, Warp registers itself, and the base comes from libevm."""
+    `DeprecatedContract`, Warp and (from Helicon) the P-chain gateway register
+    themselves as modules, and the base comes from libevm."""
     p = "avalanchego/graft/coreth/"
     s, na = text("flare", p + "params/hooks_libevm.go"), text("flare", p + "nativeasset/contract.go")
     names = consts(s) | consts(na)
@@ -898,8 +899,14 @@ def ex_flare():
     warp = re.search(r'ContractAddress = common\.HexToAddress\("(0x[0-9a-fA-F]+)"\)',
                      text("flare", p + "precompile/contracts/warp/module.go"))
     if not warp: raise ExtractError("flare: no Warp address")
+    # The P-chain gateway is a module precompile like Warp, scheduled by vm.go whenever
+    # HeliconTimestamp is set. It is never in the static Granite map, so reading only
+    # that map passed with the gateway undeclared.
+    pcg = re.search(r'ContractAddress = common\.HexToAddress\("(0x[0-9a-fA-F]+)"\)',
+                    text("flare", p + "precompile/contracts/pchaingateway/module.go"))
+    if not pcg: raise ExtractError("flare: no P-chain gateway address")
     entries = go_named_entries(g, names)
-    return Found(set(entries) | {int(warp.group(1), 16)},
+    return Found(set(entries) | {int(warp.group(1), 16), int(pcg.group(1), 16)},
                  {a for a, t in entries.items() if t == "DeprecatedContract"})
 
 def ex_cosmos_evm():

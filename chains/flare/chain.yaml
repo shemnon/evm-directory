@@ -17,7 +17,7 @@ lineage:
     go-flare is a MONOREPO fork of BOTH halves of an Avalanche node: avalanchego
     (consensus, P/X chains, genesis) and coreth (the C-Chain EVM) live side by side
     in one tree and are versioned together. Its own README pins the bases:
-    "a modified version of avalanchego@v1.14.2". Coreth is no longer a separate tree: at
+    "a modified version of avalanchego@v1.15.1". Coreth is no longer a separate tree: at
     this tag it is grafted under avalanchego/graft/coreth.
 
     Read chains/avalanche-c/chain.yaml first: everything that row establishes about
@@ -31,7 +31,7 @@ lineage:
     upstream: daemon.go, state_connector.go, governance_settings.go,
     state_transition_params.go.
   sync_point: >-
-    avalanchego v1.14.2 with coreth grafted into it, but the FORK CLOCK is what matters
+    avalanchego v1.15.1 with coreth grafted into it, and since Helicon an SAE C-chain VM beside it, but the FORK CLOCK is what matters
     here, not the code version. Flare runs the same coreth generation as the
     C-Chain and reaches every Avalanche upgrade roughly a year late: Durango
     2024-03-06 on Avalanche vs 2025-08-05 on Flare (17 months), Etna 2024-12-16 vs
@@ -43,15 +43,18 @@ lineage:
 client:
   name: go-flare
   repo: https://github.com/flare-foundation/go-flare
-  version: v1.14.2
-  commit: d2e8e830befdd6a821fe7faeb5fdee3d71953919
+  version: v1.15.1
+  commit: 9eacc2d2ad452489f8e9bfaf10af62553b9cdae2
   language: go
   note: >-
     One repo, two vendored trees. EVM facts cite `avalanchego/graft/coreth/...`; fork schedule and
     genesis allocation cite `avalanchego/...`. Mainnet's web3_clientVersion still answers v0.15.4,
-    a string from the old `coreth/plugin/evm/version.go` that no longer appears in this tag's
-    Go source, so the client version reported over RPC does not identify the release.
-    src_live: "web3_clientVersion @ 68124744 -> v0.15.4 (this row pins v1.14.2)"
+    a string from the old `coreth/plugin/evm/version.go`, until Helicon. Since the SAE VM took
+    over it reports the node: `avalanchego/1.15.1 ... commit=98082dc8`, the ORIGINAL v1.15.1
+    build of 2026-11-10. The tag was later moved two commits ahead to 9eacc2d2 to fix a
+    Songbird/Coston-only Helicon bug, so the pin and the answer differ while running the same
+    Flare consensus code.
+    src_live: "web3_clientVersion @ 68124744 -> v0.15.4 (pre-Helicon); @ 75237107 -> avalanchego/1.15.1 [database=v1.4.5, rpcchainvm=46, commit=98082dc8f02a7cbe0fba271600605b9af93d85df]"
 
 live_probe:
   endpoint: https://flare-api.flare.network/ext/C/rpc
@@ -102,6 +105,30 @@ forks:
       the block: 0x0100 returns empty at 65060227 (timestamp 1784030399) and the
       correct 32-byte 1 at 65060228 (timestamp 1784030400).
     src_live: "eth_call 0x0100 @ 65060227 -> 0x ; @ 65060228 -> 0x..01"
+  - name: helicon
+    activation_time: 1794405600
+    mainnet_equivalent: null
+    severity: high
+    note: >-
+      THE C-CHAIN STOPPED BEING CORETH. node.go registers the EVM chain as a
+      transitionvm: Coreth executes until 10 seconds before HeliconTime, then the SAE
+      VM (Streaming Asynchronous Execution, ACP-194) takes over. Blocks are now
+      ACCEPTED first and EXECUTED afterwards, in a separate stream. That changes what
+      several Ethereum concepts mean on this chain. (1) A header's stateRoot is the
+      post-execution root of the LAST SETTLED block, not of this block (Tau = 5 s), so
+      it never commits to the block's own result. (2) "latest" is the last-executed
+      block; "safe" and "finalized" both mean the last-settled one. (3) Every
+      transaction is charged at least ceil(gasLimit/2) (MinimumGasConsumption). (4)
+      Inclusion is checked against a worst-case balance and nonce state, so an
+      included transaction is valid when it executes. Helicon also schedules the
+      Flare-only P-chain gateway precompile at 0x0300..0000 and adds a pChainHeight
+      header field that bounds it. The Flare daemon still runs after every successful
+      transaction (SAE calls AtomicDaemonAndMint), and the full fee still burns to
+      0x..dEaD. Coston2 2026-11-03 12:00, Coston 2026-11-11 07:00, Songbird 08:00,
+      Flare 14:00 UTC. Avalanche mainnet's own Helicon in the same tree is 2026-09-22.
+    src: "avalanchego/upgrade/upgrade.go:Flare, avalanchego/node/node.go:transitionvm, avalanchego/vms/saevm/sae/block_builder.go:PostExecutionStateRoot, avalanchego/vms/saevm/params/params.go:TauSeconds, avalanchego/graft/coreth/params/hooks_libevm.go:MinimumGasConsumption, avalanchego/vms/saevm/worstcase/state.go:State, avalanchego/vms/saevm/saexec/state_processor.go:AtomicDaemonAndMint"
+    src_live: "eth_getBlockByNumber @ 74288673 -> timestamp 1794405590, no pChainHeight; @ 74288674 -> timestamp 1794405600, pChainHeight 0x20efdb"
+    src_doc: "https://github.com/flare-foundation/go-flare/releases/tag/v1.15.1, https://github.com/avalanche-foundation/ACPs/tree/main/ACPs/194-streaming-asynchronous-execution"
   - {name: songbird_transition, mainnet_equivalent: null, status: skipped,
      note: "a Flare-added fork field in coreth's NetworkUpgrades; never set on chain 14",
      src: "avalanchego/graft/coreth/params/extras/network_upgrades.go:SongbirdTransitionTimestamp"}
@@ -357,6 +384,27 @@ precompiles:
     src: "avalanchego/graft/coreth/precompile/contracts/warp/module.go, avalanchego/graft/coreth/core/state_processor_ext.go:ApplyPrecompileActivations"
     src_live: "eth_getCode @ 68124744 -> 0x01 ; eth_call getBlockchainID() -> 0x77d3074dc510f43b09ac5be77edee276ef3b55f0097d504846aa8eec613fc625"
 
+  "0x0300000000000000000000000000000000000000":
+    name: P-chain gateway
+    status: added
+    fork: helicon
+    severity: high
+    note: >-
+      FLARE-ONLY, NEW AT HELICON: contracts can read the Avalanche P-chain during EVM
+      execution (a pull model). Seven functions: getPChainHeight, getBlock,
+      getTransactions, getTransactionInputs, getTransactionOutputs, getStakeOwner,
+      getNativeAssetId. They cover accepted P-chain blocks and their staking, import,
+      export and transfer transactions. Determinism comes from the header: every read is
+      bounded by the block's pChainHeight, which the SAE builder commits and the
+      executor waits for its local P-chain to reach before executing. So a call's
+      answer depends on a header field, not on its input alone, and
+      getPChainHeight() returns exactly that field. Scheduled as a stateful module
+      (like Warp), not in the static Granite map. Caller errors revert with an
+      Error(string); calldata without a selector reverts with "missing function
+      selector to precompile". Like Warp it carries the one-byte code marker:
+      eth_getCode returns 0x01.
+    src: "avalanchego/graft/coreth/precompile/contracts/pchaingateway/module.go:ContractAddress, avalanchego/graft/coreth/precompile/contracts/pchaingateway/IPChainGateway.abi, avalanchego/graft/coreth/plugin/evm/vm.go:pchaingateway"
+    src_live: "eth_call getPChainHeight() (0x0193a58f) @ 75237107 -> 0x212af7, equal to that header's pChainHeight; empty calldata -> 'missing function selector to precompile - input length (0)'; eth_getCode @ 75237107 -> 0x01"
 system_contracts:
   note: >-
     Seven contracts are written into the C-Chain genesis allocation at
@@ -397,7 +445,7 @@ system_contracts:
       succeeds. Its side effects land inside the user's receipt: a probed submission
       transaction carries six logs emitted by this address that its own call tree
       never produced.
-    src: "avalanchego/graft/coreth/core/daemon.go:GetDaemonContractAddr, avalanchego/graft/coreth/core/daemon.go:GetDaemonSelector, avalanchego/graft/coreth/core/daemon.go:GetMaximumMintRequest, avalanchego/graft/coreth/core/daemon.go:atomicDaemonAndMint, avalanchego/graft/coreth/core/state_transition.go:571"
+    src: "avalanchego/graft/coreth/core/daemon.go:GetDaemonContractAddr, avalanchego/graft/coreth/core/daemon.go:GetDaemonSelector, avalanchego/graft/coreth/core/daemon.go:GetMaximumMintRequest, avalanchego/graft/coreth/core/daemon.go:AtomicDaemonAndMint, avalanchego/graft/coreth/core/state_transition.go:571"
     src_live: "eth_getCode @ 68124744 -> 13627 bytes; receipt of 0xf9a1072e659b67ea1768a25f628b8c0776f70bb93f83b3eada23a2977c9aa39c @ 68124724 carries 6 logs from this address though the tx was sent to 0x2cA6..c33f"
   "0x1000000000000000000000000000000000000003":
     name: PriceSubmitter
@@ -483,7 +531,7 @@ system_transactions:
       and inflation are funded, and it is the second mechanism in this dataset after
       subnet-evm's ContractNativeMinter that increases native supply outside block
       rewards — but unlike that one it is unconditional and needs no allowlist.
-    src: "avalanchego/graft/coreth/core/daemon.go:atomicDaemonAndMint, avalanchego/graft/coreth/core/daemon.go:mint, avalanchego/graft/coreth/core/state_transition.go:571"
+    src: "avalanchego/graft/coreth/core/daemon.go:AtomicDaemonAndMint, avalanchego/graft/coreth/core/daemon.go:mint, avalanchego/graft/coreth/core/state_transition.go:571"
   - name: State Connector round finalisation
     status: tombstoned
     tombstoned_at: 1754395200
@@ -533,9 +581,13 @@ opcodes:
 tx_lifecycle:
   ordered_then_invalid:
     verdict: unreachable
-    src: "avalanchego/graft/coreth/miner/worker.go:commitTransactions, avalanchego/graft/coreth/core/state_transition.go:preCheck"
+    src: "avalanchego/vms/saevm/sae/block_builder.go:pendingTxs, avalanchego/vms/saevm/worstcase/state.go:State, avalanchego/graft/coreth/miner/worker.go:commitTransactions"
     note: >-
-      The proposer executes each transaction as it appends it: an invalid one is popped out
+      SAME VERDICT, DIFFERENT MECHANISM SINCE HELICON. The SAE builder no longer
+      executes a transaction to include it: it applies each candidate to a worst-case
+      balance and nonce state, which is designed to guarantee that everything included
+      is valid when the execution stream reaches it, so the ordered-but-invalid state
+      is still unreachable. Before Helicon (Coreth): the proposer executes each transaction as it appends it: an invalid one is popped out
       of the candidate set and never reaches the block, so the ordered-but-invalid state is
       not reachable and the nonce is untouched. If one reached a proposed block anyway,
       `preCheck` fails at import and the whole block is invalid. Mainnet semantics, verified
@@ -580,23 +632,24 @@ p2p:
 block_metrics:
   block_gas_limit:
     verdict: ~
-    observed: 27972664
-    observed_at_block: 71096315
-    observed_at: 2026-10-01
+    observed: 70000000
+    observed_at_block: 75237107
+    observed_at: 2026-11-23
     mutability: adjustable
-    src_live: "eth_getBlockByNumber @ 71096315 -> gasLimit 0x1aad438"
+    src_live: "eth_getBlockByNumber @ 75227107 and @ 75237107 -> gasLimit 0x42c1d80 (70,000,000) at both"
     note: >-
-      The non-round figure is the finding: Flare's limit is being actively adjusted
+      SINCE HELICON THE LIMIT IS FLAT: 70,000,000 at both ends of a 10,000-block window,
+      where before it the SAE-less Coreth limit moved block to block. Pre-Helicon (27,972,664 @ 71096315): the non-round figure was the finding: Flare's limit is being actively adjusted
       block to block, so no round number would be correct for long and two probes
       minutes apart return different values. Recorded here with the height it was read
       at, which is the only form in which such a number means anything.
   block_time:
     verdict: ~
-    observed: 1087.7
-    observed_at_block: 71096315
-    observed_at: 2026-10-01
+    observed: 1083.2
+    observed_at_block: 75237107
+    observed_at: 2026-11-23
     mutability: config
-    src_live: "eth_getBlockByNumber @ 71096315 vs 71086315 -> 10877s / 10000 blocks"
+    src_live: "timestampMilliseconds @ 75237107 vs 75227107 -> 10832.1 s / 10000 blocks"
     note: >-
       ~1.8s nominal; the observed 1,088 ms is well under it because Flare's cadence
       tightened without the documented figure following.
@@ -631,7 +684,15 @@ fee_model:
     This is the majority path, not an edge case: 86% of sampled transactions qualify.
     Any fee accounting, gas-cost dashboard, MEV estimate or revenue model built on
     Flare receipts is wrong by two to three orders of magnitude.
-  src: "avalanchego/graft/coreth/core/state_transition.go:550-568, avalanchego/graft/coreth/core/daemon.go:IsPrioritisedContractCall, avalanchego/graft/coreth/core/state_transition_params.go:stateTransitionParamsFlare"
+
+    (3) FROM HELICON, A TRANSACTION PAYS FOR AT LEAST HALF ITS GAS LIMIT. ACP-194's
+    floor, ceil(gasLimit/2), is applied as MinimumGasConsumption, so an over-padded gas
+    limit is no longer refunded: a 500,000-limit call that needs 60,000 is charged
+    250,000, and the receipt's gasUsed says 250,000. Rules (1) and (2) survive the move
+    to SAE unchanged, because saexec reimplements them in settleFees (including for
+    failed transactions).
+  src_live: "eth_getTransactionReceipt @ 75237107 (both txs) -> gas limit 500000, gasUsed 250000 = ceil(limit/2)"
+  src: "avalanchego/vms/saevm/saexec/state_processor.go:settleFees, avalanchego/graft/coreth/params/hooks_libevm.go:MinimumGasConsumption, avalanchego/graft/coreth/core/state_transition.go:550-568, avalanchego/graft/coreth/core/daemon.go:IsPrioritisedContractCall, avalanchego/graft/coreth/core/state_transition_params.go:stateTransitionParamsFlare"
   src_live: "receipt of 0x5dbbbce34e3cdf774908dd2931f596cb3eabc6bceba7f6f3dd715a6a10e9446d @ 68124744 -> gasUsed 212362 x 1625 gwei = 0.34508825 FLR; eth_getBalance of its sender 68124743 -> 68124744 delta -0.000525 FLR"
 
 header_fields:
@@ -641,11 +702,13 @@ header_fields:
     - {name: blockGasCost, note: "ACP-176 block cost", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:BlockGasCost}
     - {name: timestampMilliseconds, note: "Granite; sub-second block times", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:TimeMilliseconds}
     - {name: minDelayExcess, note: "ACP-226 minimum block delay, Granite", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:MinDelayExcess}
+    - {name: pChainHeight, note: "FLARE-ONLY, from Helicon: the P-chain height the SAE builder committed; bounds every P-chain gateway read. Absent before block 74288674", src: avalanchego/graft/coreth/plugin/evm/customtypes/header_ext.go:PChainHeight, src_live: "eth_getBlockByNumber @ 75237107 -> pChainHeight 0x212af7"}
   removed: []
   modified:
     - {name: blobGasUsed, note: "must be 0", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errBlobsNotEnabled}
     - {name: excessBlobGas, note: "must be 0", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errInvalidExcessBlobGas}
     - {name: parentBeaconBlockRoot, note: "must be the empty hash — no beacon chain", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:errParentBeaconRootNonEmpty}
+    - {name: stateRoot, note: "FROM HELICON: the post-execution root of the last SETTLED block, not of this block (SAE, Tau = 5 s)", src: avalanchego/vms/saevm/sae/block_builder.go:PostExecutionStateRoot}
     - {name: miner, note: "always the blackhole 0x0100..0000; header validation rejects any other value, and it receives no fees", src: avalanchego/graft/coreth/plugin/evm/wrapped_block.go:426}
   note: >-
     The five added fields are coreth's, not Flare's, and are recorded here because

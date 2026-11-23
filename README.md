@@ -79,7 +79,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Monad](chains/monad/SUMMARY.md) | monad (execution) | `v0.16.6` | osaka |
 | [Moonbeam](chains/moonbeam/SUMMARY.md) *(dead: shutdown)* | moonbeam (runtime) | `runtime-4401` | osaka |
 | [Plasma](chains/plasma/SUMMARY.md) | reth (upstream, unmodified) | `v1.11.3` | prague |
-| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.10.3` | prague |
+| [Polygon PoS](chains/polygon/SUMMARY.md) | bor | `v2.11.2` | prague |
 | [Rootstock (RSK)](chains/rootstock/SUMMARY.md) | rskj | `VETIVER-9.0.4` | petersburg |
 | [Sei](chains/sei/SUMMARY.md) | sei-chain | `v6.7.2` | prague |
 | [Sonic](chains/sonic/SUMMARY.md) | sonic | `v2.2.6` | prague |

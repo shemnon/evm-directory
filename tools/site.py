@@ -1178,22 +1178,28 @@ def page_chain(chains, slug):
     if tl:
         B.append(h2(f'Ordering &amp; execution <span class="pill">{len(tl)}</span>',
                     "tx-lifecycle"))
-        B.append(table(["Question", "Verdict", "What happens"],
-                       [[esc(LIFECYCLE_TITLE.get(k, k)),
-                         (f'<span class="pill">{esc(d["verdict"])}</span>'
-                          + ("" if o == slug else
-                             f' <span class="s-inherited" title="inherited">from '
-                             f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')),
-                         f'<div class="wrap">{markdown(flat(d.get("answer") or d.get("note")))}'
-                         f'{provenance(d, on_chain=True)}</div>']
-                        for k, _, _ in LIFECYCLE if (do := tl.get(k)) for d, o in [do]
-                        if isinstance(d, dict) and d.get("verdict")]))
+        rows, ids = [], []
+        for k, _, _ in LIFECYCLE:
+            do = tl.get(k)
+            if not do: continue
+            d, o = do
+            if not (isinstance(d, dict) and d.get("verdict")): continue
+            ids.append(f' id="{esc(anchor_id("tx-lifecycle", k))}"')
+            rows.append([
+                esc(LIFECYCLE_TITLE.get(k, k)),
+                (f'<span class="pill">{esc(d["verdict"])}</span>'
+                 + ("" if o == slug else
+                    f' <span class="s-inherited" title="inherited">from '
+                    f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')),
+                f'<div class="wrap">{markdown(flat(d.get("answer") or d.get("note")))}'
+                f'{provenance(d, on_chain=True)}</div>'])
+        B.append(table(["Question", "Verdict", "What happens"], rows, row_attrs=ids))
 
     # --- p2p & wire limits -----------------------------------------------
     pp = lifecycle(chains, slug, "p2p")
     if pp:
         B.append(h2(f'P2P &amp; limits <span class="pill">{len(pp)}</span>', "p2p"))
-        prows = []
+        prows, pids = [], []
         for k, _, _ in P2P:
             do = pp.get(k)
             if not do: continue
@@ -1215,10 +1221,12 @@ def page_chain(chains, slug):
                     f'<li><code>{esc(e.get("protocol"))}</code> at the '
                     f'{esc(e.get("layer"))} layer — {esc(e.get("purpose"))}</li>'
                     for e in st if isinstance(e, dict)) + "</ul>"
+            pids.append(f' id="{esc(anchor_id("p2p", k))}"')
             prows.append([esc(P2P_TITLE.get(k, k)), val, enf,
                           f'<div class="wrap">{body}{provenance(d, on_chain=True)}</div>'])
         if prows:
-            B.append(table(["Limit", "Value", "Enforced by", "Why"], prows))
+            B.append(table(["Limit", "Value", "Enforced by", "Why"], prows,
+                           row_attrs=pids))
 
     # --- block metrics -----------------------------------------------------
     bm = lifecycle(chains, slug, "block_metrics")
@@ -1226,7 +1234,7 @@ def page_chain(chains, slug):
         flat_bm = {k: d for k, (d, _) in bm.items()}
         B.append(h2(f'Block metrics <span class="pill">{len(bm)}</span>',
                     "block-metrics"))
-        brows = []
+        brows, bids = [], []
         for k, _, _ in BLOCK_METRICS:
             do = bm.get(k)
             if not do:
@@ -1253,11 +1261,13 @@ def page_chain(chains, slug):
                 mh += (f' <span class="s-inherited" title="inherited">from '
                        f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')
             body = markdown(flat(d.get("note"))) if d.get("note") else ""
+            bids.append(f' id="{esc(anchor_id("block_metrics", k))}"')
             brows.append([esc(BLOCK_METRICS_TITLE.get(k, k)), code, live, mh,
                           f'<div class="wrap">{body}'
                           f'{provenance(d, on_chain=True)}</div>'])
         if brows:
-            B.append(table(["Metric", "Code", "Observed", "Mutability", "Why"], brows))
+            B.append(table(["Metric", "Code", "Observed", "Mutability", "Why"], brows,
+                           row_attrs=bids))
         gps = gas_per_second(flat_bm)
         if gps is not None:
             B.append(f'<p class="legend">Derived throughput: '
@@ -1283,9 +1293,7 @@ def page_chain(chains, slug):
             if not (isinstance(d, dict) and d.get("verdict")): continue
             v = d["verdict"]
             # Per-question anchor, so the axis grid's drill-down lands on the ROW and
-            # not merely on the page. addr_section and the eips table already do this;
-            # tx_lifecycle and p2p do not, and their cell links dead-end at the top of
-            # the chain page.
+            # not merely on the page. Every keyed-question section does the same.
             ids.append(f' id="{esc(anchor_id("proofs", k))}"')
             rows.append([
                 esc(PROOFS_TITLE.get(k, k)),
@@ -1660,8 +1668,11 @@ def page_eips(chains):
         lbl = f"EIP-{n}" if isinstance(n, int) else str(n)
         nm = next((e.get("name", "") for e, _ in per.values() if e.get("name")), "")
         # an inheriting chain has no row of its own for this EIP; still link it to
-        # its own page (no `via` pill — that origin is provenance, chain-pages only)
-        tr = [[f'<a href="../chains/{esc(s)}.html#{esc(anchor_id("eips", n))}">'
+        # its own page (no `via` pill — that origin is provenance, chain-pages only),
+        # but with no fragment: its page renders only its own deltas, so the per-EIP
+        # anchor exists only where the row declares the EIP itself.
+        tr = [[f'<a href="../chains/{esc(s)}.html'
+               f'{"#" + esc(anchor_id("eips", n)) if o == s else ""}">'
                f'{esc(short(s))}</a>',
                mark(e, s, o, aggregate=True),
                f'<div class="wrap">{entry_meta(e)}<div>{esc(flat(e.get("note")))}</div></div>']

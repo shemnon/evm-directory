@@ -76,6 +76,25 @@ forks:
   - {name: prague,    mainnet_equivalent: prague,   activation_condition: "block 190670000"}
   - {name: osaka,     mainnet_equivalent: osaka,    activation_condition: "block 213333000",
      note: "live: block 224632605 observed, and 0x0100 returns a valid P256VERIFY result"}
+  - name: permissionless
+    status: pending
+    mainnet_equivalent: null
+    note: >-
+      TESTNET-ONLY AT v3.0.0. Kairos activates it at block 233366400 (est. 2026-11-18);
+      mainnet's PermissionlessCompatibleBlock is `nil // TODO-permissionless`, and the
+      release notes tell mainnet operators to stay on v2.2.2 until v3.0.1 carries the
+      mainnet block. This row therefore stays pinned at v2.2.2. What the fork does
+      (KIP-286, KIP-227, KIP-311): validators join, pause and leave through an
+      AddressBookV2 contract, VRank scores them, and the committee is checked per
+      round at block validation. At the EVM level it is narrower: a
+      PermissionlessInstructionSet (Osaka's, with CLZ repriced in computation cost),
+      a precompile that would exceed the per-tx computation-cost budget is now refused
+      BEFORE it runs, a weighted-multisig account key with threshold 0 and an empty
+      signature list are both rejected, and a role-based key update with fewer roles
+      now truncates the stored set. A non-deferred-fee path also starts burning half
+      the fee here, which v0.9.0-v2.2.2 did not. Mainnet runs DeferredTxFee, so that
+      path is not mainnet's (see fee_model).
+    src_doc: "https://github.com/kaiachain/kaia/releases/tag/v3.0.0, https://github.com/kaiachain/kips/blob/main/KIPs/kip-286.md"
 
 eips:
   1559:

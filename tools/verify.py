@@ -312,13 +312,15 @@ def resolve(blk, names):
     return a
 
 def ex_avalanche_c():
-    s = text("avalanche-c", "params/hooks_libevm.go")
-    na = text("avalanche-c", "nativeasset/contract.go")
+    # avalanchego since the 2026-11-23 re-pin: coreth's surviving params live under
+    # graft/coreth, and Warp's address moved from module.go to contract.go.
+    s = text("avalanche-c", "graft/coreth/params/hooks_libevm.go")
+    na = text("avalanche-c", "graft/coreth/nativeasset/contract.go")
     names = consts(s) | consts(na)
     granite = block(s, "var PrecompiledContractsGranite = ")
     a = resolve(granite, names)
     a |= go_addrs(na)
-    a |= go_addrs(text("avalanche-c", "precompile/contracts/warp/module.go"))
+    a |= go_addrs(text("avalanche-c", "graft/coreth/precompile/contracts/warp/contract.go"))
     # the three native-asset addresses are still IN the live map, mapped to
     # `DeprecatedContract`, whose Run does nothing but return ErrExecutionReverted.
     # Reading only the addresses made a burned address look like a working one.

@@ -31,7 +31,7 @@
 <p></p>
 <div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code>xdm_inbound</code></td><td>Cross-Domain Message (XDM) inbound relay</td></tr><tr><td><code>domain_sudo</code></td><td>domain sudo call injected by the consensus chain</td></tr><tr><td><code>evm_tracker_inherent</code></td><td>set_contract_creation_allowed_by inherent</td></tr></tbody></table></div>
 <h3 id="nev-avalanche-c"><a href="../chains/avalanche-c.html">Avalanche C-Chain</a><a class="anchor" href="#nev-avalanche-c">#</a></h3>
-<p>Atomic transactions move value between the C-Chain and Avalanche&#x27;s X/P chains. They are UTXO-based, serialised with Avalanche&#x27;s own codec (not RLP), and registered in a separate codec namespace (plugin/evm/atomic/codec.go:33-34) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.</p>
+<p>Atomic transactions move value between the C-Chain and Avalanche&#x27;s X/P chains. They are UTXO-based, serialised with Avalanche&#x27;s own codec (not RLP), and registered in a separate codec namespace (vms/saevm/cchain/tx/codec.go) — they live entirely OUTSIDE the EIP-2718 envelope while still being included in C-Chain blocks. No type byte can be assigned to them, which is why they cannot appear in tx_types.</p>
 <div class="scroll"><table class=""><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody><tr><td><code></code></td><td>UnsignedImportTx</td></tr><tr><td><code></code></td><td>UnsignedExportTx</td></tr></tbody></table></div>
 <h3 id="nev-conflux"><a href="../chains/conflux.html">Conflux eSpace</a><a class="anchor" href="#nev-conflux">#</a></h3>
 <p></p>

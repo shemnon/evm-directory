@@ -2,11 +2,30 @@
 
 **Chain ID 43114 · role: `fork` · upstream: go-ethereum (via libevm) · baseline: Cancun**
 
-Reference: [ava-labs/coreth `v0.16.0`](https://github.com/ava-labs/coreth) @ `64c271b4`.
+Reference: [ava-labs/avalanchego `v1.15.3`](https://github.com/ava-labs/avalanchego) @ `983815fd`.
+Re-pinned on 2026-11-23 from `ava-labs/coreth` v0.16.0, which was archived on 2025-11-25 when
+coreth moved into avalanchego.
+
+## Since Helicon (2026-09-22 15:00 UTC, block 95921105) execution is asynchronous
+
+The C-Chain VM is now the SAE VM (`vms/saevm`, ACP-194). In v1.15.3 it is registered
+directly: no Coreth execution path is left in the tree. What callers see:
+
+- A header's `stateRoot` is the root of the last **settled** block, not of the block itself.
+- "latest" means the last executed block; "safe" and "finalized" mean the last settled one.
+- Every transaction pays for at least `ceil(gasLimit/2)`. This shows in live receipts.
+- Atomic import/export transactions run as end-of-block operations. Their gas counts in
+  `gasUsed`, so `extDataGasUsed` is 0.
+- New header fields `targetExponent` and `minPriceExponent` carry the validator-voted gas
+  target and the ACP-283 minimum price.
+- The gas limit is 80M, and blocks average under a second.
+
+Still true: Cancun only, no Prague or Osaka, PREVRANDAO = 1, and the three tombstoned
+native-asset precompiles.
 
 ## Headline: no Prague, no Osaka
 
-`params/config_extra.go:82-89` assigns exactly two Ethereum fork times:
+`vms/saevm/cchain/genesis.go:100-101` assigns exactly two Ethereum fork times (coreth's `params/config_extra.go` did the same before Helicon):
 
 ```go
 c.ShanghaiTime = utils.NewUint64(*durango)
@@ -35,7 +54,7 @@ non-Osaka fork, which retires the idea that `0x0100` implies anything about line
 
 ## Cancun adopted structurally, then hollowed out
 
-Block validation (`plugin/evm/wrapped_block.go:478-487`) requires, once Cancun is active:
+The SAE block builder (`vms/saevm/cchain/hooks.go`) writes these, and a block is verified by rebuilding it. Before Helicon, coreth's `wrapped_block.go` enforced the same constraints. Once Cancun is active:
 
 | Field | Constraint | Effect |
 |---|---|---|
@@ -91,9 +110,9 @@ cross-chain value movement on the C-Chain**.
 
 ## Architecture note
 
-coreth v0.16.0 is **not** a whole-repo geth fork. It consumes `ava-labs/libevm` — a
+The C-Chain VM (coreth until Helicon, SAE since) is **not** a whole-repo geth fork. It consumes `ava-labs/libevm` — a
 geth fork published as a library with explicit extension hooks — and layers Avalanche
-behaviour through `RulesExtra` hooks in `params/hooks_libevm.go`. This is the
+behaviour through `RulesExtra` hooks in `graft/coreth/params/hooks_libevm.go` and `vms/saevm/cchain/libevm`. This is the
 cleanest fork relationship in the dataset: divergence is concentrated in hook
 implementations rather than scattered through a patched tree, which is why the
 precompile deltas above could be read off a single 90-line file.
@@ -102,7 +121,7 @@ precompile deltas above could be read off a single 90-line file.
 
 London is active (`LondonBlock = 0` from Apricot Phase 3), so 1559-shaped fields
 exist, but the base-fee update rule is Avalanche's own ACP-176 target-gas-excess
-mechanism (`consensus/dummy/consensus.go:79`), not mainnet's.
+mechanism (`vms/saevm/gastime/acp176.go`), not mainnet's. Since Helicon it also has ACP-283's dynamic minimum price, and every transaction pays at least half its gas limit.
 
 ## Two authorization models, one chain
 
@@ -151,11 +170,12 @@ arbitrary signatures.
 ## Re-verify
 
 ```
-git clone --depth 1 --branch v0.16.0 https://github.com/ava-labs/coreth
-sed -n '55,110p' params/hooks_libevm.go              # precompile sets + Granite
-sed -n '80,92p' params/config_extra.go               # Shanghai=Durango, Cancun=Etna
-grep -rn "PragueTime\|OsakaTime" --include="*.go" .  # (empty)
-sed -n '165,172p' nativeasset/contract.go            # DeprecatedContract reverts
-sed -n '475,490p' plugin/evm/wrapped_block.go        # blob/beacon-root constraints
-sed -n '20,26p' precompile/contracts/warp/module.go  # warp address
+git clone --depth 1 --branch v1.15.3 https://github.com/ava-labs/avalanchego
+grep -n "PrecompiledContractsGranite = " graft/coreth/params/hooks_libevm.go   # precompile set
+sed -n '98,102p' vms/saevm/cchain/genesis.go                  # Shanghai=Durango, Cancun=Etna
+grep -rn "PragueTime\|OsakaTime" vms/saevm graft/coreth      # (empty)
+grep -n "DeprecatedContract" graft/coreth/nativeasset/contract.go   # tombstones revert
+grep -n "BlobGasUsed:\|ParentBeaconRoot:" vms/saevm/cchain/hooks.go # zeroed Cancun fields
+grep -n "ContractAddress = " graft/coreth/precompile/contracts/warp/contract.go # warp address
+grep -n "saevm.Factory" node/node.go                          # the C-Chain VM is SAE
 ```

@@ -385,16 +385,32 @@
     can authorize a transaction there.
 
 - id: no-post-quantum
-  title: No post-quantum scheme in the dataset
+  title: Post-quantum schemes can be verified, but none authorizes a transaction
   axis: cryptography
   rank: 11
-  chains: []
+  lede: >-
+    Two rows carry a post-quantum signature verifier, and on both it is
+    `authorizes: never`: a contract can check the signature, but no transaction on
+    any of the 47 rows can be authorized by one at the protocol level.
+  chains:
+    arc: >-
+      `verifySlhDsaSha2128s` (FIPS 205 SLH-DSA-SHA2-128s), hash-based, registered from
+      Zero6. Transactions remain secp256k1, so it serves account code, not senders.
+    taraxa: >-
+      FN-DSA-512 (Falcon-512), lattice-based, at `0x…fa1c`. It returns ZERO for a
+      valid signature, so a verifier written against the usual convention accepts
+      forgeries. Transactions remain secp256k1.
   body: >-
-    Across all nineteen rows the signature schemes are secp256k1, secp256r1 (P-256),
-    BLS12-381, BN254, ed25519, sr25519 and SM2 — all discrete-log-based. No row carries
-    ML-DSA, SLH-DSA, Falcon or any other lattice- or hash-based scheme, as a
-    transaction signer, as a precompile, or as `status: pending`. Recorded explicitly
-    because an empty column is otherwise indistinguishable from an unfinished survey.
+    Two rows carry a post-quantum verifier: Arc's SLH-DSA-SHA2-128s (FIPS 205,
+    hash-based) and Taraxa's Falcon-512 (FN-DSA, lattice-based, returning zero for a
+    valid signature). Both are `authorizes: never`. Every scheme that does authorize a
+    transaction at the protocol level is discrete-log-based: secp256k1, secp256r1
+    and WebAuthn over it, ed25519, sr25519 and SM2. ML-DSA appears nowhere. The rows
+    where a post-quantum key could authorize without a new transaction format are
+    those whose `key_binding` is `account_code` (zkSync Era and the zk-stack), where
+    the account's own code is the rule — at pure-bytecode verification cost, since
+    neither carries a post-quantum precompile. Recorded explicitly because an empty
+    column is otherwise indistinguishable from an unfinished survey.
 
 - id: op-stack-constrains-little
   title: Variation among OP Stack descendants

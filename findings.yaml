@@ -688,7 +688,8 @@
   chains:
     flare: >-
       Fails in both directions on one chain. The Warp precompile answers `0x01`,
-      inherited from Avalanche's deliberate `extcodesize` stub — while Flare's
+      inherited from Avalanche's deliberate `extcodesize` stub, and since Helicon so does
+      the Flare-only P-chain gateway at `0x0300…0000`. Meanwhile Flare's
       `0x1000…0001–0007`, cited elsewhere as custom precompiles, are ordinary system
       contracts with real genesis bytecode.
     sonic: >-

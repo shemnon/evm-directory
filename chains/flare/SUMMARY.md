@@ -2,13 +2,21 @@
 
 **Role:** `fork` · **Upstream:** `ethereum` (via avalanchego + coreth) · **Chain ID:** 14 ·
 **Baseline:** Cancun
-**Client:** [`flare-foundation/go-flare`](https://github.com/flare-foundation/go-flare) `v1.14.2`
-(`d2e8e830befdd6a821fe7faeb5fdee3d71953919`) — a monorepo fork of *both*
-avalanchego `v1.14.2`, with coreth grafted under `avalanchego/graft/coreth`
+**Client:** [`flare-foundation/go-flare`](https://github.com/flare-foundation/go-flare) `v1.15.1`
+(`9eacc2d2ad452489f8e9bfaf10af62553b9cdae2`) — a monorepo fork of *both*
+avalanchego `v1.15.1`, with coreth grafted under `avalanchego/graft/coreth`
 **Live probes:** `https://flare-api.flare.network/ext/C/rpc` @ block `68124744`
 
+**Since Helicon (2026-11-11 14:00 UTC, block 74288674) the C-chain is not Coreth.** A
+transition VM hands execution to SAE (ACP-194). Blocks are accepted first and executed
+afterwards. A header's `stateRoot` is the root of the last *settled* block. "latest"
+means the last executed block, and "safe" and "finalized" mean the last settled one.
+Every transaction pays for at least half its gas limit. A new Flare-only precompile at
+`0x0300…0000` lets contracts read the P-chain, bounded by a new `pChainHeight` header
+field. The Flare daemon and the full fee burn carry over.
+
 Everything [`chains/avalanche-c/`](../avalanche-c/chain.yaml) establishes about coreth
-v0.16.0 is true here. This file states only what is Flare's own — plus the handful of
+v0.16.0 held here until Helicon, and still does for the Coreth-era history. This file states only what is Flare's own — plus the handful of
 places where measuring Flare turned up something the ancestor's row records wrongly.
 (`avalanche-c` has `role: fork`, not `stack`, so `tools/model.py` does not resolve
 inheritance across it; the shared entries are restated in `chain.yaml` out of necessity

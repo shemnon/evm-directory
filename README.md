@@ -70,7 +70,7 @@ what the network *did*, not what a client *would* do — see [SCHEMA.md](SCHEMA.
 | [Artela](chains/artela/SUMMARY.md) *(dead: abandoned)* | artela (artelad) | `v0.4.9-rc9` | cancun |
 | [Cronos](chains/cronos/SUMMARY.md) | cronos (cronosd) | `v1.8.1` | osaka |
 | [Injective](chains/injective/SUMMARY.md) | injective-core (injectived) | `v1.20.3` | prague |
-| [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.14.2` | cancun |
+| [Flare](chains/flare/SUMMARY.md) | go-flare | `v1.15.1` | cancun |
 | [Gnosis Chain](chains/gnosis/SUMMARY.md) | Nethermind | `2.2.2` | osaka |
 | [Hedera](chains/hedera/SUMMARY.md) | hiero-consensus-node (Hedera Services) | `v0.78.1` | prague |
 | [Hyperliquid (HyperEVM)](chains/hyperliquid/SUMMARY.md) *(documented)* | *none public* | — | cancun |

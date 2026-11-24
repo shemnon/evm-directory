@@ -40,6 +40,7 @@ AXES = [
     ("p2p",              "P2P & limits",       "How big a transaction, block or message may be, who enforces each bound, and which transports carry them."),
     ("block-metrics",    "Block metrics",      "How much fits in a block and how often one arrives — what the code sets, what the network ran, and the throughput that follows."),
     ("proofs",           "Proofs",             "What can be proven about this chain, and to whom: how its state transition is proven, and whether it can prove a slot to a caller."),
+    ("pq-tx",            "Post-quantum transactions", "Whether a post-quantum key can hold and move an account: the transaction format, how an address takes a new key, whether the old key can be retired, and everything presented as post-quantum, at any stage."),
 ]
 AXIS_TITLE = {k: t for k, t, _ in AXES}
 
@@ -183,6 +184,65 @@ PROOF_VERDICT = {
     "foreign-hash":  "committed under another hash or another trie; sound, and not decodable by an Ethereum verifier",
     "no-commitment": "the header commits to no state at all",
 }
+
+
+# The pq_tx axis. Reading order is the migration's: can a transaction carry the
+# signature, can the address take the key, can the old key be switched off, and can a
+# contract check the new one.
+PQ_TX = [
+    ("tx_format",     "Transaction format",
+     "Whether the transaction format can carry a post-quantum signature, and what it takes."),
+    ("address_remap", "Address takes a new key",
+     "How an existing address comes to be controlled by a different key."),
+    ("classical_key", "Classical key retirable",
+     "Whether the key an address came from can be switched off."),
+    ("pq_verifier",   "PQ verifier",
+     "Whether the chain itself verifies a post-quantum signature for contracts."),
+]
+PQ_TX_TITLE = {k: t for k, t, _ in PQ_TX}
+
+PQ_VERDICT = {
+    "pq-native":    "a post-quantum scheme authorizes transactions at the protocol level today",
+    "scheme-field": "the format carries a scheme selector: post-quantum is one new value plus a fork",
+    "account-code": "the account's own code decides what a valid signature is: works today, at bytecode cost",
+    "fixed":        "one recoverable secp256k1 signature, no selector, no room for a public key: post-quantum needs a new transaction type",
+    "registry":     "the protocol binds new keys to an existing address by a registration transaction",
+    "delegate":     "the address can point at code (EIP-7702) that verifies a new key; the old key keeps its authority",
+    "new-address":  "a new key means a new address, and moving the funds to it",
+    "retirable":    "the original key can be removed, so it no longer authorizes the address",
+    "permanent":    "the key the address was derived from can always sign for it",
+    "none":         "nothing at any address verifies a post-quantum signature / there is no classical key",
+    "precompile":   "a post-quantum verifier is live at a precompile address",
+}
+
+# Stage, in the order the axis page sorts by: live first, then how close to live.
+PQ_STAGE = [
+    ("mainnet",     "live on mainnet"),
+    ("scheduled",   "a mainnet activation is set"),
+    ("slated",      "included in a named upgrade, with no activation date"),
+    ("testnet",     "active on a public testnet"),
+    ("devnet",      "running on a devnet"),
+    ("development", "merged in a client, gated off"),
+    ("proposed",    "a proposal or draft specification"),
+    ("roadmap",     "a published intent, with no specification"),
+    ("research",    "a study or benchmark"),
+    ("declined",    "proposed, then declined or closed"),
+]
+PQ_STAGE_RANK = {k: i for i, (k, _) in enumerate(PQ_STAGE)}
+PQ_STAGE_TIP = dict(PQ_STAGE)
+
+
+def pq_stage_pill(stage):
+    cls = "s-added" if stage == "mainnet" else "s-inherited"
+    return (f'<span class="pill {cls}" title="{esc(PQ_STAGE_TIP.get(stage, ""))}">'
+            f'{esc(stage)}</span>')
+
+
+def pq_moves(e):
+    """`moves:` as prose: which current answer an initiative would change, and to what."""
+    m = e.get("moves") or {}
+    return ", ".join(f'{esc(PQ_TX_TITLE.get(k, k))} → <code>{esc(v)}</code>'
+                     for k, v in m.items())
 
 
 def fmt_bytes(n):
@@ -1306,6 +1366,58 @@ def page_chain(chains, slug):
                 f'{provenance(d, on_chain=True)}</div>'])
         if rows:
             B.append(table(["Question", "Verdict", "What that means here"], rows,
+                           row_attrs=ids))
+
+    # --- post-quantum transactions -----------------------------------------
+    pq = model.pq_tx(chains, slug)
+    pqi = model.pq_initiatives(chains, slug)
+    if pq or pqi:
+        B.append(h2(f'Post-quantum transactions <span class="pill">{len(pq)}</span>',
+                    "pq-tx"))
+        rows, ids = [], []
+        for k, _, _ in PQ_TX:
+            if k not in pq: continue
+            d, o = pq[k]
+            v = d["verdict"]
+            ids.append(f' id="{esc(anchor_id("pq-tx", k))}"')
+            if o == "derived":
+                via = (' <span class="s-inherited" title="computed from this chain\'s '
+                       'tx_authorization and EIP-7702 facts, never stored">derived from '
+                       '<a href="#tx-authorization">tx authorization</a></span>')
+            elif o != slug:
+                via = (f' <span class="s-inherited" title="inherited">from '
+                       f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>')
+            else:
+                via = ""
+            rows.append([
+                esc(PQ_TX_TITLE.get(k, k)),
+                f'<span class="pill" title="{esc(PQ_VERDICT.get(v, ""))}">{esc(v)}</span>'
+                + via,
+                f'<div class="wrap">{markdown(flat(d.get("note")))}'
+                f'{provenance(d, on_chain=True)}</div>'])
+        if rows:
+            B.append(table(["Question", "Verdict", "What that means here"], rows,
+                           row_attrs=ids))
+        if pqi:
+            rows, ids = [], []
+            for i, (e, o) in sorted(pqi.items(), key=lambda kv: (
+                    PQ_STAGE_RANK.get(kv[1][0].get("stage"), 99), kv[0])):
+                ids.append(f' id="{esc(anchor_id("pq-tx", i))}"')
+                mv = pq_moves(e)
+                rows.append([
+                    esc(e.get("name", i))
+                    + ("" if o == slug else
+                       f' <span class="s-inherited" title="inherited">from '
+                       f'<a href="{esc(o)}.html">{esc(short(o))}</a></span>'),
+                    esc(e.get("kind", "")),
+                    pq_stage_pill(e.get("stage", "")),
+                    f'<div class="wrap">{markdown(flat(e.get("note")))}'
+                    + (f'<p class="legend">Would move: {mv}</p>' if mv else "")
+                    + f'{provenance(e, on_chain=True)}</div>'])
+            B.append('<p class="legend">Presented as post-quantum, at any stage. Only '
+                     '<code>mainnet</code> is live; every other stage is marked as what '
+                     'it is.</p>')
+            B.append(table(["Initiative", "Kind", "Stage", "What it is"], rows,
                            row_attrs=ids))
 
     # --- fee model & header fields ---------------------------------------
@@ -2609,6 +2721,103 @@ class Page:
         self.path, self.inputs, self.fn = path, [pathlib.Path(i) for i in inputs], fn
 
 
+def page_pq_tx(chains):
+    """Whether a post-quantum key can hold and move an account, read as a migration:
+    can a transaction carry the signature, can an address take the key, can the old key
+    be switched off, can a contract check the new one.
+
+    The column that matters most is `classical_key`. EIP-7702 makes `delegate` the
+    common answer to the address question, and it reads like a migration path, but the
+    secp256k1 key that signed the delegation keeps full authority. A post-quantum
+    account whose old key still signs is not post-quantum. Only rows that can RETIRE the
+    original key (Kaia, Hedera, Tron) have finished the account half of the problem.
+
+    This axis is the one exception to "mainnet facts only": work at testnet, devnet,
+    draft and roadmap stage is listed, because that is where all post-quantum work in
+    this dataset is, and every item carries its stage. A cell shows the mainnet answer,
+    and a marker when something not yet live would change it."""
+    slugs = order(chains)
+    data = {s: model.pq_tx(chains, s) for s in slugs}
+    inits = {s: model.pq_initiatives(chains, s) for s in slugs}
+
+    def pending(s, key):
+        out = []
+        for i, (e, _) in inits[s].items():
+            st = e.get("stage")
+            if st in ("mainnet", "declined"): continue
+            v = (e.get("moves") or {}).get(key)
+            if v: out.append((PQ_STAGE_RANK.get(st, 99), v, st, e.get("name", i)))
+        return sorted(out)
+
+    def cell(s, key):
+        d, _ = data[s].get(key, (None, s))
+        v = d.get("verdict") if isinstance(d, dict) else None
+        if not v:
+            return '<span class="s-inherited" title="not established">&mdash;</span>'
+        tip = PQ_VERDICT.get(v, "")
+        detail = flat(d.get("note"))
+        title = f"{tip}\n\n{detail}" if tip and detail else (tip or detail)
+        inner = f'<span class="pill" title="{esc(title)[:600]}">{esc(v)}</span>'
+        p = pending(s, key)
+        if p:
+            _, nv, st, nm = p[0]
+            inner += (f' <span class="s-inherited" title="{esc(nm)} ({esc(st)}): '
+                      f'{esc(PQ_STAGE_TIP.get(st, ""))}">→ {esc(nv)} · {esc(st)}</span>')
+        return cell_link(s, "pq-tx", key, inner)
+
+    B = [h2(f'The account <span class="pill">{len(PQ_TX)} questions</span>', "account"),
+         '<p class="legend">The mainnet answer, with <b>→ verdict · stage</b> where '
+         'something not yet live would change it. Answers marked derived on a chain '
+         'page are computed from that chain\'s transaction-authorization and EIP-7702 '
+         'facts rather than stated twice.</p>',
+         filter_box("pq-tx-grid", uniform="hide chains that match mainnet exactly"),
+         chain_grid(chains, slugs, PQ_TX, cell, "pq-tx-grid")]
+
+    rows = []
+    for s in slugs:
+        for i, (e, o) in inits[s].items():
+            if o != s: continue                     # listed once, on the row that states it
+            rows.append((PQ_STAGE_RANK.get(e.get("stage"), 99), slugs.index(s), i, s, e))
+    rows.sort()
+    if rows:
+        B.append(h2(f'Presented as post-quantum <span class="pill">{len(rows)}</span>',
+                    "initiatives"))
+        B.append('<p class="legend">Everything a chain or its community presents as '
+                 'post-quantum, live or not, sorted by how close it is to running on '
+                 'mainnet. The stage is the fact: a roadmap is a stated intent, '
+                 '<code>slated</code> means a named upgrade with no date, and only '
+                 '<code>mainnet</code> is live.</p>')
+        B.append(table(
+            ["Stage", "Chain", "Initiative", "Kind", "Would move"],
+            [[pq_stage_pill(e.get("stage", "")),
+              f'<a href="../chains/{esc(s)}.html">{esc(short(s))}</a>',
+              f'<a href="../chains/{esc(s)}.html#{esc(anchor_id("pq-tx", i))}">'
+              f'{esc(e.get("name", i))}</a>',
+              esc(e.get("kind", "")),
+              pq_moves(e) or "&mdash;"]
+             for _, _, i, s, e in rows], tid="pq-tx-initiatives"))
+
+    B.append(
+        '<p class="legend"><code>delegate</code> is not a migration. EIP-7702 lets an '
+        'address run code that checks a post-quantum signature, but the secp256k1 key '
+        'that signed the delegation keeps full authority, can sign a new delegation, and '
+        'still satisfies every <code>ecrecover</code> check. Read it together with '
+        '<code>classical_key</code>: only a row that can retire the original key has a '
+        'complete answer for an existing account. <code>scheme-field</code> on a row with '
+        'a native, non-Ethereum format (Hedera, the Cosmos family) is that format\'s '
+        'answer; the EVM envelope on the same chain stays <code>fixed</code>, and the '
+        'chain page says so. A <code>&mdash;</code> '
+        'means the question is not established for that chain. Consensus and p2p '
+        'signatures are out of scope here.</p>')
+    B.append(axis_notes(chains, "pq-tx"))
+    return layout("axes/pq-tx.html", "Post-quantum transactions",
+                  "Whether a post-quantum key can hold and move an account: the "
+                  "transaction format, how an address takes a new key, whether the old "
+                  "key can be retired, and everything presented as post-quantum, at any "
+                  "stage.",
+                  "\n".join(x for x in B if x), wide=True, chains=chains)
+
+
 def registry(chains):
     """Every output page, with the input files it actually reads.
 
@@ -2625,7 +2834,7 @@ def registry(chains):
     axis_fn = {"eips": page_eips, "precompiles": page_precompiles, "tx-types": page_tx_types,
                "ordering": page_ordering, "p2p": page_p2p,
                "block-metrics": page_block_metrics,
-               "proofs": page_proofs,
+               "proofs": page_proofs, "pq-tx": page_pq_tx,
                "cryptography": page_cryptography, "opcodes": page_opcodes,
                "system-contracts": page_system_contracts, "fees-envelope": page_fees,
                "lineage": page_lineage}

@@ -451,6 +451,49 @@ block_metrics:
       src: "crates/consensus/derive/src/attributes/stateful.rs:DENIM_GAS_PARAMETER_SCALING_FACTOR"
       src_live: "eth_getBlockByNumber @ 53556126 -> extraData 0x01000000640000000500000000004c4b40; @ 53556127 -> 0x01000003e80000000500000000004c4b40, gasUsed 21516598, baseFee 5000000; @ 53556128 -> baseFee 5008447"
 
+pq_tx:
+  tx_format:
+    verdict: fixed
+    note: >-
+      On mainnet today the envelopes are mainnet's plus the 0x7e deposit; 0x79 is
+      rejected at the RPC and in execution until Everest, which has no date. So a
+      transaction is still a y_parity/r/s secp256k1 signature, whatever the row's
+      `declared` key_binding says about the pending type. EIP-8130, below, is what
+      changes this.
+    src: "crates/common/consensus/src/transaction/tx_type.rs:EIP8130_REJECTION_MSG, crates/common/evm/src/eip8130.rs:not_active_error"
+  address_remap:
+    verdict: delegate
+    note: >-
+      EIP-7702 is live, with mainnet's consequence: code can verify a post-quantum
+      signature for the address, and the delegating secp256k1 key keeps its
+      authority alongside it.
+    src: "crates/common/consensus/src/transaction/tx_type.rs:OpTxType"
+  classical_key:
+    verdict: permanent
+    note: >-
+      As on mainnet. The default authenticator recovers straight from the key the
+      address is derived from (K1_AUTHENTICATOR is the reserved sentinel address(1)),
+      and nothing live disables it.
+    src: "crates/common/consensus/src/transaction/eip8130/constants.rs:K1_AUTHENTICATOR"
+  initiatives:
+    eip-8130:
+      name: "EIP-8130 Keystore Accounts (type 0x79)"
+      kind: tx-format
+      stage: development
+      moves: {tx_format: scheme-field, address_remap: registry}
+      note: >-
+        Merged in the client and gated on the unscheduled Everest fork, after the gate
+        moved from Cobalt to Zenith to Everest. sender_auth opens with a 20-byte
+        authenticator selector over a CLOSED, enshrined set of canonical
+        authenticators (secp256k1, P-256, WebAuthn), and the EIP says the set is
+        expected to grow as signature algorithms mature, naming post-quantum. A
+        post-quantum scheme would still be a protocol upgrade adding a canonical
+        authenticator, not a contract a user deploys. The keystore, which binds new
+        keys to an existing account, waits on Zenith; between Everest and Zenith a 0x79
+        transaction may use only delegation and native secp256k1.
+      src: "crates/common/consensus/src/transaction/tx_type.rs:EIP8130_REJECTION_MSG, crates/common/consensus/src/transaction/eip8130/constants.rs:K1_AUTHENTICATOR"
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8130"
+
 fee_model:
   metering: gas
   note: >-

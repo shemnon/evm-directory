@@ -460,6 +460,21 @@ block_metrics:
       this row is `fixed` rather than `config` — the cadence is in the fork schedule,
       not in an operator's flag.
 
+pq_tx:
+  initiatives:
+    bsc-pqc-report:
+      name: "BSC Post-Quantum Cryptography Migration Report"
+      kind: research
+      stage: research
+      moves: {tx_format: pq-native}
+      note: >-
+        Published 2026-05-14 from a benchmark, not a fork. ML-DSA-44 transaction
+        signatures (65 bytes to 2,420) and pqSTARK-aggregated votes cut cross-region
+        native-transfer throughput from about 4,973 to 2,997 TPS. Addresses stay 20
+        bytes, derived from the ML-DSA public key, so a post-quantum key is a new
+        address. No BEP carries it.
+      src_doc: "https://www.bnbchain.org/en/blog/bsc-post-quantum-cryptography-migration-report"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (London active at block 31302048)

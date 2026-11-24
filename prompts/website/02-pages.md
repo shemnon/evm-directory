@@ -103,6 +103,26 @@ collapsed into `state_transition` even though four rows in five make it redundan
 
 An empty cell is `—` ("not established"), never `=` ("as mainnet"), as everywhere else.
 
+## Post-quantum transactions — `axes/pq-tx.html`
+
+One grid and one list. The grid has chains as rows and the four `pq_tx:` questions as
+columns, in the order a migration meets them: `tx_format`, `address_remap`,
+`classical_key`, `pq_verifier`. A cell is the MAINNET answer. When an initiative that is
+not yet live would change it, the cell adds `→ verdict · stage` for the nearest one, and
+it never replaces the mainnet answer. The list below, **Presented as post-quantum**,
+holds every `pq_tx.initiatives` entry sorted by stage, live first, with the stage as a
+pill in the first column.
+
+This is the only axis that admits testnet, devnet, draft and roadmap material, and the
+stage pill is what makes that safe. A design that drops it, or gives `roadmap` the same
+visual weight as `mainnet`, turns the axis into marketing.
+
+`delegate` must not read as a solved migration. The page legend says why: EIP-7702
+leaves the delegating key fully authorized. That is why `classical_key` sits next to it.
+Answers derived from `tx_authorization` render with no mark on the axis page, the same
+as stated ones (the comparison rule). On the chain page they carry a "derived from tx
+authorization" tag in place of a citation.
+
 ## Instruction sets that are not the EVM
 
 A set with no 256-entry byte table renders on the **chain page**, whole, one table per
@@ -121,7 +141,7 @@ footnote answers it only after they have matched two lists by eye.
 The site carries no page about itself. `SCHEMA.md`, `SITE.md` and `METHOD.md` are
 repo-only documents: useful to someone reading or extending the dataset, noise to
 someone who arrived with a question about a chain. Every note in `findings.yaml`
-therefore names one of the eleven axes and renders on that axis page; a note with no
+therefore names one of the thirteen axes and renders on that axis page; a note with no
 axis page is a build error, not a note that lands on a method page.
 
 The one repo document the site links to is `CONTRIBUTING.md`, and it does not render it.

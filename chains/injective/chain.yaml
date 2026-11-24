@@ -994,6 +994,16 @@ block_metrics:
     note: >-
       ~0.65s, CometBFT. The observed 593 ms runs under the nominal figure.
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      Cosmos-side transactions carry a typed public key, and
+      DefaultSigVerificationGasConsumer switches on it: ed25519, ethsecp256k1 and
+      multisig are all accepted, so this list has already grown past one scheme. A
+      post-quantum key type is a new case and a chain upgrade. EVM transactions on the same chain (MsgEthereumTx) stay fixed secp256k1, so this verdict is the Cosmos-side format's.
+    src: "injective-chain/app/ante/ante.go:DefaultSigVerificationGasConsumer"
+
 fee_model:
   metering: EVM gas, converted to Cosmos gas for block accounting
   fee_market: "none in consensus; an optional node-local mempool floor (Osmosis Mempool1559), disabled by default"

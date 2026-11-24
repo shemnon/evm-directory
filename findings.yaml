@@ -1480,3 +1480,50 @@
     assessed here. Go forks without the opcode at their pin, such as Polygon's Bor and Celo's
     `op-geth`, are not counted. The failure paths come from reading source: nobody has activated
     Amsterdam on these chains, and each team would be expected to change this code first.
+
+- id: pq-old-key-survives
+  title: Most chains can attach a post-quantum key to an address; only three can switch off the old one
+  axis: pq-tx
+  rank: 36
+  lede: >-
+    On 24 chains EIP-7702 lets an address run code that verifies a post-quantum
+    signature. On every one of them the secp256k1 key that signed the delegation can
+    still sign. Kaia, Hedera and Tron are the only rows where an account can retire the
+    key its address came from.
+  chains:
+    kaia: >-
+      `TxTypeAccountUpdate` replaces the stored AccountKey, and after the update the
+      address's original key no longer signs. The signature encoding is still a V/R/S
+      triple that the client recovers keys from, so a post-quantum key type would also
+      need a new encoding.
+    hedera: >-
+      `CryptoUpdate` replaces the key and keeps the EVM alias. The Ethereum path checks
+      `adminKeyMatchesEcdsaPubKey`, so the old ECDSA key stops working there too. The
+      account can then send only HAPI transactions.
+    tron: >-
+      Permissions are weighted lists of addresses, and the account's own key is only the
+      default owner. TIP-899, on the Nile testnet and not in any mainnet release, would let
+      a post-quantum address join those lists.
+  body: >-
+    A post-quantum migration for an existing account has two halves: binding a new key
+    to the address, and stopping the old key from signing for it. EIP-7702 covers the
+    first half. On every row where it is live, the delegating key keeps full authority:
+    the EIP-3607 sender check exempts a delegation, the key can sign a replacement
+    delegation, and `ecrecover` ignores account state, so `permit`-style checks keep
+    accepting it. Ethereum has two proposals for the second half. EIP-8151 would make
+    `ecrecover` respect account code; it is Considered for Inclusion in Hegotá. EIP-7851
+    would add an ECDSA-disabled delegation prefix; it was Declined. Base's EIP-8130,
+    gated off on mainnet, and a Monad draft both separate the address from the key.
+
+
+    **Only Kaia, Hedera and Tron let an account retire the original key today**, each
+    through a registration transaction the protocol already has. None of the three can yet
+    register a post-quantum key. Tempo also binds new keys to an address, through its
+    keychain, but the root key cannot be revoked.
+
+
+    **No row authorizes a transaction with a post-quantum signature on mainnet.** zkSync
+    Era and the zk-stack come closest: account code decides what a valid signature is.
+    There, the limit is the sequencer's node-configured validation gas cap, since no
+    post-quantum precompile exists. Arc (SLH-DSA) and Taraxa (Falcon-512) can verify a
+    post-quantum signature in a contract, but not authorize a transaction with one.

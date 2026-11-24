@@ -391,6 +391,55 @@ block_metrics:
     note: >-
       3s, fixed by DPoS slot scheduling.
 
+pq_tx:
+  tx_format:
+    verdict: fixed
+    note: >-
+      Transaction.signature is `repeated bytes`, and checkWeight rejects any entry that
+      is not exactly 65 bytes before recovering an address from it, so only a
+      recoverable ECDSA signature can sign mainnet's envelope (secp256k1, or SM2 by
+      node config, which is still one scheme for the whole chain). TIP-899, below,
+      adds a typed PQAuthSig field beside it.
+    src: "protocol/src/main/protos/core/Tron.proto:Transaction, chainbase/src/main/java/org/tron/core/capsule/TransactionCapsule.java:checkWeight"
+  address_remap:
+    verdict: registry
+    note: >-
+      AccountPermissionUpdate rewrites an account's owner, witness and active
+      permissions, each a weighted list of ADDRESSES with a threshold, and
+      validateSignature checks a transaction against the stored permission rather than
+      against the account's own key. One transaction can bind an address to
+      entirely different keys. Today every listed key must still be an ECDSA address;
+      TIP-899 is designed so that a post-quantum address can sit in the same lists.
+    src: "actuator/src/main/java/org/tron/core/actuator/AccountPermissionUpdateActuator.java:AccountPermissionUpdateActuator, chainbase/src/main/java/org/tron/core/capsule/TransactionCapsule.java:validateSignature"
+  classical_key:
+    verdict: retirable
+    note: >-
+      The account's own key is only the DEFAULT owner permission
+      (createDefaultOwnerPermission). Once permissions are updated, validateSignature
+      reads account.getPermissionById, and the original key carries no authority
+      unless it is listed. It can be dropped today.
+    src: "chainbase/src/main/java/org/tron/core/capsule/AccountCapsule.java:createDefaultOwnerPermission, chainbase/src/main/java/org/tron/core/capsule/TransactionCapsule.java:validateSignature"
+  initiatives:
+    tip-899:
+      name: "TIP-899 Post-Quantum Signature Support (FN-DSA-512, ML-DSA-44)"
+      kind: tx-format
+      stage: testnet
+      moves: {tx_format: scheme-field, pq_verifier: precompile}
+      note: >-
+        Adds a PQAuthSig {scheme, public_key, signature} to Transaction, BlockHeader
+        and HelloMessage, with FN-DSA-512 and ML-DSA-44 each behind its own governance
+        proposal (ALLOW_FN_DSA_512 = 1000, ALLOW_ML_DSA_44 = 1001), off by default.
+        A post-quantum address is 0x41 || keccak256(pq_pubkey)[12:], so a post-quantum
+        key gets a NEW address; but because permissions list addresses, an existing
+        account can add it as a weighted signer and mix ECDSA and post-quantum
+        signatures toward one threshold. Five TVM precompiles at
+        0x02000016-0x0200001a verify the two schemes singly, in batches, and as mixed
+        multisig. Phase 1 carries the full public key in every transaction; a draft
+        phase 2 stores it once per address. Reported active on the Nile testnet
+        (proposal 20628, 2026-07). The TIP is still Draft, and no tronprotocol/java-tron
+        release tag up to GreatVoyage-v4.8.2.4 contains it.
+      src_doc: "https://github.com/tronprotocol/tips/issues/899"
+
 fee_model:
   metering: energy + bandwidth (dual resource), NOT gas
   fee_market: none

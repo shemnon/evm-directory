@@ -720,6 +720,49 @@ block_metrics:
     mutability: fixed
     src_live: "eth_config @ 228691210 -> blobSchedule.max 1"
 
+pq_tx:
+  tx_format:
+    verdict: fixed
+    note: >-
+      Kaia types its KEYS, not its signatures. AccountKeyType selects legacy, public,
+      weighted-multisig, role-based or fail, but every one holds secp256k1 keys (a
+      pubkey not on S256 cannot be deserialised), and TxSignatures is a list of V/R/S
+      triples from which ValidateSender RECOVERS public keys before comparing them with
+      the registered key. Post-quantum schemes have no recovery, so a post-quantum
+      AccountKey would also need a new signature encoding in every transaction type:
+      two changes and a fork, where a scheme-field row needs one.
+    src: "blockchain/types/accountkey/account_key.go:AccountKeyTypeLast, blockchain/types/tx_signatures.go:RecoverPubkey, blockchain/types/accountkey/public_key.go:errNotS256Curve"
+  address_remap:
+    verdict: registry
+    note: >-
+      TxTypeAccountUpdate replaces the AccountKey stored under an address, and the
+      address does not change: the closest thing in the dataset to the registration a
+      post-quantum migration needs. A RoleBased key can hand the update right
+      (RoleAccountUpdate) to a different key from the one that spends. Kaia fences
+      EIP-7702 off from it, because applyAuthorization rejects a delegation from any
+      account with a non-legacy key, so the two routes are exclusive per account.
+    src: "blockchain/types/tx_internal_data_account_update.go:TxInternalDataAccountUpdate, blockchain/state/statedb.go:UpdateKey, blockchain/state_transition.go:applyAuthorization"
+  classical_key:
+    verdict: retirable
+    note: >-
+      Only AccountKeyLegacy treats the address as the key's hash. Once an account
+      updates to any other type, GetKey returns the registered key, and the key the
+      address was derived from no longer signs for it. A holder can retire the
+      original key today, though only in favour of another secp256k1 key, since that
+      is all an AccountKey can hold.
+    src: "blockchain/types/accountkey/account_key_legacy.go:AccountKeyLegacy, blockchain/state/statedb.go:GetKey"
+  initiatives:
+    btq-krw-stablecoin:
+      name: "BTQ quantum-secure stablecoin pilot (iM Bank KRW)"
+      kind: wallet
+      stage: mainnet
+      note: >-
+        A vendor proof of concept on Kaia mainnet: ERC-4337 smart-account wallets that
+        verify ML-DSA in contract code alongside the existing ECDSA key. Application
+        layer only: the protocol did not change, the classical key still authorizes
+        the account, and there is no ML-DSA precompile to call.
+      src_doc: "https://beincrypto.com/south-korea-quantum-resistant-stablecoins/"
+
 fee_model:
   metering: "gas AND computation cost (two independent meters, both enforced)"
   fee_market: "KIP-71 bounded dynamic base fee from Magma; a FIXED governance price before it"

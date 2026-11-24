@@ -339,6 +339,26 @@ proofs:
       per-chain variation it does not measure.
     src: "core/lib/types/src/protocol_upgrade.rs:ProtocolUpgrade"
 
+pq_tx:
+
+  address_remap:
+    verdict: new-address
+    note: >-
+      An address with no code is served the DefaultAccount system contract, there is
+      no EIP-7702, and no user path installs other code at an existing address. An EOA
+      therefore cannot become a post-quantum account in place: migrating means
+      deploying a custom account at a new address and moving the funds. From then on
+      no registration is needed, because that account's code is the rule.
+    src: "system-contracts/contracts/DefaultAccount.sol:_isValidSignature"
+  classical_key:
+    verdict: permanent
+    note: >-
+      For the default account. DefaultAccount accepts a signature only when
+      `recoveredAddress == address(this)`, so the secp256k1 key an address came from
+      authorizes it for good. A custom account has no classical key at all unless its
+      code checks one, which is the mechanism this row offers instead of retirement.
+    src: "system-contracts/contracts/DefaultAccount.sol:_isValidSignature"
+
 fee_model:
   metering: "ergs (EraVM), with a second independent price per byte of pubdata"
   fee_market: per-deployment

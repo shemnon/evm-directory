@@ -718,6 +718,20 @@ block_metrics:
       5s, and the observed 5,100 ms is 2% above it for the same reason mainnet's is: a
       missed slot inserts a full extra interval that no average removes.
 
+pq_tx:
+  initiatives:
+    nethermind-frame-tx:
+      name: "EIP-8141 frame transactions in Nethermind (TxType.FrameTx = 6)"
+      kind: tx-format
+      stage: development
+      moves: {tx_format: account-code}
+      note: >-
+        The pinned Nethermind already implements the frame type, and
+        NotSupportedTxFilter drops it from the pool unless IsEip8141Enabled, which no
+        Gnosis spec sets. Gnosis follows Ethereum's fork set, so this is Hegotá's
+        EIP-8141 in the client ahead of any schedule.
+      src: "src/Nethermind/Nethermind.Core/TxType.cs:FrameTx, src/Nethermind/Nethermind.TxPool/Filters/NotSupportedTxFilter.cs:IsEip8141Enabled"
+
 fee_model:
   metering: gas
   fee_market: "EIP-1559, mainnet parameters, base fee COLLECTED not burned"

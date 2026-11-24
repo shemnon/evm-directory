@@ -1087,6 +1087,15 @@ proofs:
       axis's inheritance walk deliberately does not cross templates.
     src: "ethereum/rpc/types/utils.go:EthHeaderFromTendermint"
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      Cosmos-side transactions carry a typed public key, and SigVerificationGasConsumer
+      switches on it (ethsecp256k1 and multisig accepted, ed25519 rejected), so a new
+      key type is a new case and a chain upgrade. EVM transactions on the same chain (MsgEthereumTx) stay fixed secp256k1, so this verdict is the Cosmos-side format's.
+    src: "app/ante/validator.go:SigVerificationGasConsumer"
+
 fee_model:
   metering: "EVM gas, with a floor: the charged amount is max(gasLimit * MinGasMultiplier, gasUsed)"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, disableable"

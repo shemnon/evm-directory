@@ -853,6 +853,18 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "taraxa-node/libraries/core_libs/consensus/src/dag/dag.cpp:computeOrder, taraxa-node/libraries/core_libs/consensus/src/pbft/pbft_manager.cpp:calculateOrderHash, taraxa-node/libraries/cli/include/cli/config_jsons/mainnet/mainnet_genesis.json:lambda_ms"
 
+pq_tx:
+  initiatives:
+    falcon512-precompile:
+      name: "FN-DSA-512 (Falcon-512) verify precompile"
+      kind: precompile
+      stage: mainnet
+      note: >-
+        Lattice-based verification at 0x…fa1c. It returns ZERO for a valid signature,
+        so a verifier written to the usual convention accepts forgeries; see the
+        precompile entry. Transactions stay secp256k1.
+      src: "taraxa-evm/core/vm/contracts.go:falcon512"
+
 fee_model:
   metering: single gas dimension, Constantinople schedule with EIP-1884's three prices
   fee_market: >-

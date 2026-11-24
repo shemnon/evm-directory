@@ -788,6 +788,19 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "opera/rules.go:DefaultEmitterRules, gossip/c_block_callbacks.go"
 
+pq_tx:
+  initiatives:
+    road-to-quantum-resistance:
+      name: "Sonic's Road to Quantum Resistance"
+      kind: roadmap
+      stage: roadmap
+      note: >-
+        An April 2026 blog post arguing that, because SonicCS dropped BLS aggregation,
+        a migration needs only the per-event and transaction signatures swapped for a
+        NIST scheme such as ML-DSA or Falcon. No timeline, and it defers to Ethereum's
+        choices.
+      src_doc: "https://blog.soniclabs.com/sonics-road-to-quantum-resistance/"
+
 fee_model:
   metering: gas
   fee_market: "time-based exponential on gas-per-second; floor from on-chain MinBaseFee"

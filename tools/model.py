@@ -524,6 +524,127 @@ def tx_auth(chains, s):
     return fields, schemes, origin
 
 
+# --------------------------------------------------------------------------
+# pq_tx: post-quantum transactions and accounts
+# --------------------------------------------------------------------------
+
+PQ_TX_KEYS = ["tx_format", "address_remap", "classical_key", "pq_verifier"]
+
+# tx_authorization entries that authorize a transaction without being a signature
+# scheme a user holds: deposits, system senders, cross-chain origins. They are not a
+# second scheme, so they do not make the envelope anything but `fixed`.
+PQ_NONSIG = {"unsigned", "unsigned_remasc", "system_unsigned", "system_address",
+             "protocol_system_address", "l1_message_queue", "xcm_origin"}
+
+# EIP-7702 states under which an EOA can point its address at code today.
+_SETCODE_LIVE = {"inherited", "added", "modified"}
+
+
+def is_pq_scheme(name):
+    n = str(name).lower()
+    return any(p in n for p in PQ_NAMES)
+
+
+def _pq_derived(chains, s):
+    """The pq_tx answers that follow mechanically from facts the row already cites in
+    `tx_authorization` and `eips.7702`. Derived, never stored, the way throughput is:
+    storing them would be 140 copies of one sentence, each free to drift from the
+    `tx_authorization` entry it restates.
+
+    Only the unambiguous cases derive. A `declared` binding, a second user-held scheme,
+    or an unrecorded 7702 status leaves the key underived, so the row has to say."""
+    fields, sch, _ = tx_auth(chains, s)
+    kb = fields.get("key_binding")
+    prot = [n for n, v in sch.items() if isinstance(v, dict)
+            and v.get("authorizes") == "protocol" and n not in PQ_NONSIG]
+    k1 = sch.get("secp256k1") or {}
+    cite = {x: k1[x] for x in ("src", "src_live", "src_doc") if k1.get(x)}
+    out = {}
+
+    def put(key, verdict, note, ev=cite):
+        out[key] = dict(verdict=verdict, note=note, _derived=True, **ev)
+
+    if any(is_pq_scheme(n) for n in prot):
+        put("tx_format", "pq-native",
+            "A post-quantum scheme authorizes transactions at the protocol level "
+            "(tx_authorization).")
+    elif kb == "account_code":
+        put("tx_format", "account-code",
+            "The account's own code is the authentication rule (tx_authorization "
+            "key_binding: account_code), so a post-quantum verifier in account code "
+            "works with no fork, at bytecode cost.")
+    elif kb == "derived" and prot and all(n.startswith("secp256k1") for n in prot):
+        put("tx_format", "fixed",
+            "secp256k1 is the only user-held scheme that authorizes a transaction "
+            "(tx_authorization), and the envelope's signature is the y_parity/r/s "
+            "triple. A post-quantum signature needs a new transaction type.")
+    if kb == "derived":
+        st, _ = eip_status(chains, s, 7702)
+        if st in _SETCODE_LIVE:
+            put("address_remap", "delegate",
+                "EIP-7702 is live: an address can point at code that verifies a "
+                "post-quantum signature, and keeps its address. The secp256k1 key that "
+                "signed the delegation keeps full authority alongside it.")
+        elif st == "removed":
+            put("address_remap", "new-address",
+                "EIP-7702 is not live and the address is the key's hash, so a "
+                "post-quantum key means a new address (a smart account) and moving "
+                "the funds to it.")
+        put("classical_key", "permanent",
+            "The address is the hash of a secp256k1 key (key_binding: derived), and no "
+            "protocol path disables that key: it can always sign a transaction for "
+            "its own address.")
+    pq = [(n, v) for n, v in sch.items() if is_pq_scheme(n) and isinstance(v, dict)
+          and str(v.get("precompile", "none")) != "none"]
+    if pq:
+        n, v = pq[0]
+        ev = {x: v[x] for x in ("src", "src_live", "src_doc") if v.get(x)}
+        put("pq_verifier", "precompile",
+            "; ".join(f"{m} at {w.get('precompile')}" for m, w in pq)
+            + " (tx_authorization). Contracts can verify it; see tx_format for "
+              "whether a transaction can.", ev)
+    elif sch or fields.get("key_binding"):
+        put("pq_verifier", "none",
+            "No post-quantum scheme in tx_authorization has a verifier at any "
+            "address: a contract can check one only in bytecode.", {})
+    return out
+
+
+def pq_tx(chains, s):
+    """A row's effective pq_tx answers: {key: (entry, origin)}.
+
+    Precedence is stated, then inherited from a stack ancestor, then derived. `origin`
+    is the slug that stated it, or "derived" for an answer computed from the row's own
+    tx_authorization / eips facts. Initiatives are not here — see `pq_initiatives`."""
+    out = {k: (v, "derived") for k, v in _pq_derived(chains, s).items()}
+    chain = [s]
+    up = chains[s]["lineage"].get("upstream")
+    while up in chains and is_stack(chains[up]) and up not in chain:
+        chain.append(up)
+        up = chains[up]["lineage"].get("upstream")
+    for t in reversed(chain):
+        for k, v in (chains[t].get("pq_tx") or {}).items():
+            if k in PQ_TX_KEYS and isinstance(v, dict):
+                out[k] = (v, t)
+    return out
+
+
+def pq_initiatives(chains, s):
+    """{id: (entry, origin)} — things presented as for post-quantum, at any stage.
+    Inherited from stack ancestors by id, descendant wins, like every keyed section."""
+    out = {}
+    chain = [s]
+    up = chains[s]["lineage"].get("upstream")
+    while up in chains and is_stack(chains[up]) and up not in chain:
+        chain.append(up)
+        up = chains[up]["lineage"].get("upstream")
+    for t in reversed(chain):
+        for k, v in ((chains[t].get("pq_tx") or {}).get("initiatives") or {}).items():
+            if isinstance(v, dict):
+                out[k] = (v, t)
+    return out
+
+
 def _baseline_set(chains):
     """The raw chains/ethereum/chain.yaml `opcodes.baseline_set.opcodes` map.
 

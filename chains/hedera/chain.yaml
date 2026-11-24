@@ -570,6 +570,68 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusImpl.java:setIsConsensusTrue, platform-sdk/consensus-hashgraph-impl/src/main/java/org/hiero/consensus/hashgraph/impl/consensus/ConsensusSorter.java:sort, hedera-node/hedera-app/src/main/java/com/hedera/node/app/records/impl/BlockRecordManagerImpl.java:willOpenNewBlock"
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      HAPI's SignaturePair is a protobuf oneof keyed by a public-key prefix (contract,
+      ed25519, ECDSA_secp256k1; RSA_3072 and ECDSA_384 reserved and deprecated), so a
+      new algorithm is one more arm and a release. The account Key oneof has the same
+      shape, and its ThresholdKey and nested KeyList could already require a classical
+      AND a post-quantum signature once the arm exists. The inner Ethereum transaction
+      stays fixed: EthereumTransaction recovers a secp256k1 signature.
+    src: "hapi/hedera-protobuf-java-api/src/main/proto/services/basic_types.proto:SignaturePair, hapi/hedera-protobuf-java-api/src/main/proto/services/basic_types.proto:ThresholdKey"
+  address_remap:
+    verdict: registry
+    note: >-
+      An account is shard.realm.num, and CryptoUpdate replaces its key in place
+      (updateBuilder copies the account and sets the new key) while the EVM alias,
+      derived from the ECDSA key the account was created with, carries over
+      unchanged. The address survives a complete change of key, signed by the old key
+      and, unless waived, by the new one.
+    src: "hedera-node/hedera-token-service-impl/src/main/java/com/hedera/node/app/service/token/impl/handlers/CryptoUpdateHandler.java:updateBuilder"
+  classical_key:
+    verdict: retirable
+    note: >-
+      Retiring the ECDSA key also closes the Ethereum path, the part that is easy to
+      get wrong. EthereumTransactionHandler finds the sender by the alias the
+      signature recovers to and, for a finalized account, requires
+      adminKeyMatchesEcdsaPubKey: the account's CURRENT key must be that exact ECDSA
+      key. After a CryptoUpdate to an ed25519 (or a future post-quantum) key, an
+      Ethereum transaction signed with the old key fails INVALID_SIGNATURE. The cost is
+      that the account can no longer send Ethereum-format transactions at all, only
+      HAPI ones.
+    src: "hedera-node/hedera-smart-contract-service-impl/src/main/java/com/hedera/node/app/service/contract/impl/handlers/EthereumTransactionHandler.java:adminKeyMatchesEcdsaPubKey"
+  initiatives:
+    hip-ml-dsa-87:
+      name: "Support for Post-Quantum Cryptographic Algorithm (ML-DSA-87)"
+      kind: key-type
+      stage: declined
+      moves: {tx_format: pq-native}
+      note: >-
+        A HIP draft adding ML-DSA-87 as a key and signature type for accounts and
+        transactions. Its pull request (hiero-improvement-proposals #1103, opened
+        2025-01-18) was closed unmerged and never received a HIP number.
+      src_doc: "https://github.com/hiero-ledger/hiero-improvement-proposals/pull/1103"
+    hip-1399:
+      name: "HIP-1399 Post-Quantum Cryptography Readiness Assessment for Hiero"
+      kind: research
+      stage: declined
+      note: >-
+        A five-tier vulnerability rubric across accounts, topics, tokens and
+        contracts. Pull request #1437 was closed unmerged on 2026-06-09.
+      src_doc: "https://github.com/hiero-ledger/hiero-improvement-proposals/pull/1437"
+    pq-roadmap:
+      name: "Hedera post-quantum cryptography roadmap"
+      kind: roadmap
+      stage: roadmap
+      note: >-
+        Hedera's blog describes post-quantum account key types that users and wallets
+        adopt on their own schedule. Secondary coverage dates the plan to April 2026,
+        names FN-DSA (FIPS 206) for user keys, and puts network-level signing ahead of
+        user keys. No HIP or release carries it.
+      src_doc: "https://hedera.com/blog/post-quantum-crypto"
+
 fee_model:
   severity: high
   note: >-

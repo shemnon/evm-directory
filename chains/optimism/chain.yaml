@@ -127,6 +127,23 @@ proofs:
       mainnet config — the template's machinery, instantiated for this chain.
     src: "superchain-registry/superchain/configs/mainnet/op.toml:DisputeGameFactoryProxy"
 
+pq_tx:
+  initiatives:
+    superchain-pq-roadmap:
+      name: "A Post-Quantum Roadmap for the Superchain (OP Labs)"
+      kind: roadmap
+      stage: roadmap
+      moves: {classical_key: retirable}
+      note: >-
+        Published 2026-01-14 for OP Mainnet and the Superchain. After a ten-year window
+        OP Stack chains are expected to stop accepting raw ECDSA-signed EOA
+        transactions, with users on post-quantum smart accounts reached through
+        EIP-7702 so that addresses do not change; sequencer and batcher keys move as
+        well. The signature scheme is not chosen and no OP Stack upgrade specifies any
+        of it. Recorded on this row rather than on op-stack, because a non-Superchain
+        OP Stack chain has not adopted it.
+      src_doc: "https://optimism.io/blog/a-post-quantum-roadmap-for-the-superchain"
+
 fee_model:
   metering: gas
   note: OP Stack's three components

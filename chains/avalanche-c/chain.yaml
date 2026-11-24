@@ -464,6 +464,18 @@ block_metrics:
       (minDelayExcess in the header) is validator-voted and sets the floor; Snowman++
       paces proposals above it.
 
+pq_tx:
+  initiatives:
+    aip-qr-001:
+      name: "AIP-QR-001 Staged Transition to Quantum-Resistant Cryptography"
+      kind: roadmap
+      stage: proposed
+      note: >-
+        A community idea on the Avalanche forum: post-quantum-only L1s first, mainnet
+        enforcement later, with open questions on gas, scheme and timeline. No ACP
+        number has been assigned.
+      src_doc: "https://forum.avax.network/t/acp-idea-staged-transition-to-quantum-resistant-cryptography-aip-qr-001/7055"
+
 fee_model:
   metering: gas
   fee_market: ACP-176 dynamic fee (target gas excess), NOT mainnet's 1559 update rule

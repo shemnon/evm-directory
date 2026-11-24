@@ -800,6 +800,38 @@ proofs:
       Galileo; this one stands.
     src: "system-contracts/contracts/EvmEmulator.yul"
 
+pq_tx:
+  tx_format:
+    verdict: account-code
+    note: >-
+      The bootloader asks the sender's account to approve and verifies nothing
+      itself, so a Falcon or ML-DSA validator in account code authorizes a transaction
+      with no fork; with zk-stack, the only rows where that is true today. The
+      ceiling is admission rather than consensus: the sequencer's ValidationTracer
+      caps validation work at a NODE-CONFIGURED validation_computational_gas_limit,
+      300,000 in one shipped default and 10,000,000 in another, and with no
+      post-quantum precompile the verifier runs entirely in bytecode. Whether a
+      post-quantum account can transact is therefore a node setting.
+    src: "core/lib/config/src/configs/chain.rs:validation_computational_gas_limit, system-contracts/contracts/DefaultAccount.sol:_isValidSignature"
+
+  address_remap:
+    verdict: new-address
+    note: >-
+      An address with no code is served the DefaultAccount system contract, there is
+      no EIP-7702, and no user path installs other code at an existing address. An EOA
+      therefore cannot become a post-quantum account in place: migrating means
+      deploying a custom account at a new address and moving the funds. From then on
+      no registration is needed, because that account's code is the rule.
+    src: "system-contracts/contracts/DefaultAccount.sol:_isValidSignature"
+  classical_key:
+    verdict: permanent
+    note: >-
+      For the default account. DefaultAccount accepts a signature only when
+      `recoveredAddress == address(this)`, so the secp256k1 key an address came from
+      authorizes it for good. A custom account has no classical key at all unless its
+      code checks one, which is the mechanism this row offers instead of retirement.
+    src: "system-contracts/contracts/DefaultAccount.sol:_isValidSignature"
+
 fee_model:
   metering: "ergs (EraVM) plus a separate pubdata budget; EVM gas is simulated on top for emulated contracts"
   fee_market: "L1-derived gas price plus an independently quoted pubdata price"

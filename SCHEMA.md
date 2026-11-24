@@ -1196,6 +1196,100 @@ Inheritance is the same override-by-key walk the address sections use: a row who
 overrides the ones it states itself. Blast inherits all of `op-stack`'s half-one answers
 and overrides `state_proof:` alone.
 
+## The post-quantum axis (`pq_tx:`)
+
+One question, asked the way a migration meets it: **can a post-quantum key hold and move
+an account here?** Four answers decide it, and they come apart on real rows. A transaction
+format can have a scheme selector while the address is welded to its first key (the Cosmos
+family). An address can take a new key while the old one keeps signing (every EIP-7702
+row). The old key can be retirable while the format still admits only recoverable ECDSA
+(Kaia). Consensus and p2p signatures are out of scope.
+
+```yaml
+pq_tx:
+  tx_format:
+    verdict: fixed           # pq-native | scheme-field | account-code | fixed
+    note: >-
+    src: ...
+  address_remap:
+    verdict: registry        # registry | delegate | new-address
+  classical_key:
+    verdict: retirable       # retirable | permanent | none
+  pq_verifier:
+    verdict: none            # precompile | none
+  initiatives:
+    tip-899:                 # id, also the chain-page anchor
+      name: "TIP-899 Post-Quantum Signature Support"
+      kind: tx-format        # precompile | tx-format | key-type | account | wallet | roadmap | research
+      stage: testnet         # see below
+      moves: {tx_format: scheme-field, pq_verifier: precompile}   # optional
+      note: >-
+      src_doc: https://...
+```
+
+| key | values |
+|---|---|
+| `tx_format` | `pq-native`: a post-quantum scheme authorizes transactions today. `scheme-field`: the format carries a scheme selector, so post-quantum is one new value plus a fork. `account-code`: the account's code is the rule, so it works today at bytecode cost. `fixed`: one recoverable signature, no selector and nowhere for a public key, so post-quantum needs a new transaction type. |
+| `address_remap` | `registry`: a protocol transaction binds new keys to an existing address (Kaia `AccountUpdate`, Hedera `CryptoUpdate`, Tron `AccountPermissionUpdate`, Tempo's keychain). `delegate`: the address can run code (EIP-7702) that checks a new key. `new-address`: a new key means a new address and moving the funds. |
+| `classical_key` | `retirable`: the key the address came from can be removed so it no longer authorizes. `permanent`: it can always sign. `none`: there is no classical key (a custom account). |
+| `pq_verifier` | `precompile`: a post-quantum verifier is live at an address. `none`: only bytecode can check one. |
+
+**`delegate` with `permanent` is the common pair, and it is not a migration.** The
+secp256k1 key that signed a 7702 delegation keeps full authority, can sign a new one, and
+still satisfies every `ecrecover` check. A post-quantum account whose old key still signs
+is not post-quantum. `classical_key` exists so the grid cannot hide that.
+
+### Derived, never stored
+
+Most rows state none of the four keys. `model.pq_tx` derives them from facts the row
+already cites, the way throughput is derived:
+
+- `tx_format` is `pq-native` if a post-quantum scheme in `tx_authorization` authorizes at
+  the protocol level; `account-code` if `key_binding: account_code`; and `fixed` if
+  `key_binding: derived` and every user-held protocol scheme is secp256k1 (deposit and
+  system senders, `PQ_NONSIG`, do not count).
+- `address_remap` is `delegate` if `eips.7702` is live, or `new-address` if it is
+  `removed`, but only for a `derived` binding.
+- `classical_key` is `permanent` for a `derived` binding.
+- `pq_verifier` is `precompile` if a post-quantum scheme in `tx_authorization` has one,
+  otherwise `none`.
+
+Anything else stays underived: a `declared` binding, a second user-held scheme, or an
+`unrecorded` 7702. The row then has to state the key, and until it does the grid shows
+`—`. A stated key overrides the derived one, and a stack ancestor's stated key is
+inherited as on every keyed section. `verify.py:check_pq_tx` rejects a stated
+`pq_verifier: none` or `tx_format: pq-native` that contradicts `tx_authorization`.
+
+### `initiatives:` and the stage
+
+**This axis is the one exception to "mainnet facts only".** All post-quantum work in this
+dataset is at testnet, development, draft or roadmap stage, and leaving it out would make
+the axis an empty grid. So it is admitted, and every item carries a closed `stage:`:
+
+| stage | meaning |
+|---|---|
+| `mainnet` | live on mainnet |
+| `scheduled` | a mainnet activation is set |
+| `slated` | included in a named upgrade with no date (Ethereum SFI) |
+| `testnet` | active on a public testnet |
+| `devnet` | running on a devnet |
+| `development` | merged in a client, gated off |
+| `proposed` | a proposal or draft specification |
+| `roadmap` | a published intent with no specification |
+| `research` | a study or benchmark |
+| `declined` | proposed, then declined or closed. Kept, as `lifted` is kept on `proofs:`. |
+
+"Presented as post-quantum" is the admission test, so a vendor pilot or a blog post
+qualifies, and the stage and the note say what it amounts to. `moves:` names the verdicts
+an item would change if it shipped; the axis grid shows the nearest pending one beside the
+mainnet answer. A `mainnet` item has no `moves:`, because what it moved is the current
+verdict. Initiatives cite `src:` when the code is in a pinned clone and `src_doc:`
+otherwise, and they count toward the evidence tally like any other fact.
+
+An initiative that only one member of a family has adopted goes on that member, not on the
+stack: OP Labs' Superchain roadmap is on `optimism`, because on `op-stack` it would be
+inherited by Mantle, Blast and opBNB.
+
 ## Opcodes
 
 `opcodes:` holds `added` / `removed` / `modified` / `pending` / `tombstoned` lists of
@@ -1333,6 +1427,14 @@ block_metrics: # how much fits in a block and how often one arrives, keyed by
 proofs:       # what can be proven about this chain and to whom, keyed by question:
               # state_transition / proving_live / settlement / prover_constraints
               # (half one) and state_proof / proof_root (half two)
+pq_tx:        # whether a post-quantum key can hold and move an account, keyed by
+              # question: tx_format / address_remap / classical_key / pq_verifier
+              # (mostly DERIVED, see "The post-quantum axis"), plus initiatives{}
+              # with a stage: on each
+pq_tx:        # whether a post-quantum key can hold and move an account, keyed by
+              # question: tx_format / address_remap / classical_key / pq_verifier
+              # (mostly DERIVED, see "The post-quantum axis"), plus initiatives{}
+              # with a stage: on each
 fee_model:    # metering, fee_market, extra_components
 header_fields: # {added: [], removed: [], modified: []} vs mainnet
 gotchas:      # free text: what surprises integrators

@@ -1023,6 +1023,20 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "sei-tendermint/version/version.go:ABCISemVer, sei-tendermint/abci/types/application.go:Application, app/app.go:ProcessProposalHandler, app/app.go:checkTotalBlockGas, app/app.go:FinalizeBlocker, sei-tendermint/internal/mempool/tx.go:txStore, app/ante/evm_delivertx.go:DecorateNonceCallback, x/evm/keeper/abci.go:GetNonceBumped, evmrpc/utils.go:isReceiptFromAnteError"
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      On the Cosmos side the signer's public key is a typed protobuf Any, and
+      DefaultSigVerificationGasConsumer switches on it (ed25519, secp256k1, sr25519,
+      secp256r1, multisig), so a post-quantum key is one more case, a codec
+      registration and a chain upgrade. Sei's list has grown this way before. EVM
+      transactions stay fixed secp256k1. SIP-3's last milestone, which has no proposal,
+      block or date yet, would end Cosmos-signed transactions and take this format
+      with it, leaving only the fixed EVM envelope.
+    src: "sei-cosmos/x/auth/ante/sigverify.go:DefaultSigVerificationGasConsumer"
+    src_doc: "https://github.com/sei-protocol/sips/blob/main/sips/sip-3.md"
+
 fee_model:
   metering: gas (EVM), converted into Cosmos gas units for block accounting
   fee_market: >-

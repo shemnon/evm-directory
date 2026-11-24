@@ -205,7 +205,7 @@ If they stop, end the run without editing anything.
    mirrors op-stack).
 2. Run `tools/clone.sh <slug>`. It must print `cloned` or `ok`. A `WARN` means the tag
    points somewhere other than the pin: stop and resolve that first.
-3. Walk **all ten axes** with [axes.md](axes.md). Routine mode re-reads what the diff
+3. Walk **all thirteen axes** with [axes.md](axes.md). Routine mode re-reads what the diff
    touched. Thorough mode re-derives each axis from the new fork's code path.
 4. Update the prose that names the old state. `lineage.sync_point` always changes. So do
    the `SUMMARY.md` `Reference:` line and fork table, and every mention of the old tag

@@ -605,6 +605,28 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "crates/types/src/signing.rs:Ed25519"
 
+pq_tx:
+  initiatives:
+    slh-dsa-precompile:
+      name: "PQ signature verify precompile (SLH-DSA-SHA2-128s)"
+      kind: precompile
+      stage: mainnet
+      note: >-
+        FIPS 205 hash-based signature verification at 0x1800…0004, live from Zero6,
+        which this chain activated at genesis. Arc presents it as an application-layer
+        authorization primitive; the precompile's own doc comment calls it
+        experimental. Transactions stay secp256k1.
+      src: "crates/pq-precompile/src/lib.rs:verifySlhDsaSha2128s"
+    native-pq-signing:
+      name: "Native post-quantum wallet signing"
+      kind: roadmap
+      stage: roadmap
+      moves: {tx_format: account-code}
+      note: >-
+        Arc's post-quantum page lists native wallet signing as a future milestone,
+        expected through EIP-8141 frame transactions once that EIP is final.
+      src_doc: "https://docs.arc.io/arc/concepts/post-quantum-security"
+
 fee_model:
   metering: gas, denominated in 18-decimal units of the native USDC coin
   fee_market: EIP-1559 formula over an EMA-smoothed gas figure, fixed-point params, contract-governed bounds

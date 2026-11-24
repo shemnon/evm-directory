@@ -16,7 +16,7 @@ The notes below were previously carried in [`findings.yaml`](findings.yaml) unde
 `axis: method` and rendered on the site. They are methodology, not chain data, so they
 live here instead. A third, `ordered-then-invalid`, went the other way: it turned out to
 be chain data rather than methodology, and is now the `ordering` axis. Everything left in
-`findings.yaml` maps to one of the nine axes and appears on the site.
+`findings.yaml` maps to one of the thirteen axes and appears on the site.
 
 ## Axes the schema does not model
 

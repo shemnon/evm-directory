@@ -970,6 +970,16 @@ proofs:
       have IAVL proofs; they are simply not the object an Ethereum verifier decodes.
     src: "rpc/types/utils.go:MakeHeader"
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      Cosmos SDK transactions carry the signer's public key as a typed protobuf Any,
+      and SigVerificationGasConsumer switches on its type: ethsecp256k1 and multisig
+      are accepted, and ed25519 is rejected for transactions. A new key type is a new
+      case, a codec registration and a chain upgrade. EVM transactions on the same chain (MsgEthereumTx) stay fixed secp256k1, so this verdict is the Cosmos-side format's.
+    src: "ante/sigverify.go:SigVerificationGasConsumer"
+
 fee_model:
   metering: "EVM gas, with Cosmos SDK store gas charged into the same counter at 1:1"
   fee_market: "EIP-1559 shape over gas WANTED, decimal-valued, floored, not burned, optional"

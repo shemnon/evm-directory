@@ -791,6 +791,37 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "crates/primitives/src/header.rs:TempoConsensusContext"
 
+pq_tx:
+  tx_format:
+    verdict: scheme-field
+    note: >-
+      Every Tempo signature opens with a type byte (none for secp256k1, 0x01 P-256,
+      0x02 WebAuthn, 0x03/0x04 keychain) and recover_signer dispatches on it, so a
+      post-quantum scheme is one more SignatureType arm plus a hardfork. It is the
+      only row where a non-secp256k1 key already moves funds on mainnet through such a
+      selector. The P-256 arm already has the shape a post-quantum arm would need: it
+      carries the public key inside the 129-byte signature instead of recovering it,
+      and the address is keccak256 of that key.
+    src: "crates/primitives/src/transaction/tempo_transaction.rs:SignatureType, crates/primitives/src/transaction/tt_signature.rs:P256SignatureWithPreHash"
+  address_remap:
+    verdict: registry
+    note: >-
+      The AccountKeychain precompile at 0xAAAAAAAA00..00 registers access keys
+      (authorize_key, with a signature type and spending limits) that sign for an
+      account through a KeychainSignature naming its user_address, and TIP-1045 lets a
+      transaction provision the very key it is signed with. That is registration
+      against an existing address. Access keys are limited to the same three schemes
+      as everything else.
+    src: "crates/precompiles/src/account_keychain/mod.rs:authorize_key, crates/primitives/src/transaction/tt_signature.rs:KeychainSignature"
+  classical_key:
+    verdict: permanent
+    note: >-
+      The ROOT key, the one the address is derived from, is implicit: the keychain
+      revokes access keys only (revoke_key) and has no row for the root to revoke. A
+      post-quantum access key would leave the root fully able to sign, including to
+      revoke the post-quantum key.
+    src: "crates/precompiles/src/account_keychain/mod.rs:revoke_key"
+
 fee_model:
   metering: gas, priced in attodollars, settled in a 6-decimal TIP-20 token
   fee_market: EIP-1559 formula, fixed 10M target, elasticity 1, hard-clamped

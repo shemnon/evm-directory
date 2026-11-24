@@ -609,6 +609,135 @@ proofs:
       no root at all.
     src: "core/types/block.go:Header"
 
+pq_tx:
+  # The baseline. Every other row is read against these four answers.
+  tx_format:
+    verdict: fixed
+    note: >-
+      Every envelope 0x00-0x04 carries one secp256k1 signature as y_parity/r/s, and
+      the sender is RECOVERED from it rather than stated, so the format has neither a
+      place for a public key nor a byte saying which algorithm signed. Post-quantum
+      schemes have no recovery: a verifier needs the full public key (896 bytes for
+      Falcon-512, 1,312 for ML-DSA-44) beside a 666- or 2,420-byte signature. A
+      post-quantum signer therefore needs a new transaction type, which is what
+      EIP-8141 is.
+    src: "core/types/transaction_signing.go:recoverPlain, core/types/transaction_signing.go:modernSigner"
+  address_remap:
+    verdict: delegate
+    note: >-
+      EIP-7702 lets an EOA install a delegation indicator (0xef0100 || address) and
+      keep its address, so code that verifies a post-quantum signature can control
+      the account. Nothing registers a NEW KEY against an address: the delegation is
+      signed by the existing secp256k1 key, and it is that key's authority being
+      extended, not replaced.
+    src: "core/types/tx_setcode.go:SetCodeAuthorization, core/state_transition.go:applyAuthorization"
+  classical_key:
+    verdict: permanent
+    note: >-
+      The EIP-3607 sender check rejects an account with code and exempts exactly a
+      7702 delegation (ParseDelegation), so a delegated EOA's secp256k1 key still
+      originates transactions and can sign a fresh authorization replacing the
+      delegate. Migrating to post-quantum code leaves the quantum-vulnerable key fully
+      live. ECRECOVER at 0x01 ignores account state as well, so ERC-2612 permit and
+      every ecrecover-based check keep honouring the old key. EIP-8151 and EIP-7851,
+      below, are the two proposals that would close those paths.
+    src: "core/state_transition.go:ErrSenderNoEOA, core/types/tx_setcode.go:ParseDelegation"
+  pq_verifier:
+    verdict: none
+    note: >-
+      Osaka's map is 0x01-0x11 plus P256VERIFY at 0x0100; nothing verifies ML-DSA,
+      FN-DSA or SLH-DSA. A contract can only do it in bytecode, where SHA-256 (0x02)
+      and KECCAK256 make the hash-based and the Keccak-instantiated lattice variants
+      reachable.
+    src: "core/vm/contracts.go:PrecompiledContractsOsaka"
+  initiatives:
+    eip-8141:
+      name: "EIP-8141 Frame Transaction"
+      kind: tx-format
+      stage: slated
+      moves: {tx_format: account-code}
+      note: >-
+        Scheduled for Inclusion in Hegotá (EIP-8081), with no activation date and a
+        specification still marked as open to change. A transaction is a sequence of
+        frames, and a VERIFY frame calls the account's own code to decide whether the
+        transaction is valid, so the account rather than the protocol chooses the
+        signature scheme. Necessary, not sufficient: without a post-quantum precompile
+        that verification runs in bytecode, and it does not by itself retire the
+        account's secp256k1 key.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8141, https://eips.ethereum.org/EIPS/eip-8081"
+    eip-8151:
+      name: "EIP-8151 Account Code Restricted ecRecover"
+      kind: precompile
+      stage: proposed
+      moves: {classical_key: retirable}
+      note: >-
+        Considered for Inclusion in Hegotá. ECRECOVER returns the recovered address
+        only while that account's code is empty or a 7702 delegation indicator, so an
+        account that migrated to real post-quantum code stops being authorized by its
+        old key through permit-style checks. Addresses the contract-side half of the
+        classical key's afterlife, not transaction origination.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8151"
+    eip-7851:
+      name: "EIP-7851 Code-Controlled EOA Delegation"
+      kind: account
+      stage: declined
+      moves: {classical_key: retirable}
+      note: >-
+        Declined for Inclusion in Hegotá. Adds an ECDSA-disabled delegation prefix
+        0xef0101 and a self-only SETSELFDELEGATE instruction, so delegated wallet code
+        can PERMANENTLY switch off the EOA key while keeping the address. The only
+        proposal in this dataset that retires a derived key in place.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-7851, https://eips.ethereum.org/EIPS/eip-8081"
+    eip-7932:
+      name: "EIP-7932 Secondary Signature Algorithms"
+      kind: tx-format
+      stage: proposed
+      moves: {tx_format: scheme-field}
+      note: >-
+        Draft, on none of Hegotá's lists. A registry and standard interface for
+        additional signature algorithms used to derive account addresses, with a
+        SIGRECOVER precompile to decode them: the scheme-selector design, as opposed to
+        8141's account-code one.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-7932"
+    eip-8051:
+      name: "EIP-8051 ML-DSA verification precompile"
+      kind: precompile
+      stage: proposed
+      moves: {pq_verifier: precompile}
+      note: >-
+        Draft, on none of Hegotá's lists. Two precompiles: VERIFY_MLDSA (FIPS 204, with
+        SHAKE256) and VERIFY_MLDSA_ETH, a non-FIPS variant that swaps SHAKE256 for a
+        Keccak PRNG and stores t1 in the NTT domain to verify cheaper on-chain.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8051"
+    eip-8052:
+      name: "EIP-8052 Falcon verification precompile"
+      kind: precompile
+      stage: proposed
+      moves: {pq_verifier: precompile}
+      note: >-
+        Draft, on none of Hegotá's lists. Three precompiles: a SHAKE256 hash-to-point
+        (NIST), a Keccak-PRNG hash-to-point (EVM-friendly), and FALCON_CORE. Its input
+        layout is the one Tron's TIP-899 adopted for its own Falcon precompile.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8052"
+    eip-8355:
+      name: "EIP-8355 ML-DSA-44/65/87 precompiles"
+      kind: precompile
+      stage: declined
+      note: >-
+        Declined for Inclusion in Hegotá. Three FIPS 204 verifiers, one per security
+        level, each taking pubkey ++ signature ++ message and returning a 32-byte one
+        or zero.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-8355, https://eips.ethereum.org/EIPS/eip-8081"
+    eip-7885:
+      name: "EIP-7885 NTT precompile"
+      kind: precompile
+      stage: proposed
+      note: >-
+        Draft. A number-theoretic transform and its inverse as a precompile: the
+        polynomial multiplication inside every lattice verifier, offered as a building
+        block rather than a whole scheme.
+      src_doc: "https://eips.ethereum.org/EIPS/eip-7885"
+
 fee_model:
   metering: gas
   fee_market: EIP-1559 (base fee burned + priority tip)

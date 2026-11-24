@@ -664,6 +664,20 @@ proofs:
     note: "settles itself; no external contract accepts or rejects its state transition"
     src: "monad-bft/monad-chain-config/src/revision.rs:CHAIN_PARAMS_V_0_12_0"
 
+pq_tx:
+  initiatives:
+    upgradeable-account-authentication:
+      name: "Upgradeable account authentication (draft)"
+      kind: account
+      stage: proposed
+      moves: {address_remap: registry, classical_key: retirable}
+      note: >-
+        A draft posted 2026-08-21 by Kushal Babel and Jan Camenisch: separate an
+        address from its key, so an account can rotate to passkeys, recovery, or
+        post-quantum keys without moving assets, while existing accounts keep working.
+        It still needs a MIP, a specification and an implementation.
+      src_doc: "https://crypto.news/monad-proposes-wallet-upgrade-for-passkeys-recovery-and-quantum-security/"
+
 fee_model:
   metering: gas
   fee_market: "Monad TFM — adaptive exponential base fee, 80% target, damped by trend/moment"

@@ -1,6 +1,6 @@
 # Per-axis update checklist
 
-Each of the site's twelve axes (`tools/site.py:AXES`) reads specific `chain.yaml` keys.
+Each of the site's thirteen axes (`tools/site.py:AXES`) reads specific `chain.yaml` keys.
 Walk every axis for the row, including axes the row currently leaves empty. A new
 release can add a fact where there was none.
 
@@ -30,6 +30,8 @@ function), not only the files that are already cited.
 | **ordering** | `tx_lifecycle.*` (`verdict:` + `note:`) | Mempool / ordering / execution changes in the diff | Re-check every verdict. Forks often change inclusion and failure handling. |
 | **p2p** | `p2p.max_tx_bytes`, `max_blob_tx_bytes`, `max_block_bytes`, `max_message_bytes`, `fragmentation`, `transports` | The txpool size constant; the transport message caps | EIP-7934-style consensus caps and blob limits. Every size stays a raw integer with a `tier:`, and `max_tx_bytes` keeps its reason in `note:`. |
 | **block-metrics** | `block_metrics.block_gas_limit`, `tx_gas_limit`, `gas_target`, `block_time`, `blob_count`, `blob_gas_limit`, `extras` | Run `tools/blockprobe.py <slug>` and act on the drift it reports — this is the one axis whose values move with no source change. Refresh with `--write`, which rewrites `observed:`, the height, the date and the `src_live:` together. | Re-read the CODE half: a fork can change the per-tx gas cap (EIP-7825 and its overrides), the blob schedule, or the cadence. Then re-pin the observed half at a block **after** activation. Gas stays a raw integer, times stay integer **milliseconds**, and every key keeps its `mutability:`. |
+| **proofs** | `proofs.*` (`verdict:` + `note:`) | Prover, settlement-contract and `eth_getProof` changes; a fork that lifts a prover constraint | Re-check every verdict. A lifted constraint becomes `prover_constraints: lifted` with its date, never a deleted key. |
+| **pq-tx** | `pq_tx.tx_format`, `address_remap`, `classical_key`, `pq_verifier`, `initiatives` | New signature types or key-type enums; account-update / permission paths; a post-quantum precompile; the chain's blog, forum and improvement-proposal repo | Most rows have no stated keys: their answers are DERIVED from `tx_authorization` and `eips.7702` (`model.pq_tx`), so updating those updates this. State a key only where derivation is wrong or silent. Move each initiative's `stage:` as it advances, and when one reaches `mainnet`, drop its `moves:` and change the verdict it moved. |
 
 ## Not an axis, still in scope
 

@@ -1089,7 +1089,7 @@ def ex_txtypes(slug, chain=None):
 
 PROV_SECTIONS = ["precompiles", "tx_types", "system_contracts", "eips",
                  "non_evm_transactions", "system_transactions", "p2p", "proofs",
-                 "block_metrics"]
+                 "block_metrics", "pq_tx"]
 
 
 def _asserts_nothing(sec, v):
@@ -1125,7 +1125,11 @@ def provenance(c):
     for sec in PROV_SECTIONS:
         d = c.get(sec) or {}
         if not isinstance(d, dict): continue
-        for v in d.values():
+        vals = list(d.values())
+        if sec == "pq_tx":     # initiatives nest one level down, each its own fact
+            vals = [v for k, v in d.items() if k != "initiatives"] + list(
+                (d.get("initiatives") or {}).values())
+        for v in vals:
             if not isinstance(v, dict): continue
             for k in ("src", "src_live", "src_doc"):
                 if k in v: t[k] += 1; break
@@ -1597,6 +1601,87 @@ def check_proofs(c):
     return bad
 
 
+PQ_VOCAB = {
+    "tx_format":     {"pq-native", "scheme-field", "account-code", "fixed"},
+    "address_remap": {"registry", "delegate", "new-address"},
+    "classical_key": {"retirable", "permanent", "none"},
+    "pq_verifier":   {"precompile", "none"},
+}
+PQ_STAGES = {"mainnet", "scheduled", "slated", "testnet", "devnet", "development",
+             "proposed", "declined", "roadmap", "research"}
+# Mirrors model.PQ_NAMES; verify.py stands alone, so the list is restated, not imported.
+PQ_NAMES = ["ml-dsa", "ml_dsa", "slh-dsa", "slh_dsa", "falcon", "dilithium",
+            "sphincs", "lamport", "winternitz", "xmss", "kyber", "ml-kem"]
+PQ_KINDS = {"precompile", "tx-format", "key-type", "account", "wallet", "roadmap",
+            "research"}
+
+
+def check_pq_tx(c, chains=None):
+    """`pq_tx:` — whether a post-quantum key can hold and move an account here. The
+    four questions take a closed vocabulary so the grid compares rows; `initiatives:`
+    takes a closed STAGE, because this axis deliberately admits testnet, devnet and
+    proposal-stage work, and an unmarked stage is exactly how a roadmap reads as a fact.
+
+    Two cross-checks against `tx_authorization`, which the derived answers read: a row
+    may not state `pq_verifier: none` while tx_authorization lists a post-quantum scheme
+    with a precompile, and may not state `tx_format: pq-native` without one that
+    authorizes at the protocol level."""
+    bad = []
+    d = c.get("pq_tx")
+    if d is None:
+        return bad
+    if not isinstance(d, dict):
+        return ["BAD PQ_TX  pq_tx: must be a mapping"]
+    for k, v in d.items():
+        if k == "initiatives":
+            continue
+        if k not in PQ_VOCAB:
+            bad.append(f"BAD PQ_TX  {k!r} is not a pq_tx question "
+                       f"(want one of {sorted(PQ_VOCAB)} or initiatives)")
+            continue
+        if not isinstance(v, dict):
+            bad.append(f"BAD PQ_TX  pq_tx.{k} must be a mapping"); continue
+        if v.get("verdict") not in PQ_VOCAB[k]:
+            bad.append(f"BAD PQ_TX  pq_tx.{k}.verdict: {v.get('verdict')!r} not in "
+                       f"{sorted(PQ_VOCAB[k])}")
+        if not str(v.get("note") or "").strip():
+            bad.append(f"BAD PQ_TX  pq_tx.{k} has no `note:`")
+        if not any(v.get(x) for x in ("src", "src_live", "src_doc")):
+            bad.append(f"BAD PQ_TX  pq_tx.{k} has no src / src_live / src_doc")
+    for i, v in ((d.get("initiatives") or {}).items()):
+        if not isinstance(v, dict):
+            bad.append(f"BAD PQ_TX  initiatives.{i} must be a mapping"); continue
+        if v.get("stage") not in PQ_STAGES:
+            bad.append(f"BAD PQ_TX  initiatives.{i}.stage: {v.get('stage')!r} not in "
+                       f"{sorted(PQ_STAGES)}")
+        if v.get("kind") not in PQ_KINDS:
+            bad.append(f"BAD PQ_TX  initiatives.{i}.kind: {v.get('kind')!r} not in "
+                       f"{sorted(PQ_KINDS)}")
+        for f in ("name", "note"):
+            if not str(v.get(f) or "").strip():
+                bad.append(f"BAD PQ_TX  initiatives.{i} has no `{f}:`")
+        if not any(v.get(x) for x in ("src", "src_live", "src_doc")):
+            bad.append(f"BAD PQ_TX  initiatives.{i} has no src / src_live / src_doc")
+        for mk, mv in (v.get("moves") or {}).items():
+            if mk not in PQ_VOCAB or mv not in PQ_VOCAB[mk]:
+                bad.append(f"BAD PQ_TX  initiatives.{i}.moves {mk}: {mv!r} is not a "
+                           f"pq_tx question and verdict")
+        if v.get("stage") == "mainnet" and v.get("moves"):
+            bad.append(f"BAD PQ_TX  initiatives.{i} is live on mainnet, so what it "
+                       f"moves is the current verdict, not a `moves:`")
+    sch = (c.get("tx_authorization") or {}).get("schemes") or {}
+    pq = {n: v for n, v in sch.items() if any(p in n.lower() for p in PQ_NAMES) and isinstance(v, dict)}
+    if (d.get("pq_verifier") or {}).get("verdict") == "none" and any(
+            str(v.get("precompile", "none")) != "none" for v in pq.values()):
+        bad.append("CONTRADICTION  pq_tx.pq_verifier: none, but tx_authorization lists "
+                   "a post-quantum scheme with a precompile")
+    if (d.get("tx_format") or {}).get("verdict") == "pq-native" and not any(
+            v.get("authorizes") == "protocol" for v in pq.values()):
+        bad.append("CONTRADICTION  pq_tx.tx_format: pq-native, but no post-quantum "
+                   "scheme in tx_authorization authorizes at the protocol level")
+    return bad
+
+
 BM_KEYS = {"block_gas_limit", "tx_gas_limit", "gas_target", "block_time",
            "blob_count", "blob_gas_limit", "extras"}
 BM_MUTABILITY = {"fixed", "adjustable", "governance", "config", "interleaved",
@@ -1825,7 +1910,7 @@ def main():
     if no_clones:
         print("--no-clones: chain.yaml is checked against ITSELF, not against source.\n"
               "  running: pin presence, base-map/envelope declaration, opcode keys,\n"
-              "  tx-authorization vocabulary, proofs vocabulary, non-EVM\n"
+              "  tx-authorization vocabulary, proofs vocabulary, pq_tx vocabulary, non-EVM\n"
               "  instruction sets, citation shape, evidence tally,\n"
               "  operator slugs, contribution citations.")
     for b in check_operators(known):
@@ -1856,6 +1941,9 @@ def main():
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_proofs(c):
+            print(f"\n{slug}\n  {b}"); problems += 1
+
+        for b in check_pq_tx(c):
             print(f"\n{slug}\n  {b}"); problems += 1
 
         for b in check_block_metrics(c):
